@@ -178,7 +178,7 @@ function App() {
 function EmptyState({ onBrowseGames }: { onBrowseGames: () => void }) {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center p-8">
-      <div className="w-24 h-24 rounded-3xl bg-surface flex items-center justify-center mb-6">
+      <div className="w-24 h-24 rounded-3xl bg-surface flex items-center justify-center mb-6 shadow-premium">
         <svg
           className="w-12 h-12 text-ink-dim"
           fill="none"
@@ -199,13 +199,13 @@ function EmptyState({ onBrowseGames }: { onBrowseGames: () => void }) {
           />
         </svg>
       </div>
-      <h2 className="text-2xl font-bold mb-2">No Game Selected</h2>
+      <h2 className="text-2xl font-bold mb-2 gradient-text">No Game Selected</h2>
       <p className="text-ink-muted max-w-md mb-8">
         Select a game from the sidebar to view details, or install a new game to get started.
       </p>
       <button
         onClick={onBrowseGames}
-        className="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-colors"
+        className="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
       >
         Install a Game
       </button>

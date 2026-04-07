@@ -43,7 +43,7 @@ export function News({ onBack }: NewsProps) {
   return (
     <div className="h-full overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-canvas/95 backdrop-blur border-b border-border px-8 py-4">
+      <div className="sticky top-0 z-10 bg-canvas/90 backdrop-blur-md border-b border-border px-8 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
@@ -64,10 +64,10 @@ export function News({ onBack }: NewsProps) {
           {NEWS_ITEMS.map((item) => (
             <article
               key={item.id}
-              className="group bg-surface rounded-2xl overflow-hidden hover:bg-surface-light transition-colors cursor-pointer border border-border hover:border-ink-muted"
+              className="group bg-surface rounded-2xl overflow-hidden hover:bg-surface-light transition-all cursor-pointer border border-border hover:border-accent/30 card-premium"
             >
               <div className="flex gap-6 p-6">
-                <div className="w-48 h-32 rounded-xl overflow-hidden flex-shrink-0">
+                <div className="w-48 h-32 rounded-xl overflow-hidden flex-shrink-0 shadow-premium">
                   <img
                     src={item.image}
                     alt={item.title}
@@ -77,7 +77,7 @@ export function News({ onBack }: NewsProps) {
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent-muted text-accent">
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent-muted text-accent border border-accent/20">
                         {item.category}
                       </span>
                       <span className="flex items-center gap-1.5 text-sm text-ink-muted">

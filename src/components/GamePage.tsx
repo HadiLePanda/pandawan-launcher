@@ -56,7 +56,7 @@ export function GamePage({
         return (
           <button
             onClick={onUpdate}
-            className="flex items-center gap-2 px-6 py-3 bg-status-updating hover:bg-amber-600 text-white rounded-lg font-semibold transition-all btn-press"
+            className="flex items-center gap-2 px-6 py-3 bg-status-updating hover:bg-amber-500 text-white rounded-lg font-semibold transition-all btn-press btn-glow shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40"
           >
             <RefreshCw className="w-5 h-5" />
             Update
@@ -68,9 +68,9 @@ export function GamePage({
           onClick={onPlay}
           disabled={isRunning}
           className={cn(
-            'flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all btn-press',
+            'flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg',
             isRunning
-              ? 'bg-status-ready cursor-not-allowed'
+              ? 'bg-status-ready cursor-not-allowed shadow-none'
               : 'bg-accent hover:bg-accent-hover'
           )}
         >
@@ -83,7 +83,7 @@ export function GamePage({
     return (
       <button
         onClick={onInstall}
-        className="flex items-center gap-2 px-8 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold transition-all btn-press"
+        className="flex items-center gap-2 px-8 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
       >
         <Download className="w-5 h-5" />
         Install
@@ -106,16 +106,17 @@ export function GamePage({
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-surface-light to-canvas" />
           )}
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-canvas/80 via-transparent to-transparent" />
+          {/* Gradient overlays - enhanced for premium feel */}
+          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-canvas/90 via-canvas/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent" />
         </div>
 
         {/* Content */}
         <div className="relative h-full flex flex-col justify-end p-8 pb-12">
           <div className="max-w-2xl">
             {/* Game logo/title */}
-            <h1 className="text-6xl font-bold mb-4 tracking-tight">
+            <h1 className="text-6xl font-bold mb-4 tracking-tight drop-shadow-lg">
               {game.info.name}
             </h1>
 
@@ -141,7 +142,7 @@ export function GamePage({
               {game.info.genre.map((g) => (
                 <span
                   key={g}
-                  className="px-3 py-1 rounded-full text-xs font-medium bg-surface/80 text-ink-muted backdrop-blur"
+                  className="px-3 py-1 rounded-full text-xs font-medium bg-surface/80 text-ink-muted backdrop-blur border border-border hover:border-ink-muted/30 transition-colors"
                 >
                   {g}
                 </span>
@@ -156,7 +157,7 @@ export function GamePage({
                 <div className="relative">
                   <button
                     onClick={() => setShowMenu(!showMenu)}
-                    className="p-3 rounded-lg bg-surface/80 hover:bg-surface text-ink-muted hover:text-ink transition-colors backdrop-blur"
+                    className="p-3 rounded-lg bg-surface/80 hover:bg-surface text-ink-muted hover:text-ink transition-all backdrop-blur hover-lift"
                   >
                     <MoreVertical className="w-5 h-5" />
                   </button>
@@ -168,7 +169,7 @@ export function GamePage({
                         className="fixed inset-0 z-40"
                         onClick={() => setShowMenu(false)}
                       />
-                      <div className="absolute top-full left-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-xl z-50 py-1">
+                      <div className="absolute top-full left-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-premium-lg z-50 py-1 backdrop-blur-md">
                         <button
                           onClick={() => {
                             onVerify();
@@ -280,9 +281,9 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl bg-surface/50 border border-border/50">
-      <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
-        <Icon className="w-5 h-5 text-ink-muted" />
+    <div className="flex items-center gap-4 p-4 rounded-xl bg-surface/50 border border-border/50 card-premium hover-lift transition-all">
+      <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center shadow-premium">
+        <Icon className="w-5 h-5 text-accent" />
       </div>
       <div>
         <p className="text-xs text-ink-muted uppercase tracking-wider">{label}</p>

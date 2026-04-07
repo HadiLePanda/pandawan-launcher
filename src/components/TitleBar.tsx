@@ -9,7 +9,7 @@ interface TitleBarProps {
 
 export function TitleBar({ onSettingsClick, isSettingsOpen }: TitleBarProps) {
   return (
-    <header className="h-10 bg-canvas border-b border-border flex items-center justify-between drag-region z-50">
+    <header className="h-10 bg-canvas/80 backdrop-blur-md border-b border-border flex items-center justify-between drag-region z-50 relative">
       {/* Left spacer for balance */}
       <div className="w-[200px]" />
 

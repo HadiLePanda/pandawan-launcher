@@ -14,10 +14,12 @@ export function GameSidebar({ games, selectedGameId, onSelectGame, onAddGame }: 
   const availableGames = games.filter((g) => g.status === 'not_installed');
 
   return (
-    <aside className="w-[72px] bg-canvas border-r border-border flex flex-col items-center py-4 gap-2">
+    <aside className="w-[72px] bg-canvas border-r border-border flex flex-col items-center py-4 gap-2 relative overflow-hidden">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-canvas-light/30 pointer-events-none" />
       {/* Logo */}
-      <div className="mb-6">
-        <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
+      <div className="mb-6 relative z-10">
+        <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-glow animate-glow-pulse">
           <Gamepad2 className="w-5 h-5 text-white" />
         </div>
       </div>
@@ -61,7 +63,7 @@ export function GameSidebar({ games, selectedGameId, onSelectGame, onAddGame }: 
       {/* Add Game Button */}
       <button
         onClick={onAddGame}
-        className="w-12 h-12 rounded-xl border-2 border-dashed border-border hover:border-accent hover:text-accent text-ink-muted flex items-center justify-center transition-all group"
+        className="w-12 h-12 rounded-xl border-2 border-dashed border-border hover:border-accent hover:text-accent text-ink-muted flex items-center justify-center transition-all group hover-glow-accent relative z-10"
         title="Install New Game"
       >
         <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -87,7 +89,7 @@ function GameIcon({ game, isSelected, onClick, isAvailable }: GameIconProps) {
       className={cn(
         'relative w-12 h-12 rounded-xl overflow-hidden transition-all duration-200 group',
         isSelected
-          ? 'ring-2 ring-accent ring-offset-2 ring-offset-canvas scale-105'
+          ? 'ring-2 ring-accent ring-offset-2 ring-offset-canvas scale-105 shadow-glow'
           : 'hover:scale-105 hover:ring-2 hover:ring-border hover:ring-offset-2 hover:ring-offset-canvas',
         isAvailable && 'opacity-50'
       )}

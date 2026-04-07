@@ -7,12 +7,14 @@ use tauri::{ipc::Channel, AppHandle, Manager, State};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
 
-mod types;
-mod download;
-mod patch;
+pub mod types;
+pub mod download;
+pub mod patch;
+
+#[cfg(test)]
+pub mod test_utils;
 
 use types::*;
-use download::DownloadManager;
 use patch::{PatchManager, save_installation, load_installation, list_installations};
 
 // Global state for the launcher
@@ -186,7 +188,7 @@ async fn launch_game(
         .stderr(Stdio::null());
     
     match command.spawn() {
-        Ok(mut child) => {
+        Ok(child) => {
             let pid = child.id();
             
             // Store process handle
@@ -381,4 +383,443 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    // =========================================================================
+    // get_default_games_path Tests
+    // =========================================================================
+
+    #[test]
+    fn test_get_default_games_path() {
+        let path = get_default_games_path();
+        
+        // Path should contain "PandawanGames"
+        assert!(path.to_string_lossy().contains("PandawanGames"));
+    }
+
+    // =========================================================================
+    // load_settings Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_load_settings_default_when_missing() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        
+        let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        
+        assert_eq!(settings, LauncherSettings::default());
+    }
+
+    #[tokio::test]
+    async fn test_load_settings_from_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let settings_path = temp_dir.path().join("settings.json");
+        
+        let settings = LauncherSettings {
+            language: "fr".to_string(),
+            max_concurrent_downloads: 8,
+            ..Default::default()
+        };
+        
+        let json = serde_json::to_string_pretty(&settings).unwrap();
+        std::fs::write(&settings_path, json).unwrap();
+        
+        let loaded = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        
+        assert_eq!(loaded.language, "fr");
+        assert_eq!(loaded.max_concurrent_downloads, 8);
+    }
+
+    #[tokio::test]
+    async fn test_load_settings_invalid_json() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let settings_path = temp_dir.path().join("settings.json");
+        
+        // Write invalid JSON
+        std::fs::write(&settings_path, "not valid json").unwrap();
+        
+        let result = load_settings(&temp_dir.path().to_path_buf()).await;
+        assert!(result.is_err());
+    }
+
+    // =========================================================================
+    // Integration Tests for Command Functions
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_check_game_update_not_installed() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        
+        let manifest = GameManifest {
+            game_id: "new-game".to_string(),
+            name: "New Game".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 100,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        // Game is not installed, should return true (needs update/install)
+        let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
+        assert!(needs_update);
+    }
+
+    #[tokio::test]
+    async fn test_check_game_update_outdated() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        
+        // Create an older installation
+        let installation = GameInstallation {
+            game_id: "test-game".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: 100,
+            install_path: PathBuf::from("/test"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &installation).unwrap();
+        
+        // Newer manifest
+        let manifest = GameManifest {
+            game_id: "test-game".to_string(),
+            name: "Test Game".to_string(),
+            version: "1.1.0".to_string(),
+            build_number: 200,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
+        assert!(needs_update);
+    }
+
+    #[tokio::test]
+    async fn test_check_game_update_up_to_date() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        
+        // Create current installation
+        let installation = GameInstallation {
+            game_id: "test-game".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: 100,
+            install_path: PathBuf::from("/test"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &installation).unwrap();
+        
+        // Same manifest
+        let manifest = GameManifest {
+            game_id: "test-game".to_string(),
+            name: "Test Game".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 100,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
+        assert!(!needs_update);
+    }
+
+    #[tokio::test]
+    async fn test_check_game_update_newer_than_manifest() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        
+        // Create newer installation (shouldn't happen in practice)
+        let installation = GameInstallation {
+            game_id: "test-game".to_string(),
+            installed_version: "2.0.0".to_string(),
+            installed_build: 200,
+            install_path: PathBuf::from("/test"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &installation).unwrap();
+        
+        // Older manifest
+        let manifest = GameManifest {
+            game_id: "test-game".to_string(),
+            name: "Test Game".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 100,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
+        assert!(!needs_update); // Already newer
+    }
+
+    // Helper function for check_game_update logic (extracted for testing)
+    async fn check_game_update_logic(
+        app_data_dir: &std::path::Path,
+        manifest: &GameManifest,
+    ) -> bool {
+        match load_installation(app_data_dir, &manifest.game_id).unwrap() {
+            Some(installation) => installation.installed_build < manifest.build_number,
+            None => true, // Not installed
+        }
+    }
+
+    // =========================================================================
+    // LauncherState Tests (without Tauri context)
+    // =========================================================================
+
+    #[test]
+    fn test_launcher_settings_default_values() {
+        let settings = LauncherSettings::default();
+        
+        assert_eq!(settings.max_concurrent_downloads, 4);
+        assert_eq!(settings.language, "en");
+        assert!(settings.auto_update_games);
+        assert!(!settings.close_to_tray);
+    }
+
+    // =========================================================================
+    // End-to-End Workflow Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_full_installation_workflow() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        let install_dir = temp_dir.path().join("games");
+        
+        // Create a manifest
+        let manifest = GameManifest {
+            game_id: "workflow-test".to_string(),
+            name: "Workflow Test".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 1,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        // Simulate installation by creating the installation record
+        let installation = GameInstallation {
+            game_id: manifest.game_id.clone(),
+            installed_version: manifest.version.clone(),
+            installed_build: manifest.build_number,
+            install_path: install_dir.clone(),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: manifest.executable.clone(),
+        };
+        
+        // Save installation
+        save_installation(app_data_dir, &installation).unwrap();
+        
+        // Verify installation was saved
+        let loaded = load_installation(app_data_dir, &manifest.game_id).unwrap();
+        assert!(loaded.is_some());
+        let loaded = loaded.unwrap();
+        assert_eq!(loaded.game_id, manifest.game_id);
+        assert_eq!(loaded.installed_version, manifest.version);
+        
+        // Check if update needed
+        let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
+        assert!(!needs_update); // Same version
+        
+        // Create newer manifest
+        let newer_manifest = GameManifest {
+            game_id: "workflow-test".to_string(),
+            name: "Workflow Test".to_string(),
+            version: "1.1.0".to_string(),
+            build_number: 2,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![],
+            launch_args: None,
+        };
+        
+        // Now should need update
+        let needs_update = check_game_update_logic(app_data_dir, &newer_manifest).await;
+        assert!(needs_update);
+    }
+
+    #[test]
+    fn test_uninstall_game_logic() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        let install_dir = temp_dir.path().join("games").join("uninstall-test");
+        
+        // Create installation
+        std::fs::create_dir_all(&install_dir).unwrap();
+        let game_file = install_dir.join("game.exe");
+        std::fs::write(&game_file, "game content").unwrap();
+        
+        let installation = GameInstallation {
+            game_id: "uninstall-test".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: 1,
+            install_path: install_dir.clone(),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        
+        save_installation(app_data_dir, &installation).unwrap();
+        
+        // Verify files exist
+        assert!(install_dir.exists());
+        assert!(game_file.exists());
+        
+        // Simulate uninstall
+        if installation.install_path.exists() {
+            let _ = std::fs::remove_dir_all(&installation.install_path);
+        }
+        let install_file = app_data_dir.join("installations").join("uninstall-test.json");
+        let _ = std::fs::remove_file(&install_file);
+        
+        // Verify files are gone
+        assert!(!install_dir.exists());
+        assert!(!install_file.exists());
+    }
+
+    // =========================================================================
+    // Edge Cases and Error Handling
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_load_settings_with_partial_data() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let settings_path = temp_dir.path().join("settings.json");
+        
+        // Partial JSON - missing some fields
+        let partial_json = r#"{
+            "language": "de",
+            "auto_update_games": false
+        }"#;
+        
+        std::fs::write(&settings_path, partial_json).unwrap();
+        
+        let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        
+        // Specified values should be loaded
+        assert_eq!(settings.language, "de");
+        assert!(!settings.auto_update_games);
+        
+        // Unspecified values should use defaults
+        assert_eq!(settings.max_concurrent_downloads, 4); // Default
+        assert!(settings.auto_update_launcher); // Default
+    }
+
+    #[test]
+    fn test_list_installations_corrupted_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        let installs_dir = app_data_dir.join("installations");
+        std::fs::create_dir_all(&installs_dir).unwrap();
+        
+        // Create a valid installation
+        let valid_install = GameInstallation {
+            game_id: "valid-game".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: 1,
+            install_path: PathBuf::from("/valid"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &valid_install).unwrap();
+        
+        // Create a corrupted installation file
+        std::fs::write(installs_dir.join("corrupted.json"), "{invalid").unwrap();
+        
+        // Create a non-JSON file
+        std::fs::write(installs_dir.join("not-json.txt"), "hello").unwrap();
+        
+        let installations = list_installations(app_data_dir).unwrap();
+        
+        // Should only return the valid one
+        assert_eq!(installations.len(), 1);
+        assert_eq!(installations[0].game_id, "valid-game");
+    }
+
+    #[test]
+    fn test_save_installation_overwrites_existing() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let app_data_dir = temp_dir.path();
+        
+        // Create initial installation
+        let installation1 = GameInstallation {
+            game_id: "update-test".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: 1,
+            install_path: PathBuf::from("/path1"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &installation1).unwrap();
+        
+        // Update and save again
+        let installation2 = GameInstallation {
+            game_id: "update-test".to_string(),
+            installed_version: "2.0.0".to_string(),
+            installed_build: 2,
+            install_path: PathBuf::from("/path2"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: Some(chrono::Utc::now()),
+            total_playtime_seconds: 3600,
+            executable: "game.exe".to_string(),
+        };
+        save_installation(app_data_dir, &installation2).unwrap();
+        
+        // Load and verify it's the updated version
+        let loaded = load_installation(app_data_dir, "update-test").unwrap().unwrap();
+        assert_eq!(loaded.installed_version, "2.0.0");
+        assert_eq!(loaded.installed_build, 2);
+        assert_eq!(loaded.total_playtime_seconds, 3600);
+    }
 }

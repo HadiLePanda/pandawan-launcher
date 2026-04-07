@@ -25,14 +25,15 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-canvas/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-canvas/70 backdrop-blur-md"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-3xl h-[600px] bg-surface border border-border rounded-2xl shadow-2xl flex overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-3xl h-[600px] bg-surface border border-border rounded-2xl shadow-premium-lg flex overflow-hidden animate-slide-up">
         {/* Sidebar */}
-        <div className="w-56 bg-canvas border-r border-border p-4">
+        <div className="w-56 bg-canvas border-r border-border p-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-canvas-light/20 pointer-events-none" />
           <h2 className="text-lg font-semibold px-3 mb-6">Settings</h2>
           <nav className="space-y-1">
             {tabs.map((tab) => {
@@ -89,7 +90,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             </button>
             <button
               onClick={onClose}
-              className="px-6 py-2 rounded-lg text-sm font-medium bg-accent hover:bg-accent-hover text-white transition-colors"
+              className="px-6 py-2 rounded-lg text-sm font-medium bg-accent hover:bg-accent-hover text-white transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
             >
               Save Changes
             </button>
@@ -112,7 +113,7 @@ function GeneralSettings() {
           <div className="flex-1 px-4 py-2.5 bg-canvas rounded-lg text-sm text-ink-muted border border-border">
             C:\Games\Pandawan
           </div>
-          <button className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors">
+          <button className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-all btn-press">
             Browse
           </button>
         </div>
@@ -269,10 +270,10 @@ function AboutSettings() {
       <div className="h-px bg-border" />
 
       <div className="flex gap-3">
-        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-colors">
+        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-all btn-press">
           Check for Updates
         </button>
-        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-colors">
+        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-all btn-press">
           View Logs
         </button>
       </div>
@@ -323,12 +324,12 @@ function ToggleSetting({ title, description, defaultChecked }: ToggleSettingProp
         onClick={() => setChecked(!checked)}
         className={cn(
           'w-11 h-6 rounded-full transition-colors relative',
-          checked ? 'bg-accent' : 'bg-surface-light'
+          checked ? 'bg-accent shadow-glow' : 'bg-surface-light'
         )}
       >
         <div
           className={cn(
-            'w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5',
+            'w-5 h-5 rounded-full bg-white shadow-md transition-transform absolute top-0.5',
             checked ? 'translate-x-5' : 'translate-x-0.5'
           )}
         />
