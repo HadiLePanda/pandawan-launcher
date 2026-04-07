@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import type { Game, GameInfo, GameInstallation, LauncherSettings, DownloadEvent } from '@/types';
+import type { Game, GameInfo, GameInstallation, LauncherSettings, DownloadEvent, GameManifest } from '@/types';
 
 interface LauncherState {
   // Games
@@ -33,17 +33,6 @@ interface LauncherState {
   uninstallGame: (gameId: string) => Promise<void>;
   checkForUpdates: (gameId: string, manifestUrl: string) => Promise<boolean>;
 }
-
-const defaultSettings: LauncherSettings = {
-  gamesInstallPath: null,
-  maxDownloadSpeed: null,
-  maxConcurrentDownloads: 4,
-  autoUpdateGames: true,
-  autoUpdateLauncher: true,
-  minimizeToTray: true,
-  closeToTray: false,
-  language: 'en',
-};
 
 export const useLauncherStore = create<LauncherState>((set, get) => ({
   games: [],
@@ -108,7 +97,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
           return {
             ...game,
             installation: installation || null,
-            status: installation ? 'installed' : 'not_installed',
+            status: (installation ? 'installed' : 'not_installed') as Game['status'],
           };
         });
         
@@ -132,7 +121,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
               manifestUrl: '',
             },
             installation: i,
-            status: 'installed',
+            status: 'installed' as const,
             hasUpdate: false,
           }));
         
