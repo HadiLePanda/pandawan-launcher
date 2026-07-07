@@ -59,7 +59,7 @@
   --border-strong: rgba(255, 255, 255, 0.12);
   --border-accent: rgba(212, 168, 83, 0.32);
   --border-action: rgba(40, 185, 104, 0.32);
-  --bg-gradient: radial-gradient(ellipse at 45% 35%, rgba(40, 46, 62, 0.55) 0%, rgba(12, 13, 18, 0) 55%), radial-gradient(ellipse at 80% 15%, rgba(212, 168, 83, 0.12) 0%, rgba(12, 13, 18, 0) 45%), radial-gradient(ellipse at 50% 0%, rgba(30, 33, 43, 0.5) 0%, rgba(12, 13, 18, 0) 60%);
+  --bg-gradient: radial-gradient(ellipse at 50% 45%, rgba(40, 46, 62, 0.75) 0%, rgba(30, 33, 43, 0.45) 40%, rgba(12, 13, 18, 0) 75%), radial-gradient(ellipse at 80% 15%, rgba(40, 46, 62, 0.35) 0%, rgba(12, 13, 18, 0) 55%);
 }
 
 /* Pandawan Corp — Light Mode: Parchment & Stone */
@@ -312,6 +312,74 @@ input:focus-visible {
   color: var(--ink-default);
 }
 
+/* Theme-aware selectable chips */
+.selectable-chip {
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  color: var(--ink-muted);
+  transition: all 0.15s ease;
+}
+
+.selectable-chip:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+  border-color: var(--border-strong);
+}
+
+.selectable-chip-active {
+  background: var(--action);
+  border-color: var(--action);
+  color: white;
+}
+
+.selectable-chip-active:hover {
+  background: var(--action-hover);
+  border-color: var(--action-hover);
+}
+
+/* Toggle switch */
+.toggle-track {
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+}
+
+.toggle-track:disabled,
+.toggle-track-active:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-track-active {
+  background: var(--action);
+  border-color: var(--action);
+}
+
+.toggle-thumb {
+  background: #fafafa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.light .toggle-thumb {
+  background: #1f2937;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-track .toggle-thumb {
+  background: #9ca3af;
+}
+
+.light .toggle-track .toggle-thumb {
+  background: #9ca3af;
+}
+
+.toggle-track-active .toggle-thumb {
+  background: #ffffff;
+}
+
+.light .toggle-track-active .toggle-thumb {
+  background: #ffffff;
+}
+
 /* Line clamp utilities */
 .line-clamp-2 {
   display: -webkit-box;
@@ -397,10 +465,80 @@ select {
   background-position: right 12px center;
   background-size: 16px;
   padding-right: 40px;
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 0.625rem 2.5rem 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+select option,
+select optgroup {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+}
+
+.light select,
+.light select option,
+.light select optgroup {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
 }
 
 .light select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"],
+input[type="search"] {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="password"]::placeholder,
+input[type="email"]::placeholder,
+input[type="search"]::placeholder {
+  color: var(--ink-dim);
+}
+
+.light input[type="text"],
+.light input[type="number"],
+.light input[type="password"],
+.light input[type="email"],
+.light input[type="search"] {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border-color: var(--border-default);
 }
 
 /* Animations */

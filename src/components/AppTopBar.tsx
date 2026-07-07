@@ -9,6 +9,7 @@ interface AppTopBarProps {
   onStoreClick: () => void;
   onSettingsClick: () => void;
   onPlayerClick: () => void;
+  onDoubleClick?: () => void;
 }
 
 export function AppTopBar({
@@ -18,6 +19,7 @@ export function AppTopBar({
   onStoreClick,
   onSettingsClick,
   onPlayerClick,
+  onDoubleClick,
 }: AppTopBarProps) {
   const { settings, setSettings } = useLauncherStore();
   const currentTheme = settings?.theme || 'adaptive';
@@ -39,14 +41,18 @@ export function AppTopBar({
   ];
 
   return (
-    <div className="h-20 flex items-center justify-between px-8 shrink-0 border-b border-border">
+    <div
+      data-tauri-drag-region
+      onDoubleClick={onDoubleClick}
+      className="h-20 drag-region flex items-center justify-between px-8 shrink-0 border-b border-border"
+    >
       {/* Left - Logo only + text navigation */}
       <div className="flex items-center gap-10">
         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-action to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-action/20">
           P
         </div>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 no-drag">
           {navItems.map((item) => {
             const isActive = activeView === item.id;
             return (
@@ -66,7 +72,7 @@ export function AppTopBar({
       </div>
 
       {/* Right - Icons */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 no-drag">
         <button
           onClick={handleThemeToggle}
           className="p-2.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"

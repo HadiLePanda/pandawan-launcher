@@ -8,6 +8,7 @@ import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
+import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { GameInfo } from '@/types';
 
 // Mock available games for the "Add Game" modal

@@ -181,7 +181,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         <select
           value={settings.language}
           onChange={(e) => onChange({ language: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
+          className="w-full rounded-lg text-sm text-ink"
         >
           <option value="en">English</option>
           <option value="fr">French</option>
@@ -198,7 +198,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         <select
           value={settings.theme}
           onChange={(e) => onChange({ theme: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
+          className="w-full rounded-lg text-sm text-ink"
         >
           <option value="adaptive">Adaptive (System)</option>
           <option value="light">Light</option>
@@ -255,7 +255,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         <select
           value={currentSpeedValue}
           onChange={(e) => handleSpeedChange(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
+          className="w-full rounded-lg text-sm text-ink"
         >
           {speedOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -278,8 +278,8 @@ function DownloadSettings({ settings, onChange }: TabProps) {
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-colors',
                 settings.maxConcurrentDownloads === n
-                  ? 'bg-action text-white'
-                  : 'bg-surface-light hover:bg-surface-hover text-ink-muted'
+                  ? 'selectable-chip-active'
+                  : 'selectable-chip'
               )}
             >
               {n}
@@ -416,12 +416,12 @@ function ToggleSetting({ title, description, checked, onChange }: ToggleSettingP
         onClick={() => onChange(!checked)}
         className={cn(
           'w-11 h-6 rounded-full transition-colors relative',
-          checked ? 'bg-action' : 'bg-surface-light'
+          checked ? 'toggle-track-active' : 'toggle-track'
         )}
       >
         <div
           className={cn(
-            'w-5 h-5 rounded-full bg-white shadow-md transition-transform absolute top-0.5',
+            'w-5 h-5 rounded-full toggle-thumb shadow-md transition-transform absolute top-0.5',
             checked ? 'translate-x-5' : 'translate-x-0.5'
           )}
         />
