@@ -146,22 +146,22 @@ export function GamePage({
       </div>
 
       {/* Right panel: cover + news */}
-      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 flex flex-col overflow-hidden">
+      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 flex flex-col overflow-hidden m-4 rounded-2xl">
         {/* Cover image — full height within right panel, dissolving at bottom */}
-        <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div className="relative flex-1 min-h-0 overflow-hidden rounded-t-2xl">
           {game.info.bannerUrl ? (
             <img
               src={game.info.bannerUrl}
               alt={game.info.name}
-              className="absolute inset-0 w-full h-full object-cover cover-image cover-mask-bottom"
+              className="absolute inset-0 w-full h-full object-cover cover-image cover-mask-bottom rounded-2xl"
             />
           ) : (
-            <div className="absolute inset-0 bg-surface-light" />
+            <div className="absolute inset-0 bg-surface-light rounded-2xl" />
           )}
         </div>
 
         {/* News cards below cover */}
-        <div className="shrink-0 p-4 space-y-3 max-h-[45%] overflow-auto glass/80">
+        <div className="shrink-0 p-4 pb-6 space-y-3 max-h-[45%] overflow-auto glass/80 rounded-b-2xl">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-ink/80 mb-2">News</h3>
           <NewsCard
             title={`${game.info.name}: Latest Update`}

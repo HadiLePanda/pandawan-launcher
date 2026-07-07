@@ -249,6 +249,34 @@ body {
   }
 }
 
+/* Game icon placeholder background — distinct from the card so initials/icons read clearly */
+.game-icon-bg {
+  background-color: #282b32;
+}
+
+.light .game-icon-bg {
+  background-color: #e8e6e0;
+}
+
+/* Games icons panel — background for the navbar game icons row */
+.game-icons-panel {
+  background-color: var(--surface-light);
+}
+
+.light .game-icons-panel {
+  background-color: var(--canvas-elevated);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Game card hover effect */
 .game-card {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);

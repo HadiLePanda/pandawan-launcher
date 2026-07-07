@@ -128,6 +128,11 @@ function App() {
     }
   };
 
+  const handleSelectGameIcon = (gameId: string | null) => {
+    setActiveView('games');
+    handleSelectGame(gameId);
+  };
+
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
@@ -171,11 +176,7 @@ function App() {
 
     // Games view: always keep the game selection bar visible
     return (
-      <GamesPage
-        games={games}
-        selectedGameId={selectedGameId}
-        onSelectGame={handleSelectGame}
-      >
+      <GamesPage games={games}>
         {selectedGame ? (
           <GamePage
             game={selectedGame}
@@ -199,6 +200,8 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppTopBar
           activeView={activeView}
+          selectedGameId={selectedGameId}
+          games={games}
           onGamesClick={() => {
             setActiveView('games');
             // Return to last visited state inside the Games page.
@@ -214,6 +217,7 @@ function App() {
           }}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onPlayerClick={() => {}}
+          onSelectGameIcon={handleSelectGameIcon}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
         />
 
