@@ -13,9 +13,9 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
   {
     id: 'quirheim-online',
     name: 'Quirheim Online',
-    description: 'An epic MMORPG set in the mystical world of Quirheim.',
+    description: 'The medieval MMORPG governed by the four elements and ancient dragons — master your class, breathe with the world, and conquer dungeons.',
     developer: 'Pandawan Corp',
-    genre: ['MMORPG', 'Fantasy'],
+    genre: ['MMORPG', 'Fantasy', 'Co-op'],
     iconUrl: '',
     bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=675&fit=crop',
     screenshots: [],
@@ -54,7 +54,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [showNews, setShowNews] = useState(false);
-  
+
   const {
     games,
     activeDownloads,
@@ -122,10 +122,10 @@ function App() {
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    
+
     const manifestUrl = game.info.manifestUrl;
     const baseUrl = manifestUrl.substring(0, manifestUrl.lastIndexOf('/'));
-    
+
     await installGame(gameId, manifestUrl, baseUrl);
     setIsAddGameOpen(false);
   };
