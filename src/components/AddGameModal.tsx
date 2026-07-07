@@ -24,16 +24,16 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-canvas/70 backdrop-blur-md"
+        className="absolute inset-0 bg-canvas/70"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-4xl h-[700px] bg-surface border border-border rounded-2xl shadow-premium-lg flex flex-col overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-4xl h-[700px] bg-canvas border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
-            <h2 className="text-2xl font-bold gradient-text">Install a Game</h2>
+            <h2 className="text-2xl font-bold">Install a Game</h2>
             <p className="text-sm text-ink-muted mt-1">
               Select a game to install from your library
             </p>
@@ -55,7 +55,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               placeholder="Search games..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-canvas rounded-xl border border-border focus:outline-none focus:border-accent text-ink placeholder:text-ink-dim"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-border focus:outline-none focus:border-accent text-ink placeholder:text-ink-dim bg-transparent"
             />
           </div>
         </div>
@@ -75,7 +75,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-surface-light flex items-center justify-center mb-4 shadow-premium">
+              <div className="w-16 h-16 rounded-2xl bg-surface-light flex items-center justify-center mb-4">
                 <Search className="w-8 h-8 text-ink-dim" />
               </div>
               <h3 className="font-semibold mb-2">No games found</h3>
@@ -113,9 +113,9 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               onClick={() => selectedGame && onInstall(selectedGame.id)}
               disabled={!selectedGame}
               className={cn(
-                'flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all btn-press',
+                'flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 selectedGame
-                  ? 'bg-accent hover:bg-accent-hover text-white btn-glow shadow-glow hover:shadow-glow-lg'
+                  ? 'bg-action hover:bg-action-hover text-white'
                   : 'bg-surface-light text-ink-muted cursor-not-allowed'
               )}
             >
@@ -143,7 +143,7 @@ function GameCard({ game, isSelected, onClick }: GameCardProps) {
         'flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
         isSelected
           ? 'bg-accent-muted border-accent'
-          : 'bg-canvas border-border hover:border-ink-muted'
+          : 'bg-transparent border-border hover:border-ink-muted'
       )}
     >
       {/* Icon */}

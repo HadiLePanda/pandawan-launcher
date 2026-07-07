@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { TitleBar } from '@components/TitleBar';
-import { GameSidebar } from '@components/GameSidebar';
+import { AppTopBar } from '@components/AppTopBar';
 import { GamePage } from '@components/GamePage';
+import { GamesPage } from '@components/GamesPage';
+import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
@@ -24,9 +26,9 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
     releaseDate: '2024-12-01T00:00:00Z',
     manifestUrl: 'https://cdn.pandawancorp.com/games/quirheim-online/manifest.json',
     colorTheme: {
-      accent: '#d29922',
-      accentHover: '#e0a82e',
-      accentMuted: 'rgba(210, 153, 34, 0.12)',
+      accent: '#c8a84b',
+      accentHover: '#d4b55e',
+      accentMuted: 'rgba(200, 168, 75, 0.12)',
     },
   },
   {
@@ -43,9 +45,9 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
     releaseDate: '2024-10-15T00:00:00Z',
     manifestUrl: 'https://cdn.pandawancorp.com/games/pixel-odyssey/manifest.json',
     colorTheme: {
-      accent: '#3b82f6',
-      accentHover: '#2563eb',
-      accentMuted: 'rgba(59, 130, 246, 0.12)',
+      accent: '#4a7a52',
+      accentHover: '#5a8f62',
+      accentMuted: 'rgba(74, 122, 82, 0.14)',
     },
   },
 ];
@@ -53,13 +55,15 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
-  const [showNews, setShowNews] = useState(false);
+  const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
+  // null means the ALL / home overview is shown.
+  // `lastSelectedGameId` preserves the last game selected so clicking "Games" returns to it.
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
 
   const {
     games,
     activeDownloads,
-    selectedGameId,
-    selectGame,
     installGame,
     launchGame,
     uninstallGame,
@@ -71,7 +75,6 @@ function App() {
   // Initialize app on mount
   useEffect(() => {
     const init = async () => {
-      // Add mock games if none exist
       const store = useLauncherStore.getState();
       if (store.games.length === 0) {
         MOCK_AVAILABLE_GAMES.forEach((gameInfo) => {
@@ -80,6 +83,12 @@ function App() {
       }
       await loadGames();
       await loadSettings();
+
+      // Default to the ALL overview on boot (selectedGameId stays null)
+      const loadedGames = useLauncherStore.getState().games;
+      if (loadedGames.length === 0 && !selectedGameId) {
+        setSelectedGameId(null);
+      }
     };
     init();
   }, []);
@@ -87,28 +96,20 @@ function App() {
   // Apply theme class when setting changes
   useEffect(() => {
     if (!settings) return;
-    const applyTheme = (theme: string) => {
-      const root = window.document.documentElement;
-      root.classList.remove('light', 'dark');
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    if (settings.theme === 'dark') {
+      root.classList.add('dark');
+    } else if (settings.theme === 'light') {
+      root.classList.add('light');
+    } else {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.classList.add(systemTheme);
+    }
 
-      if (theme === 'dark') {
-        root.classList.add('dark');
-      } else if (theme === 'light') {
-        root.classList.add('light');
-      } else {
-        // Adaptive
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        root.classList.add(systemTheme);
-      }
-    };
-
-    applyTheme(settings.theme);
-
-    // If adaptive, listen to system preferences
     if (settings.theme === 'adaptive') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = (e: MediaQueryListEvent) => {
-        const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
         root.classList.add(e.matches ? 'dark' : 'light');
       };
@@ -119,13 +120,18 @@ function App() {
 
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 
+  const handleSelectGame = (gameId: string | null) => {
+    setSelectedGameId(gameId);
+    if (gameId) {
+      setLastSelectedGameId(gameId);
+    }
+  };
+
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-
     const manifestUrl = game.info.manifestUrl;
     const baseUrl = manifestUrl.substring(0, manifestUrl.lastIndexOf('/'));
-
     await installGame(gameId, manifestUrl, baseUrl);
     setIsAddGameOpen(false);
   };
@@ -137,7 +143,7 @@ function App() {
   const handleUninstallGame = async (gameId: string) => {
     if (confirm('Are you sure you want to uninstall this game?')) {
       await uninstallGame(gameId);
-      selectGame(null);
+      setSelectedGameId(null);
     }
   };
 
@@ -145,57 +151,76 @@ function App() {
     alert('File verification coming soon!');
   };
 
-  // Get games that aren't installed yet for the Add Game modal
   const uninstalledGames = MOCK_AVAILABLE_GAMES.filter(
     (mock) => !games.some((g) => g.info.id === mock.id && g.status !== 'not_installed')
   );
 
-  return (
-    <div className="h-screen flex flex-col bg-canvas text-ink overflow-hidden">
-      {/* Title Bar */}
-      <TitleBar
-        onSettingsClick={() => setIsSettingsOpen(true)}
-        isSettingsOpen={isSettingsOpen}
-      />
+  const renderContent = () => {
+    if (activeView === 'news') {
+      return <News />;
+    }
+    if (activeView === 'store') {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center p-8">
+          <h2 className="text-xl font-semibold mb-2">Store Coming Soon</h2>
+          <p className="text-ink-muted">Browse and install new Pandawan games here.</p>
+        </div>
+      );
+    }
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Game Sidebar */}
-        <GameSidebar
-          games={games}
-          selectedGameId={selectedGameId}
-          onSelectGame={(gameId) => {
-            selectGame(gameId);
-            setShowNews(false);
+    // Games view: always keep the game selection bar visible
+    return (
+      <GamesPage
+        games={games}
+        selectedGameId={selectedGameId}
+        onSelectGame={handleSelectGame}
+      >
+        {selectedGame ? (
+          <GamePage
+            game={selectedGame}
+            downloadProgress={activeDownloads.get(selectedGame.info.id)}
+            onPlay={() => launchGame(selectedGame.info.id)}
+            onInstall={() => handleInstallGame(selectedGame.info.id)}
+            onUpdate={() => handleUpdateGame(selectedGame.info.id)}
+            onUninstall={() => handleUninstallGame(selectedGame.info.id)}
+            onVerify={() => handleVerifyGame(selectedGame.info.id)}
+          />
+        ) : (
+          <GamesHome games={games} onSelectGame={handleSelectGame} />
+        )}
+      </GamesPage>
+    );
+  };
+
+  return (
+    <div className="h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+      <TitleBar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AppTopBar
+          activeView={activeView}
+          onGamesClick={() => {
+            setActiveView('games');
+            // Return to last visited state inside the Games page.
+            setSelectedGameId(lastSelectedGameId);
           }}
-          onAddGame={() => setIsAddGameOpen(true)}
+          onNewsClick={() => {
+            setActiveView('news');
+            setSelectedGameId(lastSelectedGameId);
+          }}
+          onStoreClick={() => {
+            setActiveView('store');
+            setSelectedGameId(lastSelectedGameId);
+          }}
+          onSettingsClick={() => setIsSettingsOpen(true)}
+          onPlayerClick={() => {}}
+          onDoubleClick={() => windowTitlebarToggleMaximize()}
         />
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-hidden">
-          {showNews ? (
-            <News onBack={() => setShowNews(false)} />
-          ) : selectedGame ? (
-            <GamePage
-              game={selectedGame}
-              downloadProgress={activeDownloads.get(selectedGame.info.id)}
-              onPlay={() => launchGame(selectedGame.info.id)}
-              onInstall={() => handleInstallGame(selectedGame.info.id)}
-              onUpdate={() => handleUpdateGame(selectedGame.info.id)}
-              onUninstall={() => handleUninstallGame(selectedGame.info.id)}
-              onVerify={() => handleVerifyGame(selectedGame.info.id)}
-            />
-          ) : (
-            <EmptyState onBrowseGames={() => setIsAddGameOpen(true)} />
-          )}
-        </main>
+        <div className="flex-1 overflow-hidden">
+          {renderContent()}
+        </div>
       </div>
-
-      {/* Modals */}
-      <Settings
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       <AddGameModal
         isOpen={isAddGameOpen}
@@ -203,44 +228,6 @@ function App() {
         onInstall={handleInstallGame}
         availableGames={uninstalledGames}
       />
-    </div>
-  );
-}
-
-function EmptyState({ onBrowseGames }: { onBrowseGames: () => void }) {
-  return (
-    <div className="h-full flex flex-col items-center justify-center text-center p-8">
-      <div className="w-24 h-24 rounded-3xl bg-surface flex items-center justify-center mb-6 shadow-premium">
-        <svg
-          className="w-12 h-12 text-ink-dim"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </div>
-      <h2 className="text-2xl font-bold mb-2 gradient-text">No Game Selected</h2>
-      <p className="text-ink-muted max-w-md mb-8">
-        Select a game from the sidebar to view details, or install a new game to get started.
-      </p>
-      <button
-        onClick={onBrowseGames}
-        className="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
-      >
-        Install a Game
-      </button>
     </div>
   );
 }

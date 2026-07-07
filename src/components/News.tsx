@@ -1,8 +1,6 @@
-import { ArrowLeft, Newspaper, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
-interface NewsProps {
-  onBack: () => void;
-}
+interface NewsProps {}
 
 const NEWS_ITEMS = [
   {
@@ -39,39 +37,22 @@ const NEWS_ITEMS = [
   },
 ];
 
-export function News({ onBack }: NewsProps) {
+export function News({}: NewsProps) {
   return (
     <div className="h-full overflow-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-canvas/90 backdrop-blur-md border-b border-border px-8 py-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
-            <Newspaper className="w-6 h-6 text-accent" />
-            <h1 className="text-xl font-bold">News & Updates</h1>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
       <div className="p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-4">
           {NEWS_ITEMS.map((item) => (
             <article
               key={item.id}
-              className="group bg-surface rounded-2xl overflow-hidden hover:bg-surface-light transition-all cursor-pointer border border-border hover:border-accent/30 card-premium"
+              className="bg-surface rounded-xl overflow-hidden border border-border hover:border-border-strong transition-colors"
             >
               <div className="flex gap-6 p-6">
-                <div className="w-48 h-32 rounded-xl overflow-hidden flex-shrink-0 shadow-premium">
+                <div className="w-48 h-32 rounded-lg overflow-hidden flex-shrink-0 bg-surface-light">
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="flex-1 flex flex-col justify-between">
@@ -85,7 +66,7 @@ export function News({ onBack }: NewsProps) {
                         {new Date(item.date).toLocaleDateString()}
                       </span>
                     </div>
-                    <h2 className="text-xl font-semibold mb-2 group-hover:text-accent transition-colors">
+                    <h2 className="text-xl font-semibold mb-2">
                       {item.title}
                     </h2>
                     <p className="text-ink-muted line-clamp-2">

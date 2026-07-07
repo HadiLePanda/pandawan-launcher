@@ -28,6 +28,15 @@ export default {
           dim: 'var(--ink-dim)',
           subtle: 'var(--ink-subtle)',
         },
+        // Primary CTA — Bamboo Green (Install, Play, Launch, Confirm)
+        action: {
+          DEFAULT: 'var(--action)',
+          hover: 'var(--action-hover)',
+          light: 'var(--action-light)',
+          muted: 'var(--action-muted)',
+          glow: 'var(--action-glow)',
+        },
+        // Secondary Accent — Forge Gold (selections, highlights, badges)
         accent: {
           DEFAULT: 'var(--accent)',
           hover: 'var(--accent-hover)',
@@ -35,17 +44,23 @@ export default {
           muted: 'var(--accent-muted)',
           glow: 'var(--accent-glow)',
         },
+        // Tertiary Semantic — Ember (errors only)
+        ember: {
+          DEFAULT: 'var(--ember)',
+          muted: 'var(--ember-muted)',
+        },
         border: {
           DEFAULT: 'var(--border-default)',
           strong: 'var(--border-strong)',
           accent: 'var(--border-accent)',
+          action: 'var(--border-action)',
         },
         status: {
-          ready: '#3fb950',             // Vibrant green
-          downloading: '#58a6ff',       // Bright blue
-          installing: '#a371f7',        // Soft purple
-          error: '#f85149',             // Soft red
-          updating: '#d29922',          // Warm amber
+          ready: '#4a7a52',         // Bamboo — installed & ready
+          downloading: '#c8a84b',   // Forge Gold — in progress
+          installing: '#d4b55e',    // Gold shimmer — processing
+          updating: '#5a8f62',      // Bamboo light — updating
+          error: '#9b1f2e',         // Ember — something's wrong
         },
         // Gradient backgrounds
         gradient: {
@@ -85,10 +100,10 @@ export default {
         },
       },
       boxShadow: {
-        'premium': '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)',
-        'premium-lg': '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)',
-        'glow': '0 0 20px rgba(232, 93, 63, 0.3)',
-        'glow-lg': '0 0 40px rgba(232, 93, 63, 0.4)',
+        'premium': '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(200, 168, 75, 0.06)',
+        'premium-lg': '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(200, 168, 75, 0.1)',
+        'glow': '0 0 20px rgba(200, 168, 75, 0.25)',
+        'glow-lg': '0 0 40px rgba(200, 168, 75, 0.35)',
       },
     },
   },

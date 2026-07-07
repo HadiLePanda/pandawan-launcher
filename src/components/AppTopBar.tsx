@@ -1,0 +1,101 @@
+import { Settings, Bell, User, Sun, Moon, SunMoon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useLauncherStore } from '@/lib/store';
+
+interface AppTopBarProps {
+  activeView: 'games' | 'news' | 'store';
+  onGamesClick: () => void;
+  onNewsClick: () => void;
+  onStoreClick: () => void;
+  onSettingsClick: () => void;
+  onPlayerClick: () => void;
+}
+
+export function AppTopBar({
+  activeView,
+  onGamesClick,
+  onNewsClick,
+  onStoreClick,
+  onSettingsClick,
+  onPlayerClick,
+}: AppTopBarProps) {
+  const { settings, setSettings } = useLauncherStore();
+  const currentTheme = settings?.theme || 'adaptive';
+
+  const handleThemeToggle = () => {
+    if (!settings) return;
+    const order = ['adaptive', 'light', 'dark'];
+    const next = order[(order.indexOf(currentTheme) + 1) % order.length];
+    setSettings({ ...settings, theme: next });
+  };
+
+  const themeIcon = currentTheme === 'light' ? <Sun className="w-[18px] h-[18px]" /> : currentTheme === 'dark' ? <Moon className="w-[18px] h-[18px]" /> : <SunMoon className="w-[18px] h-[18px]" />;
+  const themeTitle = currentTheme === 'light' ? 'Light' : currentTheme === 'dark' ? 'Dark' : 'Adaptive';
+
+  const navItems = [
+    { id: 'games' as const, label: 'Games', onClick: onGamesClick },
+    { id: 'news' as const, label: 'News', onClick: onNewsClick },
+    { id: 'store' as const, label: 'Store', onClick: onStoreClick },
+  ];
+
+  return (
+    <div className="h-20 flex items-center justify-between px-8 shrink-0 border-b border-border">
+      {/* Left - Logo only + text navigation */}
+      <div className="flex items-center gap-10">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-action to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-action/20">
+          P
+        </div>
+
+        <nav className="flex items-center gap-1">
+          {navItems.map((item) => {
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={item.onClick}
+                className={cn(
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                  isActive ? 'text-ink bg-surface-light/80' : 'text-ink-muted hover:text-ink hover:bg-surface/50'
+                )}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Right - Icons */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={handleThemeToggle}
+          className="p-2.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+          title={`Theme: ${themeTitle}`}
+          aria-label={`Theme: ${themeTitle}`}
+        >
+          {themeIcon}
+        </button>
+        <button
+          onClick={onSettingsClick}
+          className="p-2.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+          aria-label="Settings"
+        >
+          <Settings className="w-[18px] h-[18px]" />
+        </button>
+        <button
+          className="p-2.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+          aria-label="Notifications"
+        >
+          <Bell className="w-[18px] h-[18px]" />
+        </button>
+        <button
+          onClick={onPlayerClick}
+          className="ml-2 w-10 h-10 rounded-full bg-gradient-to-br from-surface-light to-surface border border-border flex items-center justify-center text-ink-muted hover:text-ink hover:border-border-strong transition-colors"
+          aria-label="Player profile"
+        >
+          <User className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}

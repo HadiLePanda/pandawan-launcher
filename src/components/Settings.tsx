@@ -57,15 +57,14 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-canvas/70 backdrop-blur-md"
+        className="absolute inset-0 bg-canvas/70"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-3xl h-[600px] bg-surface border border-border rounded-2xl shadow-premium-lg flex overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-3xl h-[600px] bg-canvas border border-border rounded-2xl shadow-2xl flex overflow-hidden animate-slide-up">
         {/* Sidebar */}
-        <div className="w-56 bg-canvas border-r border-border p-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-canvas-light/20 pointer-events-none" />
+        <div className="w-56 border-r border-border p-4 bg-canvas-light">
           <h2 className="text-lg font-semibold px-3 mb-6">Settings</h2>
           <nav className="space-y-1">
             {tabs.map((tab) => {
@@ -77,7 +76,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                     activeTab === tab.id
-                      ? 'bg-accent text-white'
+                      ? 'bg-action text-white'
                       : 'text-ink-muted hover:text-ink hover:bg-surface-light'
                   )}
                 >
@@ -126,7 +125,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 rounded-lg text-sm font-medium bg-accent hover:bg-accent-hover text-white transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
+              className="px-6 py-2 rounded-lg text-sm font-medium bg-action hover:bg-action-hover text-white transition-colors"
             >
               Save Changes
             </button>
@@ -162,12 +161,12 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         description="Where your games are installed"
       >
         <div className="flex gap-3">
-          <div className="flex-1 px-4 py-2.5 bg-canvas rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap">
+          <div className="flex-1 px-4 py-2.5 rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap bg-transparent">
             {settings.gamesInstallPath || 'Default (PandawanGames)'}
           </div>
           <button
             onClick={handleBrowse}
-            className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-all btn-press"
+            className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors"
           >
             Browse
           </button>
@@ -182,7 +181,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         <select
           value={settings.language}
           onChange={(e) => onChange({ language: e.target.value })}
-          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
         >
           <option value="en">English</option>
           <option value="fr">French</option>
@@ -199,7 +198,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         <select
           value={settings.theme}
           onChange={(e) => onChange({ theme: e.target.value })}
-          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
         >
           <option value="adaptive">Adaptive (System)</option>
           <option value="light">Light</option>
@@ -256,7 +255,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         <select
           value={currentSpeedValue}
           onChange={(e) => handleSpeedChange(e.target.value)}
-          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+          className="w-full px-4 py-2.5 rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink bg-transparent"
         >
           {speedOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -279,8 +278,8 @@ function DownloadSettings({ settings, onChange }: TabProps) {
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-colors',
                 settings.maxConcurrentDownloads === n
-                  ? 'bg-accent text-white'
-                  : 'bg-canvas hover:bg-surface-light text-ink-muted'
+                  ? 'bg-action text-white'
+                  : 'bg-surface-light hover:bg-surface-hover text-ink-muted'
               )}
             >
               {n}
@@ -347,8 +346,8 @@ function NotificationSettings() {
 function AboutSettings() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 p-4 bg-canvas rounded-xl">
-        <div className="w-16 h-16 rounded-xl bg-accent flex items-center justify-center">
+      <div className="flex items-center gap-4 p-4 rounded-xl border border-border bg-transparent">
+        <div className="w-16 h-16 rounded-xl bg-action flex items-center justify-center">
           <span className="text-2xl font-bold text-white">P</span>
         </div>
         <div>
@@ -386,7 +385,7 @@ function SettingItem({ icon: Icon, title, description, children }: SettingItemPr
   return (
     <div className="space-y-3">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-surface-light flex items-center justify-center flex-shrink-0">
           <Icon className="w-4 h-4 text-ink-muted" />
         </div>
         <div>
@@ -417,7 +416,7 @@ function ToggleSetting({ title, description, checked, onChange }: ToggleSettingP
         onClick={() => onChange(!checked)}
         className={cn(
           'w-11 h-6 rounded-full transition-colors relative',
-          checked ? 'bg-accent shadow-glow' : 'bg-surface-light'
+          checked ? 'bg-action' : 'bg-surface-light'
         )}
       >
         <div
