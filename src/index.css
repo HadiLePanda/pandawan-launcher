@@ -14,6 +14,57 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  /* Default is Dark Mode (per designer choice / AGENTS.md) */
+  --canvas-default: #0d1117;
+  --canvas-light: #161b22;
+  --canvas-elevated: #1c2128;
+  --surface-default: #21262d;
+  --surface-light: #30363d;
+  --surface-hover: #3d444d;
+  --surface-elevated: rgba(48, 54, 61, 0.6);
+  --ink-default: #f0f6fc;
+  --ink-muted: #8b949e;
+  --ink-dim: #6e7681;
+  --ink-subtle: #484f58;
+  --accent: #e85d3f;
+  --accent-hover: #f06b4d;
+  --accent-light: #ff7a5c;
+  --accent-muted: rgba(232, 93, 63, 0.12);
+  --accent-glow: rgba(232, 93, 63, 0.4);
+  --border-default: rgba(240, 246, 252, 0.08);
+  --border-strong: rgba(240, 246, 252, 0.15);
+  --border-accent: rgba(232, 93, 63, 0.3);
+  --bg-gradient: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232, 93, 63, 0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(88, 166, 255, 0.04), transparent);
+}
+
+/* Light mode overrides */
+.light {
+  color-scheme: light;
+  --canvas-default: #f6f8fa;
+  --canvas-light: #ffffff;
+  --canvas-elevated: #f0f2f5;
+  --surface-default: #ffffff;
+  --surface-light: #f3f4f6;
+  --surface-hover: #e5e7eb;
+  --surface-elevated: rgba(243, 244, 246, 0.6);
+  --ink-default: #1f2328;
+  --ink-muted: #657080;
+  --ink-dim: #8c95a0;
+  --ink-subtle: #afb8c1;
+  --accent: #e85d3f;
+  --accent-hover: #f06b4d;
+  --accent-light: #ff7a5c;
+  --accent-muted: rgba(232, 93, 63, 0.08);
+  --accent-glow: rgba(232, 93, 63, 0.2);
+  --border-default: rgba(31, 35, 40, 0.08);
+  --border-strong: rgba(31, 35, 40, 0.15);
+  --border-accent: rgba(232, 93, 63, 0.2);
+  --bg-gradient: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232, 93, 63, 0.03), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59, 130, 246, 0.03), transparent);
 }
 
 * {
@@ -28,11 +79,9 @@ html, body {
 }
 
 body {
-  background: #0d1117;
-  background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232, 93, 63, 0.06), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(88, 166, 255, 0.04), transparent);
-  color: #f0f6fc;
+  background: var(--canvas-default);
+  background-image: var(--bg-gradient);
+  color: var(--ink-default);
 }
 
 #root {

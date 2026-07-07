@@ -11,35 +11,34 @@ export default {
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Premium dark theme with subtle blue-gray warmth
         canvas: {
-          DEFAULT: '#0d1117',           // Deep blue-gray (not pure black)
-          light: '#161b22',             // Slightly lighter for contrast
-          elevated: '#1c2128',          // For elevated surfaces
+          DEFAULT: 'var(--canvas-default)',
+          light: 'var(--canvas-light)',
+          elevated: 'var(--canvas-elevated)',
         },
         surface: {
-          DEFAULT: '#21262d',           // Primary surface with subtle depth
-          light: '#30363d',             // Hover/active states
-          hover: '#3d444d',             // Interactive hover
-          elevated: 'rgba(48, 54, 61, 0.6)', // Glass effect base
+          DEFAULT: 'var(--surface-default)',
+          light: 'var(--surface-light)',
+          hover: 'var(--surface-hover)',
+          elevated: 'var(--surface-elevated)',
         },
         ink: {
-          DEFAULT: '#f0f6fc',           // Primary text - slightly warm white
-          muted: '#8b949e',             // Secondary text
-          dim: '#6e7681',               // Tertiary text
-          subtle: '#484f58',            // Very subtle text
+          DEFAULT: 'var(--ink-default)',
+          muted: 'var(--ink-muted)',
+          dim: 'var(--ink-dim)',
+          subtle: 'var(--ink-subtle)',
         },
         accent: {
-          DEFAULT: '#e85d3f',           // Keep the orange but enhance usage
-          hover: '#f06b4d',             // Brighter on hover
-          light: '#ff7a5c',             // Light variant
-          muted: 'rgba(232, 93, 63, 0.12)', // Subtle background
-          glow: 'rgba(232, 93, 63, 0.4)', // Glow effect
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          light: 'var(--accent-light)',
+          muted: 'var(--accent-muted)',
+          glow: 'var(--accent-glow)',
         },
         border: {
-          DEFAULT: 'rgba(240, 246, 252, 0.08)',  // Subtle borders
-          strong: 'rgba(240, 246, 252, 0.15)',   // Stronger borders
-          accent: 'rgba(232, 93, 63, 0.3)',      // Accent-tinted borders
+          DEFAULT: 'var(--border-default)',
+          strong: 'var(--border-strong)',
+          accent: 'var(--border-accent)',
         },
         status: {
           ready: '#3fb950',             // Vibrant green
@@ -50,9 +49,9 @@ export default {
         },
         // Gradient backgrounds
         gradient: {
-          canvas: 'linear-gradient(180deg, #0d1117 0%, #0a0c10 100%)',
-          surface: 'linear-gradient(180deg, #21262d 0%, #1c2128 100%)',
-          glow: 'radial-gradient(ellipse at top, rgba(232, 93, 63, 0.08) 0%, transparent 50%)',
+          canvas: 'linear-gradient(180deg, var(--canvas-default) 0%, var(--canvas-elevated) 100%)',
+          surface: 'linear-gradient(180deg, var(--surface-default) 0%, var(--canvas-elevated) 100%)',
+          glow: 'radial-gradient(ellipse at top, var(--accent-muted) 0%, transparent 50%)',
         }
       },
       animation: {

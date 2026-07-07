@@ -91,8 +91,14 @@ export function GamePage({
     );
   };
 
+  const customStyles = game.info.colorTheme ? {
+    '--accent': game.info.colorTheme.accent,
+    '--accent-hover': game.info.colorTheme.accentHover,
+    '--accent-muted': game.info.colorTheme.accentMuted,
+  } as React.CSSProperties : {};
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden" style={customStyles}>
       {/* Hero Section */}
       <div className="relative h-[55vh] min-h-[450px]">
         {/* Background */}

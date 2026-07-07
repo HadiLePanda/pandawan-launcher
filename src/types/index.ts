@@ -70,6 +70,7 @@ export interface LauncherSettings {
   minimizeToTray: boolean;
   closeToTray: boolean;
   language: string;
+  theme: string;
 }
 
 export interface GameInfo {
@@ -85,6 +86,11 @@ export interface GameInfo {
   sizeBytes: number;
   releaseDate: string;
   manifestUrl: string;
+  colorTheme?: {
+    accent: string;
+    accentHover: string;
+    accentMuted: string;
+  };
 }
 
 export interface DownloadProgress {

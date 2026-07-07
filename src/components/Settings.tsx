@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Folder, Download, Bell, Globe, HardDrive, Shield } from 'lucide-react';
+import { X, Folder, Download, Bell, Globe, HardDrive, Shield, SunMoon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import { invoke } from '@tauri-apps/api/core';
@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: LauncherSettings = {
   minimizeToTray: true,
   closeToTray: false,
   language: 'en',
+  theme: 'adaptive',
 };
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
@@ -187,6 +188,22 @@ function GeneralSettings({ settings, onChange }: TabProps) {
           <option value="fr">French</option>
           <option value="de">German</option>
           <option value="es">Spanish</option>
+        </select>
+      </SettingItem>
+
+      <SettingItem
+        icon={SunMoon}
+        title="Theme"
+        description="Launcher appearance theme"
+      >
+        <select
+          value={settings.theme}
+          onChange={(e) => onChange({ theme: e.target.value })}
+          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+        >
+          <option value="adaptive">Adaptive (System)</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
         </select>
       </SettingItem>
 

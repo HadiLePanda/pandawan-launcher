@@ -23,6 +23,11 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
     sizeBytes: 15_000_000_000,
     releaseDate: '2024-12-01T00:00:00Z',
     manifestUrl: 'https://cdn.pandawancorp.com/games/quirheim-online/manifest.json',
+    colorTheme: {
+      accent: '#d29922',
+      accentHover: '#e0a82e',
+      accentMuted: 'rgba(210, 153, 34, 0.12)',
+    },
   },
   {
     id: 'pixel-odyssey',
@@ -37,20 +42,11 @@ const MOCK_AVAILABLE_GAMES: GameInfo[] = [
     sizeBytes: 500_000_000,
     releaseDate: '2024-10-15T00:00:00Z',
     manifestUrl: 'https://cdn.pandawancorp.com/games/pixel-odyssey/manifest.json',
-  },
-  {
-    id: 'stellar-command',
-    name: 'Stellar Command',
-    description: 'Command your fleet in epic space battles.',
-    developer: 'Pandawan Corp',
-    genre: ['Strategy', 'Space'],
-    iconUrl: '',
-    bannerUrl: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1200&h=675&fit=crop',
-    screenshots: [],
-    version: '2.1.0',
-    sizeBytes: 3_000_000_000,
-    releaseDate: '2024-08-20T00:00:00Z',
-    manifestUrl: 'https://cdn.pandawancorp.com/games/stellar-command/manifest.json',
+    colorTheme: {
+      accent: '#3b82f6',
+      accentHover: '#2563eb',
+      accentMuted: 'rgba(59, 130, 246, 0.12)',
+    },
   },
 ];
 
@@ -69,6 +65,7 @@ function App() {
     uninstallGame,
     loadGames,
     loadSettings,
+    settings,
   } = useLauncherStore();
 
   // Initialize app on mount
@@ -86,6 +83,39 @@ function App() {
     };
     init();
   }, []);
+
+  // Apply theme class when setting changes
+  useEffect(() => {
+    if (!settings) return;
+    const applyTheme = (theme: string) => {
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+
+      if (theme === 'dark') {
+        root.classList.add('dark');
+      } else if (theme === 'light') {
+        root.classList.add('light');
+      } else {
+        // Adaptive
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        root.classList.add(systemTheme);
+      }
+    };
+
+    applyTheme(settings.theme);
+
+    // If adaptive, listen to system preferences
+    if (settings.theme === 'adaptive') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add(e.matches ? 'dark' : 'light');
+      };
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [settings?.theme]);
 
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 

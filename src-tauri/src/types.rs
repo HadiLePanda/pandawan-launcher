@@ -174,6 +174,7 @@ pub struct LauncherSettings {
     pub minimize_to_tray: bool,
     pub close_to_tray: bool,
     pub language: String,
+    pub theme: String,
 }
 
 impl Default for LauncherSettings {
@@ -187,6 +188,7 @@ impl Default for LauncherSettings {
             minimize_to_tray: true,
             close_to_tray: false,
             language: "en".to_string(),
+            theme: "adaptive".to_string(),
         }
     }
 }
