@@ -59,7 +59,7 @@
   --border-strong: rgba(255, 255, 255, 0.12);
   --border-accent: rgba(212, 168, 83, 0.32);
   --border-action: rgba(40, 185, 104, 0.32);
-  --bg-gradient: radial-gradient(ellipse at 50% 45%, rgba(40, 46, 62, 0.75) 0%, rgba(30, 33, 43, 0.45) 40%, rgba(12, 13, 18, 0) 75%), radial-gradient(ellipse at 80% 15%, rgba(40, 46, 62, 0.35) 0%, rgba(12, 13, 18, 0) 55%);
+  --bg-gradient: radial-gradient(ellipse 260% 180% at 50% 50%, rgba(31, 34, 42, 0.78) 0%, rgba(27, 29, 36, 0.58) 20%, rgba(22, 24, 31, 0.38) 44%, rgba(18, 20, 26, 0.20) 68%, rgba(15, 16, 21, 0.10) 88%, rgba(13, 14, 19, 0.04) 104%, rgba(12, 13, 18, 0) 170%), radial-gradient(ellipse 220% 160% at 85% 15%, rgba(26, 28, 35, 0.24) 0%, rgba(12, 13, 18, 0) 100%), radial-gradient(ellipse 220% 160% at 15% 85%, rgba(26, 28, 35, 0.16) 0%, rgba(12, 13, 18, 0) 100%);
 }
 
 /* Pandawan Corp — Light Mode: Premium Parchment & Steel */
@@ -108,7 +108,7 @@
   --border-strong: rgba(28, 27, 25, 0.14);
   --border-accent: rgba(184, 134, 11, 0.32);
   --border-action: rgba(27, 158, 78, 0.28);
-  --bg-gradient: radial-gradient(ellipse at 50% 55%, rgba(232, 222, 198, 0.55) 0%, rgba(245, 242, 234, 0.28) 55%, rgba(244, 242, 236, 0) 82%), radial-gradient(ellipse at 18% 12%, rgba(255, 250, 240, 0.42) 0%, rgba(244, 242, 236, 0) 48%), linear-gradient(180deg, var(--canvas-light) 0%, var(--canvas-default) 100%);
+  --bg-gradient: radial-gradient(ellipse at 50% 50%, rgba(232, 222, 198, 0.75) 0%, rgba(245, 242, 234, 0.45) 40%, rgba(244, 242, 236, 0.18) 72%, rgba(244, 242, 236, 0.06) 92%, rgba(244, 242, 236, 0) 100%), radial-gradient(ellipse at 15% 10%, rgba(255, 250, 240, 0.55) 0%, rgba(244, 242, 236, 0) 70%), linear-gradient(180deg, var(--canvas-light) 0%, var(--canvas-default) 100%);
 }
 
 * {
