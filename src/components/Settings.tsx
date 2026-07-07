@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Folder, Download, Bell, Globe, HardDrive, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLauncherStore } from '@/lib/store';
+import { invoke } from '@tauri-apps/api/core';
+import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -16,10 +19,38 @@ const tabs = [
   { id: 'about' as SettingsTab, label: 'About', icon: Shield },
 ];
 
+const DEFAULT_SETTINGS: LauncherSettings = {
+  gamesInstallPath: null,
+  maxDownloadSpeed: null,
+  maxConcurrentDownloads: 4,
+  autoUpdateGames: true,
+  autoUpdateLauncher: true,
+  minimizeToTray: true,
+  closeToTray: false,
+  language: 'en',
+};
+
 export function Settings({ isOpen, onClose }: SettingsProps) {
+  const { settings, setSettings } = useLauncherStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEditedSettings(settings || DEFAULT_SETTINGS);
+    }
+  }, [isOpen, settings]);
 
   if (!isOpen) return null;
+
+  const handleUpdate = (updates: Partial<LauncherSettings>) => {
+    setEditedSettings((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleSave = async () => {
+    await setSettings(editedSettings);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -74,8 +105,12 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
           {/* Tab Content */}
           <div className="flex-1 overflow-auto p-6">
-            {activeTab === 'general' && <GeneralSettings />}
-            {activeTab === 'downloads' && <DownloadSettings />}
+            {activeTab === 'general' && (
+              <GeneralSettings settings={editedSettings} onChange={handleUpdate} />
+            )}
+            {activeTab === 'downloads' && (
+              <DownloadSettings settings={editedSettings} onChange={handleUpdate} />
+            )}
             {activeTab === 'notifications' && <NotificationSettings />}
             {activeTab === 'about' && <AboutSettings />}
           </div>
@@ -89,7 +124,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
               Cancel
             </button>
             <button
-              onClick={onClose}
+              onClick={handleSave}
               className="px-6 py-2 rounded-lg text-sm font-medium bg-accent hover:bg-accent-hover text-white transition-all btn-press btn-glow shadow-glow hover:shadow-glow-lg"
             >
               Save Changes
@@ -101,7 +136,23 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   );
 }
 
-function GeneralSettings() {
+interface TabProps {
+  settings: LauncherSettings;
+  onChange: (updates: Partial<LauncherSettings>) => void;
+}
+
+function GeneralSettings({ settings, onChange }: TabProps) {
+  const handleBrowse = async () => {
+    try {
+      const selected = await invoke<string | null>('select_install_folder');
+      if (selected) {
+        onChange({ gamesInstallPath: selected });
+      }
+    } catch (err) {
+      console.error('Failed to pick directory:', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SettingItem
@@ -110,10 +161,13 @@ function GeneralSettings() {
         description="Where your games are installed"
       >
         <div className="flex gap-3">
-          <div className="flex-1 px-4 py-2.5 bg-canvas rounded-lg text-sm text-ink-muted border border-border">
-            C:\Games\Pandawan
+          <div className="flex-1 px-4 py-2.5 bg-canvas rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap">
+            {settings.gamesInstallPath || 'Default (PandawanGames)'}
           </div>
-          <button className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-all btn-press">
+          <button
+            onClick={handleBrowse}
+            className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-all btn-press"
+          >
             Browse
           </button>
         </div>
@@ -124,11 +178,15 @@ function GeneralSettings() {
         title="Language"
         description="Interface language"
       >
-        <select className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent">
-          <option>English</option>
-          <option>French</option>
-          <option>German</option>
-          <option>Spanish</option>
+        <select
+          value={settings.language}
+          onChange={(e) => onChange({ language: e.target.value })}
+          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+        >
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
         </select>
       </SettingItem>
 
@@ -137,38 +195,58 @@ function GeneralSettings() {
       <ToggleSetting
         title="Minimize to tray"
         description="Keep launcher running in system tray when minimized"
-        defaultChecked
+        checked={settings.minimizeToTray}
+        onChange={(checked) => onChange({ minimizeToTray: checked })}
       />
       <ToggleSetting
         title="Close to tray"
         description="Minimize to tray instead of closing"
-      />
-      <ToggleSetting
-        title="Start with Windows"
-        description="Launch launcher on system startup"
+        checked={settings.closeToTray}
+        onChange={(checked) => onChange({ closeToTray: checked })}
       />
     </div>
   );
 }
 
-function DownloadSettings() {
+function DownloadSettings({ settings, onChange }: TabProps) {
+  // Map speed options
+  const speedOptions = [
+    { value: 'unlimited', label: 'Unlimited' },
+    { value: '1000000', label: '1 MB/s' },
+    { value: '5000000', label: '5 MB/s' },
+    { value: '10000000', label: '10 MB/s' },
+    { value: '25000000', label: '25 MB/s' },
+    { value: '50000000', label: '50 MB/s' },
+  ];
+
+  const currentSpeedValue = settings.maxDownloadSpeed ? String(settings.maxDownloadSpeed) : 'unlimited';
+
+  const handleSpeedChange = (val: string) => {
+    if (val === 'unlimited') {
+      onChange({ maxDownloadSpeed: null });
+    } else {
+      onChange({ maxDownloadSpeed: Number(val) });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SettingItem
         icon={Download}
         title="Download Speed Limit"
-        description="Maximum download speed"
+        description="Maximum download speed limit"
       >
-        <div className="flex items-center gap-4">
-          <input
-            type="range"
-            min="0"
-            max="100"
-            defaultValue="0"
-            className="flex-1 accent-accent"
-          />
-          <span className="text-sm text-ink-muted w-20 text-right">Unlimited</span>
-        </div>
+        <select
+          value={currentSpeedValue}
+          onChange={(e) => handleSpeedChange(e.target.value)}
+          className="w-full px-4 py-2.5 bg-canvas rounded-lg text-sm border border-border focus:outline-none focus:border-accent text-ink"
+        >
+          {speedOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </SettingItem>
 
       <SettingItem
@@ -180,9 +258,10 @@ function DownloadSettings() {
           {[1, 2, 4, 6, 8].map((n) => (
             <button
               key={n}
+              onClick={() => onChange({ maxConcurrentDownloads: n })}
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-colors',
-                n === 4
+                settings.maxConcurrentDownloads === n
                   ? 'bg-accent text-white'
                   : 'bg-canvas hover:bg-surface-light text-ink-muted'
               )}
@@ -198,42 +277,51 @@ function DownloadSettings() {
       <ToggleSetting
         title="Auto-update games"
         description="Automatically update games when available"
-        defaultChecked
+        checked={settings.autoUpdateGames}
+        onChange={(checked) => onChange({ autoUpdateGames: checked })}
       />
       <ToggleSetting
         title="Auto-update launcher"
         description="Automatically install launcher updates"
-        defaultChecked
-      />
-      <ToggleSetting
-        title="Allow background downloads"
-        description="Continue downloads when game is running"
+        checked={settings.autoUpdateLauncher}
+        onChange={(checked) => onChange({ autoUpdateLauncher: checked })}
       />
     </div>
   );
 }
 
 function NotificationSettings() {
+  // Purely visual notification settings
+  const [gamesUpdate, setGamesUpdate] = useState(true);
+  const [downloadComplete, setDownloadComplete] = useState(true);
+  const [friendActivity, setFriendActivity] = useState(false);
+  const [newsEvents, setNewsEvents] = useState(true);
+
   return (
     <div className="space-y-6">
       <ToggleSetting
         title="Game updates available"
         description="Notify when game updates are available"
-        defaultChecked
+        checked={gamesUpdate}
+        onChange={setGamesUpdate}
       />
       <ToggleSetting
         title="Download complete"
         description="Notify when downloads finish"
-        defaultChecked
+        checked={downloadComplete}
+        onChange={setDownloadComplete}
       />
       <ToggleSetting
         title="Friend activity"
         description="Notify about friends' game activity"
+        checked={friendActivity}
+        onChange={setFriendActivity}
       />
       <ToggleSetting
         title="News and events"
         description="Receive news about games and events"
-        defaultChecked
+        checked={newsEvents}
+        onChange={setNewsEvents}
       />
     </div>
   );
@@ -266,17 +354,6 @@ function AboutSettings() {
           <span>2.0.0</span>
         </div>
       </div>
-
-      <div className="h-px bg-border" />
-
-      <div className="flex gap-3">
-        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-all btn-press">
-          Check for Updates
-        </button>
-        <button className="flex-1 py-2.5 rounded-lg bg-surface-light hover:bg-surface-hover text-sm font-medium transition-all btn-press">
-          View Logs
-        </button>
-      </div>
     </div>
   );
 }
@@ -296,7 +373,7 @@ function SettingItem({ icon: Icon, title, description, children }: SettingItemPr
           <Icon className="w-4 h-4 text-ink-muted" />
         </div>
         <div>
-          <h4 className="font-medium">{title}</h4>
+          <h4 className="font-medium text-ink">{title}</h4>
           <p className="text-sm text-ink-muted">{description}</p>
         </div>
       </div>
@@ -308,20 +385,19 @@ function SettingItem({ icon: Icon, title, description, children }: SettingItemPr
 interface ToggleSettingProps {
   title: string;
   description: string;
-  defaultChecked?: boolean;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
 }
 
-function ToggleSetting({ title, description, defaultChecked }: ToggleSettingProps) {
-  const [checked, setChecked] = useState(defaultChecked);
-
+function ToggleSetting({ title, description, checked, onChange }: ToggleSettingProps) {
   return (
     <div className="flex items-center justify-between py-2">
       <div>
-        <h4 className="font-medium">{title}</h4>
+        <h4 className="font-medium text-ink">{title}</h4>
         <p className="text-sm text-ink-muted">{description}</p>
       </div>
       <button
-        onClick={() => setChecked(!checked)}
+        onClick={() => onChange(!checked)}
         className={cn(
           'w-11 h-6 rounded-full transition-colors relative',
           checked ? 'bg-accent shadow-glow' : 'bg-surface-light'

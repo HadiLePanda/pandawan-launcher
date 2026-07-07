@@ -164,7 +164,7 @@ pub struct LaunchResult {
 
 /// Launcher settings
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct LauncherSettings {
     pub games_install_path: Option<PathBuf>,
     pub max_download_speed: Option<u64>, // bytes per second, None = unlimited

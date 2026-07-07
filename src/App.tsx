@@ -68,6 +68,7 @@ function App() {
     launchGame,
     uninstallGame,
     loadGames,
+    loadSettings,
   } = useLauncherStore();
 
   // Initialize app on mount
@@ -81,6 +82,7 @@ function App() {
         });
       }
       await loadGames();
+      await loadSettings();
     };
     init();
   }, []);

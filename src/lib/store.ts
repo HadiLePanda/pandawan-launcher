@@ -22,12 +22,13 @@ interface LauncherState {
   updateGameStatus: (gameId: string, status: Game['status'], installation?: GameInstallation) => void;
   setDownloadProgress: (gameId: string, progress: number, speed: string, currentFile: string | null) => void;
   removeDownload: (gameId: string) => void;
-  setSettings: (settings: LauncherSettings) => void;
+  setSettings: (settings: LauncherSettings) => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   
   // Async actions
   loadGames: () => Promise<void>;
+  loadSettings: () => Promise<void>;
   installGame: (gameId: string, manifestUrl: string, baseUrl: string) => Promise<void>;
   launchGame: (gameId: string) => Promise<void>;
   uninstallGame: (gameId: string) => Promise<void>;
@@ -81,9 +82,25 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     });
   },
   
-  setSettings: (settings) => set({ settings }),
+  setSettings: async (settings) => {
+    try {
+      await invoke('save_settings', { newSettings: settings });
+      set({ settings });
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    }
+  },
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
+
+  loadSettings: async () => {
+    try {
+      const settings = await invoke<LauncherSettings>('get_settings');
+      set({ settings });
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  },
 
   loadGames: async () => {
     set({ isLoading: true, error: null });
