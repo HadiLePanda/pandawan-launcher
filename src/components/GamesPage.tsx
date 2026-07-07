@@ -24,7 +24,7 @@ export function GamesPage({ games, selectedGameId, onSelectGame, children }: Gam
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      <div className="px-5 h-14 border-b border-border flex items-center gap-2 shrink-0">
+      <div className="px-5 h-14 flex items-center gap-2 shrink-0">
         <button
           onClick={() => onSelectGame(null)}
           className={cn(

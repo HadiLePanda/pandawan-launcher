@@ -129,7 +129,7 @@ export function GamePage({
         </div>
 
         {/* Bottom-left action/details */}
-        <div className="px-8 py-5 border-t border-border glass/80 shrink-0">
+        <div className="px-8 py-5 glass/80 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {primaryAction()}
             <div className="flex items-center gap-4 text-sm text-ink-muted">
@@ -146,25 +146,28 @@ export function GamePage({
       </div>
 
       {/* Right panel: cover + news */}
-      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 flex flex-col overflow-hidden border-l border-border">
-        {/* Cover image — full height within right panel, fading at bottom */}
+      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 flex flex-col overflow-hidden">
+        {/* Cover image — full height within right panel, dissolving at bottom */}
         <div className="relative flex-1 min-h-0 overflow-hidden">
           {game.info.bannerUrl ? (
             <img
               src={game.info.bannerUrl}
               alt={game.info.name}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover cover-image"
             />
           ) : (
             <div className="absolute inset-0 bg-surface-light" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-canvas/20 via-transparent to-canvas" />
-          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/40 to-transparent" />
+          {/* Subtle bottom tint that fades into the page background */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-12 pointer-events-none"
+            style={{ background: 'linear-gradient(to top, var(--canvas-default) 0%, transparent 100%)' }}
+          />
         </div>
 
         {/* News cards below cover */}
-        <div className="shrink-0 p-4 space-y-3 border-t border-border max-h-[45%] overflow-auto glass/80">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-muted mb-2">News</h3>
+        <div className="shrink-0 p-4 space-y-3 max-h-[45%] overflow-auto glass/80">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink/80 mb-2">News</h3>
           <NewsCard
             title={`${game.info.name}: Latest Update`}
             excerpt="Patch notes, events, and community highlights — stay in the loop with the latest from the world."
@@ -183,7 +186,7 @@ export function GamePage({
 
 function NewsCard({ title, excerpt, date }: { title: string; excerpt: string; date: string }) {
   return (
-    <button className="w-full text-left p-3 rounded-xl bg-surface border border-border hover:border-border-strong hover:bg-surface-light transition-colors">
+    <button className="w-full text-left p-3 rounded-xl bg-surface/60 border border-border hover:border-border-strong hover:bg-surface transition-colors">
       <div className="min-w-0">
         <h4 className="font-medium text-sm truncate">{title}</h4>
         <p className="text-xs text-ink-muted line-clamp-2 mt-1">{excerpt}</p>

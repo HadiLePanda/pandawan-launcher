@@ -62,39 +62,39 @@
   --bg-gradient: radial-gradient(ellipse at 50% 45%, rgba(40, 46, 62, 0.75) 0%, rgba(30, 33, 43, 0.45) 40%, rgba(12, 13, 18, 0) 75%), radial-gradient(ellipse at 80% 15%, rgba(40, 46, 62, 0.35) 0%, rgba(12, 13, 18, 0) 55%);
 }
 
-/* Pandawan Corp — Light Mode: Parchment & Stone */
+/* Pandawan Corp — Light Mode: Premium Parchment & Steel */
 .light {
   color-scheme: light;
-  --canvas-default: #f5f4f0;
-  --canvas-light: #ffffff;
-  --canvas-elevated: #ece9e2;
-  --surface-default: #ffffff;
-  --surface-light: #f3f1ec;
-  --surface-hover: #e8e5dd;
-  --surface-elevated: rgba(255, 255, 255, 0.94);
-  --ink-default: #1c1b19;
-  --ink-muted: #6e6a62;
-  --ink-dim: #a09a90;
-  --ink-subtle: #d4d0c8;
+  --canvas-default: #f4f2ec;
+  --canvas-light: #faf8f2;
+  --canvas-elevated: #e9e6df;
+  --surface-default: rgba(255, 255, 255, 0.70);
+  --surface-light: rgba(255, 255, 255, 0.88);
+  --surface-hover: rgba(248, 246, 241, 0.94);
+  --surface-elevated: rgba(255, 255, 255, 0.88);
+  --ink-default: #1e1d1a;
+  --ink-muted: #5e5b55;
+  --ink-dim: #8f8a82;
+  --ink-subtle: #c4c0b8;
 
   /* Primary Action — Bamboo Green */
   --action: #1b9e4e;
   --action-hover: #15803d;
   --action-light: #22c55e;
-  --action-muted: rgba(27, 158, 78, 0.10);
-  --action-glow: rgba(27, 158, 78, 0.20);
+  --action-muted: rgba(27, 158, 78, 0.12);
+  --action-glow: rgba(27, 158, 78, 0.22);
 
-  /* Secondary Accent — Stone Gold */
+  /* Secondary Accent — Warm Gold */
   --accent: #b8860b;
-  --accent-hover: #9a7009;
-  --accent-light: #d4a853;
-  --accent-muted: rgba(184, 134, 11, 0.10);
-  --accent-glow: rgba(184, 134, 11, 0.18);
+  --accent-hover: #d4a045;
+  --accent-light: #e8c97a;
+  --accent-muted: rgba(184, 134, 11, 0.14);
+  --accent-glow: rgba(184, 134, 11, 0.24);
 
-  /* Tech / Structure — Stone Grey */
-  --silver: #7e7a72;
-  --silver-muted: rgba(126, 122, 114, 0.10);
-  --silver-glow: rgba(126, 122, 114, 0.10);
+  /* Tech / Structure — Cool Steel */
+  --silver: #6e7480;
+  --silver-muted: rgba(110, 116, 128, 0.12);
+  --silver-glow: rgba(110, 116, 128, 0.14);
 
   /* Shadow — warm stone depth */
   --shadow: #5a3a2a;
@@ -105,10 +105,10 @@
   --ember-muted: rgba(220, 38, 38, 0.10);
 
   --border-default: rgba(28, 27, 25, 0.07);
-  --border-strong: rgba(28, 27, 25, 0.13);
-  --border-accent: rgba(184, 134, 11, 0.28);
-  --border-action: rgba(27, 158, 78, 0.25);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(255, 250, 240, 0.55) 0%, rgba(245, 244, 240, 0) 60%), radial-gradient(ellipse at 80% 20%, rgba(236, 225, 200, 0.42) 0%, rgba(245, 244, 240, 0) 50%);
+  --border-strong: rgba(28, 27, 25, 0.14);
+  --border-accent: rgba(184, 134, 11, 0.32);
+  --border-action: rgba(27, 158, 78, 0.28);
+  --bg-gradient: radial-gradient(ellipse at 50% 55%, rgba(232, 222, 198, 0.55) 0%, rgba(245, 242, 234, 0.28) 55%, rgba(244, 242, 236, 0) 82%), radial-gradient(ellipse at 18% 12%, rgba(255, 250, 240, 0.42) 0%, rgba(244, 242, 236, 0) 48%), linear-gradient(180deg, var(--canvas-light) 0%, var(--canvas-default) 100%);
 }
 
 * {
@@ -156,6 +156,14 @@ body {
   background-clip: padding-box;
 }
 
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(30, 29, 26, 0.18);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 29, 26, 0.28);
+}
+
 /* Glass morphism utilities */
 .glass {
   background: var(--surface-elevated);
@@ -165,8 +173,11 @@ body {
 }
 
 .light .glass {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid var(--border-default);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 30px rgba(30, 29, 26, 0.06);
 }
 
 .glass-strong {
@@ -177,8 +188,11 @@ body {
 }
 
 .light .glass-strong {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), 0 10px 40px rgba(30, 29, 26, 0.08);
 }
 
 .glass-subtle {
@@ -188,7 +202,10 @@ body {
 }
 
 .light .glass-subtle {
-  background: rgba(243, 241, 236, 0.5);
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.38);
 }
 
 /* Button press effect */
@@ -655,4 +672,25 @@ input[type="search"]::placeholder {
   border-color: var(--accent);
   background: transparent;
   outline: none;
+}
+
+/* Cover image treatment — richer contrast in dark, warm lift in light */
+.cover-image {
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.light .cover-image {
+  filter: saturate(1.02) contrast(1.01) brightness(1);
+}
+
+/* Bottom erase dissolve: soft blurred-edge mask so the image dissolves into the page background */
+.cover-mask-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 80px), transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 80px), transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }

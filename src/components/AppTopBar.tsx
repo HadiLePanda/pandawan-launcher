@@ -44,7 +44,7 @@ export function AppTopBar({
     <div
       data-tauri-drag-region
       onDoubleClick={onDoubleClick}
-      className="h-20 drag-region flex items-center justify-between px-8 shrink-0 border-b border-border"
+      className="h-20 drag-region flex items-center justify-between px-8 shrink-0"
     >
       {/* Left - Logo only + text navigation */}
       <div className="flex items-center gap-10">
