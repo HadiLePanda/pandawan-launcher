@@ -683,10 +683,10 @@ input[type="search"]::placeholder {
   filter: saturate(1.02) contrast(1.01) brightness(1);
 }
 
-/* Bottom erase dissolve: soft blurred-edge mask so the image dissolves into the page background */
+/* Bottom erase dissolve: narrow mask that erases the image into the page background */
 .cover-mask-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 80px), transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 80px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-position: 0 0;

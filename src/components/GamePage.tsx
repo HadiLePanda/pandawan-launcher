@@ -153,16 +153,11 @@ export function GamePage({
             <img
               src={game.info.bannerUrl}
               alt={game.info.name}
-              className="absolute inset-0 w-full h-full object-cover cover-image"
+              className="absolute inset-0 w-full h-full object-cover cover-image cover-mask-bottom"
             />
           ) : (
             <div className="absolute inset-0 bg-surface-light" />
           )}
-          {/* Subtle bottom tint that fades into the page background */}
-          <div
-            className="absolute inset-x-0 bottom-0 h-12 pointer-events-none"
-            style={{ background: 'linear-gradient(to top, var(--canvas-default) 0%, transparent 100%)' }}
-          />
         </div>
 
         {/* News cards below cover */}
