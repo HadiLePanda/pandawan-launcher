@@ -1,6 +1,84 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-canvas: var(--canvas-default);
+  --color-canvas-light: var(--canvas-light);
+  --color-canvas-elevated: var(--canvas-elevated);
+  --color-surface: var(--surface-default);
+  --color-surface-light: var(--surface-light);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-ink: var(--ink-default);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-light: var(--action-light);
+  --color-action-muted: var(--action-muted);
+  --color-action-glow: var(--action-glow);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-glow: var(--accent-glow);
+
+  --color-ember: var(--ember);
+  --color-ember-muted: var(--ember-muted);
+
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-accent: var(--border-accent);
+  --color-border-action: var(--border-action);
+
+  --color-status-ready: #4a7a52;
+  --color-status-downloading: #c8a84b;
+  --color-status-installing: #d4b55e;
+  --color-status-updating: #5a8f62;
+  --color-status-error: #9b1f2e;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-fade-in: fadeIn 0.3s ease-out;
+  --animate-slide-up: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-glow-pulse: glowPulse 2s ease-in-out infinite;
+
+  --shadow-premium: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(200, 168, 75, 0.06);
+  --shadow-premium-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(200, 168, 75, 0.1);
+  --shadow-glow: 0 0 20px rgba(200, 168, 75, 0.25);
+  --shadow-glow-lg: 0 0 40px rgba(200, 168, 75, 0.35);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes scaleIn {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(232, 93, 63, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(232, 93, 63, 0.4); }
+}
 
 :root {
   font-family: 'Geist', system-ui, sans-serif;
