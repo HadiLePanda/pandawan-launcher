@@ -51,7 +51,7 @@ export function createDownloadChannel(
           speed: `${(message.data.speedBps / 1024 / 1024).toFixed(1)} MB/s`,
           currentFile: message.data.currentFile || message.data.filePath,
           completedFiles: message.data.completedFiles ?? 0,
-          totalFiles: 0,
+          totalFiles: message.data.totalFiles ?? 0,
         });
         break;
       }

@@ -31,6 +31,7 @@ export interface GameInstallation {
   installed_at: string;
   last_played: string | null;
   total_playtime_seconds: number;
+  executable: string;
 }
 
 export type DownloadEvent =
@@ -45,6 +46,7 @@ export type DownloadEvent =
         overallDownloaded?: number;
         overallTotal?: number;
         completedFiles?: number;
+        totalFiles?: number;
         currentFile?: string;
       };
     }
