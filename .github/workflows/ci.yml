@@ -42,9 +42,6 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Check
-        run: cargo check --all-targets
-
       - name: Test
         run: cargo test --all-targets
 
