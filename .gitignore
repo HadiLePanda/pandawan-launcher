@@ -37,7 +37,11 @@ src-tauri/gen
 .env.local
 .env.*.local
 
+# Vite local env files (keep .example templates)
+.env.*.local
+
 # OS files
+.DS_Store
 Thumbs.db
 
 # Temporary files
@@ -59,3 +63,6 @@ coverage/
 # Game download cache (for development)
 games-cache/
 downloads/
+
+# Hermes temp files
+.hermes-tmp.*
