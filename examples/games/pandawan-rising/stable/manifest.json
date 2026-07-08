@@ -1,29 +1,24 @@
 {
   "game_id": "pandawan-rising",
   "name": "Pandawan Rising",
-  "version": "1.0.0",
-  "build_number": 100,
-  "description": "Small local example game for testing the launcher.",
-  "icon_url": "",
-  "banner_url": "",
+  "version": "0.1.0",
+  "build_number": 1,
+  "description": "Local test game for the Pandawan launcher.",
   "executable": "QuirheimOnline.exe",
   "files": [
     {
       "path": "QuirheimOnline.exe",
       "hash": "e19d5f79864307af89d5c35df3fcf87350535557668a02a5949ed7a5839c8f4e",
       "size": 9000,
-      "url": "files/QuirheimOnline.exe",
+      "url": "/games/pandawan-rising/stable/files/QuirheimOnline.exe",
       "compress": false
     },
     {
       "path": "data/level0",
       "hash": "ca221aae9af8e7864aae08800b2994b34acd25b11629bf9184a650fb757f92d1",
       "size": 12000,
-      "url": "files/data/level0",
+      "url": "/games/pandawan-rising/stable/files/data/level0",
       "compress": false
     }
-  ],
-  "launch_args": [
-    "-launcher"
   ]
 }
