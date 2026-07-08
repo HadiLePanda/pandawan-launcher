@@ -59,8 +59,9 @@ coverage/
 .cache/
 .parcel-cache/
 
-# Game download cache (for development)
-games-cache/
+# Docs that should not be committed
+docs/BRAND_GUIDE.md
+docs/superpowers/
 downloads/
 
 # Minisign updater keys
