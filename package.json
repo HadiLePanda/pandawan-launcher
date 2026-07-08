@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "node scripts/sync-updater-key.cjs && tauri dev",
+    "tauri:build": "node scripts/sync-updater-key.cjs && tauri build",
+    "sync:updater-key": "node scripts/sync-updater-key.cjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
