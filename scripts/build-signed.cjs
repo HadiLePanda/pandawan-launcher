@@ -4,10 +4,20 @@ const { resolve } = require('node:path');
 
 const projectRoot = resolve(__dirname, '..');
 const secretKeyPath = resolve(projectRoot, 'src-tauri', '.secrets', 'updater.key');
+const isWindows = process.platform === 'win32';
 
-const sync = spawn('node', [resolve(__dirname, 'sync-updater-key.cjs')], {
+function run(command, args, options) {
+  // On Windows, spawn the command through cmd.exe so .cmd binaries in
+  // node_modules/.bin resolve without needing shell: true.
+  if (isWindows) {
+    return spawn('cmd', ['/c', command, ...args], options);
+  }
+  return spawn(command, args, options);
+}
+
+const sync = run('node', [resolve(__dirname, 'sync-updater-key.cjs')], {
+  cwd: projectRoot,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
 });
 
 sync.on('close', (code) => {
@@ -30,10 +40,9 @@ sync.on('close', (code) => {
     process.exit(1);
   }
 
-  const build = spawn('tauri', ['build'], {
+  const build = run('tauri', ['build'], {
     cwd: resolve(projectRoot, 'src-tauri'),
     stdio: 'inherit',
-    shell: process.platform === 'win32',
     env: {
       ...process.env,
       TAURI_SIGNING_PRIVATE_KEY: privateKey,
