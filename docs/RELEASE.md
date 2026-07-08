@@ -2,43 +2,64 @@
 
 Sticky-note guide for shipping a new Pandawan Launcher version.
 
-## Prerequisites
+## Files this touches
 
-- Secret key exists locally at `src-tauri/.secrets/updater.key`.
-- GitHub repository secret `TAURI_SIGNING_PRIVATE_KEY` is set.
-- `src-tauri/updater.pub` is committed and synced into `tauri.conf.json`.
+| File | What to change |
+|------|----------------|
+| `package.json` | `"version"` |
+| `src-tauri/Cargo.toml` | `version` under `[package]` |
+| `src-tauri/tauri.conf.json` | `"version"` |
+
+## Key files you must have
+
+- `src-tauri/updater.pub` — minisign **public** key, committed to the repo.
+- `src-tauri/.secrets/updater.key` — minisign **secret** key, **never committed**.
+- GitHub Secret `TAURI_SIGNING_PRIVATE_KEY` — paste the contents of `updater.key` here.
+
+`npm run tauri:build` and the release workflow automatically sync `updater.pub` into `tauri.conf.json` for you.
 
 ## Steps
 
-1. **Bump the version** in all three files:
-   - `package.json`
-   - `src-tauri/Cargo.toml`
-   - `src-tauri/tauri.conf.json`
+1. **Make sure `main` is green** (CI passes).
 
-2. **Cut a release branch** from latest `main`:
+2. **Bump the version** in the three files above to the same semver value, e.g. `0.2.0`.
+
+3. **Cut a release branch** from latest `main`:
 
    ```bash
    git checkout main
    git pull
-   git checkout -b release/v0.1.0
-   git push -u origin release/v0.1.0
+   git checkout -b release/v0.2.0
+   git push -u origin release/v0.2.0
    ```
 
-3. **Stabilise** on the branch. Merge fixes only, no new features.
+4. **Stabilise** on that branch — bug fixes only, no new features.
 
-4. **Tag and push** when ready:
+5. **Test a local signed build**:
 
    ```bash
-   git tag -a v0.1.0 -m "Release v0.1.0"
-   git push origin v0.1.0
+   npm run tauri:build
    ```
 
-5. **CI builds and drafts the release** automatically via `.github/workflows/release.yml`.
+   This needs `src-tauri/.secrets/updater.key` on your machine.
 
-6. **Publish** the drafted GitHub Release and upload `updates.json` to the CDN endpoint configured in `tauri.conf.json`.
+6. **Tag and push** when ready:
+
+   ```bash
+   git tag -a v0.2.0 -m "Release v0.2.0"
+   git push origin v0.2.0
+   ```
+
+7. **CI builds the release** via `.github/workflows/release.yml`.
+   - Builds Windows, macOS (universal), and Linux bundles.
+   - Drafts a GitHub Release and generates `latest.json` for the auto-updater.
+
+8. **Publish** the drafted GitHub Release.
+
+9. **Upload `latest.json`** to your CDN endpoint (`https://cdn.pandawancorp.com/launcher/updates.json`) so installed launchers can find the update.
 
 ## Notes
 
-- Tags must match `v*.*.*` to trigger the workflow.
+- Tags must match `v*.*.*` (e.g. `v0.2.0`) to trigger the workflow.
 - The release is drafted, not published automatically.
-- Local builds use `npm run tauri:build`, which reads `src-tauri/.secrets/updater.key` automatically.
+- If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail — the workflow checks the public key exists first, but the secret itself must be set in GitHub.
