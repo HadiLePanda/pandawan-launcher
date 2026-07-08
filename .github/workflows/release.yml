@@ -51,8 +51,10 @@ jobs:
           - platform: macos-latest
             targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
             args: '--target universal-apple-darwin'
+          # AppImage bundler downloads tools from GitHub and often hits 429 rate limits,
+          # so stick to the reliable .deb and .rpm packages for now.
           - platform: ubuntu-latest
-            args: ''
+            args: '--bundles deb,rpm'
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
