@@ -2,7 +2,7 @@
 
 A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, and **Rust**. Designed for indie game developers to distribute their games with automatic patching, resume-capable downloads, and a modern UI.
 
-![Pandawan Launcher](screenshot.png)
+> A screenshot will be added here: `screenshot.png`
 
 ## Features
 
@@ -31,22 +31,29 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 pandawan-launcher/
 ├── src/                          # React frontend
 │   ├── components/               # UI components
-│   │   ├── Header.tsx           # Navigation header
-│   │   ├── GameCard.tsx         # Game card component
-│   │   ├── GameDetail.tsx       # Game detail view
-│   │   ├── Library.tsx          # Game library view
-│   │   ├── Store.tsx            # Store/browse view
+│   │   ├── TitleBar.tsx         # Frameless window title bar
+│   │   ├── AppTopBar.tsx        # Navigation tabs + game icons
+│   │   ├── GamesPage.tsx        # Game library layout
+│   │   ├── GamesHome.tsx        # Default game grid view
+│   │   ├── GamePage.tsx         # Selected game detail view
 │   │   ├── News.tsx             # News feed view
 │   │   ├── Settings.tsx         # Settings page
-│   │   └── WindowControls.tsx   # Window control buttons
-│   ├── lib/
+│   │   └── AddGameModal.tsx     # Manual game install modal
+│   ├── lib/                      # Utilities, services, and state
 │   │   ├── store.ts             # Zustand state management
-│   │   └── utils.ts             # Utility functions
+│   │   ├── catalog-service.ts   # Remote/local/embedded catalog loading
+│   │   ├── cdn.ts               # CDN URL helpers and game info resolver
+│   │   ├── game-service.ts      # Tauri command wrappers for install/launch
+│   │   ├── news-service.ts      # News feed loader
+│   │   ├── commands.ts          # Typed Tauri invoke helpers
+│   │   ├── download-channel.ts  # Download progress event mapping
+│   │   ├── logger.ts            # Lightweight structured logging
+│   │   └── window.ts            # Custom title-bar window controls
 │   ├── types/
 │   │   └── index.ts             # TypeScript type definitions
 │   ├── App.tsx                  # Main app component
 │   ├── main.tsx                 # Entry point
-│   └── index.css                # Global styles
+│   └── index.css                # Global styles + CSS variables
 ├── src-tauri/                    # Rust backend
 │   └── src/
 │       ├── main.rs              # Entry point
@@ -170,6 +177,19 @@ The launcher exposes these commands to the frontend:
 | `get_settings()` | Get launcher settings |
 | `save_settings(settings)` | Save launcher settings |
 | `select_install_folder()` | Open folder picker dialog |
+
+## Self-Updates
+
+The launcher uses Tauri's built-in updater. Before shipping a release you must:
+
+1. Generate a minisign keypair:
+   ```bash
+   # Install minisign (https://jedisct1.github.io/minisign/)
+   minisign -G -s updater.key -p updater.pub
+   ```
+2. Replace `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` with the base64 content of `updater.pub`.
+3. Sign your update bundles and host the resulting `.sig` files alongside the update manifest.
+4. Keep `updater.key` secret — store it in a CI secret, never commit it.
 
 ## Configuration
 

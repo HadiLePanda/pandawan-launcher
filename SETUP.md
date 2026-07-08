@@ -264,7 +264,7 @@ Stored in:
 
 ## Resources
 
-- [Tauri Documentation](https://tauri.app/v1/guides/)
+- [Tauri Documentation](https://v2.tauri.app/)
 - [React Documentation](https://react.dev/)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 - [Rust Book](https://doc.rust-lang.org/book/)

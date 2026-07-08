@@ -29,7 +29,16 @@ This is a Tauri-based game launcher for Pandawan Corp games, built with React an
 ```
 src/                          # React frontend
 ├── components/               # React components
-├── lib/                      # Utilities and store
+├── lib/                      # Utilities, services, and store
+│   ├── store.ts              # Zustand state management
+│   ├── catalog-service.ts    # Remote/local/embedded catalog loading
+│   ├── cdn.ts                # CDN URL helpers and game info resolver
+│   ├── game-service.ts       # Tauri command wrappers for install/launch
+│   ├── news-service.ts       # News feed loader
+│   ├── commands.ts           # Typed Tauri invoke helpers
+│   ├── download-channel.ts   # Download progress event mapping
+│   ├── logger.ts             # Lightweight structured logging
+│   └── window.ts             # Custom title-bar window controls
 ├── types/                    # TypeScript types
 ├── App.tsx                   # Main app
 └── main.tsx                  # Entry point
@@ -98,3 +107,5 @@ Available commands are defined in `src-tauri/src/lib.rs`:
 - Patching uses SHA256 hash comparison
 - Settings persist to JSON in app data directory
 - Games are expected to have `-launcher` arg passed
+- The CDN origin is controlled by `VITE_CDN_ORIGIN` (default: `https://cdn.pandawancorp.com`)
+- Tauri auto-updater requires a real minisign public key in `src-tauri/tauri.conf.json`; the placeholder value must be replaced before release
