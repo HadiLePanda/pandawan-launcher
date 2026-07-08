@@ -64,5 +64,9 @@ coverage/
 games-cache/
 downloads/
 
+# Minisign updater keys
+src-tauri/.secrets/
+*.key
+
 # Hermes temp files
 .hermes-tmp.*
