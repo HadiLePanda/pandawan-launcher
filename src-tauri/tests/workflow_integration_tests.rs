@@ -69,7 +69,7 @@ fn test_complete_new_installation_workflow() {
     };
 
     // Step 2: Simulate downloading and creating files
-    fs::create_dir_all(&install_dir.join("data")).unwrap();
+    fs::create_dir_all(install_dir.join("data")).unwrap();
 
     let exe_content = b"game executable content";
     let assets_content = vec![0xABu8; 1000]; // Simulated asset data
@@ -407,7 +407,7 @@ fn test_multiple_games_management() {
         ("game-gamma", "Gamma Game", "1.5.0", 150u64),
     ];
 
-    for (game_id, name, version, build) in games {
+    for (game_id, _name, version, build) in games {
         let installation = GameInstallation {
             game_id: game_id.to_string(),
             installed_version: version.to_string(),
@@ -496,7 +496,7 @@ fn test_download_progress_tracking() {
 #[test]
 fn test_speed_calculation_over_time() {
     // Simulate speed calculation over multiple intervals
-    let chunk_size = 1_000_000u64; // 1 MB per chunk
+    let _chunk_size = 1_000_000u64; // 1 MB per chunk
     let interval_duration = 0.5f64; // 500ms intervals
 
     let speeds = vec![
@@ -562,11 +562,11 @@ fn test_error_classification_workflow() {
 #[test]
 fn test_recovery_from_partial_failure() {
     let temp_dir = temp_dir();
-    let app_data_dir = temp_dir.path();
+    let _app_data_dir = temp_dir.path();
     let install_dir = temp_dir.path().join("install");
 
     // Simulate a download that partially failed
-    fs::create_dir_all(&install_dir.join("data")).unwrap();
+    fs::create_dir_all(install_dir.join("data")).unwrap();
 
     // File 1: Successfully downloaded
     let file1_content = b"complete file data";
@@ -575,7 +575,7 @@ fn test_recovery_from_partial_failure() {
     // File 2: Partially downloaded (simulated)
     let file2_complete_content = vec![0xABu8; 1000];
     let file2_partial_content = &file2_complete_content[0..400];
-    fs::write(&install_dir.join("file2.bin"), file2_partial_content).unwrap();
+    fs::write(install_dir.join("file2.bin"), file2_partial_content).unwrap();
 
     // File 3: Missing (download failed)
     // Don't create file3.dat
@@ -716,7 +716,7 @@ fn test_large_game_workflow() {
     let total_size_gb = 50u64;
     let total_size_bytes = total_size_gb * 1_000_000_000;
 
-    let files = vec![
+    let files = [
         ("game.exe", 100_000_000u64),             // 100 MB
         ("data/pak0.pak", 10_000_000_000u64),     // 10 GB
         ("data/pak1.pak", 10_000_000_000u64),     // 10 GB

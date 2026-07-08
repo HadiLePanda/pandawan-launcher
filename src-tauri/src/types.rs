@@ -167,25 +167,13 @@ pub enum PatchState {
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PatchProgress {
     pub total_files: usize,
     pub completed_files: usize,
     pub total_bytes: u64,
     pub downloaded_bytes: u64,
     pub current_file: Option<String>,
-}
-
-impl Default for PatchProgress {
-    fn default() -> Self {
-        Self {
-            total_files: 0,
-            completed_files: 0,
-            total_bytes: 0,
-            downloaded_bytes: 0,
-            current_file: None,
-        }
-    }
 }
 
 impl PatchProgress {
@@ -933,18 +921,24 @@ mod tests {
         assert!(valid.validate().is_ok());
 
         // Invalid: zero concurrent downloads
-        let mut invalid = LauncherSettings::default();
-        invalid.max_concurrent_downloads = 0;
+        let invalid = LauncherSettings {
+            max_concurrent_downloads: 0,
+            ..Default::default()
+        };
         assert!(invalid.validate().is_err());
 
         // Invalid: empty language
-        let mut invalid = LauncherSettings::default();
-        invalid.language = "".to_string();
+        let invalid = LauncherSettings {
+            language: "".to_string(),
+            ..Default::default()
+        };
         assert!(invalid.validate().is_err());
 
         // Invalid: zero download speed
-        let mut invalid = LauncherSettings::default();
-        invalid.max_download_speed = Some(0);
+        let invalid = LauncherSettings {
+            max_download_speed: Some(0),
+            ..Default::default()
+        };
         assert!(invalid.validate().is_err());
     }
 

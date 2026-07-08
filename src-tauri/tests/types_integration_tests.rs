@@ -537,18 +537,24 @@ fn test_launcher_settings_validation() {
     assert!(valid.validate().is_ok());
 
     // Invalid: zero concurrent downloads
-    let mut invalid = LauncherSettings::default();
-    invalid.max_concurrent_downloads = 0;
+    let invalid = LauncherSettings {
+        max_concurrent_downloads: 0,
+        ..Default::default()
+    };
     assert!(invalid.validate().is_err());
 
     // Invalid: empty language
-    let mut invalid = LauncherSettings::default();
-    invalid.language = "".to_string();
+    let invalid = LauncherSettings {
+        language: "".to_string(),
+        ..Default::default()
+    };
     assert!(invalid.validate().is_err());
 
     // Invalid: zero download speed
-    let mut invalid = LauncherSettings::default();
-    invalid.max_download_speed = Some(0);
+    let invalid = LauncherSettings {
+        max_download_speed: Some(0),
+        ..Default::default()
+    };
     assert!(invalid.validate().is_err());
 }
 

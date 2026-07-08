@@ -267,7 +267,6 @@ fn test_resume_with_partial_content() {
 
     // Simulate completing the download
     let mut file = fs::OpenOptions::new()
-        .write(true)
         .append(true)
         .open(&file_path)
         .unwrap();
@@ -526,7 +525,6 @@ fn test_hash_verification_after_resume() {
 
     // Simulate resume - append remaining content
     let mut file = fs::OpenOptions::new()
-        .write(true)
         .append(true)
         .open(&file_path)
         .unwrap();
@@ -643,7 +641,6 @@ fn test_resume_scenario_with_hash_verification() {
 
     // Simulate resume - append remaining 40%
     let mut file = fs::OpenOptions::new()
-        .write(true)
         .append(true)
         .open(&file_path)
         .unwrap();
@@ -662,7 +659,7 @@ fn test_resume_scenario_with_hash_verification() {
 #[test]
 fn test_concurrent_download_planning() {
     // Plan a concurrent download of multiple files
-    let files = vec![
+    let files = [
         ("file1.bin", 1_000_000u64),
         ("file2.bin", 2_000_000u64),
         ("file3.bin", 500_000u64),

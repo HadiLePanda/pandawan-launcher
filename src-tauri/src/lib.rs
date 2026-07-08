@@ -342,7 +342,7 @@ async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, String> {
 
 /// Load settings from disk
 async fn load_settings(
-    app_data_dir: &PathBuf,
+    app_data_dir: &std::path::Path,
 ) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
     let settings_path = app_data_dir.join("settings.json");
 
@@ -420,7 +420,7 @@ mod tests {
     async fn test_load_settings_default_when_missing() {
         let temp_dir = tempfile::tempdir().unwrap();
 
-        let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        let settings = load_settings(temp_dir.path()).await.unwrap();
 
         assert_eq!(settings, LauncherSettings::default());
     }
@@ -439,7 +439,7 @@ mod tests {
         let json = serde_json::to_string_pretty(&settings).unwrap();
         std::fs::write(&settings_path, json).unwrap();
 
-        let loaded = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        let loaded = load_settings(temp_dir.path()).await.unwrap();
 
         assert_eq!(loaded.language, "fr");
         assert_eq!(loaded.max_concurrent_downloads, 8);
@@ -453,7 +453,7 @@ mod tests {
         // Write invalid JSON
         std::fs::write(&settings_path, "not valid json").unwrap();
 
-        let result = load_settings(&temp_dir.path().to_path_buf()).await;
+        let result = load_settings(temp_dir.path()).await;
         assert!(result.is_err());
     }
 
@@ -750,7 +750,7 @@ mod tests {
 
         std::fs::write(&settings_path, partial_json).unwrap();
 
-        let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
+        let settings = load_settings(temp_dir.path()).await.unwrap();
 
         // Specified values should be loaded
         assert_eq!(settings.language, "de");

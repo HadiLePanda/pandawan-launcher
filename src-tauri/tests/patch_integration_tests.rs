@@ -487,7 +487,7 @@ fn test_complete_installation_scenario() {
     let install_dir = temp_dir.path().join("install");
 
     // 1. Create game files
-    fs::create_dir_all(&install_dir.join("data")).unwrap();
+    fs::create_dir_all(install_dir.join("data")).unwrap();
     let exe_path = install_dir.join("game.exe");
     let data_path = install_dir.join("data").join("assets.pak");
 

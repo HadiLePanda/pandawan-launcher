@@ -122,7 +122,6 @@ impl DownloadManager {
             let existing_size = metadata.len();
 
             let file = OpenOptions::new()
-                .write(true)
                 .append(true)
                 .open(dest_path)?;
 
@@ -131,6 +130,7 @@ impl DownloadManager {
             let file = OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(dest_path)?;
             (0, file)
         };
