@@ -9,7 +9,23 @@ import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
  *  Launcher-wide news feed:
  *    https://cdn.pandawancorp.com/launcher/news.json
  */
-export const CDN_ORIGIN = 'https://cdn.pandawancorp.com';
+const DEFAULT_ORIGIN = 'https://cdn.pandawancorp.com';
+
+type ViteImportMeta = ImportMeta & { env: Record<string, unknown> };
+
+function detectOrigin(): string {
+  try {
+    const meta = import.meta as ViteImportMeta;
+    const env = meta.env ?? {};
+    const envOrigin = env.VITE_CDN_ORIGIN as string | undefined;
+    if (envOrigin) return envOrigin;
+  } catch {
+    // import.meta may not be available in all build contexts; fall through.
+  }
+  return DEFAULT_ORIGIN;
+}
+
+export const CDN_ORIGIN: string = detectOrigin();
 
 export const CdnUrl = {
   gamesPath(id: string, channel: string = 'stable'): string {

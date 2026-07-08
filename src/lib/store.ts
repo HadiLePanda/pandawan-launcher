@@ -18,6 +18,8 @@ interface LauncherState {
   error: string | null;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   settings: LauncherSettings | null;
+  catalogSource: 'remote' | 'local' | 'embedded' | null;
+  catalogUnreachable: boolean;
 
   // Actions
   setGames: (games: Game[]) => void;
@@ -52,6 +54,8 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   error: null,
   activeDownloads: new Map(),
   settings: null,
+  catalogSource: null,
+  catalogUnreachable: false,
 
   setGames: (games) => set({ games }),
   selectGame: (gameId) => set({ selectedGameId: gameId }),
@@ -117,19 +121,19 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   },
 
   loadCatalog: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, catalogSource: null, catalogUnreachable: false });
     try {
-      const { games } = await catalogService.loadCatalog();
+      const { games, source, unreachable } = await catalogService.loadCatalog();
       const gamesState: Game[] = games.map((gameInfo) => ({
         info: gameInfo,
         installation: null,
         status: 'not_installed',
         hasUpdate: false,
       }));
-      set({ games: gamesState, isLoading: false });
+      set({ games: gamesState, isLoading: false, catalogSource: source, catalogUnreachable: !!unreachable });
     } catch (err) {
       handleStoreError(err, set, 'loadCatalog');
-      set({ isLoading: false });
+      set({ isLoading: false, catalogSource: null, catalogUnreachable: true });
     }
   },
 

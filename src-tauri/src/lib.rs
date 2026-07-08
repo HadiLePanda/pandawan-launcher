@@ -188,8 +188,9 @@ async fn launch_game(
         .current_dir(&installation.install_path)
         .arg("-launcher")
         .arg(&game_id)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
 
     match command.spawn() {
         Ok(child) => {

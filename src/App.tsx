@@ -9,6 +9,29 @@ import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
+import { ServerOff, RefreshCw } from 'lucide-react';
+
+function ConnectionBanner({
+  onRetry,
+}: {
+  onRetry: () => void;
+}) {
+  return (
+    <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm flex items-center justify-between gap-4">
+      <div className="flex items-center gap-2">
+        <ServerOff className="w-4 h-4" />
+        <span>Catalog server is unreachable. Showing bundled games; install and launch require a live server.</span>
+      </div>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Retry
+      </button>
+    </div>
+  );
+}
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -32,6 +55,8 @@ function App() {
     loadSettings,
     clearError,
     settings,
+    catalogSource,
+    catalogUnreachable,
   } = useLauncherStore();
 
   useEffect(() => {
@@ -169,6 +194,10 @@ function App() {
           onSelectGameIcon={handleSelectGameIcon}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
         />
+
+        {catalogUnreachable && catalogSource !== 'remote' && (
+          <ConnectionBanner onRetry={() => loadCatalog()} />
+        )}
 
         <div className="flex-1 overflow-hidden">
           {renderContent()}

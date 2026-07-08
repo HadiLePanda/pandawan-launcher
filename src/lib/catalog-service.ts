@@ -13,6 +13,8 @@ let embeddedCatalog: GameCatalog | null = null;
 export interface ResolvedCatalog {
   games: GameInfo[];
   catalog: GameCatalog;
+  source: 'remote' | 'local' | 'embedded';
+  unreachable?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
   try {
     const catalog = await fetchRemoteCatalog(CATALOG_URL);
     const games = await resolveCatalogGames(catalog);
-    return { catalog, games };
+    return { catalog, games, source: 'remote' };
   } catch (err) {
     logger.warn('Failed to load remote catalog', { url: CATALOG_URL, error: String(err) });
   }
@@ -35,7 +37,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     const localOverride = await loadLocalOverrideCatalog();
     if (localOverride) {
       const games = await resolveCatalogGames(localOverride);
-      return { catalog: localOverride, games };
+      return { catalog: localOverride, games, source: 'local' };
     }
   } catch (err) {
     logger.warn('Failed to load local override catalog', { error: String(err) });
@@ -45,7 +47,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
   const embedded = await loadEmbeddedCatalog();
   if (embedded) {
     const games = await resolveCatalogGames(embedded);
-    return { catalog: embedded, games };
+    return { catalog: embedded, games, source: 'embedded', unreachable: true };
   }
 
   throw new Error('No catalog could be loaded. Please check your connection or reinstall the launcher.');
