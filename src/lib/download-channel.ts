@@ -1,5 +1,6 @@
 import { Channel } from '@tauri-apps/api/core';
 import type { DownloadEvent } from '@/types';
+import { logger } from './logger';
 
 export interface DownloadProgressSnapshot {
   progress: number;
@@ -74,7 +75,12 @@ export function createDownloadChannel(
         break;
       }
       case 'retry': {
-        console.warn(`Retry ${message.data.attempt}/${message.data.maxAttempts} for ${message.data.filePath}: ${message.data.error}`);
+        logger.warn('Download retry', {
+          attempt: message.data.attempt,
+          maxAttempts: message.data.maxAttempts,
+          filePath: message.data.filePath,
+          error: message.data.error,
+        });
         break;
       }
     }

@@ -1,6 +1,7 @@
 import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
+import { logger } from './logger';
 
 /** Remote catalog endpoint. Lists game IDs + channels; no per-version URLs. */
 const CATALOG_URL = CdnUrl.news().replace('/news.json', '/catalog.json');
@@ -19,23 +20,17 @@ export interface ResolvedCatalog {
  * Falls back to the embedded catalog if remote is unreachable.
  */
 export async function loadCatalog(): Promise<ResolvedCatalog> {
-  // 1. Try remote catalog first.
+  // 1. Try remote catalog first. This is the normal path for live deployments.
   try {
     const catalog = await fetchRemoteCatalog(CATALOG_URL);
     const games = await resolveCatalogGames(catalog);
     return { catalog, games };
   } catch (err) {
-    console.warn(`Failed to load remote catalog from ${CATALOG_URL}:`, err);
+    logger.warn('Failed to load remote catalog', { url: CATALOG_URL, error: String(err) });
   }
 
-  // 2. Fall back to embedded catalog bundled with the app.
-  const embedded = await loadEmbeddedCatalog();
-  if (embedded) {
-    const games = await resolveCatalogGames(embedded);
-    return { catalog: embedded, games };
-  }
-
-  // 3. Try a local override file in the app data directory (QA / dev only).
+  // 2. Try a local override file in the app data directory (QA / dev only).
+  //    Checked before embedded so QA can override a stale or broken bundled catalog.
   try {
     const localOverride = await loadLocalOverrideCatalog();
     if (localOverride) {
@@ -43,7 +38,14 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
       return { catalog: localOverride, games };
     }
   } catch (err) {
-    console.warn('Failed to load local override catalog:', err);
+    logger.warn('Failed to load local override catalog', { error: String(err) });
+  }
+
+  // 3. Fall back to the embedded catalog bundled with the app.
+  const embedded = await loadEmbeddedCatalog();
+  if (embedded) {
+    const games = await resolveCatalogGames(embedded);
+    return { catalog: embedded, games };
   }
 
   throw new Error('No catalog could be loaded. Please check your connection or reinstall the launcher.');
@@ -72,7 +74,7 @@ export async function loadEmbeddedCatalog(): Promise<GameCatalog | null> {
     embeddedCatalog = catalog as GameCatalog;
     return embeddedCatalog;
   } catch (err) {
-    console.warn('No embedded catalog found:', err);
+    logger.warn('No embedded catalog found', { error: String(err) });
     return null;
   }
 }
@@ -86,7 +88,7 @@ export async function loadLocalOverrideCatalog(): Promise<GameCatalog | null> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes('No such file') || message.includes('os error 2')) return null;
-    console.warn('Failed to read local override catalog:', err);
+    logger.warn('Failed to read local override catalog', { error: message });
     return null;
   }
 }
@@ -128,7 +130,7 @@ export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInf
       games.push(result.value);
     } else {
       const entry = entries[index];
-      console.warn(`Failed to resolve game ${entry.id}:`, result.reason);
+      logger.warn(`Failed to resolve game ${entry.id}`, { reason: String(result.reason) });
     }
   });
 

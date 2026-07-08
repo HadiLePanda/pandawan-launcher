@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { Game, GameInfo, GameInstallation, LauncherSettings, NewsItem } from '@/types';
-import type { DownloadProgressSnapshot } from './game-service';
-import * as gameService from './game-service';
+import type { Game, GameInstallation, GameInfo, LauncherSettings, NewsItem } from '@/types';
 import * as catalogService from './catalog-service';
 import * as newsService from './news-service';
+import * as gameService from './game-service';
+import { logger } from './logger';
+import type { DownloadProgressSnapshot } from './game-service';
 
 type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
 
@@ -135,7 +136,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       const news = await newsService.loadNews();
       set({ news });
     } catch (err) {
-      console.warn('Failed to load news:', err);
+      logger.warn('Failed to load news', { error: String(err) });
     }
   },
 

@@ -1,5 +1,6 @@
 import type { NewsItem } from '@/types';
 import { CdnUrl } from './cdn';
+import { logger } from './logger';
 
 export interface NewsFeed {
   items: NewsItem[];
@@ -20,7 +21,7 @@ export async function loadNews(): Promise<NewsItem[]> {
     const feed = await response.json();
     return validateNewsFeed(feed).items;
   } catch (err) {
-    console.warn('Failed to load news feed:', err);
+    logger.warn('Failed to load news feed', { error: String(err) });
     return [];
   }
 }

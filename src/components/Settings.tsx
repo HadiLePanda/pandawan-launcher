@@ -3,6 +3,7 @@ import { X, Folder, Download, Bell, Globe, HardDrive, Shield, SunMoon } from 'lu
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
+import { logger } from '@/lib/logger';
 import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
@@ -161,7 +162,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         onChange({ gamesInstallPath: selected });
       }
     } catch (err) {
-      console.error('Failed to pick directory:', err);
+      logger.error('Failed to pick directory', { error: String(err) });
     }
   };
 
