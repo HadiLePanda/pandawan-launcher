@@ -9,8 +9,8 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::types::{
-    FileEntry, GameInfo, GameInstallation, GameManifest, LauncherSettings,
-    PatchProgress, PatchState, PatchStatus,
+    FileEntry, GameInfo, GameInstallation, GameManifest, LauncherSettings, PatchProgress,
+    PatchState, PatchStatus,
 };
 
 /// Creates a test file with specified content and returns its SHA256 hash
@@ -19,7 +19,8 @@ pub fn create_test_file_with_content(path: &Path, content: &[u8]) -> String {
     fs::create_dir_all(parent).expect("Failed to create parent directories");
 
     let mut file = fs::File::create(path).expect("Failed to create test file");
-    file.write_all(content).expect("Failed to write test content");
+    file.write_all(content)
+        .expect("Failed to write test content");
     file.flush().expect("Failed to flush file");
 
     // Compute and return SHA256 hash
@@ -130,6 +131,7 @@ pub fn create_test_settings() -> LauncherSettings {
         minimize_to_tray: true,
         close_to_tray: false,
         language: "en".to_string(),
+        theme: "adaptive".to_string(),
     }
 }
 
@@ -158,9 +160,7 @@ pub fn compute_hash(content: &[u8]) -> String {
 }
 
 /// Creates a realistic test environment with actual files
-pub fn create_realistic_test_environment(
-    base_path: &Path,
-) -> (GameManifest, GameInstallation) {
+pub fn create_realistic_test_environment(base_path: &Path) -> (GameManifest, GameInstallation) {
     // Create actual files with real content
     let exe_content = b"This is the game executable content";
     let config_content = b"{\"resolution\": \"1920x1080\"}";
@@ -237,11 +237,7 @@ pub mod assertions {
 
     /// Assert that a file exists
     pub fn assert_file_exists(path: &Path) {
-        assert!(
-            path.exists(),
-            "Expected file to exist: {}",
-            path.display()
-        );
+        assert!(path.exists(), "Expected file to exist: {}", path.display());
     }
 
     /// Assert that a file does not exist
@@ -266,7 +262,8 @@ pub mod assertions {
     pub fn assert_file_content(path: &Path, expected: &[u8]) {
         let actual = std::fs::read(path).expect("Failed to read file");
         assert_eq!(
-            actual, expected,
+            actual,
+            expected,
             "File content mismatch for {}",
             path.display()
         );
@@ -276,7 +273,6 @@ pub mod assertions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::assertions::*;
 
     #[test]
     fn test_create_test_file_with_content() {
@@ -336,8 +332,7 @@ mod tests {
     #[test]
     fn test_create_realistic_test_environment() {
         let temp_dir = setup_test_dir();
-        let (manifest, installation) =
-            create_realistic_test_environment(temp_dir.path());
+        let (manifest, installation) = create_realistic_test_environment(temp_dir.path());
 
         assert_eq!(manifest.game_id, "realistic-game");
         assert_eq!(installation.game_id, "realistic-game");

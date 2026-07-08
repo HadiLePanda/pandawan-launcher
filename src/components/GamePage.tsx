@@ -1,15 +1,23 @@
-import { Play, Download, RefreshCw, HardDrive } from 'lucide-react';
+import { Play, Download, RefreshCw, HardDrive, X, ChevronRight } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
-import type { Game } from '@/types';
+import type { Game, PatchNote } from '@/types';
 
 interface GamePageProps {
   game: Game;
-  downloadProgress?: { progress: number; speed: string; currentFile: string | null };
+  downloadProgress?: {
+    progress: number;
+    overallProgress: number;
+    speed: string;
+    currentFile: string | null;
+    completedFiles: number;
+    totalFiles: number;
+  };
   onPlay: () => void;
   onInstall: () => void;
   onUpdate: () => void;
   onUninstall: () => void;
   onVerify: () => void;
+  onCancel?: () => void;
 }
 
 export function GamePage({
@@ -20,10 +28,12 @@ export function GamePage({
   onUpdate,
   onUninstall: _onUninstall,
   onVerify: _onVerify,
+  onCancel,
 }: GamePageProps) {
   const isDownloading = game.status === 'downloading' || game.status === 'updating';
   const isRunning = game.status === 'running';
   const isInstalled = game.status === 'installed';
+  const hasUpdate = game.hasUpdate;
 
   const initials = game.info.name
     .split(' ')
@@ -32,23 +42,41 @@ export function GamePage({
     .slice(0, 2)
     .toUpperCase();
 
+  const latestVersion = game.info.version;
+  const installedVersion = game.installation?.installed_version;
+
   const primaryAction = () => {
     if (isDownloading) {
       return (
         <div className="w-full max-w-xs">
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="text-ink-muted">{game.status === 'updating' ? 'Updating' : 'Installing'}</span>
-            <span className="font-semibold">{Math.round(downloadProgress?.progress || 0)}%</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0)}%</span>
+              {onCancel && (
+                <button
+                  onClick={onCancel}
+                  className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-            <div className="h-full bg-action" style={{ width: `${downloadProgress?.progress || 0}%` }} />
+            <div className="h-full bg-action" style={{ width: `${downloadProgress?.overallProgress || downloadProgress?.progress || 0}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] text-ink-muted mt-1.5">
+            <span>{downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files</span>
+            <span>{downloadProgress?.speed}</span>
           </div>
         </div>
       );
     }
 
     if (isInstalled) {
-      if (game.hasUpdate) {
+      if (hasUpdate) {
         return (
           <button
             onClick={onUpdate}
@@ -85,19 +113,15 @@ export function GamePage({
     );
   };
 
-  const versionText = isInstalled && game.installation
-    ? game.installation.installed_version
-    : game.info.version;
-
   return (
     <div className="h-full overflow-hidden flex flex-col lg:flex-row">
-      {/* Left panel: name, logo, description, tags, and bottom-left action/details */}
+      {/* Left panel: name, logo, description, tags, patch notes, and bottom-left action/details */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden lg:max-w-[55%] xl:max-w-[58%]">
         {/* Top scrollable content */}
         <div className="flex-1 overflow-auto px-8 py-8">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl space-y-8">
             {/* Logo + Name */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center text-3xl font-bold overflow-hidden shrink-0">
                 {game.info.iconUrl ? (
                   <img src={game.info.iconUrl} alt={game.info.name} className="w-full h-full object-cover" />
@@ -112,7 +136,7 @@ export function GamePage({
 
             {/* Description */}
             {game.info.description && (
-              <p className="text-base leading-relaxed text-ink/90 mb-6">{game.info.description}</p>
+              <p className="text-base leading-relaxed text-ink/90">{game.info.description}</p>
             )}
 
             {/* Tags */}
@@ -125,6 +149,9 @@ export function GamePage({
                 ))}
               </div>
             )}
+
+            {/* Patch Notes */}
+            <PatchNotesSection patchNotes={game.info.patchNotes} />
           </div>
         </div>
 
@@ -132,61 +159,80 @@ export function GamePage({
         <div className="px-8 py-5 glass/80 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {primaryAction()}
-            <div className="flex items-center gap-4 text-sm text-ink-muted">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-ink-muted">
               <span className="flex items-center gap-1.5">
                 <HardDrive className="w-4 h-4" />
                 {formatBytes(game.info.sizeBytes)}
               </span>
-              <span className="font-medium tabular-nums">
-                v{versionText}
-              </span>
+              <VersionLabel
+                installed={installedVersion}
+                latest={latestVersion}
+                hasUpdate={hasUpdate}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right panel: cover + news */}
-      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 flex flex-col overflow-hidden m-4 rounded-2xl">
-        {/* Cover image — full height within right panel, dissolving at bottom */}
-        <div className="relative flex-1 min-h-0 overflow-hidden rounded-t-2xl">
-          {game.info.bannerUrl ? (
-            <img
-              src={game.info.bannerUrl}
-              alt={game.info.name}
-              className="absolute inset-0 w-full h-full object-cover cover-image cover-mask-bottom rounded-2xl"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-surface-light rounded-2xl" />
-          )}
-        </div>
-
-        {/* News cards below cover */}
-        <div className="shrink-0 p-4 pb-6 space-y-3 max-h-[45%] overflow-auto glass/80 rounded-b-2xl">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink/80 mb-2">News</h3>
-          <NewsCard
-            title={`${game.info.name}: Latest Update`}
-            excerpt="Patch notes, events, and community highlights — stay in the loop with the latest from the world."
-            date="Just now"
+      {/* Right panel: cover */}
+      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 overflow-hidden m-4 rounded-2xl">
+        {game.info.bannerUrl ? (
+          <img
+            src={game.info.bannerUrl}
+            alt={game.info.name}
+            className="w-full h-full object-cover cover-image cover-mask-bottom rounded-2xl"
           />
-          <NewsCard
-            title="Community Spotlight"
-            excerpt="Join the conversation and share your adventures with players around the world."
-            date="2 days ago"
-          />
-        </div>
+        ) : (
+          <div className="w-full h-full bg-surface-light rounded-2xl" />
+        )}
       </div>
     </div>
   );
 }
 
-function NewsCard({ title, excerpt, date }: { title: string; excerpt: string; date: string }) {
+function VersionLabel({
+  installed,
+  latest,
+  hasUpdate,
+}: {
+  installed?: string;
+  latest: string;
+  hasUpdate: boolean;
+}) {
+  if (!installed) {
+    return <span className="font-medium tabular-nums">Latest v{latest}</span>;
+  }
+
+  if (!hasUpdate) {
+    return <span className="font-medium tabular-nums">Installed v{installed}</span>;
+  }
+
   return (
-    <button className="w-full text-left p-3 rounded-xl bg-surface/60 border border-border hover:border-border-strong hover:bg-surface transition-colors">
-      <div className="min-w-0">
-        <h4 className="font-medium text-sm truncate">{title}</h4>
-        <p className="text-xs text-ink-muted line-clamp-2 mt-1">{excerpt}</p>
-        <span className="text-[10px] text-ink-muted/70 mt-2 inline-block">{date}</span>
+    <span className="font-medium tabular-nums">
+      Installed v{installed} <ChevronRight className="inline w-3.5 h-3.5 mx-0.5 text-action" /> Latest v{latest}
+    </span>
+  );
+}
+
+function PatchNotesSection({ patchNotes }: { patchNotes?: PatchNote[] }) {
+  if (!patchNotes || patchNotes.length === 0) return null;
+
+  const latest = patchNotes[0];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-ink/80">Patch Notes</h3>
+        <span className="text-xs text-ink-muted">v{latest.version}</span>
       </div>
-    </button>
+      <ul className="space-y-2">
+        {latest.notes.slice(0, 5).map((note, index) => (
+          <li key={index} className="flex gap-2 text-sm text-ink/80">
+            <span className="text-action mt-1.5">•</span>
+            <span>{note}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

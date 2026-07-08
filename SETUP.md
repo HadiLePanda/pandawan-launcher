@@ -114,7 +114,7 @@ pandawan-launcher/
 │   └── build.rs                 # Build script
 │
 ├── scripts/
-│   └── generate_manifest.py     # Python script to create game manifests
+│   └── generate-manifest.py     # Python script to create game manifests
 │
 ├── examples/
 │   └── manifest.json            # Example game manifest
@@ -177,15 +177,16 @@ Each game needs a `manifest.json` hosted on your CDN:
 
 Generate manifests using:
 ```bash
-python scripts/generate_manifest.py \
+python scripts/generate-manifest.py \
   --game-id quirheim-online \
   --name "Quirheim Online" \
   --version 1.0.0 \
-  --build 100 \
+  --build-number 100 \
   --executable "QuirheimOnline.exe" \
-  --input ./build \
-  --output ./manifest.json \
-  --base-url https://cdn.pandawancorp.com/games/quirheim-online
+  --cdn-origin "https://cdn.pandawancorp.com" \
+  --channel stable \
+  --input-dir "./Builds/StandaloneWindows64-v1.0.0" \
+  --output "manifest.json"
 ```
 
 ### Launcher Settings

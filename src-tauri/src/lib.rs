@@ -7,15 +7,15 @@ use tauri::{ipc::Channel, AppHandle, Manager, State};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
 
-pub mod types;
 pub mod download;
 pub mod patch;
+pub mod types;
 
 #[cfg(test)]
 pub mod test_utils;
 
+use patch::{list_installations, load_installation, save_installation, PatchManager};
 use types::*;
-use patch::{PatchManager, save_installation, load_installation, list_installations};
 
 // Global state for the launcher
 struct LauncherState {
@@ -27,14 +27,16 @@ struct LauncherState {
 impl LauncherState {
     async fn new(app_handle: &AppHandle) -> Self {
         let app_data_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| {
-            dirs::data_local_dir().unwrap_or_default().join("pandawan-launcher")
+            dirs::data_local_dir()
+                .unwrap_or_default()
+                .join("pandawan-launcher")
         });
-        
+
         let _ = std::fs::create_dir_all(&app_data_dir);
-        
+
         // Load settings
         let settings = load_settings(&app_data_dir).await.unwrap_or_default();
-        
+
         Self {
             patch_manager: Arc::new(PatchManager::new(
                 settings.max_concurrent_downloads,
@@ -62,16 +64,16 @@ async fn fetch_game_manifest(url: String) -> Result<GameManifest, String> {
         .send()
         .await
         .map_err(|e| format!("Failed to fetch manifest: {}", e))?;
-    
+
     if !response.status().is_success() {
         return Err(format!("HTTP error: {}", response.status()));
     }
-    
+
     let manifest = response
         .json::<GameManifest>()
         .await
         .map_err(|e| format!("Failed to parse manifest: {}", e))?;
-    
+
     Ok(manifest)
 }
 
@@ -85,22 +87,24 @@ async fn install_game(
     on_event: Channel<DownloadEvent>,
 ) -> Result<GameInstallation, String> {
     let settings = state.settings.lock().await;
-    let install_dir = settings.games_install_path.clone()
+    let install_dir = settings
+        .games_install_path
+        .clone()
         .unwrap_or_else(get_default_games_path)
         .join(&manifest.game_id);
     drop(settings);
-    
+
     let patch_manager = Arc::clone(&state.patch_manager);
-    
+
     let installation = patch_manager
         .patch_game(manifest, install_dir, base_url, on_event)
         .await
         .map_err(|e| e.to_string())?;
-    
+
     // Save installation
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     save_installation(&app_data_dir, &installation).map_err(|e| e.to_string())?;
-    
+
     Ok(installation)
 }
 
@@ -112,11 +116,9 @@ async fn check_game_update(
     manifest: GameManifest,
 ) -> Result<bool, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    
+
     match load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
-        Some(installation) => {
-            Ok(installation.installed_build < manifest.build_number)
-        }
+        Some(installation) => Ok(installation.installed_build < manifest.build_number),
         None => Ok(true), // Not installed
     }
 }
@@ -128,7 +130,8 @@ async fn verify_game(
     manifest: GameManifest,
     install_path: PathBuf,
 ) -> Result<patch::VerificationResult, String> {
-    state.patch_manager
+    state
+        .patch_manager
         .verify_installation(&manifest, &install_path)
         .await
         .map_err(|e| e.to_string())
@@ -142,19 +145,20 @@ async fn launch_game(
     game_id: String,
 ) -> Result<LaunchResult, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    
+
     // Load installation
-    let installation = match load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
-        Some(inst) => inst,
-        None => {
-            return Ok(LaunchResult {
-                success: false,
-                message: "Game not installed".to_string(),
-                process_id: None,
-            });
-        }
-    };
-    
+    let installation =
+        match load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
+            Some(inst) => inst,
+            None => {
+                return Ok(LaunchResult {
+                    success: false,
+                    message: "Game not installed".to_string(),
+                    process_id: None,
+                });
+            }
+        };
+
     // Check if already running
     {
         let running = state.running_games.lock().await;
@@ -166,10 +170,10 @@ async fn launch_game(
             });
         }
     }
-    
+
     // Build executable path
     let exe_path = installation.install_path.join(&installation.executable);
-    
+
     if !exe_path.exists() {
         return Ok(LaunchResult {
             success: false,
@@ -177,7 +181,7 @@ async fn launch_game(
             process_id: None,
         });
     }
-    
+
     // Launch game
     let mut command = TokioCommand::new(&exe_path);
     command
@@ -186,17 +190,17 @@ async fn launch_game(
         .arg(&game_id)
         .stdout(Stdio::null())
         .stderr(Stdio::null());
-    
+
     match command.spawn() {
         Ok(child) => {
             let pid = child.id();
-            
+
             // Store process handle
             {
                 let mut running = state.running_games.lock().await;
                 running.insert(game_id.clone(), child);
             }
-            
+
             // Spawn a task to wait for process exit
             let running_games = Arc::clone(&state.running_games);
             let game_id_clone = game_id.clone();
@@ -208,7 +212,7 @@ async fn launch_game(
                     let _ = child.wait().await;
                 }
             });
-            
+
             Ok(LaunchResult {
                 success: true,
                 message: "Game launched successfully".to_string(),
@@ -254,21 +258,25 @@ async fn uninstall_game(
             return Err("Cannot uninstall while game is running".to_string());
         }
     }
-    
+
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    
+
     // Get installation info
-    if let Some(installation) = load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
+    if let Some(installation) =
+        load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())?
+    {
         // Remove game files
         if installation.install_path.exists() {
             let _ = std::fs::remove_dir_all(&installation.install_path);
         }
-        
+
         // Remove installation record
-        let install_file = app_data_dir.join("installations").join(format!("{}.json", game_id));
+        let install_file = app_data_dir
+            .join("installations")
+            .join(format!("{}.json", game_id));
         let _ = std::fs::remove_file(install_file);
     }
-    
+
     Ok(())
 }
 
@@ -288,13 +296,13 @@ async fn save_settings(
 ) -> Result<(), String> {
     let mut settings = state.settings.lock().await;
     *settings = new_settings;
-    
+
     // Save to disk
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let settings_path = app_data_dir.join("settings.json");
     let json = serde_json::to_string_pretty(&*settings).map_err(|e| e.to_string())?;
     std::fs::write(settings_path, json).map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
@@ -302,16 +310,16 @@ async fn save_settings(
 #[tauri::command]
 async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
-    
+
     let (tx, rx) = tokio::sync::oneshot::channel();
-    
+
     app.dialog()
         .file()
         .set_title("Select Installation Folder")
         .pick_folder(move |path| {
             let _ = tx.send(path);
         });
-    
+
     match rx.await {
         Ok(Some(FilePath::Path(p))) => Ok(Some(p)),
         Ok(_) => Ok(None),
@@ -333,16 +341,18 @@ async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Load settings from disk
-async fn load_settings(app_data_dir: &PathBuf) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
+async fn load_settings(
+    app_data_dir: &PathBuf,
+) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
     let settings_path = app_data_dir.join("settings.json");
-    
+
     if !settings_path.exists() {
         return Ok(LauncherSettings::default());
     }
-    
+
     let json = std::fs::read_to_string(settings_path)?;
-    let settings = serde_json::from_str(&json)?;
-    
+    let settings: LauncherSettings = serde_json::from_str(&json)?;
+
     Ok(settings)
 }
 
@@ -358,12 +368,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
-            
+
             tauri::async_runtime::block_on(async move {
                 let state = LauncherState::new(&handle).await;
                 handle.manage(state);
             });
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -397,7 +407,7 @@ mod tests {
     #[test]
     fn test_get_default_games_path() {
         let path = get_default_games_path();
-        
+
         // Path should contain "PandawanGames"
         assert!(path.to_string_lossy().contains("PandawanGames"));
     }
@@ -409,9 +419,9 @@ mod tests {
     #[tokio::test]
     async fn test_load_settings_default_when_missing() {
         let temp_dir = tempfile::tempdir().unwrap();
-        
+
         let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
-        
+
         assert_eq!(settings, LauncherSettings::default());
     }
 
@@ -419,18 +429,18 @@ mod tests {
     async fn test_load_settings_from_file() {
         let temp_dir = tempfile::tempdir().unwrap();
         let settings_path = temp_dir.path().join("settings.json");
-        
+
         let settings = LauncherSettings {
             language: "fr".to_string(),
             max_concurrent_downloads: 8,
             ..Default::default()
         };
-        
+
         let json = serde_json::to_string_pretty(&settings).unwrap();
         std::fs::write(&settings_path, json).unwrap();
-        
+
         let loaded = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
-        
+
         assert_eq!(loaded.language, "fr");
         assert_eq!(loaded.max_concurrent_downloads, 8);
     }
@@ -439,10 +449,10 @@ mod tests {
     async fn test_load_settings_invalid_json() {
         let temp_dir = tempfile::tempdir().unwrap();
         let settings_path = temp_dir.path().join("settings.json");
-        
+
         // Write invalid JSON
         std::fs::write(&settings_path, "not valid json").unwrap();
-        
+
         let result = load_settings(&temp_dir.path().to_path_buf()).await;
         assert!(result.is_err());
     }
@@ -455,7 +465,7 @@ mod tests {
     async fn test_check_game_update_not_installed() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         let manifest = GameManifest {
             game_id: "new-game".to_string(),
             name: "New Game".to_string(),
@@ -468,7 +478,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         // Game is not installed, should return true (needs update/install)
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
         assert!(needs_update);
@@ -478,7 +488,7 @@ mod tests {
     async fn test_check_game_update_outdated() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         // Create an older installation
         let installation = GameInstallation {
             game_id: "test-game".to_string(),
@@ -492,7 +502,7 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Newer manifest
         let manifest = GameManifest {
             game_id: "test-game".to_string(),
@@ -506,7 +516,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
         assert!(needs_update);
     }
@@ -515,7 +525,7 @@ mod tests {
     async fn test_check_game_update_up_to_date() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         // Create current installation
         let installation = GameInstallation {
             game_id: "test-game".to_string(),
@@ -529,7 +539,7 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Same manifest
         let manifest = GameManifest {
             game_id: "test-game".to_string(),
@@ -543,7 +553,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
         assert!(!needs_update);
     }
@@ -552,7 +562,7 @@ mod tests {
     async fn test_check_game_update_newer_than_manifest() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         // Create newer installation (shouldn't happen in practice)
         let installation = GameInstallation {
             game_id: "test-game".to_string(),
@@ -566,7 +576,7 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Older manifest
         let manifest = GameManifest {
             game_id: "test-game".to_string(),
@@ -580,7 +590,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
         assert!(!needs_update); // Already newer
     }
@@ -603,7 +613,7 @@ mod tests {
     #[test]
     fn test_launcher_settings_default_values() {
         let settings = LauncherSettings::default();
-        
+
         assert_eq!(settings.max_concurrent_downloads, 4);
         assert_eq!(settings.language, "en");
         assert!(settings.auto_update_games);
@@ -619,7 +629,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
         let install_dir = temp_dir.path().join("games");
-        
+
         // Create a manifest
         let manifest = GameManifest {
             game_id: "workflow-test".to_string(),
@@ -633,7 +643,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         // Simulate installation by creating the installation record
         let installation = GameInstallation {
             game_id: manifest.game_id.clone(),
@@ -646,21 +656,21 @@ mod tests {
             total_playtime_seconds: 0,
             executable: manifest.executable.clone(),
         };
-        
+
         // Save installation
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Verify installation was saved
         let loaded = load_installation(app_data_dir, &manifest.game_id).unwrap();
         assert!(loaded.is_some());
         let loaded = loaded.unwrap();
         assert_eq!(loaded.game_id, manifest.game_id);
         assert_eq!(loaded.installed_version, manifest.version);
-        
+
         // Check if update needed
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
         assert!(!needs_update); // Same version
-        
+
         // Create newer manifest
         let newer_manifest = GameManifest {
             game_id: "workflow-test".to_string(),
@@ -674,7 +684,7 @@ mod tests {
             files: vec![],
             launch_args: None,
         };
-        
+
         // Now should need update
         let needs_update = check_game_update_logic(app_data_dir, &newer_manifest).await;
         assert!(needs_update);
@@ -685,12 +695,12 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
         let install_dir = temp_dir.path().join("games").join("uninstall-test");
-        
+
         // Create installation
         std::fs::create_dir_all(&install_dir).unwrap();
         let game_file = install_dir.join("game.exe");
         std::fs::write(&game_file, "game content").unwrap();
-        
+
         let installation = GameInstallation {
             game_id: "uninstall-test".to_string(),
             installed_version: "1.0.0".to_string(),
@@ -702,20 +712,22 @@ mod tests {
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
         };
-        
+
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Verify files exist
         assert!(install_dir.exists());
         assert!(game_file.exists());
-        
+
         // Simulate uninstall
         if installation.install_path.exists() {
             let _ = std::fs::remove_dir_all(&installation.install_path);
         }
-        let install_file = app_data_dir.join("installations").join("uninstall-test.json");
+        let install_file = app_data_dir
+            .join("installations")
+            .join("uninstall-test.json");
         let _ = std::fs::remove_file(&install_file);
-        
+
         // Verify files are gone
         assert!(!install_dir.exists());
         assert!(!install_file.exists());
@@ -729,21 +741,21 @@ mod tests {
     async fn test_load_settings_with_partial_data() {
         let temp_dir = tempfile::tempdir().unwrap();
         let settings_path = temp_dir.path().join("settings.json");
-        
-        // Partial JSON - missing some fields
+
+        // Partial JSON - missing some fields (camelCase because struct uses rename_all = "camelCase")
         let partial_json = r#"{
             "language": "de",
-            "auto_update_games": false
+            "autoUpdateGames": false
         }"#;
-        
+
         std::fs::write(&settings_path, partial_json).unwrap();
-        
+
         let settings = load_settings(&temp_dir.path().to_path_buf()).await.unwrap();
-        
+
         // Specified values should be loaded
         assert_eq!(settings.language, "de");
         assert!(!settings.auto_update_games);
-        
+
         // Unspecified values should use defaults
         assert_eq!(settings.max_concurrent_downloads, 4); // Default
         assert!(settings.auto_update_launcher); // Default
@@ -755,7 +767,7 @@ mod tests {
         let app_data_dir = temp_dir.path();
         let installs_dir = app_data_dir.join("installations");
         std::fs::create_dir_all(&installs_dir).unwrap();
-        
+
         // Create a valid installation
         let valid_install = GameInstallation {
             game_id: "valid-game".to_string(),
@@ -769,15 +781,15 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &valid_install).unwrap();
-        
+
         // Create a corrupted installation file
         std::fs::write(installs_dir.join("corrupted.json"), "{invalid").unwrap();
-        
+
         // Create a non-JSON file
         std::fs::write(installs_dir.join("not-json.txt"), "hello").unwrap();
-        
+
         let installations = list_installations(app_data_dir).unwrap();
-        
+
         // Should only return the valid one
         assert_eq!(installations.len(), 1);
         assert_eq!(installations[0].game_id, "valid-game");
@@ -787,7 +799,7 @@ mod tests {
     fn test_save_installation_overwrites_existing() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         // Create initial installation
         let installation1 = GameInstallation {
             game_id: "update-test".to_string(),
@@ -801,7 +813,7 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &installation1).unwrap();
-        
+
         // Update and save again
         let installation2 = GameInstallation {
             game_id: "update-test".to_string(),
@@ -815,9 +827,11 @@ mod tests {
             executable: "game.exe".to_string(),
         };
         save_installation(app_data_dir, &installation2).unwrap();
-        
+
         // Load and verify it's the updated version
-        let loaded = load_installation(app_data_dir, "update-test").unwrap().unwrap();
+        let loaded = load_installation(app_data_dir, "update-test")
+            .unwrap()
+            .unwrap();
         assert_eq!(loaded.installed_version, "2.0.0");
         assert_eq!(loaded.installed_build, 2);
         assert_eq!(loaded.total_playtime_seconds, 3600);

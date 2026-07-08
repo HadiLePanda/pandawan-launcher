@@ -10,11 +10,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use pandawan_launcher_lib::download::progress;
 use pandawan_launcher_lib::patch::{
-    compute_file_hash_sync, save_installation, load_installation, list_installations,
+    compute_file_hash_sync, list_installations, load_installation, save_installation,
     VerificationResult,
 };
-use pandawan_launcher_lib::download::progress;
 use pandawan_launcher_lib::types::*;
 
 fn temp_dir() -> tempfile::TempDir {
@@ -70,12 +70,15 @@ fn test_complete_new_installation_workflow() {
 
     // Step 2: Simulate downloading and creating files
     fs::create_dir_all(&install_dir.join("data")).unwrap();
-    
+
     let exe_content = b"game executable content";
     let assets_content = vec![0xABu8; 1000]; // Simulated asset data
-    
+
     let exe_hash = create_test_file(&install_dir.join("game.exe"), exe_content);
-    let assets_hash = create_test_file(&install_dir.join("data").join("assets.pak"), &assets_content);
+    let assets_hash = create_test_file(
+        &install_dir.join("data").join("assets.pak"),
+        &assets_content,
+    );
 
     // Step 3: Create installation record with actual hashes
     let mut installed_files = HashMap::new();
@@ -129,7 +132,7 @@ fn test_update_workflow_with_version_change() {
 
     // Step 1: Create initial v1 installation
     fs::create_dir_all(&install_dir).unwrap();
-    
+
     let v1_content = b"game v1 content";
     let v1_hash = create_test_file(&install_dir.join("game.exe"), v1_content);
 
@@ -184,7 +187,7 @@ fn test_update_workflow_with_version_change() {
     let loaded = load_installation(app_data_dir, &v2_manifest.game_id)
         .unwrap()
         .unwrap();
-    
+
     let needs_update = loaded.installed_build < v2_manifest.build_number;
     assert!(needs_update, "Should need update");
 
@@ -217,7 +220,7 @@ fn test_update_workflow_with_version_change() {
     let updated = load_installation(app_data_dir, &v2_manifest.game_id)
         .unwrap()
         .unwrap();
-    
+
     assert_eq!(updated.installed_version, "1.1.0");
     assert_eq!(updated.installed_build, 110);
     assert_eq!(updated.installed_files.len(), 2);
@@ -433,18 +436,16 @@ fn test_multiple_games_management() {
     assert_eq!(installations.len(), 3);
 
     // Find specific game
-    let alpha = installations.iter().find(|i| i.game_id == "game-alpha").unwrap();
+    let alpha = installations
+        .iter()
+        .find(|i| i.game_id == "game-alpha")
+        .unwrap();
     assert_eq!(alpha.installed_version, "1.0.0");
     assert!(alpha.last_played.is_some());
     assert_eq!(alpha.total_playtime_seconds, 7200);
 
     // Remove one game
-    fs::remove_file(
-        app_data_dir
-            .join("installations")
-            .join("game-beta.json"),
-    )
-    .unwrap();
+    fs::remove_file(app_data_dir.join("installations").join("game-beta.json")).unwrap();
 
     // Verify removal
     let installations = list_installations(app_data_dir).unwrap();
@@ -666,7 +667,7 @@ fn test_settings_migration_workflow() {
 
     // Should deserialize with defaults for missing fields
     let settings: LauncherSettings = serde_json::from_str(old_settings_json).unwrap();
-    
+
     assert_eq!(settings.language, "en");
     assert_eq!(settings.max_concurrent_downloads, 4);
     // Missing fields should use defaults
@@ -694,7 +695,10 @@ fn test_settings_validation_workflow() {
     ];
 
     for settings in invalid_settings {
-        assert!(settings.validate().is_err(), "Settings should fail validation");
+        assert!(
+            settings.validate().is_err(),
+            "Settings should fail validation"
+        );
     }
 
     // Valid settings
@@ -713,11 +717,11 @@ fn test_large_game_workflow() {
     let total_size_bytes = total_size_gb * 1_000_000_000;
 
     let files = vec![
-        ("game.exe", 100_000_000u64),         // 100 MB
-        ("data/pak0.pak", 10_000_000_000u64), // 10 GB
-        ("data/pak1.pak", 10_000_000_000u64), // 10 GB
-        ("data/pak2.pak", 10_000_000_000u64), // 10 GB
-        ("data/pak3.pak", 10_000_000_000u64), // 10 GB
+        ("game.exe", 100_000_000u64),             // 100 MB
+        ("data/pak0.pak", 10_000_000_000u64),     // 10 GB
+        ("data/pak1.pak", 10_000_000_000u64),     // 10 GB
+        ("data/pak2.pak", 10_000_000_000u64),     // 10 GB
+        ("data/pak3.pak", 10_000_000_000u64),     // 10 GB
         ("content/videos.bik", 5_000_000_000u64), // 5 GB
         ("content/audio.fsb", 4_900_000_000u64),  // ~5 GB
     ];
@@ -728,25 +732,22 @@ fn test_large_game_workflow() {
 
     // Calculate download time at various speeds
     let speeds = vec![
-        (10_000_000.0, "10 MB/s"),       // Slow connection
-        (50_000_000.0, "50 MB/s"),       // Average connection
-        (100_000_000.0, "100 MB/s"),     // Fast connection
+        (10_000_000.0, "10 MB/s"),   // Slow connection
+        (50_000_000.0, "50 MB/s"),   // Average connection
+        (100_000_000.0, "100 MB/s"), // Fast connection
     ];
 
     for (speed_bps, _desc) in speeds {
         let time_seconds = total_size_bytes as f64 / speed_bps;
         let time_hours = time_seconds / 3600.0;
-        
+
         // Just verify calculation produces reasonable results
         assert!(time_seconds > 0.0);
         assert!(time_hours > 0.0);
     }
 
     // Format display
-    assert_eq!(
-        progress::format_bytes(total_size_bytes),
-        "50.00 GB"
-    );
+    assert_eq!(progress::format_bytes(total_size_bytes), "50.00 GB");
 }
 
 #[test]
@@ -783,7 +784,7 @@ fn test_rapid_update_workflow() {
     let final_installation = load_installation(app_data_dir, "rapid-update")
         .unwrap()
         .unwrap();
-    
+
     assert_eq!(final_installation.installed_version, "1.1.1");
     assert_eq!(final_installation.installed_build, 111);
 }

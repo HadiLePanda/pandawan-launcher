@@ -10,7 +10,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use pandawan_launcher_lib::patch::{
-    compute_file_hash_sync, save_installation, load_installation, list_installations,
+    compute_file_hash_sync, list_installations, load_installation, save_installation,
     VerificationResult,
 };
 
@@ -105,7 +105,7 @@ fn test_hash_verification_empty_file() {
     fs::write(&file_path, b"").unwrap();
 
     let hash = compute_file_hash_sync(&file_path).unwrap();
-    
+
     // SHA256 of empty content
     assert_eq!(
         hash,
@@ -160,9 +160,15 @@ fn test_save_and_load_installation_roundtrip() {
     assert_eq!(loaded.installed_version, installation.installed_version);
     assert_eq!(loaded.installed_build, installation.installed_build);
     assert_eq!(loaded.install_path, installation.install_path);
-    assert_eq!(loaded.total_playtime_seconds, installation.total_playtime_seconds);
+    assert_eq!(
+        loaded.total_playtime_seconds,
+        installation.total_playtime_seconds
+    );
     assert_eq!(loaded.executable, installation.executable);
-    assert_eq!(loaded.installed_files.len(), installation.installed_files.len());
+    assert_eq!(
+        loaded.installed_files.len(),
+        installation.installed_files.len()
+    );
 }
 
 #[test]
@@ -171,7 +177,10 @@ fn test_load_nonexistent_installation() {
     let app_data_dir = temp_dir.path();
 
     let result = load_installation(app_data_dir, "nonexistent-game").unwrap();
-    assert!(result.is_none(), "Should return None for non-existent installation");
+    assert!(
+        result.is_none(),
+        "Should return None for non-existent installation"
+    );
 }
 
 #[test]
@@ -288,7 +297,10 @@ fn test_save_installation_creates_directory_structure() {
     save_installation(&app_data_dir, &installation).unwrap();
 
     assert!(app_data_dir.join("installations").exists());
-    assert!(app_data_dir.join("installations").join("deep-game.json").exists());
+    assert!(app_data_dir
+        .join("installations")
+        .join("deep-game.json")
+        .exists());
 }
 
 #[test]
@@ -397,7 +409,7 @@ fn test_verification_result_is_file_problematic() {
 fn test_file_entry_with_hash() {
     let temp_dir = temp_dir();
     let file_path = temp_dir.path().join("test.txt");
-    
+
     let content = b"test content for hashing";
     let expected_hash = create_test_file(&file_path, content);
 
@@ -422,7 +434,7 @@ fn test_manifest_file_validation() {
     // Create actual files
     let exe_path = base_path.join("game.exe");
     let config_path = base_path.join("config.json");
-    
+
     let exe_hash = create_test_file(&exe_path, b"game executable");
     let config_hash = create_test_file(&config_path, b"{\"key\": \"value\"}");
 
@@ -458,7 +470,7 @@ fn test_manifest_file_validation() {
     for file in &manifest.files {
         let file_path = base_path.join(&file.path);
         assert!(file_path.exists());
-        
+
         let actual_hash = compute_file_hash_sync(&file_path).unwrap();
         assert_eq!(actual_hash, file.hash, "Hash mismatch for {}", file.path);
     }
@@ -478,7 +490,7 @@ fn test_complete_installation_scenario() {
     fs::create_dir_all(&install_dir.join("data")).unwrap();
     let exe_path = install_dir.join("game.exe");
     let data_path = install_dir.join("data").join("assets.pak");
-    
+
     create_test_file(&exe_path, b"game executable v1.0");
     create_test_file(&data_path, b"game assets v1.0");
 
@@ -535,7 +547,7 @@ fn test_complete_installation_scenario() {
     let loaded = load_installation(&app_data_dir, &manifest.game_id)
         .unwrap()
         .unwrap();
-    
+
     assert_eq!(loaded.game_id, "scenario-game");
     assert_eq!(loaded.installed_files.len(), 2);
 
@@ -548,7 +560,7 @@ fn test_complete_installation_scenario() {
 
     // 6. Simulate an update (modify one file)
     create_test_file(&exe_path, b"game executable v1.1");
-    
+
     // 7. Verify hash has changed
     let new_hash = compute_file_hash_sync(&exe_path).unwrap();
     assert_ne!(new_hash, manifest.files[0].hash);
@@ -580,10 +592,13 @@ fn test_complete_installation_scenario() {
     let final_loaded = load_installation(&app_data_dir, &manifest.game_id)
         .unwrap()
         .unwrap();
-    
+
     assert_eq!(final_loaded.installed_version, "1.1.0");
     assert_eq!(final_loaded.installed_build, 101);
-    assert_eq!(final_loaded.installed_files.get("game.exe").unwrap(), &new_hash);
+    assert_eq!(
+        final_loaded.installed_files.get("game.exe").unwrap(),
+        &new_hash
+    );
 }
 
 #[test]
@@ -605,7 +620,10 @@ fn test_corrupted_file_detection() {
 
     // Verify hash no longer matches
     let current_hash = compute_file_hash_sync(&file_path).unwrap();
-    assert_ne!(current_hash, expected_hash, "Corrupted file should have different hash");
+    assert_ne!(
+        current_hash, expected_hash,
+        "Corrupted file should have different hash"
+    );
 
     // Create verification result
     let result = VerificationResult {

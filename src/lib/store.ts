@@ -1,42 +1,51 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import type { Game, GameInfo, GameInstallation, LauncherSettings, DownloadEvent, GameManifest } from '@/types';
+import type { Game, GameInfo, GameInstallation, LauncherSettings, NewsItem } from '@/types';
+import type { DownloadProgressSnapshot } from './game-service';
+import * as gameService from './game-service';
+import * as catalogService from './catalog-service';
+import * as newsService from './news-service';
+
+type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
+
+type GetState = () => LauncherState;
 
 interface LauncherState {
-  // Games
   games: Game[];
+  news: NewsItem[];
   selectedGameId: string | null;
   isLoading: boolean;
   error: string | null;
-  
-  // Downloads
-  activeDownloads: Map<string, { progress: number; speed: string; currentFile: string | null }>;
-  
-  // Settings
+  activeDownloads: Map<string, DownloadProgressSnapshot>;
   settings: LauncherSettings | null;
-  
+
   // Actions
   setGames: (games: Game[]) => void;
   selectGame: (gameId: string | null) => void;
   addGame: (gameInfo: GameInfo) => void;
   updateGameStatus: (gameId: string, status: Game['status'], installation?: GameInstallation) => void;
-  setDownloadProgress: (gameId: string, progress: number, speed: string, currentFile: string | null) => void;
+  setDownloadProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
   removeDownload: (gameId: string) => void;
   setSettings: (settings: LauncherSettings) => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+  clearError: () => void;
+
   // Async actions
+  loadCatalog: () => Promise<void>;
+  loadNews: () => Promise<void>;
   loadGames: () => Promise<void>;
   loadSettings: () => Promise<void>;
-  installGame: (gameId: string, manifestUrl: string, baseUrl: string) => Promise<void>;
+  installGame: (gameId: string, channel: string) => Promise<void>;
+  updateGame: (gameId: string, channel: string) => Promise<void>;
   launchGame: (gameId: string) => Promise<void>;
   uninstallGame: (gameId: string) => Promise<void>;
-  checkForUpdates: (gameId: string, manifestUrl: string) => Promise<boolean>;
+  checkForUpdates: (gameId: string, channel: string) => Promise<boolean>;
+  cancelOperation: () => Promise<void>;
 }
 
 export const useLauncherStore = create<LauncherState>((set, get) => ({
   games: [],
+  news: [],
   selectedGameId: null,
   isLoading: false,
   error: null,
@@ -45,7 +54,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
 
   setGames: (games) => set({ games }),
   selectGame: (gameId) => set({ selectedGameId: gameId }),
-  
+
   addGame: (gameInfo) => {
     const game: Game = {
       info: gameInfo,
@@ -55,25 +64,25 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     };
     set((state) => ({ games: [...state.games, game] }));
   },
-  
+
   updateGameStatus: (gameId, status, installation) => {
     set((state) => ({
       games: state.games.map((g) =>
         g.info.id === gameId
-          ? { ...g, status, installation: installation || g.installation }
+          ? { ...g, status, installation: installation ?? g.installation }
           : g
       ),
     }));
   },
-  
-  setDownloadProgress: (gameId, progress, speed, currentFile) => {
+
+  setDownloadProgress: (gameId, snapshot) => {
     set((state) => {
       const newDownloads = new Map(state.activeDownloads);
-      newDownloads.set(gameId, { progress, speed, currentFile });
+      newDownloads.set(gameId, snapshot);
       return { activeDownloads: newDownloads };
     });
   },
-  
+
   removeDownload: (gameId) => {
     set((state) => {
       const newDownloads = new Map(state.activeDownloads);
@@ -81,197 +90,187 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       return { activeDownloads: newDownloads };
     });
   },
-  
-  setSettings: async (settings) => {
-    try {
-      await invoke('save_settings', { newSettings: settings });
-      set({ settings });
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-    }
-  },
+
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
+  clearError: () => set({ error: null }),
+
+  setSettings: async (settings) => {
+    try {
+      await gameService.saveSettings(settings);
+      set({ settings, error: null });
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
 
   loadSettings: async () => {
+    set({ isLoading: true, error: null });
     try {
-      const settings = await invoke<LauncherSettings>('get_settings');
-      set({ settings });
+      const settings = await gameService.loadSettings();
+      set({ settings, isLoading: false });
     } catch (err) {
-      console.error('Failed to load settings:', err);
+      set({ error: String(err), isLoading: false });
+    }
+  },
+
+  loadCatalog: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { games } = await catalogService.loadCatalog();
+      const gamesState: Game[] = games.map((gameInfo) => ({
+        info: gameInfo,
+        installation: null,
+        status: 'not_installed',
+        hasUpdate: false,
+      }));
+      set({ games: gamesState, isLoading: false });
+    } catch (err) {
+      set({ error: String(err), isLoading: false });
+    }
+  },
+
+  loadNews: async () => {
+    try {
+      const news = await newsService.loadNews();
+      set({ news });
+    } catch (err) {
+      console.warn('Failed to load news:', err);
     }
   },
 
   loadGames: async () => {
     set({ isLoading: true, error: null });
     try {
-      const installations = await invoke<GameInstallation[]>('get_installed_games');
-      
-      // Merge installations with known games
-      set((state) => {
-        const gamesWithInstalls = state.games.map((game) => {
-          const installation = installations.find((i) => i.game_id === game.info.id);
-          return {
-            ...game,
-            installation: installation || null,
-            status: (installation ? 'installed' : 'not_installed') as Game['status'],
-          };
-        });
-        
-        // Add installed games not in the list
-        const existingIds = new Set(gamesWithInstalls.map((g) => g.info.id));
-        const newGames: Game[] = installations
-          .filter((i) => !existingIds.has(i.game_id))
-          .map((i) => ({
-            info: {
-              id: i.game_id,
-              name: i.game_id, // Will be updated from manifest
-              description: '',
-              developer: 'Pandawan Corp',
-              genre: [],
-              iconUrl: '',
-              bannerUrl: '',
-              screenshots: [],
-              version: i.installed_version,
-              sizeBytes: 0,
-              releaseDate: i.installed_at,
-              manifestUrl: '',
-            },
-            installation: i,
-            status: 'installed' as const,
-            hasUpdate: false,
-          }));
-        
-        return { games: [...gamesWithInstalls, ...newGames], isLoading: false };
-      });
+      const installations = await gameService.loadInstalledGames();
+      set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
     } catch (err) {
       set({ error: String(err), isLoading: false });
     }
   },
 
-  installGame: async (gameId: string, manifestUrl: string, baseUrl: string) => {
-    const { updateGameStatus, setDownloadProgress, removeDownload } = get();
-    
-    updateGameStatus(gameId, 'downloading');
-    
-    try {
-      // Fetch manifest
-      const manifest = await invoke<GameManifest>('fetch_game_manifest', { url: manifestUrl });
-      
-      // Create channel for download progress
-      const { Channel } = await import('@tauri-apps/api/core');
-      const channel = new Channel<DownloadEvent>();
-      
-      let totalBytes = 0;
-      let downloadedBytes = 0;
-      
-      channel.onmessage = (message) => {
-        switch (message.event) {
-          case 'started':
-            totalBytes = message.data.totalSize;
-            break;
-          case 'progress':
-            downloadedBytes = message.data.downloaded;
-            const progress = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
-            const speed = `${(message.data.speedBps / 1024 / 1024).toFixed(1)} MB/s`;
-            setDownloadProgress(gameId, progress, speed, message.data.filePath);
-            break;
-          case 'complete':
-            removeDownload(gameId);
-            break;
-          case 'error':
-            console.error('Download error:', message.data.message);
-            break;
-        }
-      };
-      
-      // Start installation
-      const installation = await invoke<GameInstallation>('install_game', {
-        manifest,
-        baseUrl,
-        onEvent: channel,
-      });
-      
-      updateGameStatus(gameId, 'installed', installation);
-      
-      // Update game info from manifest
-      set((state) => ({
-        games: state.games.map((g) =>
-          g.info.id === gameId
-            ? {
-                ...g,
-                info: {
-                  ...g.info,
-                  name: manifest.name,
-                  description: manifest.description || g.info.description,
-                  version: manifest.version,
-                },
-              }
-            : g
-        ),
-      }));
-    } catch (err) {
-      console.error('Installation failed:', err);
-      updateGameStatus(gameId, 'not_installed');
-      set({ error: String(err) });
-    }
+  installGame: async (gameId, channel) => {
+    await runPatchFlow(get, set, gameId, channel, 'downloading');
   },
 
-  launchGame: async (gameId: string) => {
+  updateGame: async (gameId, channel) => {
+    await runPatchFlow(get, set, gameId, channel, 'updating');
+  },
+
+  launchGame: async (gameId) => {
     const { updateGameStatus } = get();
-    
     try {
       updateGameStatus(gameId, 'running');
-      
-      const result = await invoke<LaunchResult>('launch_game', { gameId });
-      
-      if (!result.success) {
-        updateGameStatus(gameId, 'installed');
-        set({ error: result.message });
-      } else {
-        // Game launched, will be marked as not running when process exits
-        setTimeout(() => {
-          updateGameStatus(gameId, 'installed');
-        }, 5000);
-      }
+      await gameService.launchGame(gameId);
+      setTimeout(() => updateGameStatus(gameId, 'installed'), 5000);
     } catch (err) {
       updateGameStatus(gameId, 'installed');
       set({ error: String(err) });
     }
   },
 
-  uninstallGame: async (gameId: string) => {
+  uninstallGame: async (gameId) => {
     const { updateGameStatus } = get();
-    
     try {
-      await invoke('uninstall_game', { gameId });
+      await gameService.uninstallGame(gameId);
       updateGameStatus(gameId, 'not_installed', undefined);
     } catch (err) {
       set({ error: String(err) });
     }
   },
 
-  checkForUpdates: async (gameId: string, manifestUrl: string) => {
+  checkForUpdates: async (gameId, channel) => {
     try {
-      const manifest = await invoke<GameManifest>('fetch_game_manifest', { url: manifestUrl });
-      const hasUpdate = await invoke<boolean>('check_game_update', { gameId, manifest });
-      
+      const hasUpdate = await gameService.checkForUpdates(gameId, channel);
       set((state) => ({
         games: state.games.map((g) =>
           g.info.id === gameId ? { ...g, hasUpdate } : g
         ),
       }));
-      
       return hasUpdate;
     } catch (err) {
-      console.error('Failed to check for updates:', err);
+      set({ error: String(err) });
       return false;
+    }
+  },
+
+  cancelOperation: async () => {
+    try {
+      await gameService.cancelOperation();
+    } catch (err) {
+      set({ error: String(err) });
     }
   },
 }));
 
-interface LaunchResult {
-  success: boolean;
-  message: string;
-  processId: number | null;
+// Private helpers
+
+function mergeInstallations(games: Game[], installations: GameInstallation[]): Game[] {
+  const gamesWithInstalls = games.map((game) => {
+    const installation = installations.find((i) => i.game_id === game.info.id);
+    const hasUpdate = installation ? installation.installed_version !== game.info.version : false;
+    return {
+      ...game,
+      installation: installation || null,
+      status: (installation ? 'installed' : 'not_installed') as Game['status'],
+      hasUpdate,
+    };
+  });
+
+  const existingIds = new Set(gamesWithInstalls.map((g) => g.info.id));
+  const newGames: Game[] = installations
+    .filter((i) => !existingIds.has(i.game_id))
+    .map((i) => ({
+      info: {
+        id: i.game_id,
+        channel: 'stable',
+        name: i.game_id,
+        description: '',
+        developer: 'Pandawan Corp',
+        genre: [],
+        iconUrl: '',
+        bannerUrl: '',
+        screenshots: [],
+        version: i.installed_version,
+        sizeBytes: 0,
+        releaseDate: i.installed_at,
+      },
+      installation: i,
+      status: 'installed' as const,
+      hasUpdate: false,
+    }));
+
+  return [...gamesWithInstalls, ...newGames];
+}
+
+async function runPatchFlow(
+  get: GetState,
+  set: SetState,
+  gameId: string,
+  channel: string,
+  activeStatus: 'downloading' | 'updating'
+) {
+  const { updateGameStatus, setDownloadProgress, removeDownload } = get();
+  updateGameStatus(gameId, activeStatus);
+
+  try {
+    const { installation } = await gameService.patchGame(gameId, channel, {
+      onProgress: (id, snapshot) => setDownloadProgress(id, snapshot),
+      onComplete: (id) => removeDownload(id),
+      onError: (message) => set((state) => ({ ...state, error: message })),
+    });
+
+    updateGameStatus(gameId, 'installed', installation);
+    set((state) => ({
+      games: state.games.map((g) =>
+        g.info.id === gameId
+          ? { ...g, hasUpdate: activeStatus === 'updating' ? false : g.hasUpdate }
+          : g
+      ),
+    }));
+  } catch (err) {
+    const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
+    updateGameStatus(gameId, fallbackStatus);
+    set((state) => ({ ...state, error: String(err) }));
+  }
 }

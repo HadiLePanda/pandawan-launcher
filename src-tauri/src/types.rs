@@ -52,6 +52,8 @@ pub enum DownloadEvent {
     Started {
         file_path: String,
         total_size: u64,
+        file_index: usize,
+        total_files: usize,
     },
     #[serde(rename_all = "camelCase")]
     Progress {
@@ -59,17 +61,88 @@ pub enum DownloadEvent {
         downloaded: u64,
         total: u64,
         speed_bps: f64,
+        overall_downloaded: Option<u64>,
+        overall_total: Option<u64>,
+        completed_files: Option<usize>,
+        current_file: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     FileComplete {
         file_path: String,
+        completed_files: Option<usize>,
+        total_files: Option<usize>,
     },
     #[serde(rename_all = "camelCase")]
-    Complete,
-    #[serde(rename_all = "camelCase")]
-    Error {
-        message: String,
+    Retry {
+        file_path: String,
+        attempt: u32,
+        max_attempts: u32,
+        error: String,
     },
+    #[serde(rename_all = "camelCase")]
+    Complete {
+        completed_files: usize,
+        total_files: usize,
+    },
+    #[serde(rename_all = "camelCase")]
+    Error { message: String },
+}
+
+/// Thread-safe download statistics for tracking overall progress across files
+#[derive(Debug)]
+pub struct DownloadStats {
+    downloaded: std::sync::atomic::AtomicU64,
+    total: u64,
+    completed: std::sync::atomic::AtomicUsize,
+    total_files: usize,
+    file_index: std::sync::atomic::AtomicUsize,
+}
+
+impl DownloadStats {
+    pub fn new(total: u64, total_files: usize) -> Self {
+        Self {
+            downloaded: std::sync::atomic::AtomicU64::new(0),
+            total,
+            completed: std::sync::atomic::AtomicUsize::new(0),
+            total_files,
+            file_index: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    pub fn add_downloaded(&self, bytes: u64) {
+        self.downloaded
+            .fetch_add(bytes, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn increment_completed(&self) {
+        self.completed
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn set_file_index(&self, index: usize) {
+        self.file_index
+            .store(index, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn downloaded(&self) -> u64 {
+        self.downloaded.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn total(&self) -> u64 {
+        self.total
+    }
+
+    pub fn completed(&self) -> usize {
+        self.completed.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn total_files(&self) -> usize {
+        self.total_files
+    }
+
+    pub fn file_index(&self) -> usize {
+        self.file_index.load(std::sync::atomic::Ordering::Relaxed)
+    }
 }
 
 /// Patch operation status
@@ -271,7 +344,10 @@ impl GameInfo {
         self.name.to_lowercase().contains(&query_lower)
             || self.description.to_lowercase().contains(&query_lower)
             || self.developer.to_lowercase().contains(&query_lower)
-            || self.genre.iter().any(|g| g.to_lowercase().contains(&query_lower))
+            || self
+                .genre
+                .iter()
+                .any(|g| g.to_lowercase().contains(&query_lower))
     }
 }
 
@@ -347,7 +423,8 @@ mod tests {
         assert!(json.contains("1.0.0"));
         assert!(json.contains("game.exe"));
 
-        let deserialized: GameManifest = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: GameManifest =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.game_id, manifest.game_id);
         assert_eq!(deserialized.version, manifest.version);
         assert_eq!(deserialized.build_number, manifest.build_number);
@@ -468,7 +545,7 @@ mod tests {
 
         let json = serde_json::to_string(&entry).expect("Failed to serialize");
         let deserialized: FileEntry = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+
         assert_eq!(deserialized.path, entry.path);
         assert_eq!(deserialized.hash, entry.hash);
         assert_eq!(deserialized.size, entry.size);
@@ -520,7 +597,8 @@ mod tests {
         assert!(json.contains("1.0.0"));
         assert!(json.contains("game.exe"));
 
-        let deserialized: GameInstallation = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: GameInstallation =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.game_id, installation.game_id);
         assert_eq!(deserialized.installed_files.len(), 2);
     }
@@ -541,7 +619,8 @@ mod tests {
         }
         "#;
 
-        let installation: GameInstallation = serde_json::from_str(json).expect("Failed to deserialize");
+        let installation: GameInstallation =
+            serde_json::from_str(json).expect("Failed to deserialize");
         assert_eq!(installation.game_id, "test-game");
         assert!(installation.last_played.is_none());
         assert_eq!(installation.total_playtime_seconds, 0);
@@ -554,14 +633,16 @@ mod tests {
     #[test]
     fn test_download_event_started_serialization() {
         let event = DownloadEvent::Started {
-            file_path: "/path/to/file.zip".to_string(),
+            file_path: "/downloads/game.exe".to_string(),
             total_size: 1_000_000,
+            file_index: 0,
+            total_files: 1,
         };
 
         let json = serde_json::to_string(&event).expect("Failed to serialize");
         assert!(json.contains("Started"));
         assert!(json.contains("filePath"));
-        assert!(json.contains("/path/to/file.zip"));
+        assert!(json.contains("/downloads/game.exe"));
         assert!(json.contains("1000000"));
     }
 
@@ -572,6 +653,10 @@ mod tests {
             downloaded: 500_000,
             total: 1_000_000,
             speed_bps: 1024.5,
+            overall_downloaded: Some(500_000),
+            overall_total: Some(1_000_000),
+            completed_files: Some(0),
+            current_file: Some("/path/to/file.zip".to_string()),
         };
 
         let json = serde_json::to_string(&event).expect("Failed to serialize");
@@ -582,7 +667,10 @@ mod tests {
 
     #[test]
     fn test_download_event_complete_serialization() {
-        let event = DownloadEvent::Complete;
+        let event = DownloadEvent::Complete {
+            completed_files: 1,
+            total_files: 1,
+        };
         let json = serde_json::to_string(&event).expect("Failed to serialize");
         assert!(json.contains("Complete"));
     }
@@ -601,7 +689,9 @@ mod tests {
     #[test]
     fn test_download_event_file_complete_serialization() {
         let event = DownloadEvent::FileComplete {
-            file_path: "/path/to/file.zip".to_string(),
+            file_path: "/downloads/asset.pak".to_string(),
+            completed_files: Some(1),
+            total_files: Some(2),
         };
 
         let json = serde_json::to_string(&event).expect("Failed to serialize");
@@ -731,8 +821,9 @@ mod tests {
         };
 
         let json = serde_json::to_string(&progress).expect("Failed to serialize");
-        let deserialized: PatchProgress = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+        let deserialized: PatchProgress =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+
         assert_eq!(deserialized.total_files, progress.total_files);
         assert_eq!(deserialized.completed_files, progress.completed_files);
         assert_eq!(deserialized.current_file, progress.current_file);
@@ -785,7 +876,7 @@ mod tests {
 
         let json = serde_json::to_string(&status).expect("Failed to serialize");
         let deserialized: PatchStatus = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+
         assert_eq!(deserialized.game_id, status.game_id);
         assert_eq!(deserialized.current_version, status.current_version);
         assert_eq!(deserialized.target_version, status.target_version);
@@ -819,11 +910,13 @@ mod tests {
             minimize_to_tray: false,
             close_to_tray: true,
             language: "fr".to_string(),
+            theme: "dark".to_string(),
         };
 
         let json = serde_json::to_string(&settings).expect("Failed to serialize");
-        let deserialized: LauncherSettings = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+        let deserialized: LauncherSettings =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+
         assert_eq!(deserialized.max_concurrent_downloads, 8);
         assert_eq!(deserialized.language, "fr");
         assert!(!deserialized.auto_update_games);
@@ -938,7 +1031,7 @@ mod tests {
 
         let json = serde_json::to_string(&info).expect("Failed to serialize");
         let deserialized: GameInfo = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+
         assert_eq!(deserialized.id, info.id);
         assert_eq!(deserialized.genre.len(), 2);
     }
@@ -1061,9 +1154,10 @@ mod tests {
             downloaded_bytes: u64::MAX / 2,
             ..Default::default()
         };
-        
+
         let json = serde_json::to_string(&progress).expect("Failed to serialize");
-        let deserialized: PatchProgress = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: PatchProgress =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.total_bytes, u64::MAX);
     }
 

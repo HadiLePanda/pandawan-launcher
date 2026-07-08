@@ -97,19 +97,31 @@ fn test_format_bytes() {
 #[test]
 fn test_estimated_time_remaining() {
     // Normal case
-    assert_eq!(progress::estimated_time_remaining(500, 1000, 100.0), Some(5));
+    assert_eq!(
+        progress::estimated_time_remaining(500, 1000, 100.0),
+        Some(5)
+    );
     assert_eq!(progress::estimated_time_remaining(0, 1000, 100.0), Some(10));
-    assert_eq!(progress::estimated_time_remaining(900, 1000, 100.0), Some(1));
+    assert_eq!(
+        progress::estimated_time_remaining(900, 1000, 100.0),
+        Some(1)
+    );
 
     // Complete download
-    assert_eq!(progress::estimated_time_remaining(1000, 1000, 100.0), Some(0));
+    assert_eq!(
+        progress::estimated_time_remaining(1000, 1000, 100.0),
+        Some(0)
+    );
 
     // No speed
     assert_eq!(progress::estimated_time_remaining(500, 1000, 0.0), None);
     assert_eq!(progress::estimated_time_remaining(500, 1000, -1.0), None);
 
     // Over-downloaded
-    assert_eq!(progress::estimated_time_remaining(1500, 1000, 100.0), Some(0));
+    assert_eq!(
+        progress::estimated_time_remaining(1500, 1000, 100.0),
+        Some(0)
+    );
 }
 
 // ============================================================================
@@ -300,7 +312,8 @@ fn test_download_error_is_retryable() {
     assert!(!DownloadError::HashMismatch {
         expected: "a".to_string(),
         actual: "b".to_string(),
-    }.is_retryable());
+    }
+    .is_retryable());
 }
 
 #[test]
@@ -336,7 +349,7 @@ fn test_download_error_from_io() {
 #[test]
 fn test_concurrent_download_batch_calculation() {
     // Test batch calculation for different scenarios
-    
+
     // 10 files, 4 concurrent
     let total_files = 10;
     let max_concurrent = 4;
@@ -399,9 +412,14 @@ fn test_rate_limiting_various_speeds() {
 
     for (size, limit, expected_seconds) in test_cases {
         let time = size as f64 / limit as f64;
-        assert!((time - expected_seconds).abs() < 0.01, 
-            "Time mismatch for {} bytes at {} B/s: expected {}, got {}", 
-            size, limit, expected_seconds, time);
+        assert!(
+            (time - expected_seconds).abs() < 0.01,
+            "Time mismatch for {} bytes at {} B/s: expected {}, got {}",
+            size,
+            limit,
+            expected_seconds,
+            time
+        );
     }
 }
 
@@ -417,7 +435,10 @@ fn test_destination_path_resolution() {
     let paths = vec![
         ("game.exe", "/games/mygame/game.exe"),
         ("data/config.json", "/games/mygame/data/config.json"),
-        ("assets/textures/player.png", "/games/mygame/assets/textures/player.png"),
+        (
+            "assets/textures/player.png",
+            "/games/mygame/assets/textures/player.png",
+        ),
     ];
 
     for (relative_path, expected) in paths {
@@ -434,7 +455,11 @@ fn test_parent_directory_creation() {
     let base_path = temp_dir.path();
 
     // Test creating nested directories
-    let deep_path = base_path.join("level1").join("level2").join("level3").join("file.txt");
+    let deep_path = base_path
+        .join("level1")
+        .join("level2")
+        .join("level3")
+        .join("file.txt");
 
     if let Some(parent) = deep_path.parent() {
         fs::create_dir_all(parent).unwrap();
@@ -442,7 +467,11 @@ fn test_parent_directory_creation() {
 
     assert!(base_path.join("level1").exists());
     assert!(base_path.join("level1").join("level2").exists());
-    assert!(base_path.join("level1").join("level2").join("level3").exists());
+    assert!(base_path
+        .join("level1")
+        .join("level2")
+        .join("level3")
+        .exists());
 
     // Can now create file
     fs::write(&deep_path, "test").unwrap();
@@ -607,7 +636,10 @@ fn test_resume_scenario_with_hash_verification() {
     fs::write(&file_path, &total_content[0..partial_size]).unwrap();
 
     let partial_hash = compute_file_hash_sync(&file_path).unwrap();
-    assert_ne!(partial_hash, expected_hash, "Partial file should have different hash");
+    assert_ne!(
+        partial_hash, expected_hash,
+        "Partial file should have different hash"
+    );
 
     // Simulate resume - append remaining 40%
     let mut file = fs::OpenOptions::new()
@@ -663,7 +695,13 @@ fn test_error_recovery_strategy() {
         (DownloadError::HttpError("500".to_string()), true),
         (DownloadError::HttpError("404".to_string()), true),
         (DownloadError::Cancelled, false),
-        (DownloadError::HashMismatch { expected: "a".to_string(), actual: "b".to_string() }, false),
+        (
+            DownloadError::HashMismatch {
+                expected: "a".to_string(),
+                actual: "b".to_string(),
+            },
+            false,
+        ),
         (DownloadError::Task("failed".to_string()), true),
     ];
 

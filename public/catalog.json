@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastUpdated": "2026-07-08T00:00:00Z",
+  "games": [
+    {
+      "id": "pandawan-rising",
+      "channel": "stable",
+      "name": "Pandawan Rising",
+      "description": "A mythic action RPG set in the Bamboo Kingdom.",
+      "developer": "Pandawan Corp",
+      "genre": ["Action RPG", "Multiplayer"],
+      "iconUrl": "https://cdn.pandawancorp.com/games/pandawan-rising/stable/icon.png",
+      "bannerUrl": "https://cdn.pandawancorp.com/games/pandawan-rising/stable/banner.png",
+      "screenshots": [],
+      "supportedPlatforms": ["windows"]
+    },
+    {
+      "id": "quirheim-online",
+      "channel": "stable",
+      "name": "Quirheim Online",
+      "description": "An epic MMORPG set in the mystical world of Quirheim.",
+      "developer": "Pandawan Corp",
+      "genre": ["MMORPG", "Fantasy"],
+      "iconUrl": "https://cdn.pandawancorp.com/games/quirheim-online/stable/icon.png",
+      "bannerUrl": "https://cdn.pandawancorp.com/games/quirheim-online/stable/banner.png",
+      "screenshots": [],
+      "supportedPlatforms": ["windows"]
+    }
+  ]
+}

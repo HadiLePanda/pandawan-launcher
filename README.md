@@ -142,14 +142,16 @@ Create a `manifest.json` for each game version:
 Use the included Python script to generate manifests from your build output:
 
 ```bash
-python scripts/generate_manifest.py \
+python scripts/generate-manifest.py \
   --game-id quirheim-online \
   --name "Quirheim Online" \
   --version 1.0.0 \
-  --build 100 \
+  --build-number 100 \
   --executable "QuirheimOnline.exe" \
-  --input ./build \
-  --output ./manifest.json
+  --cdn-origin "https://cdn.pandawancorp.com" \
+  --channel stable \
+  --input-dir "./Builds/StandaloneWindows64-v1.0.0" \
+  --output "manifest.json"
 ```
 
 ## Tauri Commands

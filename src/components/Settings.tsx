@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Folder, Download, Bell, Globe, HardDrive, Shield, SunMoon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
-import { invoke } from '@tauri-apps/api/core';
+import * as gameService from '@/lib/game-service';
 import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
@@ -32,13 +32,15 @@ const DEFAULT_SETTINGS: LauncherSettings = {
 };
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
-  const { settings, setSettings } = useLauncherStore();
+  const { settings, setSettings, error } = useLauncherStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setEditedSettings(settings || DEFAULT_SETTINGS);
+      setSaveError(null);
     }
   }, [isOpen, settings]);
 
@@ -49,8 +51,13 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   };
 
   const handleSave = async () => {
-    await setSettings(editedSettings);
-    onClose();
+    setSaveError(null);
+    try {
+      await setSettings(editedSettings);
+      onClose();
+    } catch (err) {
+      setSaveError(String(err));
+    }
   };
 
   return (
@@ -105,6 +112,11 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
           {/* Tab Content */}
           <div className="flex-1 overflow-auto p-6">
+            {(error || saveError) && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error || saveError}
+              </div>
+            )}
             {activeTab === 'general' && (
               <GeneralSettings settings={editedSettings} onChange={handleUpdate} />
             )}
@@ -144,7 +156,7 @@ interface TabProps {
 function GeneralSettings({ settings, onChange }: TabProps) {
   const handleBrowse = async () => {
     try {
-      const selected = await invoke<string | null>('select_install_folder');
+      const selected = await gameService.selectInstallFolder();
       if (selected) {
         onChange({ gamesInstallPath: selected });
       }
@@ -201,8 +213,8 @@ function GeneralSettings({ settings, onChange }: TabProps) {
           className="w-full rounded-lg text-sm text-ink"
         >
           <option value="adaptive">Adaptive (System)</option>
-          <option value="light">Light</option>
           <option value="dark">Dark</option>
+          <option value="light">Light</option>
         </select>
       </SettingItem>
 

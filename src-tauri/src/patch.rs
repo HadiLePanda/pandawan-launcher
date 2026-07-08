@@ -1,5 +1,8 @@
-use crate::types::{DownloadEvent, FileEntry, GameInstallation, GameManifest, PatchProgress, PatchState, PatchStatus};
-use crate::download::{DownloadManager, FileDownloadTask, DownloadError};
+use crate::download::{DownloadError, DownloadManager, FileDownloadTask};
+use crate::types::{
+    DownloadEvent, FileEntry, GameInstallation, GameManifest, PatchProgress, PatchState,
+    PatchStatus,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -40,7 +43,7 @@ impl PatchManager {
 
         for file_entry in &manifest.files {
             let file_path = install_path.join(&file_entry.path);
-            
+
             if !file_path.exists() {
                 // File doesn't exist, needs download
                 files_to_update.push(file_entry.clone());
@@ -88,7 +91,7 @@ impl PatchManager {
 
         // Check which files need updating
         let files_to_update = self.check_for_updates(&manifest, &install_path).await?;
-        
+
         if files_to_update.is_empty() {
             // Already up to date
             let installation = GameInstallation {
@@ -96,7 +99,9 @@ impl PatchManager {
                 installed_version: manifest.version.clone(),
                 installed_build: manifest.build_number,
                 install_path: install_path.clone(),
-                installed_files: manifest.files.iter()
+                installed_files: manifest
+                    .files
+                    .iter()
                     .map(|f| (f.path.clone(), f.hash.clone()))
                     .collect(),
                 installed_at: chrono::Utc::now(),
@@ -104,8 +109,11 @@ impl PatchManager {
                 total_playtime_seconds: 0,
                 executable: manifest.executable.clone(),
             };
-            
-            let _ = on_event.send(DownloadEvent::Complete);
+
+            let _ = on_event.send(DownloadEvent::Complete {
+                completed_files: 1,
+                total_files: 1,
+            });
             return Ok(installation);
         }
 
@@ -122,20 +130,40 @@ impl PatchManager {
         for file in &files_to_update {
             let url = format!("{}/{}", base_url, file.url);
             let dest_path = install_path.join(&file.path);
-            
+
             download_tasks.push(FileDownloadTask {
                 url,
                 dest_path,
                 expected_hash: Some(file.hash.clone()),
+                size: file.size,
             });
+        }
+
+        // Update state progress before downloading
+        {
+            let mut state = self.state.lock().await;
+            state.progress.total_files = files_to_update.len();
+            state.progress.total_bytes = files_to_update.iter().map(|f| f.size).sum();
+            state.progress.completed_files = 0;
+            state.progress.downloaded_bytes = 0;
         }
 
         // Download files
         self.download_manager.reset_cancel();
-        self.download_manager.download_files(download_tasks, on_event.clone()).await?;
+        self.download_manager
+            .download_files(download_tasks, on_event.clone())
+            .await?;
+
+        // After download, ensure progress is complete
+        {
+            let mut state = self.state.lock().await;
+            state.progress.completed_files = state.progress.total_files;
+            state.progress.downloaded_bytes = state.progress.total_bytes;
+        }
 
         // Clean up orphaned files
-        self.cleanup_orphaned_files(&manifest, &install_path).await?;
+        self.cleanup_orphaned_files(&manifest, &install_path)
+            .await?;
 
         // Create installation record
         let installation = GameInstallation {
@@ -143,7 +171,9 @@ impl PatchManager {
             installed_version: manifest.version.clone(),
             installed_build: manifest.build_number,
             install_path,
-            installed_files: manifest.files.iter()
+            installed_files: manifest
+                .files
+                .iter()
                 .map(|f| (f.path.clone(), f.hash.clone()))
                 .collect(),
             installed_at: chrono::Utc::now(),
@@ -173,7 +203,7 @@ impl PatchManager {
 
         for file_entry in &manifest.files {
             let file_path = install_path.join(&file_entry.path);
-            
+
             if !file_path.exists() {
                 missing_files.push(file_entry.path.clone());
                 continue;
@@ -194,7 +224,7 @@ impl PatchManager {
         }
 
         let is_valid = invalid_files.is_empty() && missing_files.is_empty();
-        
+
         Ok(VerificationResult {
             valid_files,
             invalid_files,
@@ -209,7 +239,8 @@ impl PatchManager {
         manifest: &GameManifest,
         install_path: &Path,
     ) -> Result<(), PatchError> {
-        let manifest_paths: HashSet<String> = manifest.files
+        let manifest_paths: HashSet<String> = manifest
+            .files
             .iter()
             .map(|f| f.path.replace('\\', "/"))
             .collect();
@@ -324,13 +355,13 @@ impl VerificationResult {
 pub enum PatchError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Download error: {0}")]
     Download(#[from] DownloadError),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
+
     #[error("{0}")]
     Other(String),
 }
@@ -342,11 +373,11 @@ pub fn save_installation(
 ) -> Result<(), PatchError> {
     let installs_dir = app_data_dir.join("installations");
     fs::create_dir_all(&installs_dir)?;
-    
+
     let file_path = installs_dir.join(format!("{}.json", installation.game_id));
     let json = serde_json::to_string_pretty(installation)?;
     fs::write(file_path, json)?;
-    
+
     Ok(())
 }
 
@@ -355,32 +386,34 @@ pub fn load_installation(
     app_data_dir: &Path,
     game_id: &str,
 ) -> Result<Option<GameInstallation>, PatchError> {
-    let file_path = app_data_dir.join("installations").join(format!("{}.json", game_id));
-    
+    let file_path = app_data_dir
+        .join("installations")
+        .join(format!("{}.json", game_id));
+
     if !file_path.exists() {
         return Ok(None);
     }
-    
+
     let json = fs::read_to_string(file_path)?;
     let installation = serde_json::from_str(&json)?;
-    
+
     Ok(Some(installation))
 }
 
 /// List all installations
 pub fn list_installations(app_data_dir: &Path) -> Result<Vec<GameInstallation>, PatchError> {
     let installs_dir = app_data_dir.join("installations");
-    
+
     if !installs_dir.exists() {
         return Ok(Vec::new());
     }
-    
+
     let mut installations = Vec::new();
-    
+
     for entry in fs::read_dir(installs_dir)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.extension().map(|e| e == "json").unwrap_or(false) {
             let json = fs::read_to_string(&path)?;
             if let Ok(installation) = serde_json::from_str(&json) {
@@ -388,7 +421,7 @@ pub fn list_installations(app_data_dir: &Path) -> Result<Vec<GameInstallation>, 
             }
         }
     }
-    
+
     Ok(installations)
 }
 
@@ -405,15 +438,15 @@ mod tests {
     fn test_compute_file_hash_sync_success() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test.txt");
-        
+
         let content = b"Hello, World!";
         fs::write(&file_path, content).unwrap();
-        
+
         let hash = compute_file_hash_sync(&file_path).unwrap();
-        
+
         // SHA256 of "Hello, World!" is known
         assert_eq!(hash.len(), 64); // Hex encoded SHA256
-        
+
         // Same content should produce same hash
         let hash2 = compute_file_hash_sync(&file_path).unwrap();
         assert_eq!(hash, hash2);
@@ -423,12 +456,12 @@ mod tests {
     async fn test_compute_file_hash_async_success() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test.txt");
-        
+
         let content = b"Hello, World!";
         fs::write(&file_path, content).unwrap();
-        
+
         let hash = compute_file_hash(&file_path).await.unwrap();
-        
+
         // Async and sync should produce same result
         let hash_sync = compute_file_hash_sync(&file_path).unwrap();
         assert_eq!(hash, hash_sync);
@@ -439,13 +472,13 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let file1 = temp_dir.path().join("file1.txt");
         let file2 = temp_dir.path().join("file2.txt");
-        
+
         fs::write(&file1, b"content A").unwrap();
         fs::write(&file2, b"content B").unwrap();
-        
+
         let hash1 = compute_file_hash_sync(&file1).unwrap();
         let hash2 = compute_file_hash_sync(&file2).unwrap();
-        
+
         assert_ne!(hash1, hash2);
     }
 
@@ -453,7 +486,7 @@ mod tests {
     fn test_compute_file_hash_nonexistent_file() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("does_not_exist.txt");
-        
+
         let result = compute_file_hash_sync(&file_path);
         assert!(result.is_err());
     }
@@ -462,13 +495,16 @@ mod tests {
     fn test_compute_file_hash_empty_file() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("empty.txt");
-        
+
         fs::write(&file_path, b"").unwrap();
-        
+
         let hash = compute_file_hash_sync(&file_path).unwrap();
-        
+
         // SHA256 of empty file
-        assert_eq!(hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        assert_eq!(
+            hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 
     // =========================================================================
@@ -483,7 +519,7 @@ mod tests {
             missing_files: vec!["file3.txt".to_string()],
             is_valid: false,
         };
-        
+
         assert_eq!(result.total_files(), 8);
     }
 
@@ -495,7 +531,7 @@ mod tests {
             missing_files: vec!["file2.txt".to_string(), "file3.txt".to_string()],
             is_valid: false,
         };
-        
+
         assert_eq!(result.problematic_count(), 3);
     }
 
@@ -507,7 +543,7 @@ mod tests {
             missing_files: vec![],
             is_valid: true,
         };
-        
+
         assert_eq!(result.summary(), "All 10 files verified successfully");
     }
 
@@ -519,8 +555,11 @@ mod tests {
             missing_files: vec!["missing.txt".to_string()],
             is_valid: false,
         };
-        
-        assert_eq!(result.summary(), "Verification failed: 7 valid, 2 invalid, 1 missing");
+
+        assert_eq!(
+            result.summary(),
+            "Verification failed: 7 valid, 2 invalid, 1 missing"
+        );
     }
 
     #[test]
@@ -531,7 +570,7 @@ mod tests {
             missing_files: vec!["missing.txt".to_string()],
             is_valid: false,
         };
-        
+
         assert!(result.is_file_problematic("invalid.txt"));
         assert!(result.is_file_problematic("missing.txt"));
         assert!(!result.is_file_problematic("valid.txt"));
@@ -545,10 +584,10 @@ mod tests {
             missing_files: vec!["gone.txt".to_string()],
             is_valid: false,
         };
-        
+
         let json = serde_json::to_string(&result).unwrap();
         let deserialized: VerificationResult = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.valid_files, result.valid_files);
         assert_eq!(deserialized.invalid_files, result.invalid_files);
         assert_eq!(deserialized.is_valid, result.is_valid);
@@ -562,14 +601,14 @@ mod tests {
     fn test_save_installation_creates_directory() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path().join("app_data");
-        
+
         let installation = create_test_installation();
-        
+
         save_installation(&app_data_dir, &installation).unwrap();
-        
+
         // Check directory was created
         assert!(app_data_dir.join("installations").exists());
-        
+
         // Check file was created
         let file_path = app_data_dir.join("installations").join("test-game.json");
         assert!(file_path.exists());
@@ -579,29 +618,32 @@ mod tests {
     fn test_save_and_load_installation() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         let installation = create_test_installation();
-        
+
         // Save
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Load
         let loaded = load_installation(app_data_dir, "test-game").unwrap();
-        
+
         assert!(loaded.is_some());
         let loaded = loaded.unwrap();
         assert_eq!(loaded.game_id, installation.game_id);
         assert_eq!(loaded.installed_version, installation.installed_version);
-        assert_eq!(loaded.installed_files.len(), installation.installed_files.len());
+        assert_eq!(
+            loaded.installed_files.len(),
+            installation.installed_files.len()
+        );
     }
 
     #[test]
     fn test_load_installation_not_found() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         let result = load_installation(app_data_dir, "nonexistent").unwrap();
-        
+
         assert!(result.is_none());
     }
 
@@ -611,11 +653,11 @@ mod tests {
         let app_data_dir = temp_dir.path();
         let installs_dir = app_data_dir.join("installations");
         fs::create_dir_all(&installs_dir).unwrap();
-        
+
         // Write invalid JSON
         let file_path = installs_dir.join("bad-game.json");
         fs::write(&file_path, "not valid json").unwrap();
-        
+
         let result = load_installation(app_data_dir, "bad-game");
         assert!(result.is_err());
     }
@@ -628,7 +670,7 @@ mod tests {
     fn test_list_installations_empty() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         let installations = list_installations(app_data_dir).unwrap();
         assert!(installations.is_empty());
     }
@@ -637,7 +679,7 @@ mod tests {
     fn test_list_installations_with_no_installs_dir() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         let installations = list_installations(app_data_dir).unwrap();
         assert!(installations.is_empty());
     }
@@ -646,25 +688,25 @@ mod tests {
     fn test_list_installations_multiple() {
         let temp_dir = tempfile::tempdir().unwrap();
         let app_data_dir = temp_dir.path();
-        
+
         // Create multiple installations
         let mut inst1 = create_test_installation();
         inst1.game_id = "game-1".to_string();
-        
+
         let mut inst2 = create_test_installation();
         inst2.game_id = "game-2".to_string();
-        
+
         let mut inst3 = create_test_installation();
         inst3.game_id = "game-3".to_string();
-        
+
         save_installation(app_data_dir, &inst1).unwrap();
         save_installation(app_data_dir, &inst2).unwrap();
         save_installation(app_data_dir, &inst3).unwrap();
-        
+
         let installations = list_installations(app_data_dir).unwrap();
-        
+
         assert_eq!(installations.len(), 3);
-        
+
         let game_ids: Vec<_> = installations.iter().map(|i| &i.game_id).collect();
         assert!(game_ids.contains(&&"game-1".to_string()));
         assert!(game_ids.contains(&&"game-2".to_string()));
@@ -677,19 +719,19 @@ mod tests {
         let app_data_dir = temp_dir.path();
         let installs_dir = app_data_dir.join("installations");
         fs::create_dir_all(&installs_dir).unwrap();
-        
+
         // Create one valid installation
         let installation = create_test_installation();
         save_installation(app_data_dir, &installation).unwrap();
-        
+
         // Create an invalid JSON file
         fs::write(installs_dir.join("invalid.json"), "not json").unwrap();
-        
+
         // Create a non-JSON file
         fs::write(installs_dir.join("readme.txt"), "hello").unwrap();
-        
+
         let installations = list_installations(app_data_dir).unwrap();
-        
+
         // Should only return the valid one
         assert_eq!(installations.len(), 1);
         assert_eq!(installations[0].game_id, "test-game");
@@ -703,7 +745,7 @@ mod tests {
     async fn test_patch_manager_new() {
         let manager = PatchManager::new(4, Some(1024));
         let status = manager.get_status().await;
-        
+
         assert_eq!(status.status, PatchState::Idle);
         assert_eq!(status.game_id, "");
     }
@@ -712,12 +754,15 @@ mod tests {
     async fn test_check_for_updates_new_install() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path().join("install");
-        
+
         let manifest = create_test_manifest();
         let manager = PatchManager::new(4, None);
-        
-        let files_to_update = manager.check_for_updates(&manifest, &install_path).await.unwrap();
-        
+
+        let files_to_update = manager
+            .check_for_updates(&manifest, &install_path)
+            .await
+            .unwrap();
+
         // All files should need updating since directory doesn't exist
         assert_eq!(files_to_update.len(), manifest.files.len());
     }
@@ -726,36 +771,41 @@ mod tests {
     async fn test_check_for_updates_all_valid() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path().join("install");
-        
+
         // Create files with correct hashes
         fs::create_dir_all(&install_path).unwrap();
-        
+
         let exe_content = b"game exe";
         let config_content = b"config json";
-        
+
         let exe_path = install_path.join("game.exe");
         let config_path = install_path.join("data");
         fs::create_dir_all(&config_path).unwrap();
         let config_path = config_path.join("config.json");
-        
+
         fs::write(&exe_path, exe_content).unwrap();
         fs::write(&config_path, config_content).unwrap();
-        
+
         // Get actual hashes
         let exe_hash = compute_file_hash_sync(&exe_path).unwrap();
         let config_hash = compute_file_hash_sync(&config_path).unwrap();
-        
+
         // Create manifest with correct hashes
         let mut manifest = create_test_manifest();
-        manifest.files.retain(|f| f.path == "game.exe" || f.path == "data/config.json");
+        manifest
+            .files
+            .retain(|f| f.path == "game.exe" || f.path == "data/config.json");
         manifest.files[0].hash = exe_hash;
         manifest.files[0].size = exe_content.len() as u64;
         manifest.files[1].hash = config_hash;
         manifest.files[1].size = config_content.len() as u64;
-        
+
         let manager = PatchManager::new(4, None);
-        let files_to_update = manager.check_for_updates(&manifest, &install_path).await.unwrap();
-        
+        let files_to_update = manager
+            .check_for_updates(&manifest, &install_path)
+            .await
+            .unwrap();
+
         // No files should need updating
         assert!(files_to_update.is_empty());
     }
@@ -765,23 +815,26 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path().join("install");
         fs::create_dir_all(&install_path).unwrap();
-        
+
         // Create a file
         let file_path = install_path.join("game.exe");
         fs::write(&file_path, b"original").unwrap();
         let correct_hash = compute_file_hash_sync(&file_path).unwrap();
-        
+
         // Modify the file
         fs::write(&file_path, b"modified").unwrap();
-        
+
         // Create manifest with original hash
         let mut manifest = create_test_manifest();
         manifest.files.retain(|f| f.path == "game.exe");
         manifest.files[0].hash = correct_hash;
-        
+
         let manager = PatchManager::new(4, None);
-        let files_to_update = manager.check_for_updates(&manifest, &install_path).await.unwrap();
-        
+        let files_to_update = manager
+            .check_for_updates(&manifest, &install_path)
+            .await
+            .unwrap();
+
         // File should need updating due to hash mismatch
         assert_eq!(files_to_update.len(), 1);
         assert_eq!(files_to_update[0].path, "game.exe");
@@ -791,13 +844,13 @@ mod tests {
     async fn test_verify_installation_all_valid() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path();
-        
+
         // Create files
         let exe_content = b"game exe";
         let exe_path = install_path.join("game.exe");
         fs::write(&exe_path, exe_content).unwrap();
         let exe_hash = compute_file_hash_sync(&exe_path).unwrap();
-        
+
         // Create manifest
         let mut manifest = create_test_manifest();
         manifest.files = vec![FileEntry {
@@ -807,10 +860,13 @@ mod tests {
             url: "game.exe".to_string(),
             compress: None,
         }];
-        
+
         let manager = PatchManager::new(4, None);
-        let result = manager.verify_installation(&manifest, install_path).await.unwrap();
-        
+        let result = manager
+            .verify_installation(&manifest, install_path)
+            .await
+            .unwrap();
+
         assert!(result.is_valid);
         assert_eq!(result.valid_files, 1);
         assert!(result.invalid_files.is_empty());
@@ -821,13 +877,13 @@ mod tests {
     async fn test_verify_installation_with_missing() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path();
-        
+
         // Create only one file
         let exe_content = b"game exe";
         let exe_path = install_path.join("game.exe");
         fs::write(&exe_path, exe_content).unwrap();
         let exe_hash = compute_file_hash_sync(&exe_path).unwrap();
-        
+
         // Create manifest with two files
         let mut manifest = create_test_manifest();
         manifest.files = vec![
@@ -846,10 +902,13 @@ mod tests {
                 compress: None,
             },
         ];
-        
+
         let manager = PatchManager::new(4, None);
-        let result = manager.verify_installation(&manifest, install_path).await.unwrap();
-        
+        let result = manager
+            .verify_installation(&manifest, install_path)
+            .await
+            .unwrap();
+
         assert!(!result.is_valid);
         assert_eq!(result.valid_files, 1);
         assert_eq!(result.missing_files.len(), 1);
@@ -860,11 +919,11 @@ mod tests {
     async fn test_verify_installation_with_invalid() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path();
-        
+
         // Create a file with wrong content
         let exe_path = install_path.join("game.exe");
         fs::write(&exe_path, b"wrong content").unwrap();
-        
+
         // Create manifest with different hash
         let mut manifest = create_test_manifest();
         manifest.files = vec![FileEntry {
@@ -874,10 +933,13 @@ mod tests {
             url: "game.exe".to_string(),
             compress: None,
         }];
-        
+
         let manager = PatchManager::new(4, None);
-        let result = manager.verify_installation(&manifest, install_path).await.unwrap();
-        
+        let result = manager
+            .verify_installation(&manifest, install_path)
+            .await
+            .unwrap();
+
         assert!(!result.is_valid);
         assert_eq!(result.valid_files, 0);
         assert_eq!(result.invalid_files.len(), 1);
@@ -888,13 +950,16 @@ mod tests {
     async fn test_verify_installation_empty_manifest() {
         let temp_dir = tempfile::tempdir().unwrap();
         let install_path = temp_dir.path();
-        
+
         let mut manifest = create_test_manifest();
         manifest.files = vec![];
-        
+
         let manager = PatchManager::new(4, None);
-        let result = manager.verify_installation(&manifest, install_path).await.unwrap();
-        
+        let result = manager
+            .verify_installation(&manifest, install_path)
+            .await
+            .unwrap();
+
         assert!(result.is_valid);
         assert_eq!(result.valid_files, 0);
         assert!(result.invalid_files.is_empty());
@@ -908,7 +973,7 @@ mod tests {
     fn create_test_installation() -> GameInstallation {
         let mut installed_files = HashMap::new();
         installed_files.insert("game.exe".to_string(), "abc".repeat(16));
-        
+
         GameInstallation {
             game_id: "test-game".to_string(),
             installed_version: "1.0.0".to_string(),

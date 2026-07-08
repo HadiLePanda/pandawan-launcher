@@ -49,7 +49,7 @@ fn test_game_manifest_full_serialization() {
 
     // Serialize
     let json = serde_json::to_string_pretty(&manifest).expect("Failed to serialize");
-    
+
     // Verify JSON contains expected fields
     assert!(json.contains("full-test-game"));
     assert!(json.contains("1.2.3-beta"));
@@ -59,7 +59,7 @@ fn test_game_manifest_full_serialization() {
 
     // Deserialize
     let deserialized: GameManifest = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(deserialized.game_id, manifest.game_id);
     assert_eq!(deserialized.version, manifest.version);
     assert_eq!(deserialized.build_number, manifest.build_number);
@@ -85,7 +85,7 @@ fn test_game_manifest_minimal_serialization() {
 
     let json = serde_json::to_string(&manifest).expect("Failed to serialize");
     let deserialized: GameManifest = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(deserialized.description, None);
     assert_eq!(deserialized.icon_url, None);
     assert!(deserialized.files.is_empty());
@@ -118,7 +118,7 @@ fn test_game_manifest_deserialization_from_json() {
     "#;
 
     let manifest: GameManifest = serde_json::from_str(json).expect("Failed to deserialize");
-    
+
     assert_eq!(manifest.game_id, "json-test");
     assert_eq!(manifest.version, "2.0.0");
     assert_eq!(manifest.build_number, 200);
@@ -163,7 +163,7 @@ fn test_file_entry_serialization_variants() {
     for entry in [entry1, entry2, entry3] {
         let json = serde_json::to_string(&entry).expect("Failed to serialize");
         let deserialized: FileEntry = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+
         assert_eq!(deserialized.path, entry.path);
         assert_eq!(deserialized.hash, entry.hash);
         assert_eq!(deserialized.size, entry.size);
@@ -174,7 +174,8 @@ fn test_file_entry_serialization_variants() {
 #[test]
 fn test_file_entry_deserialization_from_json() {
     // Test parsing with various compress field values
-    let json_with_compress = r#"{"path":"a.txt","hash":"abc","size":100,"url":"a.txt","compress":true}"#;
+    let json_with_compress =
+        r#"{"path":"a.txt","hash":"abc","size":100,"url":"a.txt","compress":true}"#;
     let entry: FileEntry = serde_json::from_str(json_with_compress).unwrap();
     assert_eq!(entry.compress, Some(true));
 
@@ -182,7 +183,8 @@ fn test_file_entry_deserialization_from_json() {
     let entry: FileEntry = serde_json::from_str(json_without_compress).unwrap();
     assert_eq!(entry.compress, None);
 
-    let json_null_compress = r#"{"path":"c.txt","hash":"ghi","size":300,"url":"c.txt","compress":null}"#;
+    let json_null_compress =
+        r#"{"path":"c.txt","hash":"ghi","size":300,"url":"c.txt","compress":null}"#;
     let entry: FileEntry = serde_json::from_str(json_null_compress).unwrap();
     assert_eq!(entry.compress, None);
 }
@@ -210,22 +212,26 @@ fn test_game_installation_full_serialization() {
         last_played: Some(
             chrono::DateTime::parse_from_rfc3339("2024-01-20T15:45:00Z")
                 .unwrap()
-                .with_timezone(&chrono::Utc)
+                .with_timezone(&chrono::Utc),
         ),
         total_playtime_seconds: 36000, // 10 hours
         executable: "game.exe".to_string(),
     };
 
     let json = serde_json::to_string_pretty(&installation).expect("Failed to serialize");
-    
+
     // Verify JSON structure
     assert!(json.contains("full-install-test"));
     assert!(json.contains("1.5.0"));
-    assert!(json.contains("C:/Games/full-install-test") || json.contains("C:\\\\Games\\\\full-install-test"));
+    assert!(
+        json.contains("C:/Games/full-install-test")
+            || json.contains("C:\\\\Games\\\\full-install-test")
+    );
     assert!(json.contains("36000"));
 
-    let deserialized: GameInstallation = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+    let deserialized: GameInstallation =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
     assert_eq!(deserialized.game_id, installation.game_id);
     assert_eq!(deserialized.installed_files.len(), 3);
     assert!(deserialized.last_played.is_some());
@@ -248,7 +254,7 @@ fn test_game_installation_with_null_last_played() {
 
     let json = serde_json::to_string(&installation).unwrap();
     let deserialized: GameInstallation = serde_json::from_str(&json).unwrap();
-    
+
     assert!(deserialized.last_played.is_none());
 }
 
@@ -261,10 +267,12 @@ fn test_download_event_started_serialization() {
     let event = DownloadEvent::Started {
         file_path: "/downloads/game.zip".to_string(),
         total_size: 1_000_000_000,
+        file_index: 0,
+        total_files: 1,
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");
-    
+
     // Verify tagged enum format
     assert!(json.contains("Started"));
     assert!(json.contains("filePath")); // camelCase
@@ -282,10 +290,14 @@ fn test_download_event_progress_serialization() {
         downloaded: 500_000_000,
         total: 1_000_000_000,
         speed_bps: 50_000_000.5,
+        overall_downloaded: Some(500_000_000),
+        overall_total: Some(1_000_000_000),
+        completed_files: Some(0),
+        current_file: Some("/downloads/game.zip".to_string()),
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");
-    
+
     assert!(json.contains("Progress"));
     assert!(json.contains("downloaded"));
     assert!(json.contains("speedBps")); // camelCase
@@ -294,9 +306,12 @@ fn test_download_event_progress_serialization() {
 
 #[test]
 fn test_download_event_complete_serialization() {
-    let event = DownloadEvent::Complete;
+    let event = DownloadEvent::Complete {
+        completed_files: 1,
+        total_files: 1,
+    };
     let json = serde_json::to_string(&event).expect("Failed to serialize");
-    
+
     assert!(json.contains("Complete"));
 }
 
@@ -307,7 +322,7 @@ fn test_download_event_error_serialization() {
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");
-    
+
     assert!(json.contains("Error"));
     assert!(json.contains("Network timeout"));
 }
@@ -316,10 +331,12 @@ fn test_download_event_error_serialization() {
 fn test_download_event_file_complete_serialization() {
     let event = DownloadEvent::FileComplete {
         file_path: "/downloads/asset.pak".to_string(),
+        completed_files: Some(1),
+        total_files: Some(2),
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");
-    
+
     assert!(json.contains("FileComplete"));
     assert!(json.contains("/downloads/asset.pak"));
 }
@@ -340,7 +357,7 @@ fn test_patch_progress_serialization() {
 
     let json = serde_json::to_string_pretty(&progress).expect("Failed to serialize");
     let deserialized: PatchProgress = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(deserialized.total_files, progress.total_files);
     assert_eq!(deserialized.completed_files, progress.completed_files);
     assert_eq!(deserialized.total_bytes, progress.total_bytes);
@@ -351,7 +368,7 @@ fn test_patch_progress_serialization() {
 #[test]
 fn test_patch_progress_default() {
     let progress = PatchProgress::default();
-    
+
     assert_eq!(progress.total_files, 0);
     assert_eq!(progress.completed_files, 0);
     assert_eq!(progress.total_bytes, 0);
@@ -372,13 +389,13 @@ fn test_patch_progress_methods() {
     // Percentage calculation
     assert_eq!(progress.percentage(), 50.0);
     assert_eq!(progress.file_percentage(), 50.0);
-    
+
     // Is complete
     assert!(!progress.is_complete());
-    
+
     // Remaining bytes
     assert_eq!(progress.remaining_bytes(), 500_000);
-    
+
     // Estimated time
     assert_eq!(progress.estimated_time_remaining(100_000.0), Some(5));
     assert_eq!(progress.estimated_time_remaining(0.0), None);
@@ -431,7 +448,7 @@ fn test_patch_state_serialization() {
         let json = serde_json::to_string(&state).expect("Failed to serialize");
         let deserialized: PatchState = serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized as i32, state as i32);
-        
+
         // Verify camelCase naming
         let first_char = json.chars().nth(1).unwrap();
         assert!(
@@ -460,7 +477,7 @@ fn test_patch_status_serialization() {
 
     let json = serde_json::to_string_pretty(&status).expect("Failed to serialize");
     let deserialized: PatchStatus = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(deserialized.game_id, status.game_id);
     assert_eq!(deserialized.current_version, status.current_version);
     assert_eq!(deserialized.target_version, status.target_version);
@@ -475,7 +492,7 @@ fn test_patch_status_serialization() {
 #[test]
 fn test_launcher_settings_default() {
     let settings = LauncherSettings::default();
-    
+
     assert!(settings.games_install_path.is_none());
     assert!(settings.max_download_speed.is_none());
     assert_eq!(settings.max_concurrent_downloads, 4);
@@ -497,15 +514,20 @@ fn test_launcher_settings_serialization() {
         minimize_to_tray: false,
         close_to_tray: true,
         language: "fr".to_string(),
+        theme: "dark".to_string(),
     };
 
     let json = serde_json::to_string_pretty(&settings).expect("Failed to serialize");
-    let deserialized: LauncherSettings = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+    let deserialized: LauncherSettings =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
     assert_eq!(deserialized.max_concurrent_downloads, 8);
     assert_eq!(deserialized.language, "fr");
     assert!(!deserialized.auto_update_games);
-    assert_eq!(deserialized.games_install_path, Some(PathBuf::from("D:/Games")));
+    assert_eq!(
+        deserialized.games_install_path,
+        Some(PathBuf::from("D:/Games"))
+    );
 }
 
 #[test]
@@ -610,7 +632,11 @@ fn test_game_info_serialization() {
         name: "Info Test Game".to_string(),
         description: "A game for testing".to_string(),
         developer: "Test Studio".to_string(),
-        genre: vec!["Action".to_string(), "RPG".to_string(), "Multiplayer".to_string()],
+        genre: vec![
+            "Action".to_string(),
+            "RPG".to_string(),
+            "Multiplayer".to_string(),
+        ],
         icon_url: "https://cdn.example.com/icon.png".to_string(),
         banner_url: "https://cdn.example.com/banner.jpg".to_string(),
         screenshots: vec![
@@ -628,7 +654,7 @@ fn test_game_info_serialization() {
 
     let json = serde_json::to_string_pretty(&info).expect("Failed to serialize");
     let deserialized: GameInfo = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(deserialized.id, info.id);
     assert_eq!(deserialized.genre.len(), 3);
     assert_eq!(deserialized.screenshots.len(), 3);
@@ -653,19 +679,31 @@ fn test_game_info_size_display() {
     };
 
     // GB
-    let gb = GameInfo { size_bytes: 5_500_000_000, ..base.clone() };
+    let gb = GameInfo {
+        size_bytes: 5_500_000_000,
+        ..base.clone()
+    };
     assert_eq!(gb.size_display(), "5.50 GB");
 
     // MB
-    let mb = GameInfo { size_bytes: 500_000_000, ..base.clone() };
+    let mb = GameInfo {
+        size_bytes: 500_000_000,
+        ..base.clone()
+    };
     assert_eq!(mb.size_display(), "500.0 MB");
 
     // KB
-    let kb = GameInfo { size_bytes: 500_000, ..base.clone() };
+    let kb = GameInfo {
+        size_bytes: 500_000,
+        ..base.clone()
+    };
     assert_eq!(kb.size_display(), "500.0 KB");
 
     // B
-    let b = GameInfo { size_bytes: 500, ..base.clone() };
+    let b = GameInfo {
+        size_bytes: 500,
+        ..base.clone()
+    };
     assert_eq!(b.size_display(), "500 B");
 }
 
@@ -676,7 +714,11 @@ fn test_game_info_matches_search() {
         name: "Awesome Adventure Quest".to_string(),
         description: "An epic action RPG".to_string(),
         developer: "Epic Games Studio".to_string(),
-        genre: vec!["Action".to_string(), "RPG".to_string(), "Adventure".to_string()],
+        genre: vec![
+            "Action".to_string(),
+            "RPG".to_string(),
+            "Adventure".to_string(),
+        ],
         icon_url: "".to_string(),
         banner_url: "".to_string(),
         screenshots: vec![],
@@ -724,15 +766,13 @@ fn test_full_data_flow() {
         icon_url: None,
         banner_url: None,
         executable: "game.exe".to_string(),
-        files: vec![
-            FileEntry {
-                path: "game.exe".to_string(),
-                hash: "abc".repeat(16),
-                size: 10_000_000,
-                url: "game.exe".to_string(),
-                compress: None,
-            },
-        ],
+        files: vec![FileEntry {
+            path: "game.exe".to_string(),
+            hash: "abc".repeat(16),
+            size: 10_000_000,
+            url: "game.exe".to_string(),
+            compress: None,
+        }],
         launch_args: None,
     };
 

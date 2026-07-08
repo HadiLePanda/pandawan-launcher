@@ -9,87 +9,37 @@ import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
-import type { GameInfo } from '@/types';
-
-// Mock available games for the "Add Game" modal
-const MOCK_AVAILABLE_GAMES: GameInfo[] = [
-  {
-    id: 'quirheim-online',
-    name: 'Quirheim Online',
-    description: 'The medieval MMORPG governed by the four elements and ancient dragons — master your class, breathe with the world, and conquer dungeons.',
-    developer: 'Pandawan Corp',
-    genre: ['MMORPG', 'Fantasy', 'Co-op'],
-    iconUrl: '',
-    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=675&fit=crop',
-    screenshots: [],
-    version: '1.0.0',
-    sizeBytes: 15_000_000_000,
-    releaseDate: '2024-12-01T00:00:00Z',
-    manifestUrl: 'https://cdn.pandawancorp.com/games/quirheim-online/manifest.json',
-    colorTheme: {
-      accent: '#c8a84b',
-      accentHover: '#d4b55e',
-      accentMuted: 'rgba(200, 168, 75, 0.12)',
-    },
-  },
-  {
-    id: 'pixel-odyssey',
-    name: 'Pixel Odyssey',
-    description: 'A charming pixel art adventure game.',
-    developer: 'Pandawan Corp',
-    genre: ['Adventure', 'Indie'],
-    iconUrl: '',
-    bannerUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&h=675&fit=crop',
-    screenshots: [],
-    version: '1.2.0',
-    sizeBytes: 500_000_000,
-    releaseDate: '2024-10-15T00:00:00Z',
-    manifestUrl: 'https://cdn.pandawancorp.com/games/pixel-odyssey/manifest.json',
-    colorTheme: {
-      accent: '#4a7a52',
-      accentHover: '#5a8f62',
-      accentMuted: 'rgba(74, 122, 82, 0.14)',
-    },
-  },
-];
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
-  // null means the ALL / home overview is shown.
-  // `lastSelectedGameId` preserves the last game selected so clicking "Games" returns to it.
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
 
   const {
     games,
     activeDownloads,
+    error,
     installGame,
+    updateGame,
     launchGame,
     uninstallGame,
+    cancelOperation,
+    loadCatalog,
+    loadNews,
     loadGames,
     loadSettings,
+    clearError,
     settings,
   } = useLauncherStore();
 
-  // Initialize app on mount
   useEffect(() => {
     const init = async () => {
-      const store = useLauncherStore.getState();
-      if (store.games.length === 0) {
-        MOCK_AVAILABLE_GAMES.forEach((gameInfo) => {
-          store.addGame(gameInfo);
-        });
-      }
-      await loadGames();
       await loadSettings();
-
-      // Default to the ALL overview on boot (selectedGameId stays null)
-      const loadedGames = useLauncherStore.getState().games;
-      if (loadedGames.length === 0 && !selectedGameId) {
-        setSelectedGameId(null);
-      }
+      await loadCatalog();
+      await loadNews();
+      await loadGames();
     };
     init();
   }, []);
@@ -136,14 +86,14 @@ function App() {
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    const manifestUrl = game.info.manifestUrl;
-    const baseUrl = manifestUrl.substring(0, manifestUrl.lastIndexOf('/'));
-    await installGame(gameId, manifestUrl, baseUrl);
+    await installGame(gameId, game.info.channel);
     setIsAddGameOpen(false);
   };
 
   const handleUpdateGame = async (gameId: string) => {
-    await handleInstallGame(gameId);
+    const game = games.find((g) => g.info.id === gameId);
+    if (!game) return;
+    await updateGame(gameId, game.info.channel);
   };
 
   const handleUninstallGame = async (gameId: string) => {
@@ -157,9 +107,9 @@ function App() {
     alert('File verification coming soon!');
   };
 
-  const uninstalledGames = MOCK_AVAILABLE_GAMES.filter(
-    (mock) => !games.some((g) => g.info.id === mock.id && g.status !== 'not_installed')
-  );
+  const uninstalledGames = games
+    .filter((g) => g.status === 'not_installed')
+    .map((g) => g.info);
 
   const renderContent = () => {
     if (activeView === 'news') {
@@ -174,7 +124,6 @@ function App() {
       );
     }
 
-    // Games view: always keep the game selection bar visible
     return (
       <GamesPage games={games}>
         {selectedGame ? (
@@ -186,6 +135,7 @@ function App() {
             onUpdate={() => handleUpdateGame(selectedGame.info.id)}
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}
             onVerify={() => handleVerifyGame(selectedGame.info.id)}
+            onCancel={cancelOperation}
           />
         ) : (
           <GamesHome games={games} onSelectGame={handleSelectGame} />
@@ -204,7 +154,6 @@ function App() {
           games={games}
           onGamesClick={() => {
             setActiveView('games');
-            // Return to last visited state inside the Games page.
             setSelectedGameId(lastSelectedGameId);
           }}
           onNewsClick={() => {
@@ -226,6 +175,20 @@ function App() {
         </div>
       </div>
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {error && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 text-sm">{error}</div>
+            <button
+              onClick={clearError}
+              className="text-xs hover:text-red-300 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <AddGameModal
         isOpen={isAddGameOpen}

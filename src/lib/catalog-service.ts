@@ -1,0 +1,167 @@
+import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
+import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
+
+/** Remote catalog endpoint. Lists game IDs + channels; no per-version URLs. */
+const CATALOG_URL = CdnUrl.news().replace('/news.json', '/catalog.json');
+
+const CATALOG_OVERRIDE_FILE_NAME = 'catalog.override.json';
+
+let embeddedCatalog: GameCatalog | null = null;
+
+export interface ResolvedCatalog {
+  games: GameInfo[];
+  catalog: GameCatalog;
+}
+
+/**
+ * Load the company catalog and resolve every game against its live manifest.
+ * Falls back to the embedded catalog if remote is unreachable.
+ */
+export async function loadCatalog(): Promise<ResolvedCatalog> {
+  // 1. Try remote catalog first.
+  try {
+    const catalog = await fetchRemoteCatalog(CATALOG_URL);
+    const games = await resolveCatalogGames(catalog);
+    return { catalog, games };
+  } catch (err) {
+    console.warn(`Failed to load remote catalog from ${CATALOG_URL}:`, err);
+  }
+
+  // 2. Fall back to embedded catalog bundled with the app.
+  const embedded = await loadEmbeddedCatalog();
+  if (embedded) {
+    const games = await resolveCatalogGames(embedded);
+    return { catalog: embedded, games };
+  }
+
+  // 3. Try a local override file in the app data directory (QA / dev only).
+  try {
+    const localOverride = await loadLocalOverrideCatalog();
+    if (localOverride) {
+      const games = await resolveCatalogGames(localOverride);
+      return { catalog: localOverride, games };
+    }
+  } catch (err) {
+    console.warn('Failed to load local override catalog:', err);
+  }
+
+  throw new Error('No catalog could be loaded. Please check your connection or reinstall the launcher.');
+}
+
+export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
+  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!response.ok) {
+    throw new Error(`Remote catalog returned ${response.status}: ${response.statusText}`);
+  }
+
+  const catalog = await response.json();
+  validateCatalog(catalog);
+  return catalog as GameCatalog;
+}
+
+export async function loadEmbeddedCatalog(): Promise<GameCatalog | null> {
+  if (embeddedCatalog) return embeddedCatalog;
+
+  try {
+    const response = await fetch('/catalog.json');
+    if (!response.ok) return null;
+
+    const catalog = await response.json();
+    validateCatalog(catalog);
+    embeddedCatalog = catalog as GameCatalog;
+    return embeddedCatalog;
+  } catch (err) {
+    console.warn('No embedded catalog found:', err);
+    return null;
+  }
+}
+
+export async function loadLocalOverrideCatalog(): Promise<GameCatalog | null> {
+  try {
+    const content = await readTextFile(CATALOG_OVERRIDE_FILE_NAME, { baseDir: BaseDirectory.AppData });
+    const parsed = JSON.parse(content) as GameCatalog;
+    validateCatalog(parsed);
+    return parsed;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('No such file') || message.includes('os error 2')) return null;
+    console.warn('Failed to read local override catalog:', err);
+    return null;
+  }
+}
+
+export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<void> {
+  validateCatalog(catalog);
+  await writeTextFile(
+    CATALOG_OVERRIDE_FILE_NAME,
+    JSON.stringify(catalog, null, 2),
+    { baseDir: BaseDirectory.AppData }
+  );
+}
+
+export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
+  const response = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
+  if (!response.ok) {
+    throw new Error(`Manifest returned ${response.status}: ${response.statusText}`);
+  }
+  const manifest = await response.json();
+  if (!manifest || typeof manifest !== 'object' || !manifest.game_id || !manifest.version) {
+    throw new Error('Invalid manifest: missing game_id or version');
+  }
+  return manifest as GameManifest;
+}
+
+export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInfo[]> {
+  const entries = catalog.games ?? [];
+  const resolved = await Promise.allSettled(
+    entries.map(async (entry) => {
+      const { manifestUrl } = resolveGameUrls(entry.id, entry.channel ?? 'stable');
+      const manifest = await fetchGameManifest(manifestUrl);
+      return resolveGameInfo(entry, manifest);
+    })
+  );
+
+  const games: GameInfo[] = [];
+  resolved.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      games.push(result.value);
+    } else {
+      const entry = entries[index];
+      console.warn(`Failed to resolve game ${entry.id}:`, result.reason);
+    }
+  });
+
+  return games;
+}
+
+export function validateCatalog(catalog: unknown): asserts catalog is GameCatalog {
+  if (!catalog || typeof catalog !== 'object') {
+    throw new Error('Catalog must be an object');
+  }
+
+  const c = catalog as Record<string, unknown>;
+  if (!Array.isArray(c.games)) {
+    throw new Error('Catalog is missing the games array');
+  }
+
+  for (const game of c.games) {
+    if (!game || typeof game !== 'object') {
+      throw new Error('Catalog contains an invalid game entry');
+    }
+    const g = game as Record<string, unknown>;
+    if (typeof g.id !== 'string' || !g.id) {
+      throw new Error('Catalog game is missing a valid id');
+    }
+  }
+}
+
+export function validateCatalogEntry(entry: unknown): asserts entry is CatalogGameEntry {
+  if (!entry || typeof entry !== 'object') {
+    throw new Error('Catalog entry must be an object');
+  }
+  const e = entry as Record<string, unknown>;
+  if (typeof e.id !== 'string' || !e.id) {
+    throw new Error('Catalog entry is missing a valid id');
+  }
+}
