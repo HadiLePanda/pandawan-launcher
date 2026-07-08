@@ -10,7 +10,7 @@
     "test": "vitest run",
     "tauri": "tauri",
     "tauri:dev": "node scripts/sync-updater-key.cjs && tauri dev",
-    "tauri:build": "node scripts/sync-updater-key.cjs && tauri build",
+    "tauri:build": "node scripts/build-signed.cjs",
     "sync:updater-key": "node scripts/sync-updater-key.cjs"
   },
   "dependencies": {
