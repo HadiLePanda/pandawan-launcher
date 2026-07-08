@@ -180,24 +180,32 @@ The launcher exposes these commands to the frontend:
 
 ## Self-Updates
 
-The launcher uses Tauri's built-in updater. `src-tauri/updater.pub` is the single source of truth for the public key; `src-tauri/tauri.conf.json` is kept in sync automatically.
+The launcher uses Tauri's built-in updater.
+
+- **Public key** (committed): `src-tauri/updater.pub` is the single source of truth.
+  - Sync it into `src-tauri/tauri.conf.json` with:
+    ```bash
+    npm run sync:updater-key
+    ```
+    This is also run automatically by `npm run tauri:dev` and `npm run tauri:build`.
+- **Secret key** (gitignored): `src-tauri/.secrets/updater.key` is required before running `npm run tauri:build` locally.
+  - Copy your minisign secret key to that path; it is ignored by Git and must never be committed.
+- **CI secret**: `TAURI_SIGNING_PRIVATE_KEY` must be set in the repository's GitHub Secrets so the release workflow can sign bundles.
 
 Before shipping a release you must:
 
 1. Generate a minisign keypair:
    ```bash
    # Install minisign (https://jedisct1.github.io/minisign/)
-   minisign -G -W -s updater.key -p src-tauri/updater.pub
+   minisign -G -W -s src-tauri/.secrets/updater.key -p src-tauri/updater.pub
    ```
-   - Keep `updater.key` secret (store it as a CI secret, never commit it).
+   - Keep `src-tauri/.secrets/updater.key` secret (store it as a CI secret, never commit it).
    - `src-tauri/updater.pub` can be committed.
 2. Sync the public key into Tauri's config:
    ```bash
    npm run sync:updater-key
    ```
-   This is also run automatically by `npm run tauri:dev` and `npm run tauri:build`.
 3. Sign your update bundles and host the resulting `.sig` files alongside the update manifest.
-4. Keep `updater.key` secret — store it in a CI secret, never commit it.
 
 ## Configuration
 
