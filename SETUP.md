@@ -120,7 +120,6 @@ pandawan-launcher/
 │   └── manifest.json            # Example game manifest
 │
 ├── package.json                  # Node dependencies
-├── tailwind.config.js           # Tailwind configuration
 ├── tsconfig.json                # TypeScript configuration
 └── vite.config.ts               # Vite configuration
 ```
@@ -259,7 +258,7 @@ Stored in:
 
 1. **Set up your CDN**: Upload game files and manifest
 2. **Update game list**: Add your games in `src/components/Library.tsx`
-3. **Customize UI**: Modify colors in `tailwind.config.js`
+3. **Customize UI**: Modify theme tokens in `src/index.css` (Tailwind v4 uses CSS-based configuration)
 4. **Add more features**: Check Tauri plugins for notifications, auto-updater, etc.
 
 ## Resources
