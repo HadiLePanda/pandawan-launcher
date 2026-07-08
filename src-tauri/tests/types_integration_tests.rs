@@ -293,6 +293,7 @@ fn test_download_event_progress_serialization() {
         overall_downloaded: Some(500_000_000),
         overall_total: Some(1_000_000_000),
         completed_files: Some(0),
+        total_files: Some(5),
         current_file: Some("/downloads/game.zip".to_string()),
     };
 

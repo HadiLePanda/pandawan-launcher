@@ -116,23 +116,11 @@ impl DownloadManager {
             fs::create_dir_all(parent)?;
         }
 
-        // Check for partial download
-        let (start_byte, mut file) = if dest_path.exists() {
-            let metadata = fs::metadata(dest_path)?;
-            let existing_size = metadata.len();
-
-            let file = OpenOptions::new()
-                .append(true)
-                .open(dest_path)?;
-
-            (existing_size, file)
+        // Determine existing partial size for resume header
+        let start_byte = if dest_path.exists() {
+            fs::metadata(dest_path)?.len()
         } else {
-            let file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(dest_path)?;
-            (0, file)
+            0
         };
 
         // Build request with resume header
@@ -142,17 +130,35 @@ impl DownloadManager {
         }
 
         let response = request.send().await?;
+        let status = response.status();
 
-        if !response.status().is_success()
-            && response.status() != reqwest::StatusCode::PARTIAL_CONTENT
-        {
-            return Err(DownloadError::HttpError(response.status().to_string()));
+        if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
+            return Err(DownloadError::HttpError(status.to_string()));
         }
 
-        let total_size = response
-            .content_length()
-            .map(|cl| cl + start_byte)
-            .unwrap_or(0);
+        let is_partial = status == reqwest::StatusCode::PARTIAL_CONTENT;
+
+        // Open the destination: truncate for a full response, append only for a real partial response
+        let mut file = if is_partial && start_byte > 0 {
+            OpenOptions::new()
+                .append(true)
+                .open(dest_path)?
+        } else {
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(dest_path)?
+        };
+
+        let total_size = if is_partial {
+            response
+                .content_length()
+                .map(|cl| cl + start_byte)
+                .unwrap_or(start_byte)
+        } else {
+            response.content_length().unwrap_or(0)
+        };
 
         let file_path_str = dest_path.to_string_lossy().to_string();
         let _ = on_event.send(DownloadEvent::Started {
@@ -208,6 +214,7 @@ impl DownloadManager {
                     overall_downloaded: stats.as_ref().map(|s| s.downloaded()),
                     overall_total: stats.as_ref().map(|s| s.total()),
                     completed_files: stats.as_ref().map(|s| s.completed()),
+                    total_files: stats.as_ref().map(|s| s.total_files()),
                     current_file: Some(file_path_str.clone()),
                 });
 

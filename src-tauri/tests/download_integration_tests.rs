@@ -711,3 +711,84 @@ fn test_error_recovery_strategy() {
         );
     }
 }
+
+// ============================================================================
+// Resume behavior against a real HTTP server
+// ============================================================================
+
+#[tokio::test]
+async fn test_download_resume_with_200_ok_truncates_existing_partial() {
+    use pandawan_launcher_lib::download::DownloadManager;
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let mut server = mockito::Server::new_async().await;
+    let full_content = b"full content from server";
+    let mock = server
+        .mock("GET", "/file")
+        .with_status(200)
+        .with_header("content-type", "application/octet-stream")
+        .with_body(full_content.as_slice())
+        .create_async()
+        .await;
+
+    let temp_dir = temp_dir();
+    let dest_path = temp_dir.path().join("file.bin");
+    fs::write(&dest_path, b"partial ").unwrap();
+
+    let dm = DownloadManager::new(4, None);
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+    dm.download_file(
+        &format!("{}/file", server.url()),
+        &dest_path,
+        None,
+        &channel,
+    )
+    .await
+    .unwrap();
+
+    let result = fs::read_to_string(&dest_path).unwrap();
+    assert_eq!(result, "full content from server");
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_download_resume_with_206_partial_appends_existing_partial() {
+    use pandawan_launcher_lib::download::DownloadManager;
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let mut server = mockito::Server::new_async().await;
+    let full_content = b"full content from server";
+    let partial = &full_content[..7]; // "full co"
+    let remainder = &full_content[7..]; // "ntent from server"
+
+    let mock = server
+        .mock("GET", "/file")
+        .with_status(206)
+        .with_header("content-type", "application/octet-stream")
+        .match_header("Range", "bytes=7-")
+        .with_body(remainder)
+        .create_async()
+        .await;
+
+    let temp_dir = temp_dir();
+    let dest_path = temp_dir.path().join("file.bin");
+    fs::write(&dest_path, partial).unwrap();
+
+    let dm = DownloadManager::new(4, None);
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+    dm.download_file(
+        &format!("{}/file", server.url()),
+        &dest_path,
+        None,
+        &channel,
+    )
+    .await
+    .unwrap();
+
+    let result = fs::read_to_string(&dest_path).unwrap();
+    assert_eq!(result, "full content from server");
+    mock.assert_async().await;
+}
+

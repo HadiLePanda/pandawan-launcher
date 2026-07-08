@@ -64,6 +64,7 @@ pub enum DownloadEvent {
         overall_downloaded: Option<u64>,
         overall_total: Option<u64>,
         completed_files: Option<usize>,
+        total_files: Option<usize>,
         current_file: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
@@ -644,6 +645,7 @@ mod tests {
             overall_downloaded: Some(500_000),
             overall_total: Some(1_000_000),
             completed_files: Some(0),
+            total_files: Some(1),
             current_file: Some("/path/to/file.zip".to_string()),
         };
 
