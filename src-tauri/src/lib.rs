@@ -55,6 +55,29 @@ fn get_default_games_path() -> PathBuf {
         .join("PandawanGames")
 }
 
+/// Verify an install path is inside the allowed games root.
+fn assert_install_path_safe(
+    install_path: &std::path::Path,
+    allowed_root: &std::path::Path,
+) -> Result<(), String> {
+    let canonical_install = install_path
+        .canonicalize()
+        .map_err(|e| format!("Invalid install path {}: {}", install_path.display(), e))?;
+    let canonical_root = allowed_root
+        .canonicalize()
+        .map_err(|e| format!("Invalid install root {}: {}", allowed_root.display(), e))?;
+
+    if !canonical_install.starts_with(&canonical_root) {
+        return Err(format!(
+            "Install path {} is outside allowed root {}",
+            canonical_install.display(),
+            canonical_root.display()
+        ));
+    }
+
+    Ok(())
+}
+
 /// Fetch game manifest from URL
 #[tauri::command]
 async fn fetch_game_manifest(url: String) -> Result<GameManifest, String> {
@@ -95,14 +118,14 @@ async fn install_game(
     drop(settings);
 
     let patch_manager = Arc::clone(&state.patch_manager);
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
 
     let installation = patch_manager
-        .patch_game(manifest, install_dir, base_url, on_event)
+        .patch_game(manifest, install_dir, &app_data_dir, base_url, on_event)
         .await
         .map_err(|e| e.to_string())?;
 
     // Save installation
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     save_installation(&app_data_dir, &installation).map_err(|e| e.to_string())?;
 
     Ok(installation)
@@ -262,10 +285,23 @@ async fn uninstall_game(
 
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
 
+    // Determine the allowed install root from settings
+    let allowed_root = {
+        let settings = state.settings.lock().await;
+        settings
+            .games_install_path
+            .clone()
+            .unwrap_or_else(get_default_games_path)
+    };
+
     // Get installation info
     if let Some(installation) =
         load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())?
     {
+        // Safety check: refuse to delete paths outside the configured games root
+        assert_install_path_safe(&installation.install_path, &allowed_root)
+            .map_err(|e| e.to_string())?;
+
         // Remove game files
         if installation.install_path.exists() {
             let _ = std::fs::remove_dir_all(&installation.install_path);
@@ -295,14 +331,12 @@ async fn save_settings(
     state: State<'_, LauncherState>,
     new_settings: LauncherSettings,
 ) -> Result<(), String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+
+    save_settings_to_disk(&app_data_dir, &new_settings).map_err(|e| e.to_string())?;
+
     let mut settings = state.settings.lock().await;
     *settings = new_settings;
-
-    // Save to disk
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let settings_path = app_data_dir.join("settings.json");
-    let json = serde_json::to_string_pretty(&*settings).map_err(|e| e.to_string())?;
-    std::fs::write(settings_path, json).map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -355,6 +389,22 @@ async fn load_settings(
     let settings: LauncherSettings = serde_json::from_str(&json)?;
 
     Ok(settings)
+}
+
+/// Save settings to disk after validation
+fn save_settings_to_disk(
+    app_data_dir: &std::path::Path,
+    settings: &LauncherSettings,
+) -> Result<(), Box<dyn std::error::Error>> {
+    settings
+        .validate()
+        .map_err(|errors| errors.join(", "))?;
+
+    let settings_path = app_data_dir.join("settings.json");
+    let json = serde_json::to_string_pretty(settings)?;
+    std::fs::write(settings_path, json)?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -836,5 +886,48 @@ mod tests {
         assert_eq!(loaded.installed_version, "2.0.0");
         assert_eq!(loaded.installed_build, 2);
         assert_eq!(loaded.total_playtime_seconds, 3600);
+    }
+
+    // =====================================================================
+    // Install path safety tests
+    // =====================================================================
+
+    #[test]
+    fn test_assert_install_path_safe_accepts_inside_root() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let allowed_root = temp_dir.path().join("games");
+        let install_path = allowed_root.join("my-game");
+        std::fs::create_dir_all(&install_path).unwrap();
+
+        assert!(assert_install_path_safe(&install_path, &allowed_root).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_save_settings_to_disk_valid() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let settings = LauncherSettings {
+            language: "en".to_string(),
+            max_concurrent_downloads: 4,
+            ..Default::default()
+        };
+
+        save_settings_to_disk(temp_dir.path(), &settings).unwrap();
+
+        let saved = load_settings(temp_dir.path()).await.unwrap();
+        assert_eq!(saved.language, "en");
+        assert_eq!(saved.max_concurrent_downloads, 4);
+    }
+
+    #[tokio::test]
+    async fn test_save_settings_to_disk_invalid() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let settings = LauncherSettings {
+            max_concurrent_downloads: 0,
+            ..Default::default()
+        };
+
+        let result = save_settings_to_disk(temp_dir.path(), &settings);
+        assert!(result.is_err());
+        assert!(!temp_dir.path().join("settings.json").exists());
     }
 }

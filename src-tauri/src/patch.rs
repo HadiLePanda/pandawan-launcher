@@ -7,9 +7,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::ipc::Channel;
+use tokio::io::{AsyncReadExt, BufReader};
 use tokio::sync::Mutex;
 use walkdir::WalkDir;
 
@@ -73,6 +75,7 @@ impl PatchManager {
         &self,
         manifest: GameManifest,
         install_path: PathBuf,
+        app_data_dir: &Path,
         base_url: String,
         on_event: Channel<DownloadEvent>,
     ) -> Result<GameInstallation, PatchError> {
@@ -161,8 +164,12 @@ impl PatchManager {
             state.progress.downloaded_bytes = state.progress.total_bytes;
         }
 
-        // Clean up orphaned files
-        self.cleanup_orphaned_files(&manifest, &install_path)
+        // Clean up orphaned files from the previous manifest only
+        let previous_files: Option<HashSet<String>> =
+            load_installation(app_data_dir, &manifest.game_id)
+                .unwrap_or(None)
+                .map(|inst| inst.installed_files.into_keys().collect());
+        self.cleanup_orphaned_files(&manifest, &install_path, previous_files.as_ref())
             .await?;
 
         // Create installation record
@@ -233,33 +240,31 @@ impl PatchManager {
         })
     }
 
-    /// Remove files not in manifest
+    /// Remove files from the previous manifest that are no longer in the new manifest.
+    /// If no previous manifest is provided, cleanup is skipped to avoid deleting user files.
     async fn cleanup_orphaned_files(
         &self,
         manifest: &GameManifest,
         install_path: &Path,
+        previous_files: Option<&HashSet<String>>,
     ) -> Result<(), PatchError> {
+        let Some(previous_files) = previous_files else {
+            return Ok(());
+        };
+
         let manifest_paths: HashSet<String> = manifest
             .files
             .iter()
             .map(|f| f.path.replace('\\', "/"))
             .collect();
 
-        for entry in WalkDir::new(install_path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-        {
-            let relative_path = entry
-                .path()
-                .strip_prefix(install_path)
-                .map_err(|e| PatchError::Other(e.to_string()))?
-                .to_string_lossy()
-                .replace('\\', "/");
-
-            if !manifest_paths.contains(&relative_path) {
-                // File not in manifest, remove it
-                let _ = fs::remove_file(entry.path());
+        for relative_path in previous_files {
+            if manifest_paths.contains(relative_path) {
+                continue;
+            }
+            let file_path = install_path.join(relative_path);
+            if file_path.exists() {
+                let _ = fs::remove_file(&file_path);
             }
         }
 
@@ -293,22 +298,40 @@ impl PatchManager {
     }
 }
 
-/// Compute SHA256 hash of a file
+/// Compute SHA256 hash of a file using streaming reads
 pub async fn compute_file_hash(path: &Path) -> Result<String, PatchError> {
-    let bytes = fs::read(path)?;
+    let file = tokio::fs::File::open(path).await?;
+    let mut reader = BufReader::new(file);
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let result = hasher.finalize();
-    Ok(hex::encode(result))
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let n = reader.read(&mut buffer).await?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    Ok(hex::encode(hasher.finalize()))
 }
 
-/// Compute hash synchronously (for small files)
+/// Compute hash synchronously using streaming reads (for small files)
 pub fn compute_file_hash_sync(path: &Path) -> Result<String, PatchError> {
-    let bytes = fs::read(path)?;
+    let file = fs::File::open(path)?;
+    let mut reader = std::io::BufReader::new(file);
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let result = hasher.finalize();
-    Ok(hex::encode(result))
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let n = reader.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    Ok(hex::encode(hasher.finalize()))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -465,6 +488,21 @@ mod tests {
         // Async and sync should produce same result
         let hash_sync = compute_file_hash_sync(&file_path).unwrap();
         assert_eq!(hash, hash_sync);
+    }
+
+    #[tokio::test]
+    async fn test_compute_file_hash_matches_sync_on_large_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("large.bin");
+
+        let content: Vec<u8> = (0..4_000_000).map(|i| (i % 256) as u8).collect();
+        fs::write(&file_path, &content).unwrap();
+
+        let sync_hash = compute_file_hash_sync(&file_path).unwrap();
+        let async_hash = compute_file_hash(&file_path).await.unwrap();
+
+        assert_eq!(async_hash, sync_hash);
+        assert_eq!(async_hash.len(), 64);
     }
 
     #[test]
@@ -964,6 +1002,71 @@ mod tests {
         assert_eq!(result.valid_files, 0);
         assert!(result.invalid_files.is_empty());
         assert!(result.missing_files.is_empty());
+    }
+
+    // =========================================================================
+    // Orphan Cleanup Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_cleanup_orphaned_files_removes_obsolete_previous_files() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path().join("install");
+        fs::create_dir_all(&install_path).unwrap();
+
+        fs::write(install_path.join("old.dat"), "old").unwrap();
+        fs::write(install_path.join("keep.dat"), "keep").unwrap();
+
+        let mut previous_files = HashSet::new();
+        previous_files.insert("old.dat".to_string());
+        previous_files.insert("keep.dat".to_string());
+
+        let manifest = GameManifest {
+            game_id: "test-game".to_string(),
+            name: "Test Game".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 1,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![FileEntry {
+                path: "keep.dat".to_string(),
+                hash: "abc".repeat(16),
+                size: 4,
+                url: "keep.dat".to_string(),
+                compress: None,
+            }],
+            launch_args: None,
+        };
+
+        let manager = PatchManager::new(4, None);
+        manager
+            .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
+            .await
+            .unwrap();
+
+        assert!(!install_path.join("old.dat").exists());
+        assert!(install_path.join("keep.dat").exists());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_orphaned_files_preserves_user_files_when_no_previous_manifest() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path().join("install");
+        let saves_dir = install_path.join("saves");
+        fs::create_dir_all(&saves_dir).unwrap();
+        fs::write(saves_dir.join("save.sav"), "player data").unwrap();
+
+        let manifest = create_test_manifest();
+
+        let manager = PatchManager::new(4, None);
+        manager
+            .cleanup_orphaned_files(&manifest, &install_path, None)
+            .await
+            .unwrap();
+
+        assert!(saves_dir.join("save.sav").exists());
     }
 
     // =========================================================================
