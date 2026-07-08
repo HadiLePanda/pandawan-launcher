@@ -33,7 +33,11 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/**", "$HOME/**", "$DOCUMENT/**"]
+        "scope": [
+          "$APPDATA/**",
+          "$HOME/**",
+          "$DOCUMENT/**"
+        ]
       }
     }
   },
@@ -53,9 +57,11 @@
   "plugins": {
     "updater": {
       "active": true,
-      "endpoints": ["https://cdn.pandawancorp.com/launcher/updates.json"],
+      "endpoints": [
+        "https://cdn.pandawancorp.com/launcher/updates.json"
+      ],
       "dialog": false,
-      "pubkey": "RWTtyP5/VQ8lp0eyYnFFHvEygKJ9ubtD7/mCtAERux7dtArUOoGJCpuW"
+      "pubkey": "RWSpfT+VpDg5/sNlqqONxCQr4S3S5PHNziQojsWtIoOaAFyycyuHAeTS"
     }
   }
 }
