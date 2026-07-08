@@ -180,14 +180,22 @@ The launcher exposes these commands to the frontend:
 
 ## Self-Updates
 
-The launcher uses Tauri's built-in updater. Before shipping a release you must:
+The launcher uses Tauri's built-in updater. `src-tauri/updater.pub` is the single source of truth for the public key; `src-tauri/tauri.conf.json` is kept in sync automatically.
+
+Before shipping a release you must:
 
 1. Generate a minisign keypair:
    ```bash
    # Install minisign (https://jedisct1.github.io/minisign/)
-   minisign -G -s updater.key -p updater.pub
+   minisign -G -W -s updater.key -p src-tauri/updater.pub
    ```
-2. Replace `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` with the base64 content of `updater.pub`.
+   - Keep `updater.key` secret (store it as a CI secret, never commit it).
+   - `src-tauri/updater.pub` can be committed.
+2. Sync the public key into Tauri's config:
+   ```bash
+   npm run sync:updater-key
+   ```
+   This is also run automatically by `npm run tauri:dev` and `npm run tauri:build`.
 3. Sign your update bundles and host the resulting `.sig` files alongside the update manifest.
 4. Keep `updater.key` secret — store it in a CI secret, never commit it.
 

@@ -108,4 +108,5 @@ Available commands are defined in `src-tauri/src/lib.rs`:
 - Settings persist to JSON in app data directory
 - Games are expected to have `-launcher` arg passed
 - The CDN origin is controlled by `VITE_CDN_ORIGIN` (default: `https://cdn.pandawancorp.com`)
-- Tauri auto-updater requires a real minisign public key in `src-tauri/tauri.conf.json`; the placeholder value must be replaced before release
+- Tauri auto-updater uses `src-tauri/updater.pub` as the public key source of truth; run `npm run sync:updater-key` (or `tauri:dev`/`tauri:build`) to sync it into `tauri.conf.json`
+- Keep the minisign secret key out of the repo and treat it as a CI secret
