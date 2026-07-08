@@ -45,9 +45,9 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/icon.icns",
       "icons/icon.png",
-      "icons/icon.ico",
-      "icons/icon.svg"
+      "icons/icon.ico"
     ],
     "windows": {
       "certificateThumbprint": null,
