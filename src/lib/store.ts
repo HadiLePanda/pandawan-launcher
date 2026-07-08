@@ -101,7 +101,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       await gameService.saveSettings(settings);
       set({ settings, error: null });
     } catch (err) {
-      set({ error: String(err) });
+      handleStoreError(err, set, 'setSettings');
     }
   },
 
@@ -111,7 +111,8 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       const settings = await gameService.loadSettings();
       set({ settings, isLoading: false });
     } catch (err) {
-      set({ error: String(err), isLoading: false });
+      handleStoreError(err, set, 'loadSettings');
+      set({ isLoading: false });
     }
   },
 
@@ -127,7 +128,8 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       }));
       set({ games: gamesState, isLoading: false });
     } catch (err) {
-      set({ error: String(err), isLoading: false });
+      handleStoreError(err, set, 'loadCatalog');
+      set({ isLoading: false });
     }
   },
 
@@ -146,7 +148,8 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       const installations = await gameService.loadInstalledGames();
       set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
     } catch (err) {
-      set({ error: String(err), isLoading: false });
+      handleStoreError(err, set, 'loadGames');
+      set({ isLoading: false });
     }
   },
 
@@ -166,7 +169,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       setTimeout(() => updateGameStatus(gameId, 'installed'), 5000);
     } catch (err) {
       updateGameStatus(gameId, 'installed');
-      set({ error: String(err) });
+      handleStoreError(err, set, 'launchGame');
     }
   },
 
@@ -176,7 +179,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       await gameService.uninstallGame(gameId);
       updateGameStatus(gameId, 'not_installed', undefined);
     } catch (err) {
-      set({ error: String(err) });
+      handleStoreError(err, set, 'uninstallGame');
     }
   },
 
@@ -190,7 +193,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       }));
       return hasUpdate;
     } catch (err) {
-      set({ error: String(err) });
+      handleStoreError(err, set, 'checkForUpdates');
       return false;
     }
   },
@@ -199,12 +202,19 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       await gameService.cancelOperation();
     } catch (err) {
-      set({ error: String(err) });
+      handleStoreError(err, set, 'cancelOperation');
     }
   },
 }));
 
 // Private helpers
+
+function handleStoreError(error: unknown, set: ((partial: Partial<LauncherState>) => void) | ((fn: (state: LauncherState) => Partial<LauncherState>) => void), context: string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error(`Store action failed: ${context}`, { error: message });
+  (set as (partial: Partial<LauncherState>) => void)({ error: message });
+  return message;
+}
 
 function mergeInstallations(games: Game[], installations: GameInstallation[]): Game[] {
   const gamesWithInstalls = games.map((game) => {
@@ -272,6 +282,6 @@ async function runPatchFlow(
   } catch (err) {
     const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
     updateGameStatus(gameId, fallbackStatus);
-    set((state) => ({ ...state, error: String(err) }));
+    handleStoreError(err, set, `runPatchFlow:${activeStatus}`);
   }
 }
