@@ -82,7 +82,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    'w-full flex items-center gap-3 px-3 py-[10px] rounded-lg text-sm font-medium transition-colors',
                     activeTab === tab.id
                       ? 'bg-action text-white'
                       : 'text-ink-muted hover:text-ink hover:bg-surface-light'
@@ -174,12 +174,12 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         description="Where your games are installed"
       >
         <div className="flex gap-3">
-          <div className="flex-1 px-4 py-2.5 rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap bg-transparent">
+          <div className="flex-1 px-4 py-[10px] rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap bg-transparent">
             {settings.gamesInstallPath || 'Default (PandawanGames)'}
           </div>
           <button
             onClick={handleBrowse}
-            className="px-4 py-2.5 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-[10px] bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors"
           >
             Browse
           </button>
@@ -434,8 +434,8 @@ function ToggleSetting({ title, description, checked, onChange }: ToggleSettingP
       >
         <div
           className={cn(
-            'w-5 h-5 rounded-full toggle-thumb shadow-md transition-transform absolute top-0.5',
-            checked ? 'translate-x-5' : 'translate-x-0.5'
+            'w-5 h-5 rounded-full toggle-thumb shadow-md transition-transform absolute top-[2px]',
+            checked ? 'translate-x-5' : 'translate-x-[2px]'
           )}
         />
       </button>
