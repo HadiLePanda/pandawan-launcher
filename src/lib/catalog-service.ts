@@ -5,7 +5,7 @@ import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
 import { logger } from './logger';
 
 /** Remote catalog endpoint. Lists game IDs + channels; no per-version URLs. */
-const CATALOG_URL = CdnUrl.news().replace('/news.json', '/catalog.json');
+const CATALOG_URL = CdnUrl.catalog();
 
 const CATALOG_OVERRIDE_FILE_NAME = 'catalog.override.json';
 

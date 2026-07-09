@@ -19,6 +19,9 @@ function detectOrigin(): string {
     const env = meta.env ?? {};
     const envOrigin = env.VITE_CDN_ORIGIN as string | undefined;
     if (envOrigin) return envOrigin;
+    // In dev, default to the local example server so the launcher works out of
+    // the box even if .env.development is missing or not loaded.
+    if (env.DEV) return 'http://localhost:8765';
   } catch {
     // import.meta may not be available in all build contexts; fall through.
   }
@@ -28,6 +31,10 @@ function detectOrigin(): string {
 export const CDN_ORIGIN: string = detectOrigin();
 
 export const CdnUrl = {
+  catalog(): string {
+    return `${CDN_ORIGIN}/launcher/catalog.json`;
+  },
+
   gamesPath(id: string, channel: string = 'stable'): string {
     return `${CDN_ORIGIN}/games/${id}/${channel}`;
   },
