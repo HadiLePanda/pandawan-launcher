@@ -91,11 +91,11 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
           <div>
             {selectedGame && (
               <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-[6px] text-ink-muted">
+                <span className="flex items-center gap-2 text-ink-muted">
                   <HardDrive className="w-4 h-4" />
                   {formatBytes(selectedGame.sizeBytes)}
                 </span>
-                <span className="flex items-center gap-[6px] text-ink-muted">
+                <span className="flex items-center gap-2 text-ink-muted">
                   <Globe className="w-4 h-4" />
                   {selectedGame.developer}
                 </span>
@@ -105,7 +105,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-[10px] rounded-lg text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+              className="px-6 py-3 rounded-lg text-sm font-medium text-ink-muted hover:text-ink transition-colors"
             >
               Cancel
             </button>
@@ -113,7 +113,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               onClick={() => selectedGame && onInstall(selectedGame.id)}
               disabled={!selectedGame}
               className={cn(
-                'flex items-center gap-2 px-6 py-[10px] rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors',
                 selectedGame
                   ? 'bg-action hover:bg-action-hover text-white'
                   : 'bg-surface-light text-ink-muted cursor-not-allowed'

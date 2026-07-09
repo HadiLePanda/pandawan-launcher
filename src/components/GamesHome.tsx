@@ -47,7 +47,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
       <div>
         <h3 className="font-semibold truncate">{game.info.name}</h3>
         <div className="flex items-center justify-between mt-2">
-          <span className={cn('text-xs px-2 py-[2px] rounded-full', isInstalled ? 'bg-action/10 text-action border border-action/20' : 'bg-surface/50 text-ink-muted border border-border')}>
+          <span className={cn('text-xs px-2 py-1 rounded-full', isInstalled ? 'bg-action/10 text-action border border-action/20' : 'bg-surface/50 text-ink-muted border border-border')}>
             {isInstalled ? 'Installed' : 'Not Installed'}
           </span>
           <span className="text-xs text-ink-muted">{formatBytes(game.info.sizeBytes)}</span>

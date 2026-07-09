@@ -26,7 +26,7 @@ function ConnectionBanner({
         onClick={onRetry}
         className="flex items-center gap-1 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
       >
-        <RefreshCw className="w-[14px] h-[14px]" />
+        <RefreshCw className="w-4 h-4" />
         Retry
       </button>
     </div>

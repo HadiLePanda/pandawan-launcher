@@ -43,25 +43,25 @@ export function WindowControls() {
     <div className="flex items-center no-drag">
       <button
         onClick={handleMinimize}
-        className="p-[10px] text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
+        className="p-3 text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
         aria-label="Minimize"
       >
         <Minus className="w-4 h-4" />
       </button>
       <button
         onClick={handleMaximize}
-        className="p-[10px] text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
+        className="p-3 text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
         aria-label={isMaximized ? "Restore" : "Maximize"}
       >
         {isMaximized ? (
-          <Copy className="w-[14px] h-[14px]" />
+          <Copy className="w-4 h-4" />
         ) : (
-          <Square className="w-[14px] h-[14px]" />
+          <Square className="w-4 h-4" />
         )}
       </button>
       <button
         onClick={handleClose}
-        className="p-[10px] text-ink-muted hover:text-white hover:bg-status-error transition-colors"
+        className="p-3 text-ink-muted hover:text-white hover:bg-status-error transition-colors"
         aria-label="Close"
       >
         <X className="w-4 h-4" />

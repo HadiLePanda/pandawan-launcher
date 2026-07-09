@@ -30,7 +30,7 @@ export function News() {
                           {item.category}
                         </span>
                       )}
-                      <span className="flex items-center gap-[6px] text-sm text-ink-muted">
+                      <span className="flex items-center gap-2 text-sm text-ink-muted">
                         <Calendar className="w-4 h-4" />
                         {new Date(item.date).toLocaleDateString()}
                       </span>

@@ -84,7 +84,7 @@ export function AppTopBar({
         <div className="flex items-center gap-1 no-drag">
           <button
             onClick={handleThemeToggle}
-            className="p-[10px] rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+            className="p-3 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
             title={`Theme: ${themeTitle}`}
             aria-label={`Theme: ${themeTitle}`}
           >
@@ -92,13 +92,13 @@ export function AppTopBar({
           </button>
           <button
             onClick={onSettingsClick}
-            className="p-[10px] rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+            className="p-3 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-[18px] h-[18px]" />
           </button>
           <button
-            className="p-[10px] rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
+            className="p-3 rounded-lg text-ink-muted hover:text-ink hover:bg-surface/60 transition-colors"
             aria-label="Notifications"
           >
             <Bell className="w-[18px] h-[18px]" />
@@ -115,7 +115,7 @@ export function AppTopBar({
 
       {/* Row 2: All games icon + per-game icons */}
       <div className="h-14 flex items-center gap-3 no-drag mb-3">
-        <div className="h-full flex items-center game-icons-panel rounded-xl border border-border px-2 py-[6px]">
+        <div className="h-full flex items-center game-icons-panel rounded-xl border border-border px-2 py-2">
           <button
             onClick={() => onSelectGameIcon(null)}
             className={cn(
@@ -132,7 +132,7 @@ export function AppTopBar({
           {isAllSelected && <SelectedPip />}
         </div>
 
-        <div className="flex-1 min-w-0 h-full flex items-center gap-2 overflow-x-auto no-scrollbar game-icons-panel rounded-xl border border-border px-2 py-[6px]">
+        <div className="flex-1 min-w-0 h-full flex items-center gap-2 overflow-x-auto no-scrollbar game-icons-panel rounded-xl border border-border px-2 py-2">
           {games.map((game) => (
             <GameIcon
               key={game.info.id}
@@ -171,10 +171,10 @@ function GameIcon({
         <img
           src={game.info.iconUrl}
           alt={game.info.name}
-          className={cn('w-full h-full object-cover transition-opacity', isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-[0.85]')}
+          className={cn('w-full h-full object-cover transition-opacity', isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-85')}
         />
       ) : (
-        <Gamepad2 className={cn('w-5 h-5 transition-opacity', isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-[0.85]')} />
+        <Gamepad2 className={cn('w-5 h-5 transition-opacity', isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-85')} />
       )}
       {isSelected && <SelectedPip />}
     </button>
@@ -183,7 +183,7 @@ function GameIcon({
 
 function SelectedPip() {
   return (
-    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-[6px] rounded-full bg-action shadow-[0_0_10px_rgba(40,185,104,0.75)]" />
+    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-2 rounded-full bg-action shadow-[0_0_10px_rgba(40,185,104,0.75)]" />
   );
 }
 

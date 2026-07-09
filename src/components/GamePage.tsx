@@ -59,15 +59,15 @@ export function GamePage({
                   className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors"
                   title="Cancel"
                 >
-                  <X className="w-[14px] h-[14px]" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           </div>
-          <div className="h-[6px] bg-surface rounded-full overflow-hidden">
+          <div className="h-2 bg-surface rounded-full overflow-hidden">
             <div className="h-full bg-action" style={{ width: `${downloadProgress?.overallProgress || downloadProgress?.progress || 0}%` }} />
           </div>
-          <div className="flex justify-between text-[10px] text-ink-muted mt-[6px]">
+          <div className="flex justify-between text-[10px] text-ink-muted mt-2">
             <span>{downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files</span>
             <span>{downloadProgress?.speed}</span>
           </div>
@@ -160,7 +160,7 @@ export function GamePage({
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {primaryAction()}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-ink-muted">
-              <span className="flex items-center gap-[6px]">
+              <span className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4" />
                 {formatBytes(game.info.sizeBytes)}
               </span>
@@ -209,7 +209,7 @@ function VersionLabel({
 
   return (
     <span className="font-medium tabular-nums">
-      Installed v{installed} <ChevronRight className="inline w-[14px] h-[14px] mx-[2px] text-action" /> Latest v{latest}
+      Installed v{installed} <ChevronRight className="inline w-4 h-4 mx-1 text-action" /> Latest v{latest}
     </span>
   );
 }
@@ -228,7 +228,7 @@ function PatchNotesSection({ patchNotes }: { patchNotes?: PatchNote[] }) {
       <ul className="space-y-2">
         {latest.notes.slice(0, 5).map((note, index) => (
           <li key={index} className="flex gap-2 text-sm text-ink/80">
-            <span className="text-action mt-[6px]">•</span>
+            <span className="text-action mt-2">•</span>
             <span>{note}</span>
           </li>
         ))}
