@@ -57,7 +57,7 @@ export function AppTopBar({
         <div className="cluster cluster-md">
           <div className="app-logo">P</div>
 
-          <nav className="cluster cluster-2xs no-drag">
+          <nav className="cluster cluster-xs no-drag">
             {navItems.map((item) => {
               const isActive = activeView === item.id;
               return (

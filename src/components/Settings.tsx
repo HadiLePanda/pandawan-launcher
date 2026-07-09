@@ -80,7 +80,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                     activeTab === tab.id && 'modal-nav-item-active'
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="modal-nav-icon" />
                   {tab.label}
                 </button>
               );

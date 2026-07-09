@@ -12,7 +12,7 @@ export function GameIconsBar({ games, selectedGameId, onSelectGameIcon }: GameIc
   const isAllSelected = selectedGameId === null;
 
   return (
-    <div className="p-6 shrink-0">
+    <div className="p-5 shrink-0">
       <div className="games-navbar-panel no-drag">
         <button
           onClick={() => onSelectGameIcon(null)}

@@ -1099,7 +1099,7 @@ input[type="search"]::placeholder {
 }
 
 .nav-link {
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 1rem;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1114,6 +1114,10 @@ input[type="search"]::placeholder {
 
 .nav-link:hover {
   color: var(--ink-default);
+}
+
+.light .nav-link:hover {
+  background: var(--canvas-elevated);
 }
 
 .nav-link-active {
@@ -1260,7 +1264,7 @@ input[type="search"]::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem;
+  padding: 1.5rem;
   background: color-mix(in oklab, var(--canvas-default) 70%, transparent);
 }
 
@@ -1296,7 +1300,7 @@ input[type="search"]::placeholder {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0.75rem;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1306,6 +1310,12 @@ input[type="search"]::placeholder {
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
+}
+
+.modal-nav-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
 }
 
 .modal-nav-item:hover {
