@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Folder, Download, Bell, Globe, HardDrive, Shield, SunMoon } from 'lucide-react';
+import { X, Folder, Download, Bell, Globe, HardDrive, Info, SunMoon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
@@ -17,7 +17,7 @@ const tabs = [
   { id: 'general' as SettingsTab, label: 'General', icon: HardDrive },
   { id: 'downloads' as SettingsTab, label: 'Downloads', icon: Download },
   { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
-  { id: 'about' as SettingsTab, label: 'About', icon: Shield },
+  { id: 'about' as SettingsTab, label: 'About', icon: Info },
 ];
 
 const DEFAULT_SETTINGS: LauncherSettings = {
@@ -62,19 +62,13 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-canvas/70"
-        onClick={onClose}
-      />
+    <div className="modal-overlay">
+      <div className="absolute inset-0" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-3xl h-[600px] bg-canvas border border-border rounded-2xl shadow-2xl flex overflow-hidden animate-slide-up">
-        {/* Sidebar */}
-        <div className="w-56 border-r border-border p-4 bg-canvas-light">
-          <h2 className="text-lg font-semibold px-3 mb-6">Settings</h2>
-          <nav className="space-y-1">
+      <div className="modal animate-slide-up">
+        <div className="modal-sidebar">
+          <h2 className="modal-title">Settings</h2>
+          <nav className="stack-sm">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -82,10 +76,8 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
-                    activeTab === tab.id
-                      ? 'bg-action text-white'
-                      : 'text-ink-muted hover:text-ink hover:bg-surface-light'
+                    'modal-nav-item',
+                    activeTab === tab.id && 'modal-nav-item-active'
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -96,23 +88,17 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
           </nav>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border">
-            <h3 className="text-xl font-semibold">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="modal-header">
+            <h3 className="title-3">
               {tabs.find((t) => t.id === activeTab)?.label}
             </h3>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
-            >
+            <button onClick={onClose} className="icon-btn">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-auto p-6">
+          <div className="modal-body">
             {(error || saveError) && (
               <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                 {error || saveError}
@@ -128,18 +114,11 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             {activeTab === 'about' && <AboutSettings />}
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-border flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-ink-muted hover:text-ink transition-colors"
-            >
+          <div className="modal-footer">
+            <button onClick={onClose} className="btn btn-ghost">
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              className="px-6 py-2 rounded-lg text-sm font-medium bg-action hover:bg-action-hover text-white transition-colors"
-            >
+            <button onClick={handleSave} className="btn btn-primary">
               Save Changes
             </button>
           </div>
@@ -167,34 +146,27 @@ function GeneralSettings({ settings, onChange }: TabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="setting-group">
       <SettingItem
         icon={Folder}
         title="Game Install Location"
         description="Where your games are installed"
       >
-        <div className="flex gap-3">
-          <div className="flex-1 px-4 py-3 rounded-lg text-sm text-ink border border-border overflow-x-auto whitespace-nowrap bg-transparent">
+        <div className="cluster cluster-md">
+          <div className="install-path-box">
             {settings.gamesInstallPath || 'Default (PandawanGames)'}
           </div>
-          <button
-            onClick={handleBrowse}
-            className="px-4 py-3 bg-surface-light hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors"
-          >
+          <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
             Browse
           </button>
         </div>
       </SettingItem>
 
-      <SettingItem
-        icon={Globe}
-        title="Language"
-        description="Interface language"
-      >
+      <SettingItem icon={Globe} title="Language" description="Interface language">
         <select
           value={settings.language}
           onChange={(e) => onChange({ language: e.target.value })}
-          className="w-full rounded-lg text-sm text-ink"
+          className="w-full"
         >
           <option value="en">English</option>
           <option value="fr">French</option>
@@ -203,15 +175,11 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         </select>
       </SettingItem>
 
-      <SettingItem
-        icon={SunMoon}
-        title="Theme"
-        description="Launcher appearance theme"
-      >
+      <SettingItem icon={SunMoon} title="Theme" description="Launcher appearance theme">
         <select
           value={settings.theme}
           onChange={(e) => onChange({ theme: e.target.value })}
-          className="w-full rounded-lg text-sm text-ink"
+          className="w-full"
         >
           <option value="adaptive">Adaptive (System)</option>
           <option value="dark">Dark</option>
@@ -219,7 +187,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         </select>
       </SettingItem>
 
-      <div className="h-px bg-border" />
+      <hr className="border-border" />
 
       <ToggleSetting
         title="Minimize to tray"
@@ -238,7 +206,6 @@ function GeneralSettings({ settings, onChange }: TabProps) {
 }
 
 function DownloadSettings({ settings, onChange }: TabProps) {
-  // Map speed options
   const speedOptions = [
     { value: 'unlimited', label: 'Unlimited' },
     { value: '1000000', label: '1 MB/s' },
@@ -259,7 +226,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="setting-group">
       <SettingItem
         icon={Download}
         title="Download Speed Limit"
@@ -268,7 +235,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         <select
           value={currentSpeedValue}
           onChange={(e) => handleSpeedChange(e.target.value)}
-          className="w-full rounded-lg text-sm text-ink"
+          className="w-full"
         >
           {speedOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -283,7 +250,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         title="Concurrent Downloads"
         description="Number of files to download simultaneously"
       >
-        <div className="flex items-center gap-3">
+        <div className="cluster cluster-md">
           {[1, 2, 4, 6, 8].map((n) => (
             <button
               key={n}
@@ -301,7 +268,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         </div>
       </SettingItem>
 
-      <div className="h-px bg-border" />
+      <hr className="border-border" />
 
       <ToggleSetting
         title="Auto-update games"
@@ -320,14 +287,13 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 }
 
 function NotificationSettings() {
-  // Purely visual notification settings
   const [gamesUpdate, setGamesUpdate] = useState(true);
   const [downloadComplete, setDownloadComplete] = useState(true);
   const [friendActivity, setFriendActivity] = useState(false);
   const [newsEvents, setNewsEvents] = useState(true);
 
   return (
-    <div className="space-y-6">
+    <div className="setting-group">
       <ToggleSetting
         title="Game updates available"
         description="Notify when game updates are available"
@@ -358,28 +324,28 @@ function NotificationSettings() {
 
 function AboutSettings() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 p-4 rounded-xl border border-border bg-transparent">
+    <div className="setting-group">
+      <div className="cluster cluster-md p-5 rounded-xl">
         <div className="w-16 h-16 rounded-xl bg-action flex items-center justify-center">
           <span className="text-2xl font-bold text-white">P</span>
         </div>
         <div>
-          <h4 className="font-semibold text-lg">Pandawan Launcher</h4>
-          <p className="text-sm text-ink-muted">Version 0.1.0</p>
+          <h4 className="title-3">Pandawan Launcher</h4>
+          <p className="caption">Version 0.1.0</p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between py-2">
-          <span className="text-ink-muted">Developer</span>
+      <div className="stack-md">
+        <div className="flex justify-between py-3">
+          <span className="body">Developer</span>
           <span>Pandawan Corp</span>
         </div>
-        <div className="flex justify-between py-2">
-          <span className="text-ink-muted">License</span>
+        <div className="flex justify-between py-3">
+          <span className="body">License</span>
           <span>MIT License</span>
         </div>
-        <div className="flex justify-between py-2">
-          <span className="text-ink-muted">Tauri Version</span>
+        <div className="flex justify-between py-3">
+          <span className="body">Tauri Version</span>
           <span>2.0.0</span>
         </div>
       </div>
@@ -392,21 +358,22 @@ interface SettingItemProps {
   title: string;
   description: string;
   children: React.ReactNode;
+  controlClassName?: string;
 }
 
-function SettingItem({ icon: Icon, title, description, children }: SettingItemProps) {
+function SettingItem({ icon: Icon, title, description, children, controlClassName = 'setting-control' }: SettingItemProps) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-surface-light flex items-center justify-center flex-shrink-0">
-          <Icon className="w-4 h-4 text-ink-muted" />
+    <div className="setting-item">
+      <div className="setting-header">
+        <div className="setting-icon">
+          <Icon className="w-4 h-4" />
         </div>
         <div>
-          <h4 className="font-medium text-ink">{title}</h4>
-          <p className="text-sm text-ink-muted">{description}</p>
+          <h4 className="setting-title">{title}</h4>
+          <p className="setting-desc">{description}</p>
         </div>
       </div>
-      <div className="pl-11">{children}</div>
+      <div className={controlClassName}>{children}</div>
     </div>
   );
 }
@@ -420,24 +387,17 @@ interface ToggleSettingProps {
 
 function ToggleSetting({ title, description, checked, onChange }: ToggleSettingProps) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="toggle-row">
       <div>
-        <h4 className="font-medium text-ink">{title}</h4>
-        <p className="text-sm text-ink-muted">{description}</p>
+        <h4 className="setting-title">{title}</h4>
+        <p className="setting-desc">{description}</p>
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={cn(
-          'w-11 h-6 rounded-full transition-colors relative',
-          checked ? 'toggle-track-active' : 'toggle-track'
-        )}
+        className={cn('toggle', checked && 'toggle-active')}
+        aria-pressed={checked}
       >
-        <div
-          className={cn(
-            'w-5 h-5 rounded-full toggle-thumb shadow-md transition-transform absolute top-1',
-            checked ? 'translate-x-5' : 'translate-x-1'
-          )}
-        />
+        <span className="toggle-thumb" />
       </button>
     </div>
   );

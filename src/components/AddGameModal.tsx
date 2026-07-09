@@ -21,32 +21,20 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-canvas/70"
-        onClick={onClose}
-      />
+    <div className="modal-overlay">
+      <div className="absolute inset-0" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-4xl h-[700px] bg-canvas border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+      <div className="modal animate-slide-up max-w-4xl h-[700px] flex-col">
+        <div className="modal-header">
           <div>
-            <h2 className="text-2xl font-bold">Install a Game</h2>
-            <p className="text-sm text-ink-muted mt-1">
-              Select a game to install from your library
-            </p>
+            <h2 className="title-2">Install a Game</h2>
+            <p className="caption mt-1">Select a game to install from your library</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-light transition-colors"
-          >
+          <button onClick={onClose} className="icon-btn">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Search */}
         <div className="p-6 pb-0">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
@@ -55,15 +43,14 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               placeholder="Search games..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-border focus:outline-none focus:border-accent text-ink placeholder:text-ink-dim bg-transparent"
+              className="w-full pl-12 pr-4 py-3 rounded-xl"
             />
           </div>
         </div>
 
-        {/* Game Grid */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="modal-body">
           {filteredGames.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="game-list-grid">
               {filteredGames.map((game) => (
                 <GameCard
                   key={game.id}
@@ -74,49 +61,41 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               ))}
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-surface-light flex items-center justify-center mb-4">
+            <div className="empty-state">
+              <div className="empty-state-icon">
                 <Search className="w-8 h-8 text-ink-dim" />
               </div>
-              <h3 className="font-semibold mb-2">No games found</h3>
-              <p className="text-sm text-ink-muted">
-                Try a different search term
-              </p>
+              <h3 className="empty-state-title">No games found</h3>
+              <p className="empty-state-desc">Try a different search term</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-border flex items-center justify-between">
+        <div className="modal-footer justify-between">
           <div>
             {selectedGame && (
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-2 text-ink-muted">
+              <div className="cluster cluster-md text-sm body">
+                <span className="cluster cluster-sm">
                   <HardDrive className="w-4 h-4" />
                   {formatBytes(selectedGame.sizeBytes)}
                 </span>
-                <span className="flex items-center gap-2 text-ink-muted">
+                <span className="cluster cluster-sm">
                   <Globe className="w-4 h-4" />
                   {selectedGame.developer}
                 </span>
               </div>
             )}
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-6 py-3 rounded-lg text-sm font-medium text-ink-muted hover:text-ink transition-colors"
-            >
+          <div className="cluster cluster-md">
+            <button onClick={onClose} className="btn btn-ghost">
               Cancel
             </button>
             <button
               onClick={() => selectedGame && onInstall(selectedGame.id)}
               disabled={!selectedGame}
               className={cn(
-                'flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors',
-                selectedGame
-                  ? 'bg-action hover:bg-action-hover text-white'
-                  : 'bg-surface-light text-ink-muted cursor-not-allowed'
+                'btn',
+                selectedGame ? 'btn-primary' : 'btn-secondary cursor-not-allowed'
               )}
             >
               <Download className="w-4 h-4" />
@@ -139,21 +118,11 @@ function GameCard({ game, isSelected, onClick }: GameCardProps) {
   return (
     <button
       onClick={onClick}
-      className={cn(
-        'flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
-        isSelected
-          ? 'bg-accent-muted border-accent'
-          : 'bg-transparent border-border hover:border-ink-muted'
-      )}
+      className={cn('game-list-item', isSelected && 'game-list-item-selected')}
     >
-      {/* Icon */}
-      <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface flex-shrink-0">
+      <div className="game-list-icon">
         {game.iconUrl ? (
-          <img
-            src={game.iconUrl}
-            alt={game.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={game.iconUrl} alt={game.name} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-surface-light to-surface flex items-center justify-center">
             <span className="text-xl font-bold text-ink-muted">
@@ -163,13 +132,12 @@ function GameCard({ game, isSelected, onClick }: GameCardProps) {
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold truncate">{game.name}</h3>
-        <p className="text-sm text-ink-muted truncate">{game.developer}</p>
-        <div className="flex items-center gap-3 mt-2 text-xs text-ink-dim">
+      <div className="game-list-info">
+        <h3 className="game-list-title">{game.name}</h3>
+        <p className="game-list-subtitle">{game.developer}</p>
+        <div className="game-list-meta">
           <span>{formatBytes(game.sizeBytes)}</span>
-          <span className="w-1 h-1 rounded-full bg-ink-dim" />
+          <span className="game-list-meta-dot" />
           <span>v{game.version}</span>
         </div>
       </div>

@@ -10,22 +10,16 @@ import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import { ServerOff, RefreshCw } from 'lucide-react';
+import { EmptyState } from '@components/EmptyState';
 
-function ConnectionBanner({
-  onRetry,
-}: {
-  onRetry: () => void;
-}) {
+function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2">
+    <div className="banner">
+      <div className="banner-text">
         <ServerOff className="w-4 h-4" />
         <span>Catalog server is unreachable. Showing bundled games; install and launch require a live server.</span>
       </div>
-      <button
-        onClick={onRetry}
-        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
-      >
+      <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember">
         <RefreshCw className="w-4 h-4" />
         Retry
       </button>
@@ -69,7 +63,6 @@ function App() {
     init();
   }, []);
 
-  // Apply theme class when setting changes
   useEffect(() => {
     if (!settings) return;
     const root = window.document.documentElement;
@@ -142,15 +135,21 @@ function App() {
     }
     if (activeView === 'store') {
       return (
-        <div className="h-full flex flex-col items-center justify-center text-center p-8">
-          <h2 className="text-xl font-semibold mb-2">Store Coming Soon</h2>
-          <p className="text-ink-muted">Browse and install new Pandawan games here.</p>
+        <div className="flex-1 flex flex-col justify-center">
+          <EmptyState
+            title="Store Coming Soon"
+            description="Browse and install new Pandawan games here."
+          />
         </div>
       );
     }
 
     return (
-      <GamesPage games={games}>
+      <GamesPage
+        games={games}
+        selectedGameId={selectedGameId}
+        onSelectGameIcon={handleSelectGameIcon}
+      >
         {selectedGame ? (
           <GamePage
             game={selectedGame}
@@ -170,13 +169,11 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
       <TitleBar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppTopBar
           activeView={activeView}
-          selectedGameId={selectedGameId}
-          games={games}
           onGamesClick={() => {
             setActiveView('games');
             setSelectedGameId(lastSelectedGameId);
@@ -191,7 +188,6 @@ function App() {
           }}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onPlayerClick={() => {}}
-          onSelectGameIcon={handleSelectGameIcon}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
         />
 
@@ -199,20 +195,15 @@ function App() {
           <ConnectionBanner onRetry={() => loadCatalog()} />
         )}
 
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
-        </div>
+        <div className="flex-1 overflow-hidden flex flex-col">{renderContent()}</div>
       </div>
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {error && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shadow-lg">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 text-sm">{error}</div>
-            <button
-              onClick={clearError}
-              className="text-xs hover:text-red-300 transition-colors"
-            >
+        <div className="toast">
+          <div className="toast-content">
+            <div className="toast-message">{error}</div>
+            <button onClick={clearError} className="toast-dismiss">
               Dismiss
             </button>
           </div>

@@ -49,25 +49,29 @@ export function GamePage({
     if (isDownloading) {
       return (
         <div className="w-full max-w-xs">
-          <div className="flex items-center justify-between text-xs mb-2">
-            <span className="text-ink-muted">{game.status === 'updating' ? 'Updating' : 'Installing'}</span>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between text-xs mb-3">
+            <span className="caption">{game.status === 'updating' ? 'Updating' : 'Installing'}</span>
+            <div className="cluster cluster-sm">
               <span className="font-semibold">{Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0)}%</span>
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors"
+                  className="icon-btn"
                   title="Cancel"
+                  aria-label="Cancel"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           </div>
-          <div className="h-2 bg-surface rounded-full overflow-hidden">
-            <div className="h-full bg-action" style={{ width: `${downloadProgress?.overallProgress || downloadProgress?.progress || 0}%` }} />
+          <div className="progress">
+            <div
+              className="progress-bar"
+              style={{ width: `${downloadProgress?.overallProgress || downloadProgress?.progress || 0}%` }}
+            />
           </div>
-          <div className="flex justify-between text-[10px] text-ink-muted mt-2">
+          <div className="progress-meta">
             <span>{downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files</span>
             <span>{downloadProgress?.speed}</span>
           </div>
@@ -78,10 +82,7 @@ export function GamePage({
     if (isInstalled) {
       if (hasUpdate) {
         return (
-          <button
-            onClick={onUpdate}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-action hover:bg-action-hover text-white rounded-lg font-semibold transition-colors"
-          >
+          <button onClick={onUpdate} className="btn btn-primary btn-lg">
             <RefreshCw className="w-5 h-5" />
             Update
           </button>
@@ -91,10 +92,7 @@ export function GamePage({
         <button
           onClick={onPlay}
           disabled={isRunning}
-          className={cn(
-            'w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-lg font-semibold text-white transition-colors',
-            isRunning ? 'bg-surface-light cursor-not-allowed opacity-80' : 'bg-action hover:bg-action-hover'
-          )}
+          className={cn('btn btn-lg text-white', isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-primary')}
         >
           <Play className="w-5 h-5 fill-current" />
           {isRunning ? 'Playing' : 'Play'}
@@ -103,10 +101,7 @@ export function GamePage({
     }
 
     return (
-      <button
-        onClick={onInstall}
-        className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-action hover:bg-action-hover text-white rounded-lg font-semibold transition-colors"
-      >
+      <button onClick={onInstall} className="btn btn-primary btn-lg">
         <Download className="w-5 h-5" />
         Install
       </button>
@@ -114,76 +109,60 @@ export function GamePage({
   };
 
   return (
-    <div className="h-full overflow-hidden flex flex-col lg:flex-row">
-      {/* Left panel: name, logo, description, tags, patch notes, and bottom-left action/details */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden lg:max-w-[55%] xl:max-w-[58%]">
-        {/* Top scrollable content */}
-        <div className="flex-1 overflow-auto px-8 py-8">
-          <div className="max-w-2xl space-y-8">
-            {/* Logo + Name */}
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center text-3xl font-bold overflow-hidden shrink-0">
+    <div className="game-page">
+      <div className="game-page-panel surface-glass">
+        <div className="game-page-scroll">
+          <div className="game-page-content">
+            <div className="game-page-header">
+              <div className="game-page-logo">
                 {game.info.iconUrl ? (
-                  <img src={game.info.iconUrl} alt={game.info.name} className="w-full h-full object-cover" />
+                  <img src={game.info.iconUrl} alt={game.info.name} />
                 ) : (
                   initials
                 )}
               </div>
               <div className="min-w-0">
-                <h1 className="text-3xl font-bold tracking-tight truncate">{game.info.name}</h1>
+                <h1 className="game-page-title truncate">{game.info.name}</h1>
               </div>
             </div>
 
-            {/* Description */}
             {game.info.description && (
-              <p className="text-base leading-relaxed text-ink/90">{game.info.description}</p>
+              <p className="game-page-desc">{game.info.description}</p>
             )}
 
-            {/* Tags */}
             {game.info.genre && game.info.genre.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="tags">
                 {game.info.genre.map((g) => (
-                  <span key={g} className="px-3 py-1 rounded-full glass text-sm text-ink-muted border border-border">
-                    {g}
-                  </span>
+                  <span key={g} className="tag">{g}</span>
                 ))}
               </div>
             )}
 
-            {/* Patch Notes */}
             <PatchNotesSection patchNotes={game.info.patchNotes} />
           </div>
         </div>
 
-        {/* Bottom-left action/details */}
-        <div className="px-8 py-5 glass/80 shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            {primaryAction()}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-ink-muted">
-              <span className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4" />
-                {formatBytes(game.info.sizeBytes)}
-              </span>
-              <VersionLabel
-                installed={installedVersion}
-                latest={latestVersion}
-                hasUpdate={hasUpdate}
-              />
-            </div>
+        <div className="game-page-actions">
+          {primaryAction()}
+          <div className="game-page-meta">
+            <span className="game-page-meta-item">
+              <HardDrive className="w-4 h-4" />
+              {formatBytes(game.info.sizeBytes)}
+            </span>
+            <VersionLabel installed={installedVersion} latest={latestVersion} hasUpdate={hasUpdate} />
           </div>
         </div>
       </div>
 
-      {/* Right panel: cover */}
-      <div className="w-full lg:flex-1 lg:min-w-0 shrink-0 overflow-hidden m-4 rounded-2xl">
+      <div className="game-page-cover surface-glass">
         {game.info.bannerUrl ? (
           <img
             src={game.info.bannerUrl}
             alt={game.info.name}
-            className="w-full h-full object-cover cover-image cover-mask-bottom rounded-2xl"
+            className="game-page-cover-img cover-image cover-mask-bottom"
           />
         ) : (
-          <div className="w-full h-full bg-surface-light rounded-2xl" />
+          <div className="game-page-cover-img bg-surface-light" />
         )}
       </div>
     </div>
@@ -220,17 +199,14 @@ function PatchNotesSection({ patchNotes }: { patchNotes?: PatchNote[] }) {
   const latest = patchNotes[0];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-ink/80">Patch Notes</h3>
-        <span className="text-xs text-ink-muted">v{latest.version}</span>
+    <div className="patch-notes">
+      <div className="patch-notes-header">
+        <h3 className="patch-notes-title">Patch Notes</h3>
+        <span className="patch-notes-version">v{latest.version}</span>
       </div>
-      <ul className="space-y-2">
+      <ul className="patch-notes-list">
         {latest.notes.slice(0, 5).map((note, index) => (
-          <li key={index} className="flex gap-2 text-sm text-ink/80">
-            <span className="text-action mt-2">•</span>
-            <span>{note}</span>
-          </li>
+          <li key={index} className="patch-note">{note}</li>
         ))}
       </ul>
     </div>
