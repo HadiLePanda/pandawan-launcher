@@ -800,3 +800,29 @@ input[type="search"]::placeholder {
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }
+
+/* Tailwind CSS v4 removed the default fractional spacing utilities (e.g. 0.5, 1.5, 2.5, 3.5)
+   that existed in v3. The UI was built assuming those steps exist, so we restore them
+   here as static utility classes. They are intentionally scoped to the values actually
+   used in the codebase. */
+@layer utilities {
+  .gap-1\.5 { gap: calc(var(--spacing) * 1.5); }
+  .h-1\.5 { height: calc(var(--spacing) * 1.5); }
+  .h-3\.5 { height: calc(var(--spacing) * 3.5); }
+  .mt-1\.5 { margin-block-start: calc(var(--spacing) * 1.5); }
+  .mx-0\.5 { margin-inline: calc(var(--spacing) * 0.5); }
+  .p-2\.5 { padding: calc(var(--spacing) * 2.5); }
+  .py-0\.5 { padding-block: calc(var(--spacing) * 0.5); }
+  .py-1\.5 { padding-block: calc(var(--spacing) * 1.5); }
+  .py-2\.5 { padding-block: calc(var(--spacing) * 2.5); }
+  .top-0\.5 { top: calc(var(--spacing) * 0.5); }
+  .translate-x-0\.5 {
+    --tw-translate-x: calc(var(--spacing) * 0.5);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+  .w-3\.5 { width: calc(var(--spacing) * 3.5); }
+
+  /* Tailwind v4 also dropped opacity-85 from the default opacity scale. */
+  .opacity-85 { opacity: 0.85; }
+  .hover\:opacity-85:hover { opacity: 0.85; }
+}
