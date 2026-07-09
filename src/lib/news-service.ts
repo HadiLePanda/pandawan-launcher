@@ -1,4 +1,5 @@
 import type { NewsItem } from '@/types';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { CdnUrl } from './cdn';
 import { logger } from './logger';
 
@@ -13,7 +14,10 @@ export interface NewsFeed {
  */
 export async function loadNews(): Promise<NewsItem[]> {
   try {
-    const response = await fetch(CdnUrl.news(), { headers: { Accept: 'application/json' } });
+    const url = CdnUrl.news();
+    const response = /^https?:\/\//i.test(url)
+      ? await tauriFetch(url, { headers: { Accept: 'application/json' } })
+      : await fetch(url, { headers: { Accept: 'application/json' } });
     if (!response.ok) {
       throw new Error(`News feed returned ${response.status}: ${response.statusText}`);
     }

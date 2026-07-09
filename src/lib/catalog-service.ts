@@ -1,5 +1,6 @@
 import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
 import { logger } from './logger';
 
@@ -9,6 +10,16 @@ const CATALOG_URL = CdnUrl.news().replace('/news.json', '/catalog.json');
 const CATALOG_OVERRIDE_FILE_NAME = 'catalog.override.json';
 
 let embeddedCatalog: GameCatalog | null = null;
+
+/** Use the Tauri HTTP plugin for absolute URLs so the launcher can talk to
+ *  localhost/CDN servers that don't send browser CORS headers. Relative URLs
+ *  (like the bundled /catalog.json) keep using the standard fetch. */
+async function httpFetch(url: string, init?: RequestInit): Promise<Response> {
+  if (/^https?:\/\//i.test(url)) {
+    return tauriFetch(url, init);
+  }
+  return fetch(url, init);
+}
 
 export interface ResolvedCatalog {
   games: GameInfo[];
@@ -54,7 +65,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  const response = await httpFetch(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) {
     throw new Error(`Remote catalog returned ${response.status}: ${response.statusText}`);
   }
@@ -105,7 +116,7 @@ export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<vo
 }
 
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
-  const response = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
+  const response = await httpFetch(manifestUrl, { headers: { Accept: 'application/json' } });
   if (!response.ok) {
     throw new Error(`Manifest returned ${response.status}: ${response.statusText}`);
   }
