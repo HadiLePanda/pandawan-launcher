@@ -10,6 +10,7 @@ import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import { ServerOff, RefreshCw } from 'lucide-react';
+import { LoadingScreen } from '@components/LoadingScreen';
 import { EmptyState } from '@components/EmptyState';
 
 function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
@@ -34,10 +35,14 @@ function App() {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
 
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initStatus, setInitStatus] = useState('Loading launcher…');
+
   const {
     games,
     activeDownloads,
     error,
+    isLoading,
     installGame,
     updateGame,
     launchGame,
@@ -54,11 +59,25 @@ function App() {
   } = useLauncherStore();
 
   useEffect(() => {
+    // Hand off from the inline splash screen as soon as React is in control.
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.classList.add('is-hidden');
+      setTimeout(() => splash.remove(), 400);
+    }
+  }, []);
+
+  useEffect(() => {
     const init = async () => {
+      setInitStatus('Loading settings…');
       await loadSettings();
+      setInitStatus('Loading catalog…');
       await loadCatalog();
+      setInitStatus('Loading news…');
       await loadNews();
+      setInitStatus('Loading games…');
       await loadGames();
+      setIsInitializing(false);
     };
     init();
   }, []);
@@ -169,8 +188,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
-      <TitleBar />
+    <>
+      <LoadingScreen isOpen={isInitializing || isLoading} status={initStatus} />
+      <div className="min-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+        <TitleBar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppTopBar
           activeView={activeView}
@@ -217,6 +238,7 @@ function App() {
         availableGames={uninstalledGames}
       />
     </div>
+    </>
   );
 }
 
