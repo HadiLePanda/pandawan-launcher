@@ -39,10 +39,15 @@ interface GamePageProps {
 
 function channelLabel(channel: string): string {
   const normalized = channel.toLowerCase();
-  if (normalized === 'stable') return 'Stable';
+  if (normalized === 'stable') return '';
   if (normalized === 'beta') return 'BETA';
   if (normalized === 'alpha') return 'ALPHA';
   return channel.charAt(0).toUpperCase() + channel.slice(1);
+}
+
+function versionText(channel: string, version: string): string {
+  const label = channelLabel(channel);
+  return label ? `${label} v${version}` : `v${version}`;
 }
 
 export function GamePage({
@@ -137,7 +142,7 @@ export function GamePage({
     if (isInstalled) {
       if (hasUpdate) {
         return (
-          <button onClick={onUpdate} className="btn btn-primary btn-lg">
+          <button onClick={onUpdate} className="btn btn-install btn-xl">
             <RefreshCw className="w-5 h-5" />
             Update
           </button>
@@ -147,7 +152,7 @@ export function GamePage({
         <button
           onClick={onPlay}
           disabled={isRunning}
-          className={cn('btn btn-lg text-white', isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-primary')}
+          className={cn('btn btn-xl text-white', isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-play')}
         >
           <Play className="w-5 h-5 fill-current" />
           {isRunning ? 'Playing' : 'Play'}
@@ -156,7 +161,7 @@ export function GamePage({
     }
 
     return (
-      <button onClick={onInstall} className="btn btn-primary btn-lg">
+      <button onClick={onInstall} className="btn btn-install btn-xl">
         <Download className="w-5 h-5" />
         Install
       </button>
@@ -261,7 +266,7 @@ export function GamePage({
                 </span>
               )}
               <span className="font-medium tabular-nums">
-                {channelLabel(game.info.channel)} v{game.info.version}
+                {versionText(game.info.channel, game.info.version)}
               </span>
             </div>
           </div>
@@ -384,7 +389,7 @@ function GameDetailsModal({
               <p className="game-page-desc">{game.info.description}</p>
 
               <div className="game-info-grid">
-                <InfoRow label="Version" value={`${channelLabel(game.info.channel)} v${game.info.version}`} />
+                <InfoRow label="Version" value={versionText(game.info.channel, game.info.version)} />
                 <InfoRow label="Size" value={formatBytes(game.info.sizeBytes)} />
                 <InfoRow label="Developer" value={game.info.developer} />
                 {game.info.supportedPlatforms && (
