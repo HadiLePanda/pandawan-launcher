@@ -37,6 +37,7 @@ function App() {
 
   const {
     games,
+    news,
     activeDownloads,
     error,
     installGame,
@@ -178,6 +179,7 @@ function App() {
         {selectedGame ? (
           <GamePage
             game={selectedGame}
+            news={news}
             downloadProgress={activeDownloads.get(selectedGame.info.id)}
             onPlay={() => launchGame(selectedGame.info.id)}
             onInstall={() => handleInstallGame(selectedGame.info.id)}
@@ -225,7 +227,7 @@ function App() {
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {error && (
-        <div className="toast">
+        <div className="toast toast-error">
           <div className="toast-content">
             <div className="toast-message">{error}</div>
             <button onClick={clearError} className="toast-dismiss">

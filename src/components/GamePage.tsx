@@ -1,9 +1,11 @@
-import { Play, Download, RefreshCw, HardDrive, X, ChevronRight } from 'lucide-react';
+import { Play, Download, RefreshCw, HardDrive, X, ChevronRight, Calendar } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
-import type { Game, PatchNote } from '@/types';
+import { resolveCdnUrl } from '@/lib/cdn';
+import type { Game, NewsItem } from '@/types';
 
 interface GamePageProps {
   game: Game;
+  news?: NewsItem[];
   downloadProgress?: {
     progress: number;
     overallProgress: number;
@@ -22,6 +24,7 @@ interface GamePageProps {
 
 export function GamePage({
   game,
+  news = [],
   downloadProgress,
   onPlay,
   onInstall,
@@ -44,6 +47,7 @@ export function GamePage({
 
   const latestVersion = game.info.version;
   const installedVersion = game.installation?.installed_version;
+  const gameNews = news.filter((item) => item.gameId === game.info.id);
 
   const primaryAction = () => {
     if (isDownloading) {
@@ -166,13 +170,45 @@ export function GamePage({
             )}
           </div>
 
-          {game.info.patchNotes && game.info.patchNotes.length > 0 && (
+          {gameNews.length > 0 && (
             <div className="game-page-news">
-              <PatchNotesSection patchNotes={game.info.patchNotes} />
+              <GameNewsSection news={gameNews} />
             </div>
           )}
         </section>
       </section>
+    </div>
+  );
+}
+
+function GameNewsSection({ news }: { news: NewsItem[] }) {
+  return (
+    <div className="game-news">
+      <div className="game-news-header">
+        <h3 className="game-news-title">News</h3>
+      </div>
+      <div className="game-news-list">
+        {news.map((item) => (
+          <article key={item.id} className="game-news-card">
+            {item.imageUrl && (
+              <div className="game-news-thumb">
+                <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
+              </div>
+            )}
+            <div className="game-news-body">
+              <div className="game-news-meta">
+                {item.category && <span className="badge badge-default">{item.category}</span>}
+                <span className="cluster cluster-sm caption">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(item.date).toLocaleDateString()}
+                </span>
+              </div>
+              <h4 className="game-news-card-title">{item.title}</h4>
+              <p className="game-news-card-excerpt">{item.excerpt}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -201,27 +237,3 @@ function VersionLabel({
   );
 }
 
-function PatchNotesSection({ patchNotes }: { patchNotes?: PatchNote[] }) {
-  if (!patchNotes || patchNotes.length === 0) return null;
-
-  return (
-    <div className="patch-notes">
-      <div className="patch-notes-header">
-        <h3 className="patch-notes-title">Patch Notes</h3>
-      </div>
-      <div className="patch-notes-list">
-        {patchNotes.slice(0, 3).map((note) => (
-          <article key={note.version} className="patch-note-entry">
-            <div className="patch-note-version">v{note.version}</div>
-            <div className="patch-note-date">{new Date(note.date).toLocaleDateString()}</div>
-            <ul className="patch-note-bullets">
-              {note.notes.map((bullet, index) => (
-                <li key={index} className="patch-note-bullet">{bullet}</li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -117,6 +117,7 @@ export interface NewsItem {
   date: string;
   imageUrl?: string;
   category?: string;
+  gameId?: string;
   url?: string;
 }
 

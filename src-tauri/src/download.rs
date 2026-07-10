@@ -124,9 +124,17 @@ impl DownloadManager {
         };
 
         // Build request with resume header
+        if self.cancel_token.load(Ordering::Relaxed) {
+            return Err(DownloadError::Cancelled);
+        }
+
         let mut request = self.client.get(url);
         if start_byte > 0 {
             request = request.header("Range", format!("bytes={}-", start_byte));
+        }
+
+        if self.cancel_token.load(Ordering::Relaxed) {
+            return Err(DownloadError::Cancelled);
         }
 
         let response = request.send().await?;

@@ -129,9 +129,14 @@ impl PatchManager {
         }
 
         // Prepare download tasks
+        let base = reqwest::Url::parse(&base_url)
+            .map_err(|e| PatchError::Other(format!("Invalid base URL '{}': {}", base_url, e)))?;
         let mut download_tasks = Vec::new();
         for file in &files_to_update {
-            let url = format!("{}/{}", base_url, file.url);
+            let url = base
+                .join(&file.url)
+                .map_err(|e| PatchError::Other(format!("Invalid file URL '{}': {}", file.url, e)))?
+                .to_string();
             let dest_path = install_path.join(&file.path);
 
             download_tasks.push(FileDownloadTask {
