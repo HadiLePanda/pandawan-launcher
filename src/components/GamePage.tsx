@@ -1,4 +1,19 @@
-import { Play, Download, RefreshCw, HardDrive, X, ChevronRight, Calendar } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useDropdownPosition } from '@/hooks/useDropdownPosition';
+import {
+  Play,
+  Download,
+  RefreshCw,
+  HardDrive,
+  X,
+  MoreVertical,
+  Info,
+  FileText,
+  Newspaper,
+  Trash2,
+  ShieldCheck,
+  Calendar,
+} from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
 import type { Game, NewsItem } from '@/types';
@@ -22,6 +37,14 @@ interface GamePageProps {
   onCancel?: () => void;
 }
 
+function channelLabel(channel: string): string {
+  const normalized = channel.toLowerCase();
+  if (normalized === 'stable') return 'Stable';
+  if (normalized === 'beta') return 'BETA';
+  if (normalized === 'alpha') return 'ALPHA';
+  return channel.charAt(0).toUpperCase() + channel.slice(1);
+}
+
 export function GamePage({
   game,
   news = [],
@@ -29,14 +52,44 @@ export function GamePage({
   onPlay,
   onInstall,
   onUpdate,
-  onUninstall: _onUninstall,
-  onVerify: _onVerify,
+  onUninstall,
+  onVerify,
   onCancel,
 }: GamePageProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const lastMenuPosition = useRef<{ top: number; left: number } | null>(null);
+
+  const menuPosition = useDropdownPosition(menuTriggerRef, menuRef, menuOpen);
+  if (menuPosition) {
+    lastMenuPosition.current = menuPosition;
+  }
+  const menuStylePosition = menuPosition ?? lastMenuPosition.current;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        menuTriggerRef.current &&
+        !menuTriggerRef.current.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
+
   const isDownloading = game.status === 'downloading' || game.status === 'updating';
   const isRunning = game.status === 'running';
   const isInstalled = game.status === 'installed';
   const hasUpdate = game.hasUpdate;
+  const showSize = game.status === 'not_installed';
 
   const initials = game.info.name
     .split(' ')
@@ -45,8 +98,6 @@ export function GamePage({
     .slice(0, 2)
     .toUpperCase();
 
-  const latestVersion = game.info.version;
-  const installedVersion = game.installation?.installed_version;
   const gameNews = news.filter((item) => item.gameId === game.info.id);
 
   const primaryAction = () => {
@@ -112,6 +163,14 @@ export function GamePage({
     );
   };
 
+  const menuItems: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; danger?: boolean }[] = [
+    { id: 'verify', label: 'Verify Files', icon: ShieldCheck, onClick: onVerify },
+    { id: 'patchNotes', label: 'Patch Notes', icon: FileText, onClick: () => setActiveModal('patchNotes') },
+    { id: 'news', label: 'News', icon: Newspaper, onClick: () => setActiveModal('news') },
+    { id: 'info', label: 'Game Info', icon: Info, onClick: () => setActiveModal('info') },
+    { id: 'uninstall', label: 'Uninstall', icon: Trash2, onClick: onUninstall, danger: true },
+  ];
+
   return (
     <div className="game-page">
       <section className="game-page-layout">
@@ -144,13 +203,66 @@ export function GamePage({
           </div>
 
           <div className="game-page-actions">
-            {primaryAction()}
+            <div className="flex items-center gap-2">
+              {primaryAction()}
+              {!isDownloading && (
+                <div className="relative">
+                  <button
+                    ref={menuTriggerRef}
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="icon-btn"
+                    title="More options"
+                    aria-label="More options"
+                    aria-expanded={menuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                  <div
+                    ref={menuRef}
+                    className="game-options-menu"
+                    data-open={menuOpen}
+                    data-positioned={Boolean(menuStylePosition)}
+                    role="menu"
+                    aria-hidden={!menuOpen}
+                    style={
+                      menuStylePosition
+                        ? {
+                            position: 'fixed',
+                            top: menuStylePosition.top,
+                            left: menuStylePosition.left,
+                          }
+                        : { position: 'fixed' }
+                    }
+                  >
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.id}
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          item.onClick();
+                        }}
+                        className={cn('game-options-item', item.danger && 'game-options-item-danger')}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="game-page-meta">
-              <span className="game-page-meta-item">
-                <HardDrive className="w-4 h-4" />
-                {formatBytes(game.info.sizeBytes)}
+              {showSize && (
+                <span className="game-page-meta-item">
+                  <HardDrive className="w-4 h-4" />
+                  {formatBytes(game.info.sizeBytes)}
+                </span>
+              )}
+              <span className="font-medium tabular-nums">
+                {channelLabel(game.info.channel)} v{game.info.version}
               </span>
-              <VersionLabel installed={installedVersion} latest={latestVersion} hasUpdate={hasUpdate} />
             </div>
           </div>
         </section>
@@ -177,6 +289,15 @@ export function GamePage({
           )}
         </section>
       </section>
+
+      {activeModal && (
+        <GameDetailsModal
+          game={game}
+          news={gameNews}
+          view={activeModal}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -190,11 +311,6 @@ function GameNewsSection({ news }: { news: NewsItem[] }) {
       <div className="game-news-list">
         {news.map((item) => (
           <article key={item.id} className="game-news-card">
-            {item.imageUrl && (
-              <div className="game-news-thumb">
-                <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
-              </div>
-            )}
             <div className="game-news-body">
               <div className="game-news-meta">
                 {item.category && <span className="badge badge-default">{item.category}</span>}
@@ -206,6 +322,11 @@ function GameNewsSection({ news }: { news: NewsItem[] }) {
               <h4 className="game-news-card-title">{item.title}</h4>
               <p className="game-news-card-excerpt">{item.excerpt}</p>
             </div>
+            {item.imageUrl && (
+              <div className="game-news-thumb">
+                <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -213,27 +334,125 @@ function GameNewsSection({ news }: { news: NewsItem[] }) {
   );
 }
 
-function VersionLabel({
-  installed,
-  latest,
-  hasUpdate,
+function GameDetailsModal({
+  game,
+  news,
+  view,
+  onClose,
 }: {
-  installed?: string;
-  latest: string;
-  hasUpdate: boolean;
+  game: Game;
+  news: NewsItem[];
+  view: 'patchNotes' | 'news' | 'info';
+  onClose: () => void;
 }) {
-  if (!installed) {
-    return <span className="font-medium tabular-nums">Latest v{latest}</span>;
-  }
-
-  if (!hasUpdate) {
-    return <span className="font-medium tabular-nums">Installed v{installed}</span>;
-  }
+  const title = view === 'patchNotes' ? 'Patch Notes' : view === 'news' ? 'News' : 'Game Info';
 
   return (
-    <span className="font-medium tabular-nums">
-      Installed v{installed} <ChevronRight className="inline w-4 h-4 mx-1 text-action" /> Latest v{latest}
-    </span>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="game-details-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="title-3">{title}</h3>
+          <button onClick={onClose} className="icon-btn" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="modal-body">
+          {view === 'info' && (
+            <div className="stack-md">
+              <div className="game-page-header">
+                <div className="game-page-logo">
+                  {game.info.iconUrl ? (
+                    <img src={game.info.iconUrl} alt={game.info.name} />
+                  ) : (
+                    game.info.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="game-page-title truncate">{game.info.name}</h2>
+                  <p className="game-page-developer">{game.info.developer}</p>
+                </div>
+              </div>
+
+              {game.info.genre && game.info.genre.length > 0 && (
+                <div className="tags">
+                  {game.info.genre.map((g) => (
+                    <span key={g} className="tag">{g}</span>
+                  ))}
+                </div>
+              )}
+
+              <p className="game-page-desc">{game.info.description}</p>
+
+              <div className="game-info-grid">
+                <InfoRow label="Version" value={`${channelLabel(game.info.channel)} v${game.info.version}`} />
+                <InfoRow label="Size" value={formatBytes(game.info.sizeBytes)} />
+                <InfoRow label="Developer" value={game.info.developer} />
+                {game.info.supportedPlatforms && (
+                  <InfoRow label="Platforms" value={game.info.supportedPlatforms.join(', ')} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {view === 'patchNotes' && (
+            <div className="game-news-list">
+              {game.info.patchNotes && game.info.patchNotes.length > 0 ? (
+                game.info.patchNotes.map((note) => (
+                  <article key={note.version} className="patch-note-entry">
+                    <div className="patch-note-version">v{note.version}</div>
+                    <div className="patch-note-date">{new Date(note.date).toLocaleDateString()}</div>
+                    <ul className="patch-note-bullets">
+                      {note.notes.map((bullet, index) => (
+                        <li key={index} className="patch-note-bullet">{bullet}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))
+              ) : (
+                <p className="caption">No patch notes available.</p>
+              )}
+            </div>
+          )}
+
+          {view === 'news' && (
+            <div className="game-news-list">
+              {news.length > 0 ? (
+                news.map((item) => (
+                  <article key={item.id} className="game-news-card">
+                    {item.imageUrl && (
+                      <div className="game-news-thumb">
+                        <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
+                      </div>
+                    )}
+                    <div className="game-news-body">
+                      <div className="game-news-meta">
+                        {item.category && <span className="badge badge-default">{item.category}</span>}
+                        <span className="cluster cluster-sm caption">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(item.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h4 className="game-news-card-title">{item.title}</h4>
+                      <p className="game-news-card-excerpt">{item.excerpt}</p>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="caption">No news available for this game.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="game-info-row">
+      <span className="game-info-label">{label}</span>
+      <span className="game-info-value">{value}</span>
+    </div>
+  );
+}

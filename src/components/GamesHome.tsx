@@ -37,7 +37,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
           initials
         )}
       </div>
-      <div>
+      <div className="game-card-content">
         <h3 className="game-card-title">{game.info.name}</h3>
         <div className="game-card-meta">
           <span className={cn('badge', isInstalled ? 'badge-success' : 'badge-default')}>
