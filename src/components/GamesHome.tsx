@@ -9,12 +9,10 @@ interface GamesHomeProps {
 export function GamesHome({ games, onSelectGame }: GamesHomeProps) {
   return (
     <div className="h-full overflow-auto page">
-      <div className="max-w-6xl mx-auto">
-        <div className="games-grid">
-          {games.map((game) => (
-            <GameCard key={game.info.id} game={game} onClick={() => onSelectGame(game.info.id)} />
-          ))}
-        </div>
+      <div className="games-grid">
+        {games.map((game) => (
+          <GameCard key={game.info.id} game={game} onClick={() => onSelectGame(game.info.id)} />
+        ))}
       </div>
     </div>
   );

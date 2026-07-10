@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a1c"/>
+      <stop offset="100%" stop-color="#0a0a0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <circle cx="650" cy="120" r="180" fill="#e85d3f" opacity="0.12"/>
+  <circle cx="120" cy="380" r="140" fill="#e85d3f" opacity="0.08"/>
+  <text x="400" y="250" font-family="Arial, sans-serif" font-size="96" font-weight="700" fill="#fafafa" text-anchor="middle" dominant-baseline="middle">Pandawan Rising</text>
+  <text x="400" y="310" font-family="Arial, sans-serif" font-size="24" fill="#a1a1a3" text-anchor="middle" dominant-baseline="middle">Example Game</text>
+</svg>

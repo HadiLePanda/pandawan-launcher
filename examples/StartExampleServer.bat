@@ -12,7 +12,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%PORT% ^| findstr LISTENING'
 )
 
 echo ==========================================
-echo  Pandawan local example server
+echo  Pandawan local example server (CORS enabled)
 echo  URL: http://localhost:%PORT%
 echo  Root: %CD%
 echo ==========================================
@@ -20,7 +20,7 @@ echo.
 echo Press Ctrl+C to stop the server cleanly.
 echo.
 
-python -u -m http.server %PORT%
+python -u cors_server.py
 
 echo.
 echo Server stopped.

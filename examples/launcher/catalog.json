@@ -9,9 +9,9 @@
       "description": "A mythic action RPG set in the Bamboo Kingdom.",
       "developer": "Pandawan Corp",
       "genre": ["Action RPG", "Multiplayer"],
-      "iconUrl": "",
-      "bannerUrl": "",
-      "screenshots": [],
+      "iconUrl": "/placeholder-icon.svg",
+      "bannerUrl": "/placeholder-banner.svg",
+      "screenshots": ["/placeholder-banner.svg"],
       "supportedPlatforms": ["windows"]
     }
   ]

@@ -110,9 +110,9 @@ export function GamePage({
 
   return (
     <div className="game-page">
-      <div className="game-page-panel surface-glass">
-        <div className="game-page-scroll">
-          <div className="game-page-content">
+      <section className="game-page-layout">
+        <section className="game-page-info">
+          <div className="game-page-info-body">
             <div className="game-page-header">
               <div className="game-page-logo">
                 {game.info.iconUrl ? (
@@ -126,10 +126,6 @@ export function GamePage({
               </div>
             </div>
 
-            {game.info.description && (
-              <p className="game-page-desc">{game.info.description}</p>
-            )}
-
             {game.info.genre && game.info.genre.length > 0 && (
               <div className="tags">
                 {game.info.genre.map((g) => (
@@ -138,33 +134,45 @@ export function GamePage({
               </div>
             )}
 
-            <PatchNotesSection patchNotes={game.info.patchNotes} />
+            {game.info.description && (
+              <p className="game-page-desc">{game.info.description}</p>
+            )}
           </div>
-        </div>
 
-        <div className="game-page-actions">
-          {primaryAction()}
-          <div className="game-page-meta">
-            <span className="game-page-meta-item">
-              <HardDrive className="w-4 h-4" />
-              {formatBytes(game.info.sizeBytes)}
-            </span>
-            <VersionLabel installed={installedVersion} latest={latestVersion} hasUpdate={hasUpdate} />
+          <div className="game-page-actions">
+            {primaryAction()}
+            <div className="game-page-meta">
+              <span className="game-page-meta-item">
+                <HardDrive className="w-4 h-4" />
+                {formatBytes(game.info.sizeBytes)}
+              </span>
+              <VersionLabel installed={installedVersion} latest={latestVersion} hasUpdate={hasUpdate} />
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div className="game-page-cover surface-glass">
-        {game.info.bannerUrl ? (
-          <img
-            src={game.info.bannerUrl}
-            alt={game.info.name}
-            className="game-page-cover-img cover-image cover-mask-bottom"
-          />
-        ) : (
-          <div className="game-page-cover-img bg-surface-light" />
-        )}
-      </div>
+        <section className="game-page-side">
+          <div className="game-page-media">
+            {game.info.bannerUrl ? (
+              <img
+                src={game.info.bannerUrl}
+                alt={game.info.name}
+                className="game-page-banner"
+              />
+            ) : (
+              <div className="game-page-banner game-page-banner-placeholder">
+                {initials}
+              </div>
+            )}
+          </div>
+
+          {game.info.patchNotes && game.info.patchNotes.length > 0 && (
+            <div className="game-page-news">
+              <PatchNotesSection patchNotes={game.info.patchNotes} />
+            </div>
+          )}
+        </section>
+      </section>
     </div>
   );
 }
@@ -196,19 +204,24 @@ function VersionLabel({
 function PatchNotesSection({ patchNotes }: { patchNotes?: PatchNote[] }) {
   if (!patchNotes || patchNotes.length === 0) return null;
 
-  const latest = patchNotes[0];
-
   return (
     <div className="patch-notes">
       <div className="patch-notes-header">
         <h3 className="patch-notes-title">Patch Notes</h3>
-        <span className="patch-notes-version">v{latest.version}</span>
       </div>
-      <ul className="patch-notes-list">
-        {latest.notes.slice(0, 5).map((note, index) => (
-          <li key={index} className="patch-note">{note}</li>
+      <div className="patch-notes-list">
+        {patchNotes.slice(0, 3).map((note) => (
+          <article key={note.version} className="patch-note-entry">
+            <div className="patch-note-version">v{note.version}</div>
+            <div className="patch-note-date">{new Date(note.date).toLocaleDateString()}</div>
+            <ul className="patch-note-bullets">
+              {note.notes.map((bullet, index) => (
+                <li key={index} className="patch-note-bullet">{bullet}</li>
+              ))}
+            </ul>
+          </article>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

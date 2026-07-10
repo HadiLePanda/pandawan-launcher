@@ -11,17 +11,21 @@ import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
  */
 const DEFAULT_ORIGIN = 'https://cdn.pandawancorp.com';
 
-type ViteImportMeta = ImportMeta & { env: Record<string, unknown> };
+/** Make a possibly-relative CDN asset URL absolute against the current origin. */
+export function resolveCdnUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${CDN_ORIGIN}${url}`;
+  return `${CDN_ORIGIN}/${url}`;
+}
 
 function detectOrigin(): string {
   try {
-    const meta = import.meta as ViteImportMeta;
-    const env = meta.env ?? {};
-    const envOrigin = env.VITE_CDN_ORIGIN as string | undefined;
+    const envOrigin = import.meta.env.VITE_CDN_ORIGIN as string | undefined;
     if (envOrigin) return envOrigin;
     // In dev, default to the local example server so the launcher works out of
     // the box even if .env.development is missing or not loaded.
-    if (env.DEV) return 'http://localhost:8765';
+    if (import.meta.env.DEV) return 'http://localhost:8765';
   } catch {
     // import.meta may not be available in all build contexts; fall through.
   }
@@ -54,9 +58,9 @@ export const CdnUrl = {
 };
 
 export function formatBytes(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(2)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
+  if (bytes >= 1_000_000_000) return `${Math.round(bytes / 1_000_000_000)} GB`;
+  if (bytes >= 1_000_000) return `${Math.round(bytes / 1_000_000)} MB`;
+  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`;
   return `${bytes} B`;
 }
 
@@ -81,9 +85,9 @@ export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest)
     description: entry.description ?? manifest.description ?? '',
     developer: entry.developer ?? 'Pandawan Corp',
     genre: entry.genre ?? [],
-    iconUrl: entry.iconUrl ?? manifest.icon_url ?? '',
-    bannerUrl: entry.bannerUrl ?? manifest.banner_url ?? '',
-    screenshots: entry.screenshots ?? [],
+    iconUrl: resolveCdnUrl(entry.iconUrl ?? manifest.icon_url),
+    bannerUrl: resolveCdnUrl(entry.bannerUrl ?? manifest.banner_url),
+    screenshots: (entry.screenshots ?? []).map(resolveCdnUrl),
     version: manifest.version,
     sizeBytes: totalSize,
     releaseDate: manifest.release_date ?? new Date().toISOString(),

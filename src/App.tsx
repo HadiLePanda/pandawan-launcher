@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
 import { GamePage } from '@components/GamePage';
@@ -10,17 +11,16 @@ import { News } from '@components/News';
 import { useLauncherStore } from '@/lib/store';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import { ServerOff, RefreshCw } from 'lucide-react';
-import { LoadingScreen } from '@components/LoadingScreen';
 import { EmptyState } from '@components/EmptyState';
 
-function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
+function ConnectionBanner({ onRetry, className }: { onRetry: () => void; className?: string }) {
   return (
-    <div className="banner">
-      <div className="banner-text">
-        <ServerOff className="w-4 h-4" />
-        <span>Catalog server is unreachable. Showing bundled games; install and launch require a live server.</span>
+    <div className={cn('banner', className)}>
+      <div className="banner-text truncate">
+        <ServerOff className="w-4 h-4 shrink-0" />
+        <span className="truncate">Catalog server is unreachable. Showing bundled games; install and launch require a live server.</span>
       </div>
-      <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember">
+      <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember shrink-0">
         <RefreshCw className="w-4 h-4" />
         Retry
       </button>
@@ -35,14 +35,10 @@ function App() {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
 
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initStatus, setInitStatus] = useState('Loading launcher…');
-
   const {
     games,
     activeDownloads,
     error,
-    isLoading,
     installGame,
     updateGame,
     launchGame,
@@ -59,27 +55,37 @@ function App() {
   } = useLauncherStore();
 
   useEffect(() => {
-    // Hand off from the inline splash screen as soon as React is in control.
-    const splash = document.getElementById('splash');
-    if (splash) {
-      splash.classList.add('is-hidden');
-      setTimeout(() => splash.remove(), 400);
-    }
-  }, []);
+    const MIN_LOADING_MS = 1000;
+    const startTime = Date.now();
+    let cancelled = false;
 
-  useEffect(() => {
-    const init = async () => {
-      setInitStatus('Loading settings…');
-      await loadSettings();
-      setInitStatus('Loading catalog…');
-      await loadCatalog();
-      setInitStatus('Loading news…');
-      await loadNews();
-      setInitStatus('Loading games…');
-      await loadGames();
-      setIsInitializing(false);
+    const removeSplash = () => {
+      const splash = document.getElementById('splash');
+      if (splash) splash.remove();
     };
+
+    const init = async () => {
+      await loadSettings();
+      await loadCatalog();
+      await loadNews();
+      await loadGames();
+
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+
+      if (!cancelled) {
+        removeSplash();
+      }
+    };
+
     init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -188,10 +194,8 @@ function App() {
   };
 
   return (
-    <>
-      <LoadingScreen isOpen={isInitializing || isLoading} status={initStatus} />
-      <div className="min-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
-        <TitleBar />
+    <div className="h-screen max-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+      <TitleBar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppTopBar
           activeView={activeView}
@@ -213,7 +217,7 @@ function App() {
         />
 
         {catalogUnreachable && catalogSource !== 'remote' && (
-          <ConnectionBanner onRetry={() => loadCatalog()} />
+          <ConnectionBanner onRetry={() => loadCatalog()} className="shrink-0" />
         )}
 
         <div className="flex-1 overflow-hidden flex flex-col">{renderContent()}</div>
@@ -238,7 +242,6 @@ function App() {
         availableGames={uninstalledGames}
       />
     </div>
-    </>
   );
 }
 

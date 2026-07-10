@@ -108,6 +108,10 @@ Available commands are defined in `src-tauri/src/lib.rs`:
 - Settings persist to JSON in app data directory
 - Games are expected to have `-launcher` arg passed
 - The CDN origin is controlled by `VITE_CDN_ORIGIN` (default: `https://cdn.pandawancorp.com`)
+- In dev, if `VITE_CDN_ORIGIN` is not set, catalog/news/manifests are served from the bundled `examples/` folder via the local example server (`http://localhost:8765`). Run `examples/StartExampleServer.bat` to start it.
+- The local example server is CORS-enabled so the launcher can use standard browser fetch for localhost URLs in dev, avoiding Tauri HTTP scope issues.
+- As a dev-only fallback, if the remote/local catalog is unreachable, the launcher loads `examples/launcher/catalog.json` and the example manifests as static imports. This lets you test the catalog UI without any running server.
+- If the remote catalog is unreachable, the launcher falls back to `public/catalog.json` (embedded) and shows a connectivity banner.
 - Tauri auto-updater:
   - The updater secret key belongs at `src-tauri/.secrets/updater.key`; this directory is gitignored and must never be committed.
   - The public key source of truth is `src-tauri/updater.pub`; run `npm run sync:updater-key` (or `tauri:dev`/`tauri:build`) to sync it into `tauri.conf.json`.
