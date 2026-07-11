@@ -957,6 +957,22 @@ mod tests {
     }
 
     // =====================================================================
+    // Game ID validation tests
+    // =====================================================================
+
+    #[test]
+    fn test_validate_game_id_or_err_accepts_simple_id() {
+        let result = path_utils::validate_game_id("my-game");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_game_id_or_err_rejects_traversal() {
+        let result = path_utils::validate_game_id("../evil");
+        assert!(result.is_err());
+    }
+
+    // =====================================================================
     // Install path safety tests
     // =====================================================================
 
