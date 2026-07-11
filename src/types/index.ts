@@ -92,6 +92,13 @@ export interface LaunchResult {
   processId: number | null;
 }
 
+export interface VerificationResult {
+  valid_files: number;
+  invalid_files: string[];
+  missing_files: string[];
+  is_valid: boolean;
+}
+
 export interface LauncherSettings {
   gamesInstallPath: string | null;
   maxDownloadSpeed: number | null;
@@ -102,6 +109,10 @@ export interface LauncherSettings {
   closeToTray: boolean;
   language: string;
   theme: string;
+  notifyGameUpdates: boolean;
+  notifyDownloadComplete: boolean;
+  notifyFriendActivity: boolean;
+  notifyNewsEvents: boolean;
 }
 
 export interface PatchNote {

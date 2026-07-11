@@ -502,6 +502,10 @@ fn test_launcher_settings_default() {
     assert!(settings.minimize_to_tray);
     assert!(!settings.close_to_tray);
     assert_eq!(settings.language, "en");
+    assert!(settings.notify_game_updates);
+    assert!(settings.notify_download_complete);
+    assert!(!settings.notify_friend_activity);
+    assert!(settings.notify_news_events);
 }
 
 #[test]
@@ -516,6 +520,7 @@ fn test_launcher_settings_serialization() {
         close_to_tray: true,
         language: "fr".to_string(),
         theme: "dark".to_string(),
+        ..Default::default()
     };
 
     let json = serde_json::to_string_pretty(&settings).expect("Failed to serialize");

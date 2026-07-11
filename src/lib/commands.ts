@@ -1,5 +1,5 @@
 import { invoke, Channel } from '@tauri-apps/api/core';
-import type { GameInstallation, LauncherSettings, GameManifest, DownloadEvent, LaunchResult } from '@/types';
+import type { GameInstallation, LauncherSettings, GameManifest, DownloadEvent, LaunchResult, VerificationResult } from '@/types';
 
 export const commands = {
   fetchGameManifest: (url: string) =>
@@ -19,6 +19,9 @@ export const commands = {
 
   getGameInstallation: (gameId: string) =>
     invoke<GameInstallation | null>('get_game_installation', { gameId }),
+
+  verifyGame: (manifest: GameManifest, installPath: string) =>
+    invoke<VerificationResult>('verify_game', { manifest, installPath }),
 
   uninstallGame: (gameId: string) =>
     invoke('uninstall_game', { gameId }),

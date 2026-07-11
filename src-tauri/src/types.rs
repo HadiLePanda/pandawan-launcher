@@ -224,6 +224,12 @@ pub struct LaunchResult {
     pub process_id: Option<u32>,
 }
 
+/// Emitted when a launched game process exits
+#[derive(Debug, Clone, Serialize)]
+pub struct GameExitedPayload {
+    pub game_id: String,
+}
+
 /// Launcher settings
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -237,6 +243,18 @@ pub struct LauncherSettings {
     pub close_to_tray: bool,
     pub language: String,
     pub theme: String,
+    #[serde(default = "default_true")]
+    pub notify_game_updates: bool,
+    #[serde(default = "default_true")]
+    pub notify_download_complete: bool,
+    #[serde(default)]
+    pub notify_friend_activity: bool,
+    #[serde(default = "default_true")]
+    pub notify_news_events: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for LauncherSettings {
@@ -251,6 +269,10 @@ impl Default for LauncherSettings {
             close_to_tray: false,
             language: "en".to_string(),
             theme: "adaptive".to_string(),
+            notify_game_updates: true,
+            notify_download_complete: true,
+            notify_friend_activity: false,
+            notify_news_events: true,
         }
     }
 }
@@ -887,6 +909,10 @@ mod tests {
         assert!(!settings.close_to_tray);
         assert!(settings.max_download_speed.is_none());
         assert!(settings.games_install_path.is_none());
+        assert!(settings.notify_game_updates);
+        assert!(settings.notify_download_complete);
+        assert!(!settings.notify_friend_activity);
+        assert!(settings.notify_news_events);
     }
 
     #[test]
@@ -901,6 +927,10 @@ mod tests {
             close_to_tray: true,
             language: "fr".to_string(),
             theme: "dark".to_string(),
+            notify_game_updates: false,
+            notify_download_complete: false,
+            notify_friend_activity: true,
+            notify_news_events: false,
         };
 
         let json = serde_json::to_string(&settings).expect("Failed to serialize");
@@ -914,6 +944,25 @@ mod tests {
             deserialized.games_install_path,
             Some(PathBuf::from("/games"))
         );
+        assert!(!deserialized.notify_game_updates);
+        assert!(!deserialized.notify_download_complete);
+        assert!(deserialized.notify_friend_activity);
+        assert!(!deserialized.notify_news_events);
+    }
+
+    #[test]
+    fn test_launcher_settings_deserialization_missing_notifications() {
+        let json = r#"{
+            "language": "de",
+            "theme": "light"
+        }"#;
+
+        let settings: LauncherSettings = serde_json::from_str(json).expect("Failed to deserialize");
+        assert_eq!(settings.language, "de");
+        assert!(settings.notify_game_updates);
+        assert!(settings.notify_download_complete);
+        assert!(!settings.notify_friend_activity);
+        assert!(settings.notify_news_events);
     }
 
     #[test]
@@ -1155,6 +1204,15 @@ mod tests {
         let deserialized: PatchProgress =
             serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.total_bytes, u64::MAX);
+    }
+
+    #[test]
+    fn test_game_exited_payload_serialization() {
+        let payload = GameExitedPayload {
+            game_id: "test-game".to_string(),
+        };
+        let json = serde_json::to_string(&payload).expect("Failed to serialize");
+        assert!(json.contains("test-game"));
     }
 
     // Helper function for GameInstallation tests

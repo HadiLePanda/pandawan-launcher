@@ -43,6 +43,7 @@ interface LauncherState {
   launchGame: (gameId: string) => Promise<void>;
   uninstallGame: (gameId: string) => Promise<void>;
   checkForUpdates: (gameId: string, channel: string) => Promise<boolean>;
+  refreshUpdateStatus: () => Promise<void>;
   cancelOperation: () => Promise<void>;
 }
 
@@ -151,6 +152,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       const installations = await gameService.loadInstalledGames();
       set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
+      await get().refreshUpdateStatus();
     } catch (err) {
       handleStoreError(err, set, 'loadGames');
       set({ isLoading: false });
@@ -170,7 +172,6 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       updateGameStatus(gameId, 'running');
       await gameService.launchGame(gameId);
-      setTimeout(() => updateGameStatus(gameId, 'installed'), 5000);
     } catch (err) {
       updateGameStatus(gameId, 'installed');
       handleStoreError(err, set, 'launchGame');
@@ -202,6 +203,25 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     }
   },
 
+  refreshUpdateStatus: async () => {
+    const { games } = get();
+    await Promise.all(
+      games.map(async (g) => {
+        if (g.status !== 'installed') return;
+        try {
+          const hasUpdate = await gameService.checkForUpdates(g.info.id, g.info.channel);
+          set((state) => ({
+            games: state.games.map((game) =>
+              game.info.id === g.info.id ? { ...game, hasUpdate } : game
+            ),
+          }));
+        } catch (err) {
+          logger.warn('Update check failed', { gameId: g.info.id, error: String(err) });
+        }
+      })
+    );
+  },
+
   cancelOperation: async () => {
     try {
       await gameService.cancelOperation();
@@ -223,12 +243,11 @@ function handleStoreError(error: unknown, set: ((partial: Partial<LauncherState>
 function mergeInstallations(games: Game[], installations: GameInstallation[]): Game[] {
   const gamesWithInstalls = games.map((game) => {
     const installation = installations.find((i) => i.game_id === game.info.id);
-    const hasUpdate = installation ? installation.installed_version !== game.info.version : false;
     return {
       ...game,
       installation: installation || null,
       status: (installation ? 'installed' : 'not_installed') as Game['status'],
-      hasUpdate,
+      hasUpdate: false,
     };
   });
 

@@ -1,6 +1,6 @@
 import { commands } from './commands';
 import { createDownloadChannel } from './download-channel';
-import type { GameInstallation, GameManifest, LauncherSettings, LaunchResult } from '@/types';
+import type { GameInstallation, GameManifest, LauncherSettings, LaunchResult, VerificationResult } from '@/types';
 import { fetchGameManifest } from './catalog-service';
 import { resolveGameUrls } from './cdn';
 
@@ -52,6 +52,16 @@ export async function checkForUpdates(gameId: string, channel: string): Promise<
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
   return commands.checkGameUpdate(gameId, manifest);
+}
+
+export async function verifyGame(gameId: string, channel: string): Promise<VerificationResult> {
+  const installation = await commands.getGameInstallation(gameId);
+  if (!installation) {
+    throw new Error('Game is not installed');
+  }
+  const { manifestUrl } = resolveGameUrls(gameId, channel);
+  const manifest = await fetchGameManifest(manifestUrl);
+  return commands.verifyGame(manifest, installation.install_path);
 }
 
 export async function loadInstalledGames(): Promise<GameInstallation[]> {

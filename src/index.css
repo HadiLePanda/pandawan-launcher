@@ -1581,6 +1581,17 @@ input[type="search"]::placeholder {
   margin-top: 0.75rem;
 }
 
+.game-card-add .game-card-art {
+  background: transparent;
+  border: 2px dashed var(--border-strong);
+  color: var(--ink-muted);
+}
+
+.game-card-add:hover .game-card-art {
+  border-color: var(--action-primary);
+  color: var(--action-primary);
+}
+
 /* ----- Game detail page ----- */
 .game-page {
   flex: 1;

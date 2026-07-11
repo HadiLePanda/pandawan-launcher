@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { cn } from '@/lib/utils';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
@@ -8,8 +9,12 @@ import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
+import { PlayerProfile } from '@components/PlayerProfile';
+import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
+import * as gameService from '@/lib/game-service';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
+import type { Game, VerificationResult } from '@/types';
 import { ServerOff, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 
@@ -31,6 +36,10 @@ function ConnectionBanner({ onRetry, className }: { onRetry: () => void; classNa
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
+  const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
@@ -45,6 +54,7 @@ function App() {
     launchGame,
     uninstallGame,
     cancelOperation,
+    updateGameStatus,
     loadCatalog,
     loadNews,
     loadGames,
@@ -113,6 +123,18 @@ function App() {
     }
   }, [settings?.theme]);
 
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<{ game_id: string }>('game-exited', (event) => {
+      updateGameStatus(event.payload.game_id, 'installed');
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [updateGameStatus]);
+
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 
   const handleSelectGame = (gameId: string | null) => {
@@ -147,8 +169,18 @@ function App() {
     }
   };
 
-  const handleVerifyGame = async (_gameId: string) => {
-    alert('File verification coming soon!');
+  const handleVerifyGame = async (gameId: string) => {
+    const game = games.find((g) => g.info.id === gameId);
+    if (!game) return;
+    setVerifyTarget(game);
+    setVerifyResult(null);
+    setVerifyError(null);
+    try {
+      const result = await gameService.verifyGame(gameId, game.info.channel);
+      setVerifyResult(result);
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const uninstalledGames = games
@@ -189,7 +221,7 @@ function App() {
             onCancel={cancelOperation}
           />
         ) : (
-          <GamesHome games={games} onSelectGame={handleSelectGame} />
+          <GamesHome games={games} onSelectGame={handleSelectGame} onInstallGame={() => setIsAddGameOpen(true)} />
         )}
       </GamesPage>
     );
@@ -214,7 +246,7 @@ function App() {
             setSelectedGameId(lastSelectedGameId);
           }}
           onSettingsClick={() => setIsSettingsOpen(true)}
-          onPlayerClick={() => {}}
+          onPlayerClick={() => setIsProfileOpen(true)}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
         />
 
@@ -243,6 +275,19 @@ function App() {
         onInstall={handleInstallGame}
         availableGames={uninstalledGames}
       />
+
+      <VerifyGameModal
+        game={verifyTarget}
+        result={verifyResult}
+        error={verifyError}
+        onClose={() => {
+          setVerifyTarget(null);
+          setVerifyResult(null);
+          setVerifyError(null);
+        }}
+      />
+
+      <PlayerProfile isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }

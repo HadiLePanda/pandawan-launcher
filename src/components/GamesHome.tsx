@@ -1,18 +1,33 @@
 import { cn, formatBytes } from '@/lib/utils';
 import type { Game } from '@/types';
+import { Plus } from 'lucide-react';
 
 interface GamesHomeProps {
   games: Game[];
   onSelectGame: (gameId: string | null) => void;
+  onInstallGame?: () => void;
 }
 
-export function GamesHome({ games, onSelectGame }: GamesHomeProps) {
+export function GamesHome({ games, onSelectGame, onInstallGame }: GamesHomeProps) {
+  const uninstalledCount = games.filter((g) => g.status === 'not_installed').length;
+
   return (
     <div className="h-full overflow-auto page">
       <div className="games-grid">
         {games.map((game) => (
           <GameCard key={game.info.id} game={game} onClick={() => onSelectGame(game.info.id)} />
         ))}
+        {onInstallGame && uninstalledCount > 0 && (
+          <button onClick={onInstallGame} className="game-card game-card-add">
+            <div className="game-card-art">
+              <Plus className="w-10 h-10" />
+            </div>
+            <div className="game-card-content">
+              <h3 className="game-card-title">Install a Game</h3>
+              <p className="caption">{uninstalledCount} available</p>
+            </div>
+          </button>
+        )}
       </div>
     </div>
   );

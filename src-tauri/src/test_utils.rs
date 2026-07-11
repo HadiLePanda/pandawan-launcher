@@ -132,6 +132,7 @@ pub fn create_test_settings() -> LauncherSettings {
         close_to_tray: false,
         language: "en".to_string(),
         theme: "adaptive".to_string(),
+        ..Default::default()
     }
 }
 

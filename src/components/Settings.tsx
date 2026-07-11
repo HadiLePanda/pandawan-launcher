@@ -30,6 +30,10 @@ const DEFAULT_SETTINGS: LauncherSettings = {
   closeToTray: false,
   language: 'en',
   theme: 'adaptive',
+  notifyGameUpdates: true,
+  notifyDownloadComplete: true,
+  notifyFriendActivity: false,
+  notifyNewsEvents: true,
 };
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
@@ -110,7 +114,9 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             {activeTab === 'downloads' && (
               <DownloadSettings settings={editedSettings} onChange={handleUpdate} />
             )}
-            {activeTab === 'notifications' && <NotificationSettings />}
+            {activeTab === 'notifications' && (
+              <NotificationSettings settings={editedSettings} onChange={handleUpdate} />
+            )}
             {activeTab === 'about' && <AboutSettings />}
           </div>
 
@@ -286,37 +292,32 @@ function DownloadSettings({ settings, onChange }: TabProps) {
   );
 }
 
-function NotificationSettings() {
-  const [gamesUpdate, setGamesUpdate] = useState(true);
-  const [downloadComplete, setDownloadComplete] = useState(true);
-  const [friendActivity, setFriendActivity] = useState(false);
-  const [newsEvents, setNewsEvents] = useState(true);
-
+function NotificationSettings({ settings, onChange }: TabProps) {
   return (
     <div className="setting-group">
       <ToggleSetting
         title="Game updates available"
         description="Notify when game updates are available"
-        checked={gamesUpdate}
-        onChange={setGamesUpdate}
+        checked={settings.notifyGameUpdates}
+        onChange={(checked) => onChange({ notifyGameUpdates: checked })}
       />
       <ToggleSetting
         title="Download complete"
         description="Notify when downloads finish"
-        checked={downloadComplete}
-        onChange={setDownloadComplete}
+        checked={settings.notifyDownloadComplete}
+        onChange={(checked) => onChange({ notifyDownloadComplete: checked })}
       />
       <ToggleSetting
         title="Friend activity"
         description="Notify about friends' game activity"
-        checked={friendActivity}
-        onChange={setFriendActivity}
+        checked={settings.notifyFriendActivity}
+        onChange={(checked) => onChange({ notifyFriendActivity: checked })}
       />
       <ToggleSetting
         title="News and events"
         description="Receive news about games and events"
-        checked={newsEvents}
-        onChange={setNewsEvents}
+        checked={settings.notifyNewsEvents}
+        onChange={(checked) => onChange({ notifyNewsEvents: checked })}
       />
     </div>
   );

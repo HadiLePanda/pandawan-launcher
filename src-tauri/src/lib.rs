@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
 
-use tauri::{ipc::Channel, AppHandle, Manager, State};
+use tauri::{ipc::Channel, AppHandle, Emitter, Manager, State};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
 
@@ -226,14 +226,22 @@ async fn launch_game(
             }
 
             // Spawn a task to wait for process exit
+            let app_handle = app.clone();
             let running_games = Arc::clone(&state.running_games);
             let game_id_clone = game_id.clone();
             tauri::async_runtime::spawn(async move {
-                if let Some(mut child) = {
+                let child = {
                     let mut running = running_games.lock().await;
                     running.remove(&game_id_clone)
-                } {
+                };
+                if let Some(mut child) = child {
                     let _ = child.wait().await;
+                    let _ = app_handle.emit(
+                        "game-exited",
+                        GameExitedPayload {
+                            game_id: game_id_clone,
+                        },
+                    );
                 }
             });
 

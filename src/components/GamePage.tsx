@@ -174,12 +174,15 @@ export function GamePage({
   };
 
   const menuItems: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; danger?: boolean }[] = [
-    { id: 'verify', label: 'Verify Files', icon: ShieldCheck, onClick: onVerify },
     { id: 'patchNotes', label: 'Patch Notes', icon: FileText, onClick: () => setActiveModal('patchNotes') },
     { id: 'news', label: 'News', icon: Newspaper, onClick: () => setActiveModal('news') },
     { id: 'info', label: 'Game Info', icon: Info, onClick: () => setActiveModal('info') },
-    { id: 'uninstall', label: 'Uninstall', icon: Trash2, onClick: onUninstall, danger: true },
   ];
+
+  if (isInstalled) {
+    menuItems.unshift({ id: 'verify', label: 'Verify Files', icon: ShieldCheck, onClick: onVerify });
+    menuItems.push({ id: 'uninstall', label: 'Uninstall', icon: Trash2, onClick: onUninstall, danger: true });
+  }
 
   return (
     <div className="game-page">
