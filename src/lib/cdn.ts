@@ -57,26 +57,13 @@ export const CdnUrl = {
   },
 };
 
-export function formatBytes(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${Math.round(bytes / 1_000_000_000)} GB`;
-  if (bytes >= 1_000_000) return `${Math.round(bytes / 1_000_000)} MB`;
-  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`;
-  return `${bytes} B`;
-}
-
-export function formatSpeed(bps: number): string {
-  if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(2)} MB/s`;
-  if (bps >= 1_000) return `${(bps / 1_000).toFixed(1)} KB/s`;
-  return `${bps.toFixed(0)} B/s`;
-}
-
 /**
  * Resolve a GameInfo from a catalog entry + its manifest.
  * Catalog fields override manifest fields for presentation.
  */
 export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest): GameInfo {
   const channel = entry.channel ?? 'stable';
-  const totalSize = manifest.size_bytes ?? manifest.files.reduce((sum, f) => sum + (f.size ?? 0), 0);
+  const totalSize = manifest.files.reduce((sum, f) => sum + (f.size ?? 0), 0);
 
   return {
     id: entry.id,
@@ -90,16 +77,18 @@ export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest)
     screenshots: (entry.screenshots ?? []).map(resolveCdnUrl),
     version: manifest.version,
     sizeBytes: totalSize,
-    releaseDate: manifest.release_date ?? new Date().toISOString(),
+    releaseDate: new Date().toISOString(),
     supportedPlatforms: entry.supportedPlatforms ?? ['windows'],
-    patchNotes: manifest.patch_notes,
   };
 }
 
-export function resolveGameUrls(id: string, channel: string = 'stable'): { manifestUrl: string; baseUrl: string } {
-  const baseUrl = CdnUrl.gamesPath(id, channel);
+export function resolveGameUrls(
+  id: string,
+  channel: string = 'stable'
+): { manifestUrl: string; baseUrl: string } {
+  const baseUrl = `${CdnUrl.gamesPath(id, channel)}/`;
   return {
-    manifestUrl: `${baseUrl}/manifest.json`,
+    manifestUrl: `${baseUrl}manifest.json`,
     baseUrl,
   };
 }
