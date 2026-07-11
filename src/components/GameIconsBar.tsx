@@ -59,10 +59,20 @@ function GameIcon({
         <img
           src={game.info.iconUrl}
           alt={game.info.name}
-          className={cn('transition-opacity', isSelected ? 'opacity-100' : 'opacity-60', !isSelected && 'hover:opacity-85')}
+          className={cn(
+            'transition-opacity',
+            isSelected ? 'opacity-100' : 'opacity-60',
+            !isSelected && 'hover:opacity-85'
+          )}
         />
       ) : (
-        <Gamepad2 className={cn('w-5 h-5 transition-opacity', isSelected ? 'opacity-100' : 'opacity-60', !isSelected && 'hover:opacity-85')} />
+        <Gamepad2
+          className={cn(
+            'w-5 h-5 transition-opacity',
+            isSelected ? 'opacity-100' : 'opacity-60',
+            !isSelected && 'hover:opacity-85'
+          )}
+        />
       )}
       {isSelected && <span className="game-icon-indicator" />}
     </button>

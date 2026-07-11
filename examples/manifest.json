@@ -23,7 +23,5 @@
       "compress": false
     }
   ],
-  "launch_args": [
-    "-launcher"
-  ]
+  "launch_args": ["-launcher"]
 }

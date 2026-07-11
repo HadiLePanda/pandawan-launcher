@@ -24,6 +24,7 @@ npm install
 ```
 
 This will install:
+
 - React 18 + TypeScript
 - Vite (build tool)
 - Tailwind CSS
@@ -50,6 +51,7 @@ npm run tauri:dev
 ```
 
 This will:
+
 1. Start the Vite dev server on port 1420
 2. Compile and launch the Tauri application
 3. Enable hot-reload for both frontend and backend
@@ -127,22 +129,26 @@ pandawan-launcher/
 ## Key Features
 
 ### 1. Smart Patching System
+
 - Only downloads files that have changed (using SHA256 hashes)
 - Verifies file integrity after download
 - Removes orphaned files no longer in manifest
 
 ### 2. Resume-Capable Downloads
+
 - Uses HTTP Range headers to resume interrupted downloads
 - Stores partial downloads and continues from last byte
 - Multiple parallel connections for faster downloads
 
 ### 3. Modern UI
+
 - Battle.net-inspired design
 - Dark theme with glass morphism effects
 - Smooth animations and transitions
 - Frameless window with custom controls
 
 ### 4. Unity Integration
+
 - Launches games with `-launcher` argument
 - Games can detect launcher presence
 - Playtime tracking support
@@ -175,6 +181,7 @@ Each game needs a `manifest.json` hosted on your CDN:
 ```
 
 Generate manifests using:
+
 ```bash
 python scripts/generate-manifest.py \
   --game-id quirheim-online \
@@ -191,29 +198,31 @@ python scripts/generate-manifest.py \
 ### Launcher Settings
 
 Stored in:
+
 - Windows: `%LOCALAPPDATA%\com.pandawancorp.launcher\`
 - macOS: `~/Library/Application Support/com.pandawancorp.launcher/`
 - Linux: `~/.local/share/com.pandawancorp.launcher/`
 
 ## Tauri Commands (Frontend → Backend)
 
-| Command | Description |
-|---------|-------------|
-| `fetch_game_manifest(url)` | Download game manifest from CDN |
+| Command                                    | Description                       |
+| ------------------------------------------ | --------------------------------- |
+| `fetch_game_manifest(url)`                 | Download game manifest from CDN   |
 | `install_game(manifest, baseUrl, onEvent)` | Install/update game with progress |
-| `launch_game(gameId)` | Launch installed game |
-| `uninstall_game(gameId)` | Remove game files |
-| `get_installed_games()` | List all installed games |
-| `check_game_update(gameId, manifest)` | Check if update available |
-| `get_settings()` | Get launcher settings |
-| `save_settings(settings)` | Save launcher settings |
-| `select_install_folder()` | Open folder picker |
+| `launch_game(gameId)`                      | Launch installed game             |
+| `uninstall_game(gameId)`                   | Remove game files                 |
+| `get_installed_games()`                    | List all installed games          |
+| `check_game_update(gameId, manifest)`      | Check if update available         |
+| `get_settings()`                           | Get launcher settings             |
+| `save_settings(settings)`                  | Save launcher settings            |
+| `select_install_folder()`                  | Open folder picker                |
 
 ## Troubleshooting
 
 ### Build Errors
 
 1. **Rust not found**
+
    ```
    error: could not find `cargo`
    ```
@@ -221,6 +230,7 @@ Stored in:
    - Restart terminal after installation
 
 2. **MSVC not found (Windows)**
+
    ```
    error: linker link.exe not found
    ```

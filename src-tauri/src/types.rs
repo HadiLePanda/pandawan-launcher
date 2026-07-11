@@ -1,12 +1,15 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tauri_specta::Event;
+use thiserror::Error;
 
 #[cfg(test)]
 use serde_json;
 
 /// Game manifest from CDN
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GameManifest {
     pub game_id: String,
     pub name: String,
@@ -21,7 +24,7 @@ pub struct GameManifest {
 }
 
 /// Individual file entry in manifest
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct FileEntry {
     pub path: String,
     pub hash: String, // SHA256
@@ -31,7 +34,7 @@ pub struct FileEntry {
 }
 
 /// Local game installation state
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GameInstallation {
     pub game_id: String,
     pub installed_version: String,
@@ -45,7 +48,7 @@ pub struct GameInstallation {
 }
 
 /// Download progress event
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(tag = "event", content = "data")]
 pub enum DownloadEvent {
     #[serde(rename_all = "camelCase")]
@@ -217,7 +220,7 @@ impl PatchProgress {
 }
 
 /// Game launch result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct LaunchResult {
     pub success: bool,
     pub message: String,
@@ -225,13 +228,44 @@ pub struct LaunchResult {
 }
 
 /// Emitted when a launched game process exits
-#[derive(Debug, Clone, Serialize)]
-pub struct GameExitedPayload {
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "game-exited")]
+pub struct GameExited {
     pub game_id: String,
 }
 
+/// Structured error returned by Tauri commands.
+#[derive(Debug, Clone, Error, Serialize, Type)]
+#[serde(tag = "code", content = "details")]
+pub enum LauncherError {
+    #[error("Game is not installed")]
+    NotInstalled,
+    #[error("Game is already running")]
+    AlreadyRunning,
+    #[error("Executable not found")]
+    ExecutableNotFound { path: String },
+    #[error("Path is outside allowed root")]
+    PathNotAllowed { path: String },
+    #[error("Network request failed")]
+    Network(String),
+    #[error("Failed to parse manifest")]
+    ManifestParse(String),
+    #[error("Invalid settings")]
+    Validation(String),
+    #[error("IO error")]
+    Io(String),
+    #[error("{0}")]
+    Other(String),
+}
+
+impl From<std::io::Error> for LauncherError {
+    fn from(err: std::io::Error) -> Self {
+        LauncherError::Io(err.to_string())
+    }
+}
+
 /// Launcher settings
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct LauncherSettings {
     pub games_install_path: Option<PathBuf>,
@@ -315,50 +349,6 @@ impl LauncherSettings {
             }
             Some(bytes_per_sec) => format!("{} B/s", bytes_per_sec),
         }
-    }
-}
-
-/// Available game info (from remote catalog)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GameInfo {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub developer: String,
-    pub genre: Vec<String>,
-    pub icon_url: String,
-    pub banner_url: String,
-    pub screenshots: Vec<String>,
-    pub version: String,
-    pub size_bytes: u64,
-    pub release_date: chrono::DateTime<chrono::Utc>,
-    pub manifest_url: String,
-}
-
-impl GameInfo {
-    /// Get size in human-readable format
-    pub fn size_display(&self) -> String {
-        if self.size_bytes >= 1_000_000_000 {
-            format!("{:.2} GB", self.size_bytes as f64 / 1_000_000_000.0)
-        } else if self.size_bytes >= 1_000_000 {
-            format!("{:.1} MB", self.size_bytes as f64 / 1_000_000.0)
-        } else if self.size_bytes >= 1_000 {
-            format!("{:.1} KB", self.size_bytes as f64 / 1_000.0)
-        } else {
-            format!("{} B", self.size_bytes)
-        }
-    }
-
-    /// Check if game matches search query
-    pub fn matches_search(&self, query: &str) -> bool {
-        let query_lower = query.to_lowercase();
-        self.name.to_lowercase().contains(&query_lower)
-            || self.description.to_lowercase().contains(&query_lower)
-            || self.developer.to_lowercase().contains(&query_lower)
-            || self
-                .genre
-                .iter()
-                .any(|g| g.to_lowercase().contains(&query_lower))
     }
 }
 
@@ -1054,108 +1044,41 @@ mod tests {
     }
 
     // =========================================================================
-    // GameInfo Tests
+    // LauncherError Tests
     // =========================================================================
 
     #[test]
-    fn test_game_info_serialization() {
-        let info = GameInfo {
-            id: "game-1".to_string(),
-            name: "Awesome Game".to_string(),
-            description: "A really awesome game".to_string(),
-            developer: "Awesome Dev".to_string(),
-            genre: vec!["Action".to_string(), "RPG".to_string()],
-            icon_url: "https://example.com/icon.png".to_string(),
-            banner_url: "https://example.com/banner.png".to_string(),
-            screenshots: vec!["ss1.png".to_string()],
-            version: "1.0.0".to_string(),
-            size_bytes: 5_000_000_000,
-            release_date: chrono::Utc::now(),
-            manifest_url: "https://example.com/manifest.json".to_string(),
-        };
-
-        let json = serde_json::to_string(&info).expect("Failed to serialize");
-        let deserialized: GameInfo = serde_json::from_str(&json).expect("Failed to deserialize");
-
-        assert_eq!(deserialized.id, info.id);
-        assert_eq!(deserialized.genre.len(), 2);
+    fn test_launcher_error_serialization_tag() {
+        let error = LauncherError::NotInstalled;
+        let json = serde_json::to_string(&error).expect("Failed to serialize");
+        assert!(json.contains("\"code\""));
+        assert!(json.contains("\"NotInstalled\""));
     }
 
     #[test]
-    fn test_game_info_size_display() {
-        // GB
-        let gb = GameInfo {
-            id: "g1".to_string(),
-            name: "Game".to_string(),
-            description: "".to_string(),
-            developer: "".to_string(),
-            genre: vec![],
-            icon_url: "".to_string(),
-            banner_url: "".to_string(),
-            screenshots: vec![],
-            version: "".to_string(),
-            size_bytes: 5_500_000_000,
-            release_date: chrono::Utc::now(),
-            manifest_url: "".to_string(),
-        };
-        assert_eq!(gb.size_display(), "5.50 GB");
-
-        // MB
-        let mb = GameInfo {
-            size_bytes: 500_000_000,
-            ..gb.clone()
-        };
-        assert_eq!(mb.size_display(), "500.0 MB");
-
-        // KB
-        let kb = GameInfo {
-            size_bytes: 500_000,
-            ..gb.clone()
-        };
-        assert_eq!(kb.size_display(), "500.0 KB");
-
-        // B
-        let b = GameInfo {
-            size_bytes: 500,
-            ..gb.clone()
-        };
-        assert_eq!(b.size_display(), "500 B");
+    fn test_launcher_error_serialization_simple_variant() {
+        let error = LauncherError::AlreadyRunning;
+        let json = serde_json::to_string(&error).expect("Failed to serialize");
+        assert_eq!(json, r#"{"code":"AlreadyRunning"}"#);
     }
 
     #[test]
-    fn test_game_info_matches_search() {
-        let info = GameInfo {
-            id: "game-1".to_string(),
-            name: "Awesome Adventure".to_string(),
-            description: "An epic adventure game".to_string(),
-            developer: "Epic Studios".to_string(),
-            genre: vec!["Action".to_string(), "Adventure".to_string()],
-            icon_url: "".to_string(),
-            banner_url: "".to_string(),
-            screenshots: vec![],
-            version: "".to_string(),
-            size_bytes: 0,
-            release_date: chrono::Utc::now(),
-            manifest_url: "".to_string(),
+    fn test_launcher_error_serialization_struct_variant() {
+        let error = LauncherError::ExecutableNotFound {
+            path: "/games/test/game.exe".to_string(),
         };
+        let json = serde_json::to_string(&error).expect("Failed to serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["code"], "ExecutableNotFound");
+        assert_eq!(parsed["details"]["path"], "/games/test/game.exe");
+    }
 
-        // Match name
-        assert!(info.matches_search("Awesome"));
-        assert!(info.matches_search("adventure")); // case insensitive
-        assert!(info.matches_search("venture")); // partial match
-
-        // Match description
-        assert!(info.matches_search("epic"));
-
-        // Match developer
-        assert!(info.matches_search("studios"));
-
-        // Match genre
-        assert!(info.matches_search("action"));
-
-        // No match
-        assert!(!info.matches_search("rpg"));
-        assert!(!info.matches_search("shooter"));
+    #[test]
+    fn test_launcher_error_from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
+        let err: LauncherError = io_err.into();
+        assert!(matches!(err, LauncherError::Io(_)));
+        assert!(err.to_string().contains("file missing"));
     }
 
     // =========================================================================
@@ -1208,7 +1131,7 @@ mod tests {
 
     #[test]
     fn test_game_exited_payload_serialization() {
-        let payload = GameExitedPayload {
+        let payload = GameExited {
             game_id: "test-game".to_string(),
         };
         let json = serde_json::to_string(&payload).expect("Failed to serialize");

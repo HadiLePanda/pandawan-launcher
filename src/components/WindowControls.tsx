@@ -38,23 +38,15 @@ export function WindowControls() {
 
   return (
     <>
-      <button
-        onClick={handleMinimize}
-        className="window-control"
-        aria-label="Minimize"
-      >
+      <button onClick={handleMinimize} className="window-control" aria-label="Minimize">
         <Minus className="w-4 h-4" />
       </button>
       <button
         onClick={handleMaximize}
         className="window-control"
-        aria-label={isMaximized ? "Restore" : "Maximize"}
+        aria-label={isMaximized ? 'Restore' : 'Maximize'}
       >
-        {isMaximized ? (
-          <Copy className="w-4 h-4" />
-        ) : (
-          <Square className="w-4 h-4" />
-        )}
+        {isMaximized ? <Copy className="w-4 h-4" /> : <Square className="w-4 h-4" />}
       </button>
       <button
         onClick={handleClose}

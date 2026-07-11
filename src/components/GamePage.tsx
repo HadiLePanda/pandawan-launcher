@@ -117,22 +117,14 @@ export function GamePage({
             <div className="download-progress-stats">
               <span className="download-progress-percent">{pct}%</span>
               {onCancel && (
-                <button
-                  onClick={onCancel}
-                  className="icon-btn"
-                  title="Cancel"
-                  aria-label="Cancel"
-                >
+                <button onClick={onCancel} className="icon-btn" title="Cancel" aria-label="Cancel">
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           </div>
           <div className="download-progress-bar">
-            <div
-              className="download-progress-fill"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="download-progress-fill" style={{ width: `${pct}%` }} />
           </div>
           <div className="download-progress-meta">
             <span>
@@ -157,7 +149,10 @@ export function GamePage({
         <button
           onClick={onPlay}
           disabled={isRunning}
-          className={cn('btn btn-xl text-white', isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-play')}
+          className={cn(
+            'btn btn-xl text-white',
+            isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-play'
+          )}
         >
           <Play className="w-5 h-5 fill-current" />
           {isRunning ? 'Playing' : 'Play'}
@@ -173,15 +168,37 @@ export function GamePage({
     );
   };
 
-  const menuItems: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; danger?: boolean }[] = [
-    { id: 'patchNotes', label: 'Patch Notes', icon: FileText, onClick: () => setActiveModal('patchNotes') },
+  const menuItems: {
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    onClick: () => void;
+    danger?: boolean;
+  }[] = [
+    {
+      id: 'patchNotes',
+      label: 'Patch Notes',
+      icon: FileText,
+      onClick: () => setActiveModal('patchNotes'),
+    },
     { id: 'news', label: 'News', icon: Newspaper, onClick: () => setActiveModal('news') },
     { id: 'info', label: 'Game Info', icon: Info, onClick: () => setActiveModal('info') },
   ];
 
   if (isInstalled) {
-    menuItems.unshift({ id: 'verify', label: 'Verify Files', icon: ShieldCheck, onClick: onVerify });
-    menuItems.push({ id: 'uninstall', label: 'Uninstall', icon: Trash2, onClick: onUninstall, danger: true });
+    menuItems.unshift({
+      id: 'verify',
+      label: 'Verify Files',
+      icon: ShieldCheck,
+      onClick: onVerify,
+    });
+    menuItems.push({
+      id: 'uninstall',
+      label: 'Uninstall',
+      icon: Trash2,
+      onClick: onUninstall,
+      danger: true,
+    });
   }
 
   return (
@@ -205,14 +222,14 @@ export function GamePage({
             {game.info.genre && game.info.genre.length > 0 && (
               <div className="tags">
                 {game.info.genre.map((g) => (
-                  <span key={g} className="tag">{g}</span>
+                  <span key={g} className="tag">
+                    {g}
+                  </span>
                 ))}
               </div>
             )}
 
-            {game.info.description && (
-              <p className="game-page-desc">{game.info.description}</p>
-            )}
+            {game.info.description && <p className="game-page-desc">{game.info.description}</p>}
           </div>
 
           <div className="game-page-actions">
@@ -256,7 +273,10 @@ export function GamePage({
                           setMenuOpen(false);
                           item.onClick();
                         }}
-                        className={cn('game-options-item', item.danger && 'game-options-item-danger')}
+                        className={cn(
+                          'game-options-item',
+                          item.danger && 'game-options-item-danger'
+                        )}
                       >
                         <item.icon className="w-4 h-4" />
                         <span>{item.label}</span>
@@ -283,15 +303,9 @@ export function GamePage({
         <section className="game-page-side">
           <div className="game-page-media">
             {game.info.bannerUrl ? (
-              <img
-                src={game.info.bannerUrl}
-                alt={game.info.name}
-                className="game-page-banner"
-              />
+              <img src={game.info.bannerUrl} alt={game.info.name} className="game-page-banner" />
             ) : (
-              <div className="game-page-banner game-page-banner-placeholder">
-                {initials}
-              </div>
+              <div className="game-page-banner game-page-banner-placeholder">{initials}</div>
             )}
           </div>
 
@@ -377,7 +391,12 @@ function GameDetailsModal({
                   {game.info.iconUrl ? (
                     <img src={game.info.iconUrl} alt={game.info.name} />
                   ) : (
-                    game.info.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+                    game.info.name
+                      .split(' ')
+                      .map((w) => w[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
                   )}
                 </div>
                 <div className="min-w-0">
@@ -389,7 +408,9 @@ function GameDetailsModal({
               {game.info.genre && game.info.genre.length > 0 && (
                 <div className="tags">
                   {game.info.genre.map((g) => (
-                    <span key={g} className="tag">{g}</span>
+                    <span key={g} className="tag">
+                      {g}
+                    </span>
                   ))}
                 </div>
               )}
@@ -397,7 +418,10 @@ function GameDetailsModal({
               <p className="game-page-desc">{game.info.description}</p>
 
               <div className="game-info-grid">
-                <InfoRow label="Version" value={versionText(game.info.channel, game.info.version)} />
+                <InfoRow
+                  label="Version"
+                  value={versionText(game.info.channel, game.info.version)}
+                />
                 <InfoRow label="Size" value={formatBytes(game.info.sizeBytes)} />
                 <InfoRow label="Developer" value={game.info.developer} />
                 {game.info.supportedPlatforms && (
@@ -413,10 +437,14 @@ function GameDetailsModal({
                 game.info.patchNotes.map((note) => (
                   <article key={note.version} className="patch-note-entry">
                     <div className="patch-note-version">v{note.version}</div>
-                    <div className="patch-note-date">{new Date(note.date).toLocaleDateString()}</div>
+                    <div className="patch-note-date">
+                      {new Date(note.date).toLocaleDateString()}
+                    </div>
                     <ul className="patch-note-bullets">
                       {note.notes.map((bullet, index) => (
-                        <li key={index} className="patch-note-bullet">{bullet}</li>
+                        <li key={index} className="patch-note-bullet">
+                          {bullet}
+                        </li>
                       ))}
                     </ul>
                   </article>
@@ -439,7 +467,9 @@ function GameDetailsModal({
                     )}
                     <div className="game-news-body">
                       <div className="game-news-meta">
-                        {item.category && <span className="badge badge-default">{item.category}</span>}
+                        {item.category && (
+                          <span className="badge badge-default">{item.category}</span>
+                        )}
                         <span className="cluster cluster-sm caption">
                           <Calendar className="w-3 h-3" />
                           {new Date(item.date).toLocaleDateString()}

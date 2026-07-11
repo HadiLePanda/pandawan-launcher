@@ -791,4 +791,3 @@ async fn test_download_resume_with_206_partial_appends_existing_partial() {
     assert_eq!(result, "full content from server");
     mock.assert_async().await;
 }
-

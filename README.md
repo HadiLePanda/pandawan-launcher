@@ -17,13 +17,13 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18 + TypeScript + Tailwind CSS |
-| Backend | Rust + Tauri |
-| State | Zustand |
-| HTTP Client | reqwest (Rust) |
-| Icons | Lucide React |
+| Layer       | Technology                           |
+| ----------- | ------------------------------------ |
+| Frontend    | React 18 + TypeScript + Tailwind CSS |
+| Backend     | Rust + Tauri                         |
+| State       | Zustand                              |
+| HTTP Client | reqwest (Rust)                       |
+| Icons       | Lucide React                         |
 
 ## Architecture
 
@@ -74,22 +74,26 @@ pandawan-launcher/
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/pandawancorp/pandawan-launcher.git
 cd pandawan-launcher
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Run in development mode:
+
 ```bash
 npm run tauri:dev
 ```
 
 4. Build for production:
+
 ```bash
 npm run tauri:build
 ```
@@ -165,18 +169,18 @@ python scripts/generate-manifest.py \
 
 The launcher exposes these commands to the frontend:
 
-| Command | Description |
-|---------|-------------|
-| `fetch_game_manifest(url)` | Fetch game manifest from CDN |
-| `install_game(manifest, baseUrl)` | Install or update a game |
-| `launch_game(gameId)` | Launch an installed game |
-| `uninstall_game(gameId)` | Remove a game installation |
-| `get_installed_games()` | List all installed games |
+| Command                               | Description                  |
+| ------------------------------------- | ---------------------------- |
+| `fetch_game_manifest(url)`            | Fetch game manifest from CDN |
+| `install_game(manifest, baseUrl)`     | Install or update a game     |
+| `launch_game(gameId)`                 | Launch an installed game     |
+| `uninstall_game(gameId)`              | Remove a game installation   |
+| `get_installed_games()`               | List all installed games     |
 | `check_game_update(gameId, manifest)` | Check if update is available |
-| `verify_game(manifest, installPath)` | Verify game file integrity |
-| `get_settings()` | Get launcher settings |
-| `save_settings(settings)` | Save launcher settings |
-| `select_install_folder()` | Open folder picker dialog |
+| `verify_game(manifest, installPath)`  | Verify game file integrity   |
+| `get_settings()`                      | Get launcher settings        |
+| `save_settings(settings)`             | Save launcher settings       |
+| `select_install_folder()`             | Open folder picker dialog    |
 
 ## Self-Updates
 
@@ -227,14 +231,14 @@ public class LauncherIntegration : MonoBehaviour
     void Start()
     {
         string[] args = System.Environment.GetCommandLineArgs();
-        
+
         for (int i = 0; i < args.Length; i++)
         {
             if (args[i] == "-launcher" && i + 1 < args.Length)
             {
                 string launcherId = args[i + 1];
                 Debug.Log($"Launched from Pandawan Launcher: {launcherId}");
-                
+
                 // Report playtime, check for updates, etc.
                 break;
             }

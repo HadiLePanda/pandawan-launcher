@@ -68,7 +68,12 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     try {
       const fixture = await import('./catalog-dev-fixture').then((m) => m.loadDevFixtureCatalog());
       if (fixture) {
-        return { catalog: fixture.catalog, games: fixture.games, source: 'embedded', unreachable: true };
+        return {
+          catalog: fixture.catalog,
+          games: fixture.games,
+          source: 'embedded',
+          unreachable: true,
+        };
       }
     } catch (err) {
       logger.warn('Failed to load dev fixture catalog', { error: String(err) });
@@ -82,7 +87,9 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     return { catalog: embedded, games, source: 'embedded', unreachable: true };
   }
 
-  throw new Error('No catalog could be loaded. Please check your connection or reinstall the launcher.');
+  throw new Error(
+    'No catalog could be loaded. Please check your connection or reinstall the launcher.'
+  );
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
@@ -115,7 +122,9 @@ export async function loadEmbeddedCatalog(): Promise<GameCatalog | null> {
 
 export async function loadLocalOverrideCatalog(): Promise<GameCatalog | null> {
   try {
-    const content = await readTextFile(CATALOG_OVERRIDE_FILE_NAME, { baseDir: BaseDirectory.AppData });
+    const content = await readTextFile(CATALOG_OVERRIDE_FILE_NAME, {
+      baseDir: BaseDirectory.AppData,
+    });
     const parsed = JSON.parse(content) as GameCatalog;
     validateCatalog(parsed);
     return parsed;
@@ -129,11 +138,9 @@ export async function loadLocalOverrideCatalog(): Promise<GameCatalog | null> {
 
 export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<void> {
   validateCatalog(catalog);
-  await writeTextFile(
-    CATALOG_OVERRIDE_FILE_NAME,
-    JSON.stringify(catalog, null, 2),
-    { baseDir: BaseDirectory.AppData }
-  );
+  await writeTextFile(CATALOG_OVERRIDE_FILE_NAME, JSON.stringify(catalog, null, 2), {
+    baseDir: BaseDirectory.AppData,
+  });
 }
 
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {

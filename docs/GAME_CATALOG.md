@@ -137,11 +137,11 @@ To ship a new version, replace the files and manifest in that folder. The launch
 
 ## Separation of concerns
 
-| File | Purpose |
-|------|---------|
-| `catalog.json` | What games appear in the launcher |
+| File            | Purpose                                 |
+| --------------- | --------------------------------------- |
+| `catalog.json`  | What games appear in the launcher       |
 | `manifest.json` | Per-game file list, version, and hashes |
-| `news.json` | Company announcements feed |
+| `news.json`     | Company announcements feed              |
 
 This keeps the launcher modular: adding a game only touches the catalog; shipping a version only touches the manifest; posting news only touches `news.json`.
 

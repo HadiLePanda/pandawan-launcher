@@ -306,9 +306,9 @@ pub fn validate_download_url(base_url: &str, file_url: &str) -> Result<String, P
         )));
     }
 
-    let relative = joined.path().trim_start_matches('/').to_string();
+    let relative = joined_segments[base_segments.len()..].join("/");
     let normalized = normalize_path(&relative);
-    if normalized.starts_with("..") {
+    if normalized.is_empty() || normalized.starts_with("..") {
         return Err(PathError::PathNotAllowed(format!(
             "File URL escapes the manifest base directory: {}",
             file_url
@@ -428,6 +428,15 @@ mod tests {
             Path::new("foo/bar")
         );
         assert!(sanitize_relative_path("foo\\..\\bar").is_err());
+        assert!(sanitize_relative_path("..\\x").is_err());
+    }
+
+    #[test]
+    fn sanitize_relative_path_accepts_valid_relative_path() {
+        assert_eq!(
+            sanitize_relative_path("data/config.json").unwrap(),
+            Path::new("data/config.json")
+        );
     }
 
     #[test]

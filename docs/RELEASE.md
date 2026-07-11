@@ -4,11 +4,11 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 
 ## Files this touches
 
-| File | What to change |
-|------|----------------|
-| `package.json` | `"version"` |
-| `src-tauri/Cargo.toml` | `version` under `[package]` |
-| `src-tauri/tauri.conf.json` | `"version"` |
+| File                        | What to change              |
+| --------------------------- | --------------------------- |
+| `package.json`              | `"version"`                 |
+| `src-tauri/Cargo.toml`      | `version` under `[package]` |
+| `src-tauri/tauri.conf.json` | `"version"`                 |
 
 ## Key files you must have
 

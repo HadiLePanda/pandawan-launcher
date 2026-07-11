@@ -6,12 +6,18 @@ import { logger } from './logger';
 // separate chunk and only loaded in dev when the remote/local catalog fails.
 import devCatalog from '../../examples/launcher/catalog.json';
 
-const manifestModules = import.meta.glob<GameManifest>('../../examples/games/*/stable/manifest.json', {
-  eager: true,
-  import: 'default',
-});
+const manifestModules = import.meta.glob<GameManifest>(
+  '../../examples/games/*/stable/manifest.json',
+  {
+    eager: true,
+    import: 'default',
+  }
+);
 
-export async function loadDevFixtureCatalog(): Promise<{ catalog: GameCatalog; games: GameInfo[] } | null> {
+export async function loadDevFixtureCatalog(): Promise<{
+  catalog: GameCatalog;
+  games: GameInfo[];
+} | null> {
   if (!import.meta.env.DEV) return null;
 
   try {

@@ -46,11 +46,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
   return (
     <button onClick={onClick} className="game-card">
       <div className="game-card-art">
-        {game.info.iconUrl ? (
-          <img src={game.info.iconUrl} alt={game.info.name} />
-        ) : (
-          initials
-        )}
+        {game.info.iconUrl ? <img src={game.info.iconUrl} alt={game.info.name} /> : initials}
       </div>
       <div className="game-card-content">
         <h3 className="game-card-title">{game.info.name}</h3>

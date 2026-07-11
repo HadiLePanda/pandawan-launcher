@@ -9,8 +9,8 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::types::{
-    FileEntry, GameInfo, GameInstallation, GameManifest, LauncherSettings, PatchProgress,
-    PatchState, PatchStatus,
+    FileEntry, GameInstallation, GameManifest, LauncherSettings, PatchProgress, PatchState,
+    PatchStatus,
 };
 
 /// Creates a test file with specified content and returns its SHA256 hash
@@ -96,27 +96,6 @@ pub fn create_test_installation(install_path: &Path) -> GameInstallation {
         last_played: None,
         total_playtime_seconds: 0,
         executable: "game.exe".to_string(),
-    }
-}
-
-/// Creates test game info
-pub fn create_test_game_info() -> GameInfo {
-    GameInfo {
-        id: "test-game".to_string(),
-        name: "Test Game".to_string(),
-        description: "A test game".to_string(),
-        developer: "Test Developer".to_string(),
-        genre: vec!["Action".to_string(), "Adventure".to_string()],
-        icon_url: "https://example.com/icon.png".to_string(),
-        banner_url: "https://example.com/banner.png".to_string(),
-        screenshots: vec![
-            "https://example.com/ss1.png".to_string(),
-            "https://example.com/ss2.png".to_string(),
-        ],
-        version: "1.0.0".to_string(),
-        size_bytes: 5376,
-        release_date: chrono::Utc::now(),
-        manifest_url: "https://example.com/manifest.json".to_string(),
     }
 }
 

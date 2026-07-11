@@ -20,8 +20,13 @@ vi.mock('./cdn', async () => {
     ...actual,
     CdnUrl: {
       catalog: vi.fn(() => 'https://cdn.example.com/launcher/catalog.json'),
-      gamesPath: vi.fn((id: string, channel: string = 'stable') => `https://cdn.example.com/games/${id}/${channel}`),
-      manifest: vi.fn((id: string, channel: string = 'stable') => `https://cdn.example.com/games/${id}/${channel}/manifest.json`),
+      gamesPath: vi.fn(
+        (id: string, channel: string = 'stable') => `https://cdn.example.com/games/${id}/${channel}`
+      ),
+      manifest: vi.fn(
+        (id: string, channel: string = 'stable') =>
+          `https://cdn.example.com/games/${id}/${channel}/manifest.json`
+      ),
       news: vi.fn(() => 'https://cdn.example.com/launcher/news.json'),
       withCacheBust: actual.CdnUrl.withCacheBust,
     },
@@ -40,10 +45,12 @@ vi.mock('./cdn', async () => {
       bannerUrl: entry.bannerUrl ?? manifest.banner_url ?? '',
       screenshots: entry.screenshots ?? [],
       version: manifest.version,
-      sizeBytes: manifest.size_bytes ?? 0,
-      releaseDate: manifest.release_date ?? new Date().toISOString(),
+      sizeBytes: manifest.files.reduce(
+        (sum: number, f: { size?: number }) => sum + (f.size ?? 0),
+        0
+      ),
+      releaseDate: new Date().toISOString(),
       supportedPlatforms: entry.supportedPlatforms ?? ['windows'],
-      patchNotes: manifest.patch_notes,
     })),
   };
 });
@@ -159,7 +166,9 @@ describe('catalog-service', () => {
     });
 
     it('prefers a local override file over the embedded catalog', async () => {
-      const overrideCatalog = makeCatalog({ games: [{ id: 'override-game', name: 'Override Game' }] });
+      const overrideCatalog = makeCatalog({
+        games: [{ id: 'override-game', name: 'Override Game' }],
+      });
       const manifest = makeManifest({ game_id: 'override-game', name: 'Override Game' });
 
       (readTextFile as Mock).mockResolvedValue(JSON.stringify(overrideCatalog));
@@ -208,16 +217,18 @@ describe('catalog-service', () => {
       const catalog = makeCatalog();
       (tauriFetch as Mock).mockResolvedValue(okResponse(catalog));
 
-      const result = await service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json');
+      const result = await service.fetchRemoteCatalog(
+        'https://cdn.example.com/launcher/catalog.json'
+      );
       expect(result).toEqual(catalog);
     });
 
     it('throws on non-ok responses', async () => {
       (tauriFetch as Mock).mockResolvedValue(errorResponse(500, 'Internal Server Error'));
 
-      await expect(service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json')).rejects.toThrow(
-        'Remote catalog returned 500: Internal Server Error'
-      );
+      await expect(
+        service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json')
+      ).rejects.toThrow('Remote catalog returned 500: Internal Server Error');
     });
   });
 
@@ -266,11 +277,15 @@ describe('catalog-service', () => {
     });
 
     it('rejects a catalog without games', () => {
-      expect(() => service.validateCatalog({ schemaVersion: '1.0.0' })).toThrow('missing the games array');
+      expect(() => service.validateCatalog({ schemaVersion: '1.0.0' })).toThrow(
+        'missing the games array'
+      );
     });
 
     it('rejects a game without an id', () => {
-      expect(() => service.validateCatalog({ schemaVersion: '1.0.0', games: [{}] })).toThrow('missing a valid id');
+      expect(() => service.validateCatalog({ schemaVersion: '1.0.0', games: [{}] })).toThrow(
+        'missing a valid id'
+      );
     });
   });
 });

@@ -4,7 +4,8 @@ import * as catalogService from './catalog-service';
 import * as newsService from './news-service';
 import * as gameService from './game-service';
 import { logger } from './logger';
-import type { DownloadProgressSnapshot } from './game-service';
+import type { DownloadProgressSnapshot } from './download-channel';
+import { CommandError } from './errors';
 
 type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
 
@@ -25,7 +26,11 @@ interface LauncherState {
   setGames: (games: Game[]) => void;
   selectGame: (gameId: string | null) => void;
   addGame: (gameInfo: GameInfo) => void;
-  updateGameStatus: (gameId: string, status: Game['status'], installation?: GameInstallation) => void;
+  updateGameStatus: (
+    gameId: string,
+    status: Game['status'],
+    installation?: GameInstallation
+  ) => void;
   setDownloadProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
   removeDownload: (gameId: string) => void;
   setSettings: (settings: LauncherSettings) => Promise<void>;
@@ -74,9 +79,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   updateGameStatus: (gameId, status, installation) => {
     set((state) => ({
       games: state.games.map((g) =>
-        g.info.id === gameId
-          ? { ...g, status, installation: installation ?? g.installation }
-          : g
+        g.info.id === gameId ? { ...g, status, installation: installation ?? g.installation } : g
       ),
     }));
   },
@@ -131,7 +134,12 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
         status: 'not_installed',
         hasUpdate: false,
       }));
-      set({ games: gamesState, isLoading: false, catalogSource: source, catalogUnreachable: !!unreachable });
+      set({
+        games: gamesState,
+        isLoading: false,
+        catalogSource: source,
+        catalogUnreachable: !!unreachable,
+      });
     } catch (err) {
       handleStoreError(err, set, 'loadCatalog');
       set({ isLoading: false, catalogSource: null, catalogUnreachable: true });
@@ -192,9 +200,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       const hasUpdate = await gameService.checkForUpdates(gameId, channel);
       set((state) => ({
-        games: state.games.map((g) =>
-          g.info.id === gameId ? { ...g, hasUpdate } : g
-        ),
+        games: state.games.map((g) => (g.info.id === gameId ? { ...g, hasUpdate } : g)),
       }));
       return hasUpdate;
     } catch (err) {
@@ -233,9 +239,16 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
 
 // Private helpers
 
-function handleStoreError(error: unknown, set: ((partial: Partial<LauncherState>) => void) | ((fn: (state: LauncherState) => Partial<LauncherState>) => void), context: string): string {
+function handleStoreError(
+  error: unknown,
+  set:
+    | ((partial: Partial<LauncherState>) => void)
+    | ((fn: (state: LauncherState) => Partial<LauncherState>) => void),
+  context: string
+): string {
   const message = error instanceof Error ? error.message : String(error);
-  logger.error(`Store action failed: ${context}`, { error: message });
+  const code = error instanceof CommandError ? error.code : 'unknown';
+  logger.error(`Store action failed: ${context}`, { code, error: message });
   (set as (partial: Partial<LauncherState>) => void)({ error: message });
   return message;
 }

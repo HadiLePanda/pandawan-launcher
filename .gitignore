@@ -50,6 +50,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+.tmp-venv/
+
+# Testing
 
 # Testing
 coverage/
@@ -59,9 +62,7 @@ coverage/
 .cache/
 .parcel-cache/
 
-# Docs that should not be committed
-docs/BRAND_GUIDE.md
-docs/superpowers/
+# Downloads folder used by tests/dev
 downloads/
 
 # Minisign updater keys

@@ -145,8 +145,8 @@ async fn check_game_update(
     game_id: String,
     manifest: GameManifest,
 ) -> Result<bool, LauncherError> {
-    let game_id = validate_game_id(&game_id)
-        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+    let game_id =
+        validate_game_id(&game_id).map_err(|e| LauncherError::Validation(e.to_string()))?;
 
     let app_data_dir = app
         .path()
@@ -288,8 +288,8 @@ async fn get_game_installation(
     app: AppHandle,
     game_id: String,
 ) -> Result<Option<GameInstallation>, LauncherError> {
-    let game_id = validate_game_id(&game_id)
-        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+    let game_id =
+        validate_game_id(&game_id).map_err(|e| LauncherError::Validation(e.to_string()))?;
 
     let app_data_dir = app
         .path()
@@ -306,8 +306,8 @@ async fn uninstall_game(
     state: State<'_, LauncherState>,
     game_id: String,
 ) -> Result<(), LauncherError> {
-    let game_id = validate_game_id(&game_id)
-        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+    let game_id =
+        validate_game_id(&game_id).map_err(|e| LauncherError::Validation(e.to_string()))?;
 
     // Check if running (uses validated game_id)
     {

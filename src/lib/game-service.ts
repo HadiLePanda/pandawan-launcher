@@ -1,17 +1,17 @@
 import { commands } from './commands';
-import { createDownloadChannel } from './download-channel';
-import type { GameInstallation, GameManifest, LauncherSettings, LaunchResult, VerificationResult } from '@/types';
+import { createDownloadChannel, type DownloadProgressSnapshot } from './download-channel';
+import { unwrapResult } from './errors';
+import type {
+  GameInstallation,
+  GameManifest,
+  LauncherSettings,
+  LaunchResult,
+  VerificationResult,
+} from '@/types';
 import { fetchGameManifest } from './catalog-service';
 import { resolveGameUrls } from './cdn';
 
-export interface DownloadProgressSnapshot {
-  progress: number;
-  overallProgress: number;
-  speed: string;
-  currentFile: string | null;
-  completedFiles: number;
-  totalFiles: number;
-}
+export type { DownloadProgressSnapshot } from './download-channel';
 
 export interface PatchCallbacks {
   onProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
@@ -32,16 +32,16 @@ export async function patchGame(
   const { manifestUrl, baseUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
   const downloadChannel = createDownloadChannel(gameId, callbacks);
-  const installation = await commands.installGame(manifest, baseUrl, downloadChannel);
+  const installation = unwrapResult(await commands.installGame(manifest, baseUrl, downloadChannel));
   return { manifest, installation };
 }
 
 export async function uninstallGame(gameId: string): Promise<void> {
-  await commands.uninstallGame(gameId);
+  unwrapResult(await commands.uninstallGame(gameId));
 }
 
 export async function launchGame(gameId: string): Promise<LaunchResult> {
-  const result = await commands.launchGame(gameId);
+  const result = unwrapResult(await commands.launchGame(gameId));
   if (!result.success) {
     throw new Error(result.message);
   }
@@ -51,35 +51,35 @@ export async function launchGame(gameId: string): Promise<LaunchResult> {
 export async function checkForUpdates(gameId: string, channel: string): Promise<boolean> {
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
-  return commands.checkGameUpdate(gameId, manifest);
+  return unwrapResult(await commands.checkGameUpdate(gameId, manifest));
 }
 
 export async function verifyGame(gameId: string, channel: string): Promise<VerificationResult> {
-  const installation = await commands.getGameInstallation(gameId);
+  const installation = unwrapResult(await commands.getGameInstallation(gameId));
   if (!installation) {
     throw new Error('Game is not installed');
   }
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
-  return commands.verifyGame(manifest, installation.install_path);
+  return unwrapResult(await commands.verifyGame(manifest, installation.install_path));
 }
 
 export async function loadInstalledGames(): Promise<GameInstallation[]> {
-  return commands.getInstalledGames();
+  return unwrapResult(await commands.getInstalledGames());
 }
 
 export async function loadSettings(): Promise<LauncherSettings> {
-  return commands.getSettings();
+  return unwrapResult(await commands.getSettings());
 }
 
 export async function saveSettings(settings: LauncherSettings): Promise<void> {
-  await commands.saveSettings(settings);
+  unwrapResult(await commands.saveSettings(settings));
 }
 
 export async function selectInstallFolder(): Promise<string | null> {
-  return commands.selectInstallFolder();
+  return unwrapResult(await commands.selectInstallFolder());
 }
 
 export async function cancelOperation(): Promise<void> {
-  await commands.cancelOperation();
+  unwrapResult(await commands.cancelOperation());
 }

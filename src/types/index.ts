@@ -9,9 +9,6 @@ export interface GameManifest {
   executable: string;
   files: FileEntry[];
   launch_args?: string[];
-  release_date?: string;
-  patch_notes?: PatchNote[];
-  size_bytes?: number;
 }
 
 export interface FileEntry {
@@ -35,7 +32,10 @@ export interface GameInstallation {
 }
 
 export type DownloadEvent =
-  | { event: 'started'; data: { filePath: string; totalSize: number; fileIndex: number; totalFiles: number } }
+  | {
+      event: 'started';
+      data: { filePath: string; totalSize: number; fileIndex: number; totalFiles: number };
+    }
   | {
       event: 'progress';
       data: {
@@ -50,12 +50,19 @@ export type DownloadEvent =
         currentFile?: string;
       };
     }
-  | { event: 'fileComplete'; data: { filePath: string; completedFiles?: number; totalFiles?: number } }
-  | { event: 'retry'; data: { filePath: string; attempt: number; maxAttempts: number; error: string } }
+  | {
+      event: 'fileComplete';
+      data: { filePath: string; completedFiles?: number; totalFiles?: number };
+    }
+  | {
+      event: 'retry';
+      data: { filePath: string; attempt: number; maxAttempts: number; error: string };
+    }
   | { event: 'complete'; data: { completedFiles: number; totalFiles: number } }
   | { event: 'error'; data: { message: string } };
 
-export type PatchState = 'idle' | 'checking' | 'downloading' | 'verifying' | 'installing' | 'complete' | 'error';
+export type PatchState =
+  'idle' | 'checking' | 'downloading' | 'verifying' | 'installing' | 'complete' | 'error';
 
 export interface PatchProgress {
   totalFiles: number;
@@ -169,13 +176,7 @@ export interface CatalogGameEntry {
   supportedPlatforms?: string[];
 }
 
-export type GameStatus =
-  | 'not_installed'
-  | 'installed'
-  | 'updating'
-  | 'downloading'
-  | 'repairing'
-  | 'running';
+export type GameStatus = 'not_installed' | 'installed' | 'updating' | 'downloading' | 'running';
 
 export interface Game {
   info: GameInfo;

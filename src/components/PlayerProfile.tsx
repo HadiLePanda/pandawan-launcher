@@ -30,7 +30,8 @@ export function PlayerProfile({ isOpen, onClose }: PlayerProfileProps) {
           </div>
           <div className="p-4 rounded-xl bg-surface border border-border">
             <p className="body text-center">
-              Account features are coming soon. Here you'll manage your Pandawan account, friends list, and purchases.
+              Account features are coming soon. Here you'll manage your Pandawan account, friends
+              list, and purchases.
             </p>
           </div>
         </div>

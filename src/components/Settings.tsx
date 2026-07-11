@@ -79,10 +79,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'modal-nav-item',
-                    activeTab === tab.id && 'modal-nav-item-active'
-                  )}
+                  className={cn('modal-nav-item', activeTab === tab.id && 'modal-nav-item-active')}
                 >
                   <Icon className="modal-nav-icon" />
                   {tab.label}
@@ -94,9 +91,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="modal-header">
-            <h3 className="title-3">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h3>
+            <h3 className="title-3">{tabs.find((t) => t.id === activeTab)?.label}</h3>
             <button onClick={onClose} className="icon-btn">
               <X className="w-5 h-5" />
             </button>
@@ -221,7 +216,9 @@ function DownloadSettings({ settings, onChange }: TabProps) {
     { value: '50000000', label: '50 MB/s' },
   ];
 
-  const currentSpeedValue = settings.maxDownloadSpeed ? String(settings.maxDownloadSpeed) : 'unlimited';
+  const currentSpeedValue = settings.maxDownloadSpeed
+    ? String(settings.maxDownloadSpeed)
+    : 'unlimited';
 
   const handleSpeedChange = (val: string) => {
     if (val === 'unlimited') {
@@ -263,9 +260,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
               onClick={() => onChange({ maxConcurrentDownloads: n })}
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-colors',
-                settings.maxConcurrentDownloads === n
-                  ? 'selectable-chip-active'
-                  : 'selectable-chip'
+                settings.maxConcurrentDownloads === n ? 'selectable-chip-active' : 'selectable-chip'
               )}
             >
               {n}
@@ -362,7 +357,13 @@ interface SettingItemProps {
   controlClassName?: string;
 }
 
-function SettingItem({ icon: Icon, title, description, children, controlClassName = 'setting-control' }: SettingItemProps) {
+function SettingItem({
+  icon: Icon,
+  title,
+  description,
+  children,
+  controlClassName = 'setting-control',
+}: SettingItemProps) {
   return (
     <div className="setting-item">
       <div className="setting-header">

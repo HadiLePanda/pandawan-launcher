@@ -1,4 +1,4 @@
-use crate::types::{DownloadEvent, DownloadStats};
+use crate::types::{DownloadEvent, DownloadStats, LauncherError};
 use futures_util::StreamExt;
 use reqwest::Client;
 use std::fs::{self, OpenOptions};
@@ -148,9 +148,7 @@ impl DownloadManager {
 
         // Open the destination: truncate for a full response, append only for a real partial response
         let mut file = if is_partial && start_byte > 0 {
-            OpenOptions::new()
-                .append(true)
-                .open(dest_path)?
+            OpenOptions::new().append(true).open(dest_path)?
         } else {
             OpenOptions::new()
                 .write(true)
@@ -421,6 +419,23 @@ impl DownloadError {
             DownloadError::Semaphore(_) => "Too many concurrent downloads.".to_string(),
             DownloadError::Patch(_) => "Failed to verify file integrity.".to_string(),
             DownloadError::Task(_) => "Download task failed. Please try again.".to_string(),
+        }
+    }
+}
+
+impl From<DownloadError> for LauncherError {
+    fn from(err: DownloadError) -> Self {
+        match err {
+            DownloadError::Io(e) => LauncherError::Io(e.to_string()),
+            DownloadError::HttpError(s) => LauncherError::Network(s),
+            DownloadError::Request(e) => LauncherError::Network(e.to_string()),
+            DownloadError::HashMismatch { expected, actual } => {
+                LauncherError::Other(format!("Hash mismatch: expected {expected}, got {actual}"))
+            }
+            DownloadError::Cancelled => LauncherError::Other("Download cancelled".to_string()),
+            DownloadError::Semaphore(e) => LauncherError::Other(e.to_string()),
+            DownloadError::Patch(s) => LauncherError::Other(s),
+            DownloadError::Task(s) => LauncherError::Other(s),
         }
     }
 }

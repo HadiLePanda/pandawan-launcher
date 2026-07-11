@@ -12,10 +12,7 @@ export function News() {
   if (news.length === 0) {
     return (
       <div className="flex-1 flex flex-col justify-center">
-        <EmptyState
-          title="No News Yet"
-          description="Check back later for updates."
-        />
+        <EmptyState title="No News Yet" description="Check back later for updates." />
       </div>
     );
   }
@@ -24,10 +21,7 @@ export function News() {
     return (
       <div className="h-full overflow-auto page">
         <div className="max-w-3xl mx-auto">
-          <button
-            onClick={() => setSelectedItem(null)}
-            className="btn btn-ghost mb-4 -ml-2"
-          >
+          <button onClick={() => setSelectedItem(null)} className="btn btn-ghost mb-4 -ml-2">
             <ArrowLeft className="w-4 h-4" />
             Back to news
           </button>
@@ -72,11 +66,7 @@ export function News() {
             <div className="news-body">
               <div>
                 <div className="news-meta">
-                  {item.category && (
-                    <span className="badge badge-default">
-                      {item.category}
-                    </span>
-                  )}
+                  {item.category && <span className="badge badge-default">{item.category}</span>}
                   <span className="cluster cluster-sm caption">
                     <Calendar className="w-4 h-4" />
                     {new Date(item.date).toLocaleDateString()}

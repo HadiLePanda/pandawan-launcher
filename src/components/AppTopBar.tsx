@@ -39,7 +39,8 @@ export function AppTopBar({
     ) : (
       <SunMoon className="w-5 h-5" />
     );
-  const themeTitle = currentTheme === 'light' ? 'Light' : currentTheme === 'dark' ? 'Dark' : 'Adaptive';
+  const themeTitle =
+    currentTheme === 'light' ? 'Light' : currentTheme === 'dark' ? 'Dark' : 'Adaptive';
 
   const navItems = [
     { id: 'games' as const, label: 'Games', onClick: onGamesClick },
@@ -48,11 +49,7 @@ export function AppTopBar({
   ];
 
   return (
-    <div
-      data-tauri-drag-region
-      onDoubleClick={onDoubleClick}
-      className="app-topbar"
-    >
+    <div data-tauri-drag-region onDoubleClick={onDoubleClick} className="app-topbar">
       <div className="app-topbar-row">
         <div className="cluster cluster-md">
           <div className="app-logo">P</div>
@@ -83,25 +80,14 @@ export function AppTopBar({
             >
               {themeIcon}
             </button>
-            <button
-              onClick={onSettingsClick}
-              className="icon-btn"
-              aria-label="Settings"
-            >
+            <button onClick={onSettingsClick} className="icon-btn" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </button>
-            <button
-              className="icon-btn"
-              aria-label="Notifications"
-            >
+            <button className="icon-btn" aria-label="Notifications">
               <Bell className="w-5 h-5" />
             </button>
           </div>
-          <button
-            onClick={onPlayerClick}
-            className="profile-btn"
-            aria-label="Player profile"
-          >
+          <button onClick={onPlayerClick} className="profile-btn" aria-label="Player profile">
             <User className="w-6 h-6" />
           </button>
         </div>

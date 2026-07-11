@@ -21,9 +21,7 @@
     {
       "version": "0.0.1",
       "date": "2026-07-01T00:00:00Z",
-      "notes": [
-        "Prototype build used for layout and integration testing."
-      ]
+      "notes": ["Prototype build used for layout and integration testing."]
     }
   ],
   "files": [

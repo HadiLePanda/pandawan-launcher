@@ -89,7 +89,9 @@ export function VerifyGameModal({ game, result, error, onClose }: VerifyGameModa
         </div>
 
         <div className="modal-footer">
-          <button onClick={onClose} className="btn btn-primary">Close</button>
+          <button onClick={onClose} className="btn btn-primary">
+            Close
+          </button>
         </div>
       </div>
     </div>

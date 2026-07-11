@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { cn } from '@/lib/utils';
+import { events } from '@/lib/bindings';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
 import { GamePage } from '@components/GamePage';
@@ -23,7 +23,10 @@ function ConnectionBanner({ onRetry, className }: { onRetry: () => void; classNa
     <div className={cn('banner', className)}>
       <div className="banner-text truncate">
         <ServerOff className="w-4 h-4 shrink-0" />
-        <span className="truncate">Catalog server is unreachable. Showing bundled games; install and launch require a live server.</span>
+        <span className="truncate">
+          Catalog server is unreachable. Showing bundled games; install and launch require a live
+          server.
+        </span>
       </div>
       <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember shrink-0">
         <RefreshCw className="w-4 h-4" />
@@ -97,6 +100,7 @@ function App() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -108,7 +112,9 @@ function App() {
     } else if (settings.theme === 'light') {
       root.classList.add('light');
     } else {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
       root.classList.add(systemTheme);
     }
 
@@ -121,17 +127,16 @@ function App() {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.theme]);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    listen<{ game_id: string }>('game-exited', (event) => {
+    const unlisten = events.gameExited.listen((event) => {
       updateGameStatus(event.payload.game_id, 'installed');
-    }).then((fn) => {
-      unlisten = fn;
     });
+
     return () => {
-      unlisten?.();
+      unlisten.then((fn) => fn());
     };
   }, [updateGameStatus]);
 
@@ -183,9 +188,7 @@ function App() {
     }
   };
 
-  const uninstalledGames = games
-    .filter((g) => g.status === 'not_installed')
-    .map((g) => g.info);
+  const uninstalledGames = games.filter((g) => g.status === 'not_installed').map((g) => g.info);
 
   const renderContent = () => {
     if (activeView === 'news') {
@@ -221,7 +224,11 @@ function App() {
             onCancel={cancelOperation}
           />
         ) : (
-          <GamesHome games={games} onSelectGame={handleSelectGame} onInstallGame={() => setIsAddGameOpen(true)} />
+          <GamesHome
+            games={games}
+            onSelectGame={handleSelectGame}
+            onInstallGame={() => setIsAddGameOpen(true)}
+          />
         )}
       </GamesPage>
     );

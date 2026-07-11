@@ -18,7 +18,7 @@ const MARGIN = 8;
 export function useDropdownPosition(
   triggerRef: RefObject<HTMLElement | null>,
   menuRef: RefObject<HTMLElement | null>,
-  open: boolean,
+  open: boolean
 ): DropdownPosition | null {
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
@@ -47,9 +47,7 @@ export function useDropdownPosition(
         menuHeight <= spaceBelow ? 'bottom' : menuHeight <= spaceAbove ? 'top' : 'bottom';
 
       const top =
-        placement === 'bottom'
-          ? trigger.bottom + MARGIN
-          : trigger.top - menuHeight - MARGIN;
+        placement === 'bottom' ? trigger.bottom + MARGIN : trigger.top - menuHeight - MARGIN;
 
       let left = trigger.left;
       if (left + menuWidth + MARGIN > viewportWidth) {

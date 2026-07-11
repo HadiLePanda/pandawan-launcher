@@ -36,9 +36,6 @@ describe('createDownloadChannel', () => {
       },
     });
 
-    expect(onProgress).toHaveBeenCalledWith(
-      'game-1',
-      expect.objectContaining({ totalFiles: 5 })
-    );
+    expect(onProgress).toHaveBeenCalledWith('game-1', expect.objectContaining({ totalFiles: 5 }));
   });
 });

@@ -634,133 +634,6 @@ fn test_launch_result_serialization() {
 }
 
 // ============================================================================
-// GameInfo Tests
-// ============================================================================
-
-#[test]
-fn test_game_info_serialization() {
-    let info = GameInfo {
-        id: "info-test".to_string(),
-        name: "Info Test Game".to_string(),
-        description: "A game for testing".to_string(),
-        developer: "Test Studio".to_string(),
-        genre: vec![
-            "Action".to_string(),
-            "RPG".to_string(),
-            "Multiplayer".to_string(),
-        ],
-        icon_url: "https://cdn.example.com/icon.png".to_string(),
-        banner_url: "https://cdn.example.com/banner.jpg".to_string(),
-        screenshots: vec![
-            "https://cdn.example.com/ss1.jpg".to_string(),
-            "https://cdn.example.com/ss2.jpg".to_string(),
-            "https://cdn.example.com/ss3.jpg".to_string(),
-        ],
-        version: "2.5.0".to_string(),
-        size_bytes: 25_000_000_000, // 25 GB
-        release_date: chrono::DateTime::parse_from_rfc3339("2023-06-15T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc),
-        manifest_url: "https://cdn.example.com/manifest.json".to_string(),
-    };
-
-    let json = serde_json::to_string_pretty(&info).expect("Failed to serialize");
-    let deserialized: GameInfo = serde_json::from_str(&json).expect("Failed to deserialize");
-
-    assert_eq!(deserialized.id, info.id);
-    assert_eq!(deserialized.genre.len(), 3);
-    assert_eq!(deserialized.screenshots.len(), 3);
-    assert_eq!(deserialized.size_bytes, 25_000_000_000);
-}
-
-#[test]
-fn test_game_info_size_display() {
-    let base = GameInfo {
-        id: "test".to_string(),
-        name: "Test".to_string(),
-        description: "".to_string(),
-        developer: "".to_string(),
-        genre: vec![],
-        icon_url: "".to_string(),
-        banner_url: "".to_string(),
-        screenshots: vec![],
-        version: "".to_string(),
-        size_bytes: 0,
-        release_date: chrono::Utc::now(),
-        manifest_url: "".to_string(),
-    };
-
-    // GB
-    let gb = GameInfo {
-        size_bytes: 5_500_000_000,
-        ..base.clone()
-    };
-    assert_eq!(gb.size_display(), "5.50 GB");
-
-    // MB
-    let mb = GameInfo {
-        size_bytes: 500_000_000,
-        ..base.clone()
-    };
-    assert_eq!(mb.size_display(), "500.0 MB");
-
-    // KB
-    let kb = GameInfo {
-        size_bytes: 500_000,
-        ..base.clone()
-    };
-    assert_eq!(kb.size_display(), "500.0 KB");
-
-    // B
-    let b = GameInfo {
-        size_bytes: 500,
-        ..base.clone()
-    };
-    assert_eq!(b.size_display(), "500 B");
-}
-
-#[test]
-fn test_game_info_matches_search() {
-    let info = GameInfo {
-        id: "search-test".to_string(),
-        name: "Awesome Adventure Quest".to_string(),
-        description: "An epic action RPG".to_string(),
-        developer: "Epic Games Studio".to_string(),
-        genre: vec![
-            "Action".to_string(),
-            "RPG".to_string(),
-            "Adventure".to_string(),
-        ],
-        icon_url: "".to_string(),
-        banner_url: "".to_string(),
-        screenshots: vec![],
-        version: "".to_string(),
-        size_bytes: 0,
-        release_date: chrono::Utc::now(),
-        manifest_url: "".to_string(),
-    };
-
-    // Match name
-    assert!(info.matches_search("Awesome"));
-    assert!(info.matches_search("adventure")); // case insensitive
-    assert!(info.matches_search("quest")); // partial match
-
-    // Match description
-    assert!(info.matches_search("epic"));
-
-    // Match developer
-    assert!(info.matches_search("studio"));
-
-    // Match genre
-    assert!(info.matches_search("action"));
-    assert!(info.matches_search("rpg"));
-
-    // No match
-    assert!(!info.matches_search("shooter"));
-    assert!(!info.matches_search("puzzle"));
-}
-
-// ============================================================================
 // Complex Integration Tests
 // ============================================================================
 
@@ -847,25 +720,23 @@ fn test_serialization_with_special_characters() {
 
 #[test]
 fn test_unicode_handling() {
-    let info = GameInfo {
-        id: "unicode-test".to_string(),
+    let manifest = GameManifest {
+        game_id: "unicode-test".to_string(),
         name: "日本語ゲーム 🎮".to_string(),
-        description: "Описание на русском".to_string(),
-        developer: "中文开发商".to_string(),
-        genre: vec!["アクション".to_string()],
-        icon_url: "".to_string(),
-        banner_url: "".to_string(),
-        screenshots: vec![],
-        version: "".to_string(),
-        size_bytes: 0,
-        release_date: chrono::Utc::now(),
-        manifest_url: "".to_string(),
+        description: Some("Описание на русском".to_string()),
+        version: "1.0.0".to_string(),
+        build_number: 1,
+        icon_url: None,
+        banner_url: None,
+        executable: "game.exe".to_string(),
+        files: vec![],
+        launch_args: Some(vec!["--path=C:\\Program Files\\Game".to_string()]),
     };
 
-    let json = serde_json::to_string(&info).unwrap();
-    let deserialized: GameInfo = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&manifest).unwrap();
+    let deserialized: GameManifest = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(deserialized.name, info.name);
-    assert_eq!(deserialized.description, info.description);
-    assert_eq!(deserialized.developer, info.developer);
+    assert_eq!(deserialized.name, manifest.name);
+    assert_eq!(deserialized.description, manifest.description);
+    assert_eq!(deserialized.game_id, manifest.game_id);
 }
