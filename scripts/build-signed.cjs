@@ -1,23 +1,23 @@
-const { spawn } = require('node:child_process');
-const { readFileSync, existsSync } = require('node:fs');
-const { resolve } = require('node:path');
+#!/usr/bin/env node
+/**
+ * Build the Tauri app with the local minisign secret key.
+ *
+ * 1. Syncs the public key into tauri.conf.json.
+ * 2. Loads the gitignored secret key.
+ * 3. Runs `tauri build` with TAURI_SIGNING_PRIVATE_KEY set.
+ */
+
+const { spawn } = require('child_process');
+const { readFileSync, existsSync } = require('fs');
+const { resolve } = require('path');
 
 const projectRoot = resolve(__dirname, '..');
 const secretKeyPath = resolve(projectRoot, 'src-tauri', '.secrets', 'updater.key');
-const isWindows = process.platform === 'win32';
 
-function run(command, args, options) {
-  // On Windows, spawn the command through cmd.exe so .cmd binaries in
-  // node_modules/.bin resolve without needing shell: true.
-  if (isWindows) {
-    return spawn('cmd', ['/c', command, ...args], options);
-  }
-  return spawn(command, args, options);
-}
-
-const sync = run('node', [resolve(__dirname, 'sync-updater-key.cjs')], {
-  cwd: projectRoot,
+// 1. Sync public key first.
+const sync = spawn('node', [resolve(__dirname, 'sync-updater-key.cjs')], {
   stdio: 'inherit',
+  shell: process.platform === 'win32',
 });
 
 sync.on('close', (code) => {
@@ -26,6 +26,7 @@ sync.on('close', (code) => {
     process.exit(code ?? 1);
   }
 
+  // 2. Ensure secret key exists.
   if (!existsSync(secretKeyPath)) {
     console.error(
       `Missing updater secret key: ${secretKeyPath}\n` +
@@ -34,15 +35,18 @@ sync.on('close', (code) => {
     process.exit(1);
   }
 
+  // 3. Read secret key and set env var.
   const privateKey = readFileSync(secretKeyPath, 'utf-8').trim();
   if (!privateKey) {
     console.error(`Updater secret key file is empty: ${secretKeyPath}`);
     process.exit(1);
   }
 
-  const build = run('tauri', ['build'], {
+  // 4. Run tauri build with the signing key.
+  const build = spawn('tauri', ['build'], {
     cwd: resolve(projectRoot, 'src-tauri'),
     stdio: 'inherit',
+    shell: process.platform === 'win32',
     env: {
       ...process.env,
       TAURI_SIGNING_PRIVATE_KEY: privateKey,
