@@ -17,6 +17,7 @@ pub mod types;
 pub mod test_utils;
 
 use patch::{list_installations, load_installation, save_installation, PatchManager};
+use path_utils::{assert_path_inside, validate_game_id};
 use specta_typescript::Typescript;
 use types::*;
 
@@ -58,26 +59,14 @@ fn get_default_games_path() -> PathBuf {
         .join("PandawanGames")
 }
 
-/// Verify a path is inside a given root after canonicalization.
-/// This should be used before any file read/write/delete/exec operation.
+/// Verify a path is inside a given root before deleting, writing, or executing.
 pub fn assert_path_inside_root(
     path: &std::path::Path,
     root: &std::path::Path,
 ) -> Result<(), LauncherError> {
-    let canonical_path = path
-        .canonicalize()
-        .map_err(|e| LauncherError::Io(format!("Invalid path {}: {}", path.display(), e)))?;
-    let canonical_root = root
-        .canonicalize()
-        .map_err(|e| LauncherError::Io(format!("Invalid root {}: {}", root.display(), e)))?;
-
-    if !canonical_path.starts_with(&canonical_root) {
-        return Err(LauncherError::PathNotAllowed {
-            path: canonical_path.to_string_lossy().to_string(),
-        });
-    }
-
-    Ok(())
+    assert_path_inside(path, root).map_err(|_| LauncherError::PathNotAllowed {
+        path: path.to_string_lossy().to_string(),
+    })
 }
 
 /// Fetch game manifest from URL
@@ -112,10 +101,15 @@ async fn fetch_game_manifest(url: String) -> Result<GameManifest, LauncherError>
 async fn install_game(
     app: AppHandle,
     state: State<'_, LauncherState>,
-    manifest: GameManifest,
+    mut manifest: GameManifest,
     base_url: String,
     on_event: Channel<DownloadEvent>,
 ) -> Result<GameInstallation, LauncherError> {
+    // Slugify the game id before using it as a directory name or filename.
+    let slug = validate_game_id(&manifest.game_id)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+    manifest.game_id = slug;
+
     let allowed_root = {
         let settings = state.settings.lock().await;
         settings
@@ -125,7 +119,6 @@ async fn install_game(
     };
     let install_dir = allowed_root.join(&manifest.game_id);
 
-    // Ensure the install directory exists before canonicalising it for the safety check.
     std::fs::create_dir_all(&install_dir)?;
     assert_path_inside_root(&install_dir, &allowed_root)?;
 
@@ -139,7 +132,6 @@ async fn install_game(
         .patch_game(manifest, install_dir, &app_data_dir, base_url, on_event)
         .await?;
 
-    // Save installation
     save_installation(&app_data_dir, &installation)?;
 
     Ok(installation)
@@ -153,6 +145,9 @@ async fn check_game_update(
     game_id: String,
     manifest: GameManifest,
 ) -> Result<bool, LauncherError> {
+    let game_id = validate_game_id(&game_id)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -293,6 +288,9 @@ async fn get_game_installation(
     app: AppHandle,
     game_id: String,
 ) -> Result<Option<GameInstallation>, LauncherError> {
+    let game_id = validate_game_id(&game_id)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -308,7 +306,10 @@ async fn uninstall_game(
     state: State<'_, LauncherState>,
     game_id: String,
 ) -> Result<(), LauncherError> {
-    // Check if running
+    let game_id = validate_game_id(&game_id)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+
+    // Check if running (uses validated game_id)
     {
         let running = state.running_games.lock().await;
         if running.contains_key(&game_id) {
@@ -342,7 +343,7 @@ async fn uninstall_game(
             std::fs::remove_dir_all(&installation.install_path)?;
         }
 
-        // Remove installation record
+        // Remove installation record using the validated slug
         let install_file = app_data_dir
             .join("installations")
             .join(format!("{}.json", game_id));
