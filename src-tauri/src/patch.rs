@@ -1,4 +1,5 @@
 use crate::download::{DownloadError, DownloadManager, FileDownloadTask};
+use crate::path_utils::{assert_path_inside, safe_join, validate_download_url, validate_game_id};
 use crate::types::{
     DownloadEvent, FileEntry, GameInstallation, GameManifest, LauncherError, PatchProgress,
     PatchState, PatchStatus,
@@ -15,21 +16,6 @@ use tauri::ipc::Channel;
 use tokio::io::{AsyncReadExt, BufReader};
 use tokio::sync::Mutex;
 use walkdir::WalkDir;
-
-/// Verify a path is inside the install directory before deleting or writing.
-fn assert_path_inside_install(path: &Path, install_path: &Path) -> Result<(), PatchError> {
-    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let canonical_install = install_path
-        .canonicalize()
-        .unwrap_or_else(|_| install_path.to_path_buf());
-    if !canonical.starts_with(&canonical_install) {
-        return Err(PatchError::Other(format!(
-            "Unsafe path {} escapes install directory",
-            path.display()
-        )));
-    }
-    Ok(())
-}
 
 /// Manages game patching operations
 pub struct PatchManager {
@@ -60,30 +46,44 @@ impl PatchManager {
         let mut files_to_update = Vec::new();
 
         for file_entry in &manifest.files {
-            let file_path = install_path.join(&file_entry.path);
+            let file_path = safe_join(install_path, &file_entry.path)?;
 
             if !file_path.exists() {
-                // File doesn't exist, needs download
                 files_to_update.push(file_entry.clone());
                 continue;
             }
 
-            // Check hash
             match compute_file_hash(&file_path).await {
                 Ok(hash) => {
                     if hash != file_entry.hash {
-                        // Hash mismatch, needs re-download
                         files_to_update.push(file_entry.clone());
                     }
                 }
                 Err(_) => {
-                    // Can't read file, re-download
                     files_to_update.push(file_entry.clone());
                 }
             }
         }
 
         Ok(files_to_update)
+    }
+
+    fn build_installation(manifest: &GameManifest, install_path: &Path) -> GameInstallation {
+        GameInstallation {
+            game_id: manifest.game_id.clone(),
+            installed_version: manifest.version.clone(),
+            installed_build: manifest.build_number,
+            install_path: install_path.to_path_buf(),
+            installed_files: manifest
+                .files
+                .iter()
+                .map(|f| (f.path.replace('\\', "/"), f.hash.clone()))
+                .collect(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: manifest.executable.clone(),
+        }
     }
 
     /// Perform full patch/installation
@@ -105,6 +105,16 @@ impl PatchManager {
             state.progress = PatchProgress::default();
         }
 
+        // Validate game id before touching disk
+        validate_game_id(&manifest.game_id)?;
+
+        // Ensure base_url behaves as a directory when joining file URLs
+        let base_url = if base_url.ends_with('/') {
+            base_url
+        } else {
+            format!("{}/", base_url)
+        };
+
         // Create install directory
         fs::create_dir_all(&install_path)?;
 
@@ -113,21 +123,7 @@ impl PatchManager {
 
         if files_to_update.is_empty() {
             // Already up to date
-            let installation = GameInstallation {
-                game_id: manifest.game_id.clone(),
-                installed_version: manifest.version.clone(),
-                installed_build: manifest.build_number,
-                install_path: install_path.clone(),
-                installed_files: manifest
-                    .files
-                    .iter()
-                    .map(|f| (f.path.clone(), f.hash.clone()))
-                    .collect(),
-                installed_at: chrono::Utc::now(),
-                last_played: None,
-                total_playtime_seconds: 0,
-                executable: manifest.executable.clone(),
-            };
+            let installation = Self::build_installation(&manifest, &install_path);
 
             let _ = on_event.send(DownloadEvent::Complete {
                 completed_files: 1,
@@ -149,12 +145,13 @@ impl PatchManager {
             .map_err(|e| PatchError::Other(format!("Invalid base URL '{}': {}", base_url, e)))?;
         let mut download_tasks = Vec::new();
         for file in &files_to_update {
+            let relative_url = validate_download_url(&base_url, &file.url)?;
             let url = base
-                .join(&file.url)
+                .join(&relative_url)
                 .map_err(|e| PatchError::Other(format!("Invalid file URL '{}': {}", file.url, e)))?
                 .to_string();
-            let dest_path = install_path.join(&file.path);
-            assert_path_inside_install(&dest_path, &install_path)?;
+            let dest_path = safe_join(&install_path, &file.path)?;
+            assert_path_inside(&dest_path, &install_path)?;
 
             download_tasks.push(FileDownloadTask {
                 url,
@@ -195,21 +192,7 @@ impl PatchManager {
             .await?;
 
         // Create installation record
-        let installation = GameInstallation {
-            game_id: manifest.game_id.clone(),
-            installed_version: manifest.version.clone(),
-            installed_build: manifest.build_number,
-            install_path,
-            installed_files: manifest
-                .files
-                .iter()
-                .map(|f| (f.path.clone(), f.hash.clone()))
-                .collect(),
-            installed_at: chrono::Utc::now(),
-            last_played: None,
-            total_playtime_seconds: 0,
-            executable: manifest.executable.clone(),
-        };
+        let installation = Self::build_installation(&manifest, &install_path);
 
         // Update state
         {
@@ -231,7 +214,7 @@ impl PatchManager {
         let mut missing_files = Vec::new();
 
         for file_entry in &manifest.files {
-            let file_path = install_path.join(&file_entry.path);
+            let file_path = safe_join(install_path, &file_entry.path)?;
 
             if !file_path.exists() {
                 missing_files.push(file_entry.path.clone());
@@ -281,11 +264,12 @@ impl PatchManager {
             .collect();
 
         for relative_path in previous_files {
-            if manifest_paths.contains(relative_path) {
+            let normalized_path = relative_path.replace('\\', "/");
+            if manifest_paths.contains(&normalized_path) {
                 continue;
             }
-            let file_path = install_path.join(relative_path);
-            assert_path_inside_install(&file_path, install_path)?;
+            let file_path = safe_join(install_path, &normalized_path)?;
+            assert_path_inside(&file_path, install_path)?;
             if file_path.exists() {
                 let _ = fs::remove_file(&file_path);
             }
@@ -438,6 +422,8 @@ pub fn save_installation(
     app_data_dir: &Path,
     installation: &GameInstallation,
 ) -> Result<(), PatchError> {
+    validate_game_id(&installation.game_id)?;
+
     let installs_dir = app_data_dir.join("installations");
     fs::create_dir_all(&installs_dir)?;
 
@@ -453,6 +439,8 @@ pub fn load_installation(
     app_data_dir: &Path,
     game_id: &str,
 ) -> Result<Option<GameInstallation>, PatchError> {
+    validate_game_id(game_id)?;
+
     let file_path = app_data_dir
         .join("installations")
         .join(format!("{}.json", game_id));
@@ -1111,6 +1099,46 @@ mod tests {
             .unwrap();
 
         assert!(saves_dir.join("save.sav").exists());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_orphaned_files_normalizes_backslash_paths() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path().join("install");
+        let data_dir = install_path.join("data");
+        fs::create_dir_all(&data_dir).unwrap();
+
+        fs::write(data_dir.join("config.json"), "config").unwrap();
+
+        let mut previous_files = HashSet::new();
+        previous_files.insert("data\\config.json".to_string());
+
+        let manifest = GameManifest {
+            game_id: "test-game".to_string(),
+            name: "Test Game".to_string(),
+            version: "1.0.0".to_string(),
+            build_number: 1,
+            description: None,
+            icon_url: None,
+            banner_url: None,
+            executable: "game.exe".to_string(),
+            files: vec![FileEntry {
+                path: "data/config.json".to_string(),
+                hash: "def".repeat(16),
+                size: 7,
+                url: "data/config.json".to_string(),
+                compress: None,
+            }],
+            launch_args: None,
+        };
+
+        let manager = PatchManager::new(4, None);
+        manager
+            .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
+            .await
+            .unwrap();
+
+        assert!(data_dir.join("config.json").exists());
     }
 
     // =========================================================================
