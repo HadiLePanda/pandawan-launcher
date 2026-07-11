@@ -4,17 +4,20 @@ use std::process::Stdio;
 use std::sync::Arc;
 
 use tauri::{ipc::Channel, AppHandle, Emitter, Manager, State};
+use tauri_specta::{collect_commands, collect_events, Builder};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
 
 pub mod download;
 pub mod patch;
+pub mod path_utils;
 pub mod types;
 
 #[cfg(test)]
 pub mod test_utils;
 
 use patch::{list_installations, load_installation, save_installation, PatchManager};
+use specta_typescript::Typescript;
 use types::*;
 
 // Global state for the launcher
@@ -55,24 +58,23 @@ fn get_default_games_path() -> PathBuf {
         .join("PandawanGames")
 }
 
-/// Verify an install path is inside the allowed games root.
-fn assert_install_path_safe(
-    install_path: &std::path::Path,
-    allowed_root: &std::path::Path,
-) -> Result<(), String> {
-    let canonical_install = install_path
+/// Verify a path is inside a given root after canonicalization.
+/// This should be used before any file read/write/delete/exec operation.
+pub fn assert_path_inside_root(
+    path: &std::path::Path,
+    root: &std::path::Path,
+) -> Result<(), LauncherError> {
+    let canonical_path = path
         .canonicalize()
-        .map_err(|e| format!("Invalid install path {}: {}", install_path.display(), e))?;
-    let canonical_root = allowed_root
+        .map_err(|e| LauncherError::Io(format!("Invalid path {}: {}", path.display(), e)))?;
+    let canonical_root = root
         .canonicalize()
-        .map_err(|e| format!("Invalid install root {}: {}", allowed_root.display(), e))?;
+        .map_err(|e| LauncherError::Io(format!("Invalid root {}: {}", root.display(), e)))?;
 
-    if !canonical_install.starts_with(&canonical_root) {
-        return Err(format!(
-            "Install path {} is outside allowed root {}",
-            canonical_install.display(),
-            canonical_root.display()
-        ));
+    if !canonical_path.starts_with(&canonical_root) {
+        return Err(LauncherError::PathNotAllowed {
+            path: canonical_path.to_string_lossy().to_string(),
+        });
     }
 
     Ok(())
@@ -80,67 +82,83 @@ fn assert_install_path_safe(
 
 /// Fetch game manifest from URL
 #[tauri::command]
-async fn fetch_game_manifest(url: String) -> Result<GameManifest, String> {
+#[specta::specta]
+async fn fetch_game_manifest(url: String) -> Result<GameManifest, LauncherError> {
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch manifest: {}", e))?;
+        .map_err(|e| LauncherError::Network(format!("Failed to fetch manifest: {e}")))?;
 
     if !response.status().is_success() {
-        return Err(format!("HTTP error: {}", response.status()));
+        return Err(LauncherError::Network(format!(
+            "HTTP error: {}",
+            response.status()
+        )));
     }
 
     let manifest = response
         .json::<GameManifest>()
         .await
-        .map_err(|e| format!("Failed to parse manifest: {}", e))?;
+        .map_err(|e| LauncherError::ManifestParse(e.to_string()))?;
 
     Ok(manifest)
 }
 
 /// Install or update a game
 #[tauri::command]
+#[specta::specta]
 async fn install_game(
     app: AppHandle,
     state: State<'_, LauncherState>,
     manifest: GameManifest,
     base_url: String,
     on_event: Channel<DownloadEvent>,
-) -> Result<GameInstallation, String> {
-    let settings = state.settings.lock().await;
-    let install_dir = settings
-        .games_install_path
-        .clone()
-        .unwrap_or_else(get_default_games_path)
-        .join(&manifest.game_id);
-    drop(settings);
+) -> Result<GameInstallation, LauncherError> {
+    let allowed_root = {
+        let settings = state.settings.lock().await;
+        settings
+            .games_install_path
+            .clone()
+            .unwrap_or_else(get_default_games_path)
+    };
+    let install_dir = allowed_root.join(&manifest.game_id);
+
+    // Ensure the install directory exists before canonicalising it for the safety check.
+    std::fs::create_dir_all(&install_dir)?;
+    assert_path_inside_root(&install_dir, &allowed_root)?;
 
     let patch_manager = Arc::clone(&state.patch_manager);
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
 
     let installation = patch_manager
         .patch_game(manifest, install_dir, &app_data_dir, base_url, on_event)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     // Save installation
-    save_installation(&app_data_dir, &installation).map_err(|e| e.to_string())?;
+    save_installation(&app_data_dir, &installation)?;
 
     Ok(installation)
 }
 
 /// Check if game needs update
 #[tauri::command]
+#[specta::specta]
 async fn check_game_update(
     app: AppHandle,
     game_id: String,
     manifest: GameManifest,
-) -> Result<bool, String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+) -> Result<bool, LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    match load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
+    match load_installation(&app_data_dir, &game_id)? {
         Some(installation) => Ok(installation.installed_build < manifest.build_number),
         None => Ok(true), // Not installed
     }
@@ -148,49 +166,51 @@ async fn check_game_update(
 
 /// Verify game installation
 #[tauri::command]
+#[specta::specta]
 async fn verify_game(
     state: State<'_, LauncherState>,
     manifest: GameManifest,
     install_path: PathBuf,
-) -> Result<patch::VerificationResult, String> {
-    state
+) -> Result<patch::VerificationResult, LauncherError> {
+    let allowed_root = {
+        let settings = state.settings.lock().await;
+        settings
+            .games_install_path
+            .clone()
+            .unwrap_or_else(get_default_games_path)
+    };
+    assert_path_inside_root(&install_path, &allowed_root)?;
+
+    Ok(state
         .patch_manager
         .verify_installation(&manifest, &install_path)
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 /// Launch a game
 #[tauri::command]
+#[specta::specta]
 async fn launch_game(
     app: AppHandle,
     state: State<'_, LauncherState>,
     game_id: String,
-) -> Result<LaunchResult, String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+) -> Result<LaunchResult, LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
 
     // Load installation
-    let installation =
-        match load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())? {
-            Some(inst) => inst,
-            None => {
-                return Ok(LaunchResult {
-                    success: false,
-                    message: "Game not installed".to_string(),
-                    process_id: None,
-                });
-            }
-        };
+    let installation = match load_installation(&app_data_dir, &game_id)? {
+        Some(inst) => inst,
+        None => return Err(LauncherError::NotInstalled),
+    };
 
     // Check if already running
     {
         let running = state.running_games.lock().await;
         if running.contains_key(&game_id) {
-            return Ok(LaunchResult {
-                success: false,
-                message: "Game is already running".to_string(),
-                process_id: None,
-            });
+            return Err(LauncherError::AlreadyRunning);
         }
     }
 
@@ -198,12 +218,12 @@ async fn launch_game(
     let exe_path = installation.install_path.join(&installation.executable);
 
     if !exe_path.exists() {
-        return Ok(LaunchResult {
-            success: false,
-            message: format!("Executable not found: {}", exe_path.display()),
-            process_id: None,
+        return Err(LauncherError::ExecutableNotFound {
+            path: exe_path.to_string_lossy().to_string(),
         });
     }
+
+    assert_path_inside_root(&exe_path, &installation.install_path)?;
 
     // Launch game
     let mut command = TokioCommand::new(&exe_path);
@@ -238,7 +258,7 @@ async fn launch_game(
                     let _ = child.wait().await;
                     let _ = app_handle.emit(
                         "game-exited",
-                        GameExitedPayload {
+                        GameExited {
                             game_id: game_id_clone,
                         },
                     );
@@ -251,47 +271,57 @@ async fn launch_game(
                 process_id: pid,
             })
         }
-        Err(e) => Ok(LaunchResult {
-            success: false,
-            message: format!("Failed to launch game: {}", e),
-            process_id: None,
-        }),
+        Err(e) => Err(LauncherError::Io(format!("Failed to launch game: {e}"))),
     }
 }
 
 /// Get list of installed games
 #[tauri::command]
-async fn get_installed_games(app: AppHandle) -> Result<Vec<GameInstallation>, String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    list_installations(&app_data_dir).map_err(|e| e.to_string())
+#[specta::specta]
+async fn get_installed_games(app: AppHandle) -> Result<Vec<GameInstallation>, LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
+    Ok(list_installations(&app_data_dir)?)
 }
 
 /// Get game installation info
 #[tauri::command]
+#[specta::specta]
 async fn get_game_installation(
     app: AppHandle,
     game_id: String,
-) -> Result<Option<GameInstallation>, String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())
+) -> Result<Option<GameInstallation>, LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
+    Ok(load_installation(&app_data_dir, &game_id)?)
 }
 
 /// Uninstall a game
 #[tauri::command]
+#[specta::specta]
 async fn uninstall_game(
     app: AppHandle,
     state: State<'_, LauncherState>,
     game_id: String,
-) -> Result<(), String> {
+) -> Result<(), LauncherError> {
     // Check if running
     {
         let running = state.running_games.lock().await;
         if running.contains_key(&game_id) {
-            return Err("Cannot uninstall while game is running".to_string());
+            return Err(LauncherError::Other(
+                "Cannot uninstall while game is running".to_string(),
+            ));
         }
     }
 
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
 
     // Determine the allowed install root from settings
     let allowed_root = {
@@ -303,23 +333,22 @@ async fn uninstall_game(
     };
 
     // Get installation info
-    if let Some(installation) =
-        load_installation(&app_data_dir, &game_id).map_err(|e| e.to_string())?
-    {
+    if let Some(installation) = load_installation(&app_data_dir, &game_id)? {
         // Safety check: refuse to delete paths outside the configured games root
-        assert_install_path_safe(&installation.install_path, &allowed_root)
-            .map_err(|e| e.to_string())?;
+        assert_path_inside_root(&installation.install_path, &allowed_root)?;
 
         // Remove game files
         if installation.install_path.exists() {
-            let _ = std::fs::remove_dir_all(&installation.install_path);
+            std::fs::remove_dir_all(&installation.install_path)?;
         }
 
         // Remove installation record
         let install_file = app_data_dir
             .join("installations")
             .join(format!("{}.json", game_id));
-        let _ = std::fs::remove_file(install_file);
+        if install_file.exists() {
+            std::fs::remove_file(install_file)?;
+        }
     }
 
     Ok(())
@@ -327,21 +356,27 @@ async fn uninstall_game(
 
 /// Get launcher settings
 #[tauri::command]
-async fn get_settings(state: State<'_, LauncherState>) -> Result<LauncherSettings, String> {
+#[specta::specta]
+async fn get_settings(state: State<'_, LauncherState>) -> Result<LauncherSettings, LauncherError> {
     let settings = state.settings.lock().await;
     Ok(settings.clone())
 }
 
 /// Save launcher settings
 #[tauri::command]
+#[specta::specta]
 async fn save_settings(
     app: AppHandle,
     state: State<'_, LauncherState>,
     new_settings: LauncherSettings,
-) -> Result<(), String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+) -> Result<(), LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    save_settings_to_disk(&app_data_dir, &new_settings).map_err(|e| e.to_string())?;
+    save_settings_to_disk(&app_data_dir, &new_settings)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
 
     let mut settings = state.settings.lock().await;
     *settings = new_settings;
@@ -351,7 +386,8 @@ async fn save_settings(
 
 /// Select folder using dialog
 #[tauri::command]
-async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, String> {
+#[specta::specta]
+async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, LauncherError> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
 
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -372,15 +408,19 @@ async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, String
 
 /// Cancel current download/patch operation
 #[tauri::command]
-async fn cancel_operation(state: State<'_, LauncherState>) -> Result<(), String> {
+#[specta::specta]
+async fn cancel_operation(state: State<'_, LauncherState>) -> Result<(), LauncherError> {
     state.patch_manager.cancel();
     Ok(())
 }
 
 /// Get app data directory path
 #[tauri::command]
-async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, String> {
-    app.path().app_data_dir().map_err(|e| e.to_string())
+#[specta::specta]
+async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, LauncherError> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))
 }
 
 /// Load settings from disk
@@ -404,9 +444,7 @@ fn save_settings_to_disk(
     app_data_dir: &std::path::Path,
     settings: &LauncherSettings,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    settings
-        .validate()
-        .map_err(|errors| errors.join(", "))?;
+    settings.validate().map_err(|errors| errors.join(", "))?;
 
     let settings_path = app_data_dir.join("settings.json");
     let json = serde_json::to_string_pretty(settings)?;
@@ -415,27 +453,9 @@ fn save_settings_to_disk(
     Ok(())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
-            let handle = app.handle().clone();
-
-            tauri::async_runtime::block_on(async move {
-                let state = LauncherState::new(&handle).await;
-                handle.manage(state);
-            });
-
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
+fn create_specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new()
+        .commands(collect_commands![
             fetch_game_manifest,
             install_game,
             check_game_update,
@@ -450,6 +470,45 @@ pub fn run() {
             cancel_operation,
             get_app_data_dir,
         ])
+        .events(collect_events![GameExited])
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    #[allow(unused_mut)]
+    let mut builder = create_specta_builder();
+
+    #[cfg(debug_assertions)]
+    {
+        let bindings_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
+        builder
+            .export(Typescript::default(), bindings_path)
+            .expect("Failed to export TypeScript bindings");
+    }
+
+    let invoke_handler = builder.invoke_handler();
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(move |app| {
+            builder.mount_events(app);
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::block_on(async move {
+                let state = LauncherState::new(&handle).await;
+                handle.manage(state);
+            });
+
+            Ok(())
+        })
+        .invoke_handler(invoke_handler)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -901,13 +960,24 @@ mod tests {
     // =====================================================================
 
     #[test]
-    fn test_assert_install_path_safe_accepts_inside_root() {
+    fn test_assert_path_inside_root_accepts_inside() {
         let temp_dir = tempfile::tempdir().unwrap();
         let allowed_root = temp_dir.path().join("games");
         let install_path = allowed_root.join("my-game");
         std::fs::create_dir_all(&install_path).unwrap();
 
-        assert!(assert_install_path_safe(&install_path, &allowed_root).is_ok());
+        assert!(assert_path_inside_root(&install_path, &allowed_root).is_ok());
+    }
+
+    #[test]
+    fn test_assert_path_inside_root_rejects_escape() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let allowed_root = temp_dir.path().join("games");
+        let escape = temp_dir.path().join("outside");
+        std::fs::create_dir_all(&allowed_root).unwrap();
+        std::fs::create_dir_all(&escape).unwrap();
+
+        assert!(assert_path_inside_root(&escape, &allowed_root).is_err());
     }
 
     #[tokio::test]
@@ -937,5 +1007,24 @@ mod tests {
         let result = save_settings_to_disk(temp_dir.path(), &settings);
         assert!(result.is_err());
         assert!(!temp_dir.path().join("settings.json").exists());
+    }
+
+    // =========================================================================
+    // TypeScript Bindings Export
+    // =========================================================================
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[allow(unused_mut)]
+    fn export_typescript_bindings() {
+        let mut builder = create_specta_builder();
+        builder
+            .export(Typescript::default(), "../src/lib/bindings.ts")
+            .expect("Failed to export TypeScript bindings");
+
+        assert!(
+            std::path::Path::new("../src/lib/bindings.ts").exists(),
+            "bindings.ts should have been exported"
+        );
     }
 }
