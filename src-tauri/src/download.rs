@@ -17,6 +17,7 @@ pub struct DownloadManager {
     max_concurrent: usize,
     speed_limit: Option<u64>, // bytes per second
     cancel_token: Arc<AtomicBool>,
+    rate_limiter: Option<Arc<RateLimiter>>,
 }
 
 const MAX_RETRIES: u32 = 3;
@@ -30,11 +31,14 @@ impl DownloadManager {
             .build()
             .expect("Failed to create HTTP client");
 
+        let rate_limiter = speed_limit.filter(|l| *l > 0).map(|l| Arc::new(RateLimiter::new(l)));
+
         Self {
             client,
             max_concurrent,
             speed_limit,
             cancel_token: Arc::new(AtomicBool::new(false)),
+            rate_limiter,
         }
     }
 
@@ -141,7 +145,7 @@ impl DownloadManager {
         let status = response.status();
 
         if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
-            return Err(DownloadError::HttpError(status.to_string()));
+            return Err(DownloadError::HttpError(status));
         }
 
         let is_partial = status == reqwest::StatusCode::PARTIAL_CONTENT;
@@ -179,8 +183,6 @@ impl DownloadManager {
         let mut last_update = Instant::now();
         let mut bytes_since_update = 0u64;
 
-        let mut last_chunk_time = Instant::now();
-
         while let Some(chunk) = stream.next().await {
             if self.cancel_token.load(Ordering::Relaxed) {
                 return Err(DownloadError::Cancelled);
@@ -189,16 +191,10 @@ impl DownloadManager {
             let chunk = chunk?;
             let chunk_len = chunk.len() as u64;
 
-            // Rate limiting
-            if let Some(limit) = self.speed_limit {
-                let elapsed = last_chunk_time.elapsed().as_secs_f64();
-                let expected_time = chunk_len as f64 / limit as f64;
-                if elapsed < expected_time {
-                    let sleep_duration = Duration::from_secs_f64(expected_time - elapsed);
-                    sleep(sleep_duration).await;
-                }
+            // Apply the global speed limit, if configured.
+            if let Some(ref limiter) = self.rate_limiter {
+                limiter.consume(chunk_len).await;
             }
-            last_chunk_time = Instant::now();
 
             file.write_all(&chunk)?;
             downloaded += chunk_len;
@@ -267,6 +263,7 @@ impl DownloadManager {
     ) -> Result<(), DownloadError> {
         let client = self.client.clone();
         let cancel = self.cancel_token.clone();
+        let rate_limiter = self.rate_limiter.clone();
         let max_concurrent = self.max_concurrent;
         let speed_limit = self.speed_limit;
         let on_event = Arc::new(on_event);
@@ -284,6 +281,7 @@ impl DownloadManager {
             let stats = Arc::clone(&stats);
             let task_stats = Arc::clone(&stats);
             let client = client.clone();
+            let rate_limiter = rate_limiter.clone();
 
             let handle = tokio::spawn(async move {
                 let _permit = permit;
@@ -299,6 +297,7 @@ impl DownloadManager {
                     max_concurrent,
                     speed_limit,
                     cancel_token: cancel,
+                    rate_limiter,
                 };
 
                 if let Err(e) = dm
@@ -323,10 +322,28 @@ impl DownloadManager {
             handles.push(handle);
         }
 
+        let mut first_error: Option<DownloadError> = None;
         for handle in handles {
-            handle
-                .await
-                .map_err(|e| DownloadError::Task(e.to_string()))??;
+            match handle.await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => {
+                    if first_error.is_none() {
+                        first_error = Some(e);
+                    }
+                }
+                Err(e) => {
+                    if first_error.is_none() {
+                        first_error = Some(DownloadError::Task(e.to_string()));
+                    }
+                }
+            }
+        }
+
+        if let Some(e) = first_error {
+            let _ = on_event.send(DownloadEvent::Error {
+                message: format!("Download batch failed: {}", e),
+            });
+            return Err(e);
         }
 
         let _ = on_event.send(DownloadEvent::Complete {
@@ -369,7 +386,7 @@ pub enum DownloadError {
     Io(#[from] std::io::Error),
 
     #[error("HTTP error: {0}")]
-    HttpError(String),
+    HttpError(reqwest::StatusCode),
 
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
@@ -390,12 +407,28 @@ pub enum DownloadError {
     Task(String),
 }
 
+/// True for IO conditions that may resolve themselves on retry.
+fn is_retryable_io(error: &std::io::Error) -> bool {
+    use std::io::ErrorKind;
+    matches!(
+        error.kind(),
+        ErrorKind::WouldBlock
+            | ErrorKind::Interrupted
+            | ErrorKind::TimedOut
+            | ErrorKind::NotConnected
+            | ErrorKind::ConnectionRefused
+            | ErrorKind::ConnectionReset
+    )
+}
+
 impl DownloadError {
     pub fn is_retryable(&self) -> bool {
         match self {
-            DownloadError::HttpError(_) => true,
-            DownloadError::Request(e) => e.is_timeout() || e.is_connect() || e.is_request(),
-            DownloadError::Io(_) => true,
+            DownloadError::HttpError(status) => {
+                status.is_server_error() || *status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            }
+            DownloadError::Request(e) => e.is_timeout() || e.is_connect(),
+            DownloadError::Io(e) => is_retryable_io(e),
             DownloadError::Cancelled => false,
             DownloadError::HashMismatch { .. } => false,
             DownloadError::Semaphore(_) => false,
@@ -427,7 +460,7 @@ impl From<DownloadError> for LauncherError {
     fn from(err: DownloadError) -> Self {
         match err {
             DownloadError::Io(e) => LauncherError::Io(e.to_string()),
-            DownloadError::HttpError(s) => LauncherError::Network(s),
+            DownloadError::HttpError(status) => LauncherError::Network(status.to_string()),
             DownloadError::Request(e) => LauncherError::Network(e.to_string()),
             DownloadError::HashMismatch { expected, actual } => {
                 LauncherError::Other(format!("Hash mismatch: expected {expected}, got {actual}"))
@@ -489,18 +522,69 @@ pub mod progress {
     }
 }
 
+/// A simple token-bucket rate limiter shared across concurrent downloads so that
+/// `speed_limit` is enforced globally rather than per-connection.
+pub struct RateLimiter {
+    limit: f64,
+    state: tokio::sync::Mutex<RateLimiterState>,
+}
+
+struct RateLimiterState {
+    tokens: f64,
+    last_update: Instant,
+}
+
+impl RateLimiter {
+    pub fn new(limit_bytes_per_second: u64) -> Self {
+        let limit = limit_bytes_per_second as f64;
+        Self {
+            limit,
+            state: tokio::sync::Mutex::new(RateLimiterState {
+                tokens: 0.0,
+                last_update: Instant::now(),
+            }),
+        }
+    }
+
+    /// Wait until `amount` bytes can be sent without exceeding the limit.
+    pub async fn consume(&self, amount: u64) {
+        if amount == 0 {
+            return;
+        }
+        let amount = amount as f64;
+        loop {
+            let mut state = self.state.lock().await;
+            let now = Instant::now();
+            let elapsed = now.duration_since(state.last_update).as_secs_f64();
+            state.tokens = (state.tokens + elapsed * self.limit).min(self.limit);
+            state.last_update = now;
+
+            if state.tokens >= amount {
+                state.tokens -= amount;
+                return;
+            }
+
+            let deficit = amount - state.tokens;
+            let wait_secs = deficit / self.limit;
+            drop(state);
+            sleep(Duration::from_secs_f64(wait_secs)).await;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::progress::*;
     use super::*;
+    use reqwest::StatusCode;
 
     #[test]
     fn test_download_error_display() {
         let error = DownloadError::Cancelled;
         assert_eq!(error.to_string(), "Download cancelled");
 
-        let error = DownloadError::HttpError("404".to_string());
-        assert_eq!(error.to_string(), "HTTP error: 404");
+        let error = DownloadError::HttpError(StatusCode::NOT_FOUND);
+        assert_eq!(error.to_string(), "HTTP error: 404 Not Found");
 
         let error = DownloadError::HashMismatch {
             expected: "abc".to_string(),
@@ -513,7 +597,10 @@ mod tests {
 
     #[test]
     fn test_download_error_is_retryable() {
-        assert!(DownloadError::HttpError("500".to_string()).is_retryable());
+        assert!(DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR).is_retryable());
+        assert!(DownloadError::HttpError(StatusCode::TOO_MANY_REQUESTS).is_retryable());
+        assert!(!DownloadError::HttpError(StatusCode::NOT_FOUND).is_retryable());
+        assert!(!DownloadError::HttpError(StatusCode::FORBIDDEN).is_retryable());
         assert!(DownloadError::Task("failed".to_string()).is_retryable());
 
         assert!(!DownloadError::Cancelled.is_retryable());

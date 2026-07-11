@@ -16,6 +16,7 @@ use pandawan_launcher_lib::patch::{
     VerificationResult,
 };
 use pandawan_launcher_lib::types::*;
+use reqwest::StatusCode;
 
 fn temp_dir() -> tempfile::TempDir {
     tempfile::tempdir().expect("Failed to create temp directory")
@@ -533,8 +534,8 @@ fn test_error_classification_workflow() {
     // Classify various errors
     let errors = vec![
         (DownloadError::Cancelled, false, "cancelled"),
-        (DownloadError::HttpError("500".to_string()), true, "http"),
-        (DownloadError::HttpError("404".to_string()), true, "http"),
+        (DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR), true, "http"),
+        (DownloadError::HttpError(StatusCode::NOT_FOUND), false, "http"),
         (
             DownloadError::HashMismatch {
                 expected: "a".to_string(),

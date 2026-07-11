@@ -12,7 +12,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use pandawan_launcher_lib::download::progress;
-use pandawan_launcher_lib::download::{DownloadError, DownloadManager};
+use pandawan_launcher_lib::download::{DownloadError, DownloadManager, RateLimiter};
+use reqwest::StatusCode;
 
 /// Helper to create a temporary directory
 fn temp_dir() -> tempfile::TempDir {
@@ -287,7 +288,7 @@ fn test_download_error_types() {
     let error = DownloadError::Cancelled;
     assert!(error.to_string().contains("cancelled"));
 
-    let error = DownloadError::HttpError("404 Not Found".to_string());
+    let error = DownloadError::HttpError(StatusCode::NOT_FOUND);
     assert!(error.to_string().contains("404"));
 
     let error = DownloadError::HashMismatch {
@@ -303,7 +304,7 @@ fn test_download_error_types() {
 #[test]
 fn test_download_error_is_retryable() {
     // Retryable errors
-    assert!(DownloadError::HttpError("500".to_string()).is_retryable());
+    assert!(DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR).is_retryable());
     assert!(DownloadError::Task("failed".to_string()).is_retryable());
 
     // Non-retryable errors
@@ -326,7 +327,7 @@ fn test_download_error_user_message() {
     };
     assert!(error.user_message().to_lowercase().contains("corrupted"));
 
-    let error = DownloadError::HttpError("404".to_string());
+    let error = DownloadError::HttpError(StatusCode::NOT_FOUND);
     assert!(error.user_message().contains("Server"));
 }
 
@@ -689,8 +690,11 @@ fn test_concurrent_download_planning() {
 fn test_error_recovery_strategy() {
     // Test the error classification for retry logic
     let errors = vec![
-        (DownloadError::HttpError("500".to_string()), true),
-        (DownloadError::HttpError("404".to_string()), true),
+        (DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR), true),
+        (DownloadError::HttpError(StatusCode::SERVICE_UNAVAILABLE), true),
+        (DownloadError::HttpError(StatusCode::TOO_MANY_REQUESTS), true),
+        (DownloadError::HttpError(StatusCode::NOT_FOUND), false),
+        (DownloadError::HttpError(StatusCode::FORBIDDEN), false),
         (DownloadError::Cancelled, false),
         (
             DownloadError::HashMismatch {
@@ -710,6 +714,181 @@ fn test_error_recovery_strategy() {
             error
         );
     }
+}
+
+#[test]
+fn test_io_error_retry_classification() {
+    use std::io::ErrorKind;
+
+    let retryable_kinds = [
+        ErrorKind::WouldBlock,
+        ErrorKind::Interrupted,
+        ErrorKind::TimedOut,
+        ErrorKind::ConnectionReset,
+    ];
+    for kind in retryable_kinds {
+        let error = DownloadError::Io(std::io::Error::new(kind, "transient"));
+        assert!(
+            error.is_retryable(),
+            "IO error {:?} should be retryable",
+            kind
+        );
+    }
+
+    let fatal_kinds = [
+        ErrorKind::NotFound,
+        ErrorKind::PermissionDenied,
+        ErrorKind::StorageFull,
+        ErrorKind::OutOfMemory,
+    ];
+    for kind in fatal_kinds {
+        let error = DownloadError::Io(std::io::Error::new(kind, "fatal"));
+        assert!(
+            !error.is_retryable(),
+            "IO error {:?} should not be retryable",
+            kind
+        );
+    }
+}
+
+// ============================================================================
+// Rate Limiter Tests
+// ============================================================================
+
+#[test]
+fn test_rate_limiter_enforces_global_speed_limit() {
+    let limiter = RateLimiter::new(10_000); // 10 KB/s
+    let start = std::time::Instant::now();
+    // Consume 20 KB sequentially; should take at least 2 seconds total.
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        limiter.consume(10_000).await;
+        limiter.consume(10_000).await;
+    });
+    assert!(
+        start.elapsed() >= std::time::Duration::from_millis(1800),
+        "Rate limiter allowed traffic faster than configured limit"
+    );
+}
+
+#[test]
+fn test_rate_limiter_shared_across_consumers() {
+    let limiter = std::sync::Arc::new(RateLimiter::new(10_000)); // 10 KB/s
+    let start = std::time::Instant::now();
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        let a = limiter.clone();
+        let b = limiter.clone();
+        let handle_a = tokio::spawn(async move { a.consume(10_000).await });
+        let handle_b = tokio::spawn(async move { b.consume(10_000).await });
+        let _ = tokio::join!(handle_a, handle_b);
+    });
+    // Two consumers of 10 KB each under a single 10 KB/s limit should take
+    // at least 2 seconds in aggregate.
+    assert!(
+        start.elapsed() >= std::time::Duration::from_millis(1800),
+        "Shared rate limiter did not throttle aggregate traffic"
+    );
+}
+
+#[tokio::test]
+async fn test_global_speed_limit_across_concurrent_downloads() {
+    use pandawan_launcher_lib::download::FileDownloadTask;
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let mut server = mockito::Server::new_async().await;
+    let body_a = vec![0xAAu8; 10_000];
+    let body_b = vec![0xBBu8; 10_000];
+
+    let mock_a = server
+        .mock("GET", "/a")
+        .with_status(200)
+        .with_header("content-type", "application/octet-stream")
+        .with_body(body_a.as_slice())
+        .create_async()
+        .await;
+    let mock_b = server
+        .mock("GET", "/b")
+        .with_status(200)
+        .with_header("content-type", "application/octet-stream")
+        .with_body(body_b.as_slice())
+        .create_async()
+        .await;
+
+    let temp_dir = temp_dir();
+    let dest_a = temp_dir.path().join("a.bin");
+    let dest_b = temp_dir.path().join("b.bin");
+
+    let tasks = vec![
+        FileDownloadTask {
+            url: format!("{}/a", server.url()),
+            dest_path: dest_a.clone(),
+            expected_hash: None,
+            size: 10_000,
+        },
+        FileDownloadTask {
+            url: format!("{}/b", server.url()),
+            dest_path: dest_b.clone(),
+            expected_hash: None,
+            size: 10_000,
+        },
+    ];
+
+    // 20 KB at 10 KB/s should take at least ~2 seconds if the limit is global.
+    let dm = DownloadManager::new(2, Some(10_000));
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+
+    let start = std::time::Instant::now();
+    dm.download_files(tasks, channel).await.unwrap();
+    let elapsed = start.elapsed();
+
+    assert!(
+        elapsed >= std::time::Duration::from_millis(1800),
+        "Concurrent downloads exceeded global speed limit: elapsed {:?}",
+        elapsed
+    );
+    assert_eq!(fs::metadata(&dest_a).unwrap().len(), 10_000);
+    assert_eq!(fs::metadata(&dest_b).unwrap().len(), 10_000);
+
+    mock_a.assert_async().await;
+    mock_b.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_hash_mismatch_removes_corrupt_file() {
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let mut server = mockito::Server::new_async().await;
+    let body = b"downloaded content";
+    let mock = server
+        .mock("GET", "/file")
+        .with_status(200)
+        .with_header("content-type", "application/octet-stream")
+        .with_body(body.as_slice())
+        .create_async()
+        .await;
+
+    let temp_dir = temp_dir();
+    let dest_path = temp_dir.path().join("corrupt.bin");
+
+    let dm = DownloadManager::new(4, None);
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+    let wrong_hash = "0".repeat(64);
+    let result = dm
+        .download_file(
+            &format!("{}/file", server.url()),
+            &dest_path,
+            Some(&wrong_hash),
+            &channel,
+        )
+        .await;
+
+    assert!(result.is_err(), "Expected hash mismatch error");
+    assert!(
+        !dest_path.exists(),
+        "Corrupt file should be removed after hash mismatch"
+    );
+    mock.assert_async().await;
 }
 
 // ============================================================================
