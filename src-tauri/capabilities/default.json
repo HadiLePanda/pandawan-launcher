@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/capabilities.json",
   "identifier": "default",
-  "description": "Default capabilities for the launcher",
+  "description": "Scoped capabilities for the launcher",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -11,7 +11,6 @@
     "core:window:allow-start-dragging",
     "core:window:allow-is-maximized",
     "dialog:default",
-    "fs:default",
     {
       "identifier": "http:default",
       "allow": [
@@ -23,7 +22,6 @@
       ]
     },
     "notification:default",
-    "process:default",
-    "shell:default"
+    "process:default"
   ]
 }
