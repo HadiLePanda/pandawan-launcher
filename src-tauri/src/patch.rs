@@ -1,10 +1,11 @@
 use crate::download::{DownloadError, DownloadManager, FileDownloadTask};
 use crate::types::{
-    DownloadEvent, FileEntry, GameInstallation, GameManifest, PatchProgress, PatchState,
-    PatchStatus,
+    DownloadEvent, FileEntry, GameInstallation, GameManifest, LauncherError, PatchProgress,
+    PatchState, PatchStatus,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use specta::Type;
 use std::collections::HashSet;
 use std::fs;
 use std::io::Read;
@@ -14,6 +15,21 @@ use tauri::ipc::Channel;
 use tokio::io::{AsyncReadExt, BufReader};
 use tokio::sync::Mutex;
 use walkdir::WalkDir;
+
+/// Verify a path is inside the install directory before deleting or writing.
+fn assert_path_inside_install(path: &Path, install_path: &Path) -> Result<(), PatchError> {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let canonical_install = install_path
+        .canonicalize()
+        .unwrap_or_else(|_| install_path.to_path_buf());
+    if !canonical.starts_with(&canonical_install) {
+        return Err(PatchError::Other(format!(
+            "Unsafe path {} escapes install directory",
+            path.display()
+        )));
+    }
+    Ok(())
+}
 
 /// Manages game patching operations
 pub struct PatchManager {
@@ -138,6 +154,7 @@ impl PatchManager {
                 .map_err(|e| PatchError::Other(format!("Invalid file URL '{}': {}", file.url, e)))?
                 .to_string();
             let dest_path = install_path.join(&file.path);
+            assert_path_inside_install(&dest_path, &install_path)?;
 
             download_tasks.push(FileDownloadTask {
                 url,
@@ -268,6 +285,7 @@ impl PatchManager {
                 continue;
             }
             let file_path = install_path.join(relative_path);
+            assert_path_inside_install(&file_path, install_path)?;
             if file_path.exists() {
                 let _ = fs::remove_file(&file_path);
             }
@@ -339,7 +357,7 @@ pub fn compute_file_hash_sync(path: &Path) -> Result<String, PatchError> {
     Ok(hex::encode(hasher.finalize()))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct VerificationResult {
     pub valid_files: usize,
     pub invalid_files: Vec<String>,
@@ -390,8 +408,29 @@ pub enum PatchError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("Path not allowed: {0}")]
+    PathNotAllowed(String),
+
     #[error("{0}")]
     Other(String),
+}
+
+impl From<crate::path_utils::PathError> for PatchError {
+    fn from(err: crate::path_utils::PathError) -> Self {
+        PatchError::PathNotAllowed(err.to_string())
+    }
+}
+
+impl From<PatchError> for LauncherError {
+    fn from(err: PatchError) -> Self {
+        match err {
+            PatchError::Io(e) => LauncherError::Io(e.to_string()),
+            PatchError::Download(e) => e.into(),
+            PatchError::Serialization(e) => LauncherError::ManifestParse(e.to_string()),
+            PatchError::PathNotAllowed(path) => LauncherError::PathNotAllowed { path },
+            PatchError::Other(s) => LauncherError::Other(s),
+        }
+    }
 }
 
 /// Save installation to disk
