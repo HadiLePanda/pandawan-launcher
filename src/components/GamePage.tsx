@@ -107,12 +107,15 @@ export function GamePage({
 
   const primaryAction = () => {
     if (isDownloading) {
+      const pct = Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0);
       return (
-        <div className="w-full max-w-xs">
-          <div className="flex items-center justify-between text-xs mb-3">
-            <span className="caption">{game.status === 'updating' ? 'Updating' : 'Installing'}</span>
-            <div className="cluster cluster-sm">
-              <span className="font-semibold">{Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0)}%</span>
+        <div className="download-progress">
+          <div className="download-progress-header">
+            <span className="download-progress-label">
+              {game.status === 'updating' ? 'Updating' : 'Installing'}
+            </span>
+            <div className="download-progress-stats">
+              <span className="download-progress-percent">{pct}%</span>
               {onCancel && (
                 <button
                   onClick={onCancel}
@@ -125,14 +128,16 @@ export function GamePage({
               )}
             </div>
           </div>
-          <div className="progress">
+          <div className="download-progress-bar">
             <div
-              className="progress-bar"
-              style={{ width: `${downloadProgress?.overallProgress || downloadProgress?.progress || 0}%` }}
+              className="download-progress-fill"
+              style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="progress-meta">
-            <span>{downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files</span>
+          <div className="download-progress-meta">
+            <span>
+              {downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files
+            </span>
             <span>{downloadProgress?.speed}</span>
           </div>
         </div>
@@ -208,7 +213,7 @@ export function GamePage({
           </div>
 
           <div className="game-page-actions">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               {primaryAction()}
               {!isDownloading && (
                 <div className="relative">
