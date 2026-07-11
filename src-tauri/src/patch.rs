@@ -1141,6 +1141,62 @@ mod tests {
         assert!(data_dir.join("config.json").exists());
     }
 
+    #[tokio::test]
+    async fn test_check_for_updates_rejects_traversal_path() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path().join("install");
+
+        let mut manifest = create_test_manifest();
+        manifest.files = vec![FileEntry {
+            path: "../secret.txt".to_string(),
+            hash: "a".repeat(64),
+            size: 100,
+            url: "secret.txt".to_string(),
+            compress: None,
+        }];
+
+        let manager = PatchManager::new(4, None);
+        let result = manager.check_for_updates(&manifest, &install_path).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_verify_installation_rejects_traversal_path() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path();
+
+        let mut manifest = create_test_manifest();
+        manifest.files = vec![FileEntry {
+            path: "../secret.txt".to_string(),
+            hash: "a".repeat(64),
+            size: 100,
+            url: "secret.txt".to_string(),
+            compress: None,
+        }];
+
+        let manager = PatchManager::new(4, None);
+        let result = manager.verify_installation(&manifest, install_path).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_orphaned_files_rejects_traversal_previous_files() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let install_path = temp_dir.path().join("install");
+        fs::create_dir_all(&install_path).unwrap();
+
+        let mut previous_files = HashSet::new();
+        previous_files.insert("../outside.txt".to_string());
+
+        let manifest = create_test_manifest();
+
+        let manager = PatchManager::new(4, None);
+        let result = manager
+            .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
+            .await;
+        assert!(result.is_err());
+    }
+
     // =========================================================================
     // Helper Functions for Tests
     // =========================================================================
