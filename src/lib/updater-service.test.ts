@@ -88,6 +88,66 @@ describe('updater-service', () => {
       expect(await first).toBe('up-to-date');
       expect(check).toHaveBeenCalledTimes(1);
     });
+
+    it('ignores re-checks once an update is ready to apply', async () => {
+      (check as Mock).mockResolvedValue(makeUpdate());
+      await service.checkForUpdates();
+      await service.downloadAndInstall();
+      expect(service.useUpdaterStore.getState().status).toBe('ready');
+
+      const result = await service.checkForUpdates({ manual: true });
+
+      expect(result).toBe('ready');
+      expect(check).toHaveBeenCalledTimes(1);
+      const state = service.useUpdaterStore.getState();
+      expect(state.status).toBe('ready');
+      expect(state.version).toBe('0.2.0');
+    });
+
+    it('re-surfaces a dismissed banner on a manual re-check', async () => {
+      (check as Mock).mockResolvedValue(makeUpdate());
+      await service.checkForUpdates();
+      service.useUpdaterStore.getState().dismissBanner();
+
+      const result = await service.checkForUpdates({ manual: true });
+
+      expect(result).toBe('available');
+      expect(service.useUpdaterStore.getState().dismissed).toBe(false);
+    });
+
+    it('keeps the banner dismissed on a silent startup re-check', async () => {
+      (check as Mock).mockResolvedValue(makeUpdate());
+      await service.checkForUpdates();
+      service.useUpdaterStore.getState().dismissBanner();
+
+      const result = await service.checkForUpdates();
+
+      expect(result).toBe('available');
+      expect(service.useUpdaterStore.getState().dismissed).toBe(true);
+    });
+
+    it('closes the previous update resource when replacing it', async () => {
+      const first = makeUpdate();
+      const second = makeUpdate({ version: '0.3.0' });
+      (check as Mock).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+      await service.checkForUpdates();
+      await service.checkForUpdates({ manual: true });
+
+      expect(first.close).toHaveBeenCalledTimes(1);
+      expect(service.useUpdaterStore.getState().version).toBe('0.3.0');
+    });
+
+    it('closes the pending update when the launcher turns up-to-date', async () => {
+      const update = makeUpdate();
+      (check as Mock).mockResolvedValueOnce(update).mockResolvedValueOnce(null);
+
+      await service.checkForUpdates();
+      await service.checkForUpdates();
+
+      expect(update.close).toHaveBeenCalledTimes(1);
+      expect(service.useUpdaterStore.getState().status).toBe('up-to-date');
+    });
   });
 
   describe('downloadAndInstall', () => {

@@ -34,9 +34,26 @@ export const useUpdaterStore = create<UpdaterState>((set) => ({
 // user-initiated download. Not part of the store: it is not serializable UI state.
 let pendingUpdate: Update | null = null;
 
-export async function checkForUpdates(): Promise<UpdaterStatus> {
+export interface CheckForUpdatesOptions {
+  /** Manual checks (Settings) re-surface a dismissed banner. */
+  manual?: boolean;
+}
+
+function replacePendingUpdate(update: Update | null): void {
+  const previous = pendingUpdate;
+  pendingUpdate = update;
+  if (previous && previous !== update) {
+    previous.close().catch((err) => {
+      logger.warn('Failed to close previous update resource', { error: String(err) });
+    });
+  }
+}
+
+export async function checkForUpdates(options?: CheckForUpdatesOptions): Promise<UpdaterStatus> {
   const current = useUpdaterStore.getState().status;
-  if (current === 'checking' || current === 'downloading') {
+  // Keep a downloaded update pending until relaunch; a re-check would leak the
+  // Update resource and invite a redundant re-download.
+  if (current === 'checking' || current === 'downloading' || current === 'ready') {
     return current;
   }
 
@@ -44,13 +61,17 @@ export async function checkForUpdates(): Promise<UpdaterStatus> {
   try {
     const update = await check();
     if (!update) {
-      pendingUpdate = null;
+      replacePendingUpdate(null);
       useUpdaterStore.setState({ status: 'up-to-date', version: null });
       return 'up-to-date';
     }
-    pendingUpdate = update;
+    replacePendingUpdate(update);
     logger.info('Launcher update available', { version: update.version });
-    useUpdaterStore.setState({ status: 'available', version: update.version });
+    useUpdaterStore.setState((state) => ({
+      status: 'available',
+      version: update.version,
+      dismissed: options?.manual ? false : state.dismissed,
+    }));
     return 'available';
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

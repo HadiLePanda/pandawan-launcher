@@ -331,7 +331,7 @@ function NotificationSettings({ settings, onChange }: TabProps) {
 }
 
 function AboutSettings() {
-  const [currentVersion, setCurrentVersion] = useState<string>('0.1.0');
+  const [currentVersion, setCurrentVersion] = useState<string>('');
   const updaterStatus = useUpdaterStore((s) => s.status);
   const updateVersion = useUpdaterStore((s) => s.version);
   const updaterError = useUpdaterStore((s) => s.error);
@@ -349,7 +349,7 @@ function AboutSettings() {
     updaterStatus === 'checking'
       ? 'Checking…'
       : updaterStatus === 'up-to-date'
-        ? `You're up to date (v${currentVersion})`
+        ? `You're up to date${currentVersion ? ` (v${currentVersion})` : ''}`
         : updaterStatus === 'available'
           ? `Update v${updateVersion} available`
           : updaterStatus === 'downloading'
@@ -368,7 +368,7 @@ function AboutSettings() {
         </div>
         <div>
           <h4 className="title-3">Pandawan Launcher</h4>
-          <p className="caption">Version {currentVersion}</p>
+          <p className="caption">Version {currentVersion || '—'}</p>
         </div>
       </div>
 
@@ -380,7 +380,7 @@ function AboutSettings() {
         <div className="cluster cluster-md">
           {statusText && <span className="caption">{statusText}</span>}
           <button
-            onClick={() => void checkForUpdates()}
+            onClick={() => void checkForUpdates({ manual: true })}
             disabled={busy}
             className="btn btn-secondary btn-sm"
           >

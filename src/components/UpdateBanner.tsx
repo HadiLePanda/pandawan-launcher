@@ -2,7 +2,7 @@ import { ArrowUpCircle, X } from 'lucide-react';
 import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
 
 export function UpdateBanner() {
-  const { status, version, downloadedBytes, totalBytes, dismissed, dismissBanner } =
+  const { status, version, downloadedBytes, totalBytes, dismissed, error, dismissBanner } =
     useUpdaterStore();
 
   if (dismissed) return null;
@@ -22,11 +22,18 @@ export function UpdateBanner() {
           {status === 'downloading' &&
             `Downloading update v${version}…${pct !== null ? ` ${pct}%` : ''}`}
           {status === 'ready' && `Update v${version} is ready to install`}
+          {status === 'available' && error && ' — download failed, try again'}
         </span>
       </div>
 
       {status === 'downloading' && pct !== null && (
-        <div className="progress flex-1 max-w-xs shrink">
+        <div
+          className="progress flex-1 max-w-xs shrink"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div className="progress-bar" style={{ width: `${pct}%` }} />
         </div>
       )}
