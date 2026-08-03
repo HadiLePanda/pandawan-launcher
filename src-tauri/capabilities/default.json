@@ -22,6 +22,7 @@
       ]
     },
     "notification:default",
-    "process:default"
+    "process:default",
+    "updater:default"
   ]
 }

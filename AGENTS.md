@@ -43,6 +43,7 @@ src/                          # React frontend
 │   ├── bindings.ts           # Auto-generated typed commands/events/types
 │   ├── errors.ts             # CommandError / unwrapResult helpers
 │   ├── download-channel.ts   # Download progress event mapping
+│   ├── updater-service.ts    # Launcher self-update flow (check/download/relaunch)
 │   ├── logger.ts             # Lightweight structured logging
 │   └── window.ts             # Custom title-bar window controls
 ├── types/                    # TypeScript types

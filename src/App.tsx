@@ -9,10 +9,12 @@ import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
+import { UpdateBanner } from '@components/UpdateBanner';
 import { PlayerProfile } from '@components/PlayerProfile';
 import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
+import { checkForUpdates as checkForLauncherUpdate } from '@/lib/updater-service';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
 import { ServerOff, RefreshCw } from 'lucide-react';
@@ -96,6 +98,10 @@ function App() {
     };
 
     init();
+
+    // Silent launcher update check; runs in parallel with startup loading.
+    // The service logs and swallows failures so startup is never blocked.
+    void checkForLauncherUpdate();
 
     return () => {
       cancelled = true;
@@ -260,6 +266,8 @@ function App() {
         {catalogUnreachable && catalogSource !== 'remote' && (
           <ConnectionBanner onRetry={() => loadCatalog()} className="shrink-0" />
         )}
+
+        <UpdateBanner />
 
         <div className="flex-1 overflow-hidden flex flex-col">{renderContent()}</div>
       </div>

@@ -1,9 +1,21 @@
 import { useState, useEffect } from 'react';
-import { X, Folder, Download, Bell, Globe, HardDrive, Info, SunMoon } from 'lucide-react';
+import {
+  X,
+  Folder,
+  Download,
+  Bell,
+  Globe,
+  HardDrive,
+  Info,
+  SunMoon,
+  RefreshCw,
+} from 'lucide-react';
+import { getVersion } from '@tauri-apps/api/app';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
 import { logger } from '@/lib/logger';
+import { useUpdaterStore, checkForUpdates } from '@/lib/updater-service';
 import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
@@ -319,6 +331,35 @@ function NotificationSettings({ settings, onChange }: TabProps) {
 }
 
 function AboutSettings() {
+  const [currentVersion, setCurrentVersion] = useState<string>('0.1.0');
+  const updaterStatus = useUpdaterStore((s) => s.status);
+  const updateVersion = useUpdaterStore((s) => s.version);
+  const updaterError = useUpdaterStore((s) => s.error);
+
+  useEffect(() => {
+    getVersion()
+      .then(setCurrentVersion)
+      .catch((err) => {
+        logger.warn('Failed to read app version', { error: String(err) });
+      });
+  }, []);
+
+  const busy = updaterStatus === 'checking' || updaterStatus === 'downloading';
+  const statusText =
+    updaterStatus === 'checking'
+      ? 'Checking…'
+      : updaterStatus === 'up-to-date'
+        ? `You're up to date (v${currentVersion})`
+        : updaterStatus === 'available'
+          ? `Update v${updateVersion} available`
+          : updaterStatus === 'downloading'
+            ? 'Downloading update…'
+            : updaterStatus === 'ready'
+              ? 'Restart the launcher to apply the update.'
+              : updaterStatus === 'error'
+                ? `Update check failed: ${updaterError}`
+                : null;
+
   return (
     <div className="setting-group">
       <div className="cluster cluster-md p-5 rounded-xl">
@@ -327,9 +368,26 @@ function AboutSettings() {
         </div>
         <div>
           <h4 className="title-3">Pandawan Launcher</h4>
-          <p className="caption">Version 0.1.0</p>
+          <p className="caption">Version {currentVersion}</p>
         </div>
       </div>
+
+      <SettingItem
+        icon={RefreshCw}
+        title="Launcher Updates"
+        description="Check for a new version of the launcher"
+      >
+        <div className="cluster cluster-md">
+          {statusText && <span className="caption">{statusText}</span>}
+          <button
+            onClick={() => void checkForUpdates()}
+            disabled={busy}
+            className="btn btn-secondary btn-sm"
+          >
+            Check for updates
+          </button>
+        </div>
+      </SettingItem>
 
       <div className="stack-md">
         <div className="flex justify-between py-3">
