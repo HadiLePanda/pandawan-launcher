@@ -411,7 +411,7 @@ async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, Launch
 #[tauri::command]
 #[specta::specta]
 async fn cancel_operation(state: State<'_, LauncherState>) -> Result<(), LauncherError> {
-    state.patch_manager.cancel();
+    state.patch_manager.cancel().await;
     Ok(())
 }
 

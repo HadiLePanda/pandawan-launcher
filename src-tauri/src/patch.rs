@@ -14,19 +14,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::ipc::Channel;
 use tokio::io::{AsyncReadExt, BufReader};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use walkdir::WalkDir;
 
 /// Manages game patching operations
 pub struct PatchManager {
-    download_manager: DownloadManager,
+    download_manager: RwLock<DownloadManager>,
     state: Arc<Mutex<PatchStatus>>,
 }
 
 impl PatchManager {
     pub fn new(max_concurrent: usize, speed_limit: Option<u64>) -> Self {
         Self {
-            download_manager: DownloadManager::new(max_concurrent, speed_limit),
+            download_manager: RwLock::new(DownloadManager::new(max_concurrent, speed_limit)),
             state: Arc::new(Mutex::new(PatchStatus {
                 game_id: String::new(),
                 current_version: String::new(),
@@ -35,6 +35,23 @@ impl PatchManager {
                 progress: PatchProgress::default(),
             })),
         }
+    }
+
+    /// Reconfigure the underlying download manager with new concurrency and
+    /// speed limits. Existing downloads are not affected, but future operations
+    /// will use the new limits.
+    pub async fn reconfigure(
+        &self,
+        max_concurrent: usize,
+        speed_limit: Option<u64>,
+    ) {
+        *self.download_manager.write().await = DownloadManager::new(max_concurrent, speed_limit);
+    }
+
+    /// Return the current download limits.
+    pub async fn current_limits(&self) -> (usize, Option<u64>) {
+        let dm = self.download_manager.read().await;
+        (dm.max_concurrent(), dm.speed_limit())
     }
 
     /// Check which files need to be updated
@@ -68,8 +85,14 @@ impl PatchManager {
         Ok(files_to_update)
     }
 
-    fn build_installation(manifest: &GameManifest, install_path: &Path) -> GameInstallation {
-        GameInstallation {
+    fn build_installation(manifest: &GameManifest, install_path: &Path) -> Result<GameInstallation, PatchError> {
+        // Reject traversal/absolute executable paths coming from a manifest.
+        let executable = crate::path_utils::sanitize_relative_path(&manifest.executable,
+        )?
+        .to_string_lossy()
+        .replace('\\', "/");
+
+        Ok(GameInstallation {
             game_id: manifest.game_id.clone(),
             installed_version: manifest.version.clone(),
             installed_build: manifest.build_number,
@@ -82,8 +105,8 @@ impl PatchManager {
             installed_at: chrono::Utc::now(),
             last_played: None,
             total_playtime_seconds: 0,
-            executable: manifest.executable.clone(),
-        }
+            executable,
+        })
     }
 
     /// Perform full patch/installation
@@ -123,7 +146,7 @@ impl PatchManager {
 
         if files_to_update.is_empty() {
             // Already up to date
-            let installation = Self::build_installation(&manifest, &install_path);
+            let installation = Self::build_installation(&manifest, &install_path)?;
 
             let _ = on_event.send(DownloadEvent::Complete {
                 completed_files: 1,
@@ -171,10 +194,12 @@ impl PatchManager {
         }
 
         // Download files
-        self.download_manager.reset_cancel();
-        self.download_manager
-            .download_files(download_tasks, on_event.clone())
-            .await?;
+        {
+            let dm = self.download_manager.read().await;
+            dm.reset_cancel();
+            dm.download_files(download_tasks, on_event.clone())
+                .await?;
+        }
 
         // After download, ensure progress is complete
         {
@@ -192,7 +217,7 @@ impl PatchManager {
             .await?;
 
         // Create installation record
-        let installation = Self::build_installation(&manifest, &install_path);
+        let installation = Self::build_installation(&manifest, &install_path)?;
 
         // Update state
         {
@@ -296,8 +321,8 @@ impl PatchManager {
         }
     }
 
-    pub fn cancel(&self) {
-        self.download_manager.cancel();
+    pub async fn cancel(&self) {
+        self.download_manager.read().await.cancel();
     }
 
     pub async fn get_status(&self) -> PatchStatus {

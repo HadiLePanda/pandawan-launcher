@@ -357,6 +357,16 @@ impl DownloadManager {
         self.cancel_token.store(true, Ordering::Relaxed);
     }
 
+    /// Current maximum number of concurrent downloads.
+    pub fn max_concurrent(&self) -> usize {
+        self.max_concurrent
+    }
+
+    /// Current global speed limit in bytes per second, if any.
+    pub fn speed_limit(&self) -> Option<u64> {
+        self.speed_limit
+    }
+
     pub fn reset_cancel(&self) {
         self.cancel_token.store(false, Ordering::Relaxed);
     }
