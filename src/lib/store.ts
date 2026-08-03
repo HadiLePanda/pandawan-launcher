@@ -4,6 +4,11 @@ import * as catalogService from './catalog-service';
 import * as newsService from './news-service';
 import * as gameService from './game-service';
 import { logger } from './logger';
+import {
+  notifyInstallComplete,
+  notifyUpdateAvailable,
+  notifyUpdateComplete,
+} from './notifications';
 import type { DownloadProgressSnapshot } from './download-channel';
 import { CommandError } from './errors';
 
@@ -199,9 +204,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   checkForUpdates: async (gameId, channel) => {
     try {
       const hasUpdate = await gameService.checkForUpdates(gameId, channel);
-      set((state) => ({
-        games: state.games.map((g) => (g.info.id === gameId ? { ...g, hasUpdate } : g)),
-      }));
+      setGameHasUpdate(get, set, gameId, hasUpdate);
       return hasUpdate;
     } catch (err) {
       handleStoreError(err, set, 'checkForUpdates');
@@ -216,11 +219,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
         if (g.status !== 'installed') return;
         try {
           const hasUpdate = await gameService.checkForUpdates(g.info.id, g.info.channel);
-          set((state) => ({
-            games: state.games.map((game) =>
-              game.info.id === g.info.id ? { ...game, hasUpdate } : game
-            ),
-          }));
+          setGameHasUpdate(get, set, g.info.id, hasUpdate);
         } catch (err) {
           logger.warn('Update check failed', { gameId: g.info.id, error: String(err) });
         }
@@ -315,9 +314,28 @@ async function runPatchFlow(
           : g
       ),
     }));
+
+    const gameName = get().games.find((g) => g.info.id === gameId)?.info.name ?? gameId;
+    if (activeStatus === 'updating') {
+      void notifyUpdateComplete(gameName);
+    } else {
+      void notifyInstallComplete(gameName);
+    }
   } catch (err) {
     const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
     updateGameStatus(gameId, fallbackStatus);
     handleStoreError(err, set, `runPatchFlow:${activeStatus}`);
+  }
+}
+
+// Sets the hasUpdate flag and notifies when an update is newly detected
+// (false -> true transition only, to avoid repeat notifications on refresh).
+function setGameHasUpdate(get: GetState, set: SetState, gameId: string, hasUpdate: boolean) {
+  const previous = get().games.find((g) => g.info.id === gameId);
+  set((state) => ({
+    games: state.games.map((g) => (g.info.id === gameId ? { ...g, hasUpdate } : g)),
+  }));
+  if (hasUpdate && previous && !previous.hasUpdate) {
+    void notifyUpdateAvailable(previous.info.name);
   }
 }
