@@ -85,7 +85,11 @@ impl PatchManager {
         Ok(files_to_update)
     }
 
-    fn build_installation(manifest: &GameManifest, install_path: &Path) -> Result<GameInstallation, PatchError> {
+    fn build_installation(
+        manifest: &GameManifest,
+        install_path: &Path,
+        previous: Option<&GameInstallation>,
+    ) -> Result<GameInstallation, PatchError> {
         // Reject traversal/absolute executable paths coming from a manifest.
         let executable = crate::path_utils::sanitize_relative_path(&manifest.executable,
         )?
@@ -102,9 +106,11 @@ impl PatchManager {
                 .iter()
                 .map(|f| (f.path.replace('\\', "/"), f.hash.clone()))
                 .collect(),
-            installed_at: chrono::Utc::now(),
-            last_played: None,
-            total_playtime_seconds: 0,
+            installed_at: previous
+                .map(|p| p.installed_at)
+                .unwrap_or_else(chrono::Utc::now),
+            last_played: previous.and_then(|p| p.last_played),
+            total_playtime_seconds: previous.map(|p| p.total_playtime_seconds).unwrap_or(0),
             executable,
         })
     }
@@ -144,9 +150,16 @@ impl PatchManager {
         // Check which files need updating
         let files_to_update = self.check_for_updates(&manifest, &install_path).await?;
 
+        // Load the previous installation once: it preserves play history
+        // (installed_at, last_played, total_playtime_seconds) across updates
+        // and provides the previous manifest for orphan cleanup.
+        let previous_installation =
+            load_installation(app_data_dir, &manifest.game_id).unwrap_or(None);
+
         if files_to_update.is_empty() {
             // Already up to date
-            let installation = Self::build_installation(&manifest, &install_path)?;
+            let installation =
+                Self::build_installation(&manifest, &install_path, previous_installation.as_ref())?;
 
             let _ = on_event.send(DownloadEvent::Complete {
                 completed_files: 1,
@@ -209,15 +222,15 @@ impl PatchManager {
         }
 
         // Clean up orphaned files from the previous manifest only
-        let previous_files: Option<HashSet<String>> =
-            load_installation(app_data_dir, &manifest.game_id)
-                .unwrap_or(None)
-                .map(|inst| inst.installed_files.into_keys().collect());
+        let previous_files: Option<HashSet<String>> = previous_installation
+            .as_ref()
+            .map(|inst| inst.installed_files.keys().cloned().collect());
         self.cleanup_orphaned_files(&manifest, &install_path, previous_files.as_ref())
             .await?;
 
         // Create installation record
-        let installation = Self::build_installation(&manifest, &install_path)?;
+        let installation =
+            Self::build_installation(&manifest, &install_path, previous_installation.as_ref())?;
 
         // Update state
         {
@@ -478,6 +491,27 @@ pub fn load_installation(
     let installation = serde_json::from_str(&json)?;
 
     Ok(Some(installation))
+}
+
+/// Record a play session for an installed game: adds `duration_seconds` to the
+/// accumulated playtime, sets `last_played` to now, and saves the record.
+/// Returns the updated installation.
+pub fn record_playtime(
+    app_data_dir: &Path,
+    game_id: &str,
+    duration_seconds: u64,
+) -> Result<GameInstallation, PatchError> {
+    let mut installation = load_installation(app_data_dir, game_id)?
+        .ok_or_else(|| PatchError::Other(format!("Game '{}' is not installed", game_id)))?;
+
+    installation.total_playtime_seconds = installation
+        .total_playtime_seconds
+        .saturating_add(duration_seconds);
+    installation.last_played = Some(chrono::Utc::now());
+
+    save_installation(app_data_dir, &installation)?;
+
+    Ok(installation)
 }
 
 /// List all installations

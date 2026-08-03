@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::time::Instant;
 
 use tauri::{ipc::Channel, AppHandle, Emitter, Manager, State};
 use tauri_specta::{collect_commands, collect_events, Builder};
@@ -16,7 +17,7 @@ pub mod types;
 #[cfg(test)]
 pub mod test_utils;
 
-use patch::{list_installations, load_installation, save_installation, PatchManager};
+use patch::{list_installations, load_installation, record_playtime, save_installation, PatchManager};
 use path_utils::{assert_path_inside, validate_game_id};
 use specta_typescript::Typescript;
 use types::*;
@@ -233,6 +234,7 @@ async fn launch_game(
     match command.spawn() {
         Ok(child) => {
             let pid = child.id();
+            let launched_at = Instant::now();
 
             // Store process handle
             {
@@ -242,6 +244,7 @@ async fn launch_game(
 
             // Spawn a task to wait for process exit
             let app_handle = app.clone();
+            let app_data_dir = app_data_dir.clone();
             let running_games = Arc::clone(&state.running_games);
             let game_id_clone = game_id.clone();
             tauri::async_runtime::spawn(async move {
@@ -251,10 +254,21 @@ async fn launch_game(
                 };
                 if let Some(mut child) = child {
                     let _ = child.wait().await;
+                    let duration_seconds = launched_at.elapsed().as_secs();
+                    // Playtime loss must not break the exit event
+                    if let Err(e) =
+                        record_playtime(&app_data_dir, &game_id_clone, duration_seconds)
+                    {
+                        eprintln!(
+                            "Failed to record playtime for '{}': {}",
+                            game_id_clone, e
+                        );
+                    }
                     let _ = app_handle.emit(
                         "game-exited",
                         GameExited {
                             game_id: game_id_clone,
+                            duration_seconds,
                         },
                     );
                 }

@@ -100,6 +100,7 @@ export type FileEntry = {
 
 export type GameExited = {
   game_id: string;
+  duration_seconds: number;
 };
 
 export type GameInstallation = {

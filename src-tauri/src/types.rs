@@ -232,6 +232,7 @@ pub struct LaunchResult {
 #[tauri_specta(event_name = "game-exited")]
 pub struct GameExited {
     pub game_id: String,
+    pub duration_seconds: u64,
 }
 
 /// Structured error returned by Tauri commands.
@@ -1133,9 +1134,11 @@ mod tests {
     fn test_game_exited_payload_serialization() {
         let payload = GameExited {
             game_id: "test-game".to_string(),
+            duration_seconds: 42,
         };
         let json = serde_json::to_string(&payload).expect("Failed to serialize");
         assert!(json.contains("test-game"));
+        assert!(json.contains("duration_seconds"));
     }
 
     // Helper function for GameInstallation tests

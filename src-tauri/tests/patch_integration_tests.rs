@@ -637,6 +637,231 @@ fn test_corrupted_file_detection() {
     assert!(result.is_file_problematic("important.dat"));
 }
 
+// ============================================================================
+// Patch Metadata Preservation Tests
+// ============================================================================
+
+/// Patching over an existing installation must preserve play history:
+/// `installed_at`, `last_played` and `total_playtime_seconds` carry over from
+/// the previous installation record.
+#[tokio::test]
+async fn test_patch_preserves_metadata_when_up_to_date() {
+    use pandawan_launcher_lib::patch::PatchManager;
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path().join("app_data");
+    let install_dir = temp_dir.path().join("install");
+    fs::create_dir_all(&install_dir).unwrap();
+
+    let exe_hash = create_test_file(&install_dir.join("game.exe"), b"game exe v1");
+
+    let manifest = GameManifest {
+        game_id: "meta-game".to_string(),
+        name: "Metadata Game".to_string(),
+        version: "1.0.0".to_string(),
+        build_number: 100,
+        description: None,
+        icon_url: None,
+        banner_url: None,
+        executable: "game.exe".to_string(),
+        files: vec![FileEntry {
+            path: "game.exe".to_string(),
+            hash: exe_hash.clone(),
+            size: 12,
+            url: "files/game.exe".to_string(),
+            compress: None,
+        }],
+        launch_args: None,
+    };
+
+    // Previous installation with accumulated play history
+    let previous_installed_at = chrono::Utc::now() - chrono::Duration::days(30);
+    let previous_last_played = chrono::Utc::now() - chrono::Duration::hours(2);
+    let previous = GameInstallation {
+        game_id: "meta-game".to_string(),
+        installed_version: "1.0.0".to_string(),
+        installed_build: 100,
+        install_path: install_dir.clone(),
+        installed_files: {
+            let mut files = HashMap::new();
+            files.insert("game.exe".to_string(), exe_hash);
+            files
+        },
+        installed_at: previous_installed_at,
+        last_played: Some(previous_last_played),
+        total_playtime_seconds: 3600,
+        executable: "game.exe".to_string(),
+    };
+    save_installation(&app_data_dir, &previous).unwrap();
+
+    let manager = PatchManager::new(4, None);
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+    let updated = manager
+        .patch_game(
+            manifest,
+            install_dir,
+            &app_data_dir,
+            "http://localhost/".to_string(),
+            channel,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(updated.installed_at, previous_installed_at);
+    assert_eq!(updated.last_played, Some(previous_last_played));
+    assert_eq!(updated.total_playtime_seconds, 3600);
+}
+
+/// The post-download path of `patch_game` must also preserve play history.
+#[tokio::test]
+async fn test_patch_preserves_metadata_across_update_download() {
+    use pandawan_launcher_lib::patch::PatchManager;
+    use pandawan_launcher_lib::types::DownloadEvent;
+    use tauri::ipc::Channel;
+
+    let mut server = mockito::Server::new_async().await;
+    let body_v2 = b"game exe v2 content";
+    let mock = server
+        .mock("GET", "/files/game.exe")
+        .with_status(200)
+        .with_header("content-type", "application/octet-stream")
+        .with_body(body_v2.as_slice())
+        .create_async()
+        .await;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path().join("app_data");
+    let install_dir = temp_dir.path().join("install");
+    fs::create_dir_all(&install_dir).unwrap();
+
+    // v1 on disk
+    let hash_v1 = create_test_file(&install_dir.join("game.exe"), b"game exe v1");
+    let hash_v2 = {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(body_v2);
+        hex::encode(hasher.finalize())
+    };
+
+    let previous_installed_at = chrono::Utc::now() - chrono::Duration::days(30);
+    let previous_last_played = chrono::Utc::now() - chrono::Duration::hours(2);
+    let previous = GameInstallation {
+        game_id: "meta-game".to_string(),
+        installed_version: "1.0.0".to_string(),
+        installed_build: 100,
+        install_path: install_dir.clone(),
+        installed_files: {
+            let mut files = HashMap::new();
+            files.insert("game.exe".to_string(), hash_v1);
+            files
+        },
+        installed_at: previous_installed_at,
+        last_played: Some(previous_last_played),
+        total_playtime_seconds: 7200,
+        executable: "game.exe".to_string(),
+    };
+    save_installation(&app_data_dir, &previous).unwrap();
+
+    // v2 manifest with updated hash
+    let manifest = GameManifest {
+        game_id: "meta-game".to_string(),
+        name: "Metadata Game".to_string(),
+        version: "1.1.0".to_string(),
+        build_number: 101,
+        description: None,
+        icon_url: None,
+        banner_url: None,
+        executable: "game.exe".to_string(),
+        files: vec![FileEntry {
+            path: "game.exe".to_string(),
+            hash: hash_v2.clone(),
+            size: body_v2.len() as u64,
+            url: "files/game.exe".to_string(),
+            compress: None,
+        }],
+        launch_args: None,
+    };
+
+    let manager = PatchManager::new(4, None);
+    let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
+    let updated = manager
+        .patch_game(
+            manifest,
+            install_dir,
+            &app_data_dir,
+            server.url(),
+            channel,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(updated.installed_version, "1.1.0");
+    assert_eq!(updated.installed_files.get("game.exe").unwrap(), &hash_v2);
+    // Play history must survive the update
+    assert_eq!(updated.installed_at, previous_installed_at);
+    assert_eq!(updated.last_played, Some(previous_last_played));
+    assert_eq!(updated.total_playtime_seconds, 7200);
+
+    mock.assert_async().await;
+}
+
+// ============================================================================
+// record_playtime Tests
+// ============================================================================
+
+#[test]
+fn test_record_playtime_accumulates() {
+    use pandawan_launcher_lib::patch::record_playtime;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path();
+
+    let installation = GameInstallation {
+        game_id: "playtime-game".to_string(),
+        installed_version: "1.0.0".to_string(),
+        installed_build: 1,
+        install_path: PathBuf::from("/games/playtime-game"),
+        installed_files: HashMap::new(),
+        installed_at: chrono::Utc::now(),
+        last_played: None,
+        total_playtime_seconds: 3600,
+        executable: "game.exe".to_string(),
+    };
+    save_installation(app_data_dir, &installation).unwrap();
+
+    // First session
+    let updated = record_playtime(app_data_dir, "playtime-game", 120).unwrap();
+    assert_eq!(updated.total_playtime_seconds, 3720);
+    assert!(updated.last_played.is_some());
+    let first_last_played = updated.last_played.unwrap();
+
+    // Second session accumulates on top
+    let updated = record_playtime(app_data_dir, "playtime-game", 30).unwrap();
+    assert_eq!(updated.total_playtime_seconds, 3750);
+    assert!(updated.last_played.unwrap() >= first_last_played);
+
+    // Persisted to disk
+    let loaded = load_installation(app_data_dir, "playtime-game")
+        .unwrap()
+        .unwrap();
+    assert_eq!(loaded.total_playtime_seconds, 3750);
+    assert!(loaded.last_played.is_some());
+    assert_eq!(loaded.installed_at, installation.installed_at);
+}
+
+#[test]
+fn test_record_playtime_not_installed() {
+    use pandawan_launcher_lib::patch::record_playtime;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path();
+
+    let result = record_playtime(app_data_dir, "missing-game", 60);
+    assert!(result.is_err());
+}
+
 #[test]
 fn test_missing_file_detection() {
     let temp_dir = temp_dir();
