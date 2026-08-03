@@ -152,9 +152,18 @@ impl PatchManager {
 
         // Load the previous installation once: it preserves play history
         // (installed_at, last_played, total_playtime_seconds) across updates
-        // and provides the previous manifest for orphan cleanup.
-        let previous_installation =
-            load_installation(app_data_dir, &manifest.game_id).unwrap_or(None);
+        // and provides the previous manifest for orphan cleanup. A corrupt
+        // record is treated as absent but logged so the data loss is visible.
+        let previous_installation = match load_installation(app_data_dir, &manifest.game_id) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!(
+                    "warning: failed to load previous installation for '{}': {}",
+                    manifest.game_id, e
+                );
+                None
+            }
+        };
 
         if files_to_update.is_empty() {
             // Already up to date

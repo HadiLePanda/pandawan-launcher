@@ -669,7 +669,7 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
         files: vec![FileEntry {
             path: "game.exe".to_string(),
             hash: exe_hash.clone(),
-            size: 12,
+            size: 11,
             url: "files/game.exe".to_string(),
             compress: None,
         }],
