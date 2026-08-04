@@ -4,6 +4,7 @@ import {
   Folder,
   Download,
   Bell,
+  FileText,
   Globe,
   HardDrive,
   Info,
@@ -11,6 +12,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
+import { appLogDir } from '@tauri-apps/api/path';
+import { open } from '@tauri-apps/plugin-shell';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
@@ -332,6 +335,8 @@ function NotificationSettings({ settings, onChange }: TabProps) {
 
 function AboutSettings() {
   const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [logsError, setLogsError] = useState<string | null>(null);
+  const [openingLogs, setOpeningLogs] = useState(false);
   const updaterStatus = useUpdaterStore((s) => s.status);
   const updateVersion = useUpdaterStore((s) => s.version);
   const updaterError = useUpdaterStore((s) => s.error);
@@ -343,6 +348,19 @@ function AboutSettings() {
         logger.warn('Failed to read app version', { error: String(err) });
       });
   }, []);
+
+  const handleOpenLogs = async () => {
+    setLogsError(null);
+    setOpeningLogs(true);
+    try {
+      const dir = await appLogDir();
+      await open(dir);
+    } catch (err) {
+      setLogsError(`Failed to open logs folder: ${String(err)}`);
+    } finally {
+      setOpeningLogs(false);
+    }
+  };
 
   const busy = updaterStatus === 'checking' || updaterStatus === 'downloading';
   const statusText =
@@ -385,6 +403,23 @@ function AboutSettings() {
             className="btn btn-secondary btn-sm"
           >
             Check for updates
+          </button>
+        </div>
+      </SettingItem>
+
+      <SettingItem
+        icon={FileText}
+        title="Logs"
+        description="Diagnostic logs written by the launcher"
+      >
+        <div className="cluster cluster-md">
+          {logsError && <span className="caption">{logsError}</span>}
+          <button
+            onClick={() => void handleOpenLogs()}
+            disabled={openingLogs}
+            className="btn btn-secondary btn-sm"
+          >
+            Open logs folder
           </button>
         </div>
       </SettingItem>

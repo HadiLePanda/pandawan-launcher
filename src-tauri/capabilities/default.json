@@ -23,6 +23,31 @@
     },
     "notification:default",
     "process:default",
-    "updater:default"
+    "updater:default",
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
+    },
+    "shell:allow-open"
   ]
 }

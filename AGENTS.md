@@ -130,6 +130,7 @@ All commands are wrapped by Tauri Specta in a discriminated result union on the 
 - The local example server is CORS-enabled so the launcher can use standard browser fetch for localhost URLs in dev, avoiding Tauri HTTP scope issues.
 - As a dev-only fallback, if the remote/local catalog is unreachable, the launcher loads `examples/launcher/catalog.json` and the example manifests as static imports. This lets you test the catalog UI without any running server.
 - If the remote catalog is unreachable, the launcher falls back to `public/catalog.json` (embedded) and shows a connectivity banner.
+- The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB (single previous generation). File writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button; its fs permissions are scoped to `$APPLOG` and the shell `open` regex in `tauri.conf.json` only allows URLs and the app log dir.
 - Tauri auto-updater:
   - The updater secret key belongs at `src-tauri/.secrets/updater.key`; this directory is gitignored and must never be committed.
   - The public key source of truth is `src-tauri/updater.pub`; run `npm run sync:updater-key` (or `tauri:dev`/`tauri:build`) to sync it into `tauri.conf.json`.

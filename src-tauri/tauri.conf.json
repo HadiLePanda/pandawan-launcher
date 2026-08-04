@@ -58,6 +58,9 @@
     }
   },
   "plugins": {
+    "shell": {
+      "open": "((mailto:\\w+)|(tel:\\w+)|(https?://\\w+)).+$|^.*[/\\\\]com\\.pandawancorp\\.launcher([/\\\\]logs)?[/\\\\]?$"
+    },
     "updater": {
       "active": true,
       "endpoints": [
