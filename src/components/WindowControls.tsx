@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export function WindowControls() {
+  const { t } = useTranslation();
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -38,20 +40,24 @@ export function WindowControls() {
 
   return (
     <>
-      <button onClick={handleMinimize} className="window-control" aria-label="Minimize">
+      <button
+        onClick={handleMinimize}
+        className="window-control"
+        aria-label={t('titleBar.minimize')}
+      >
         <Minus className="w-4 h-4" />
       </button>
       <button
         onClick={handleMaximize}
         className="window-control"
-        aria-label={isMaximized ? 'Restore' : 'Maximize'}
+        aria-label={isMaximized ? t('titleBar.restore') : t('titleBar.maximize')}
       >
         {isMaximized ? <Copy className="w-4 h-4" /> : <Square className="w-4 h-4" />}
       </button>
       <button
         onClick={handleClose}
         className="window-control window-control-close"
-        aria-label="Close"
+        aria-label={t('titleBar.close')}
       >
         <X className="w-4 h-4" />
       </button>

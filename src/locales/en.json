@@ -1,0 +1,33 @@
+{
+  "app": {
+    "confirmUninstall": "Are you sure you want to uninstall this game?",
+    "connectionBanner": "Catalog server is unreachable. Showing bundled games; install and launch require a live server.",
+    "dismiss": "Dismiss",
+    "retry": "Retry",
+    "storeComingSoonDescription": "Browse and install new Pandawan games here.",
+    "storeComingSoonTitle": "Store Coming Soon"
+  },
+  "gameIconsBar": {
+    "allGames": "All Games"
+  },
+  "titleBar": {
+    "close": "Close",
+    "maximize": "Maximize",
+    "minimize": "Minimize",
+    "restore": "Restore"
+  },
+  "topBar": {
+    "games": "Games",
+    "news": "News",
+    "notifications": "Notifications",
+    "playerProfile": "Player profile",
+    "settings": "Settings",
+    "store": "Store",
+    "themeLabel": "Theme: {{theme}}",
+    "themeNames": {
+      "adaptive": "Adaptive",
+      "dark": "Dark",
+      "light": "Light"
+    }
+  }
+}

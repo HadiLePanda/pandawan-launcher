@@ -1,0 +1,33 @@
+{
+  "app": {
+    "confirmUninstall": "Möchtest du dieses Spiel wirklich deinstallieren?",
+    "connectionBanner": "Der Katalogserver ist nicht erreichbar. Es werden die gebündelten Spiele angezeigt; Installieren und Starten erfordern einen aktiven Server.",
+    "dismiss": "Verwerfen",
+    "retry": "Erneut versuchen",
+    "storeComingSoonDescription": "Entdecke und installiere hier neue Pandawan-Spiele.",
+    "storeComingSoonTitle": "Store demnächst verfügbar"
+  },
+  "gameIconsBar": {
+    "allGames": "Alle Spiele"
+  },
+  "titleBar": {
+    "close": "Schließen",
+    "maximize": "Maximieren",
+    "minimize": "Minimieren",
+    "restore": "Wiederherstellen"
+  },
+  "topBar": {
+    "games": "Spiele",
+    "news": "Neuigkeiten",
+    "notifications": "Benachrichtigungen",
+    "playerProfile": "Spielerprofil",
+    "settings": "Einstellungen",
+    "store": "Store",
+    "themeLabel": "Design: {{theme}}",
+    "themeNames": {
+      "adaptive": "Automatisch",
+      "dark": "Dunkel",
+      "light": "Hell"
+    }
+  }
+}

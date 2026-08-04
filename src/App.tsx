@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { events } from '@/lib/bindings';
 import { TitleBar } from '@components/TitleBar';
@@ -15,30 +16,30 @@ import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
 import { checkForUpdates as checkForLauncherUpdate } from '@/lib/updater-service';
+import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
 import { ServerOff, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 
 function ConnectionBanner({ onRetry, className }: { onRetry: () => void; className?: string }) {
+  const { t } = useTranslation();
   return (
     <div className={cn('banner', className)}>
       <div className="banner-text truncate">
         <ServerOff className="w-4 h-4 shrink-0" />
-        <span className="truncate">
-          Catalog server is unreachable. Showing bundled games; install and launch require a live
-          server.
-        </span>
+        <span className="truncate">{t('app.connectionBanner')}</span>
       </div>
       <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember shrink-0">
         <RefreshCw className="w-4 h-4" />
-        Retry
+        {t('app.retry')}
       </button>
     </div>
   );
 }
 
 function App() {
+  const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -110,6 +111,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    void applyLanguage(settings?.language);
+  }, [settings?.language]);
+
+  useEffect(() => {
     if (!settings) return;
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
@@ -174,7 +179,7 @@ function App() {
   };
 
   const handleUninstallGame = async (gameId: string) => {
-    if (confirm('Are you sure you want to uninstall this game?')) {
+    if (confirm(t('app.confirmUninstall'))) {
       await uninstallGame(gameId);
       setSelectedGameId(null);
     }
@@ -204,8 +209,8 @@ function App() {
       return (
         <div className="flex-1 flex flex-col justify-center">
           <EmptyState
-            title="Store Coming Soon"
-            description="Browse and install new Pandawan games here."
+            title={t('app.storeComingSoonTitle')}
+            description={t('app.storeComingSoonDescription')}
           />
         </div>
       );
@@ -278,7 +283,7 @@ function App() {
           <div className="toast-content">
             <div className="toast-message">{error}</div>
             <button onClick={clearError} className="toast-dismiss">
-              Dismiss
+              {t('app.dismiss')}
             </button>
           </div>
         </div>

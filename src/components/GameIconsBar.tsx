@@ -1,4 +1,5 @@
 import { Gamepad2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { Game } from '@/types';
 
@@ -9,6 +10,7 @@ interface GameIconsBarProps {
 }
 
 export function GameIconsBar({ games, selectedGameId, onSelectGameIcon }: GameIconsBarProps) {
+  const { t } = useTranslation();
   const isAllSelected = selectedGameId === null;
 
   return (
@@ -17,8 +19,8 @@ export function GameIconsBar({ games, selectedGameId, onSelectGameIcon }: GameIc
         <button
           onClick={() => onSelectGameIcon(null)}
           className={cn('game-icon', isAllSelected && 'game-icon-active')}
-          title="All Games"
-          aria-label="All Games"
+          title={t('gameIconsBar.allGames')}
+          aria-label={t('gameIconsBar.allGames')}
         >
           <NineSquareIcon className="w-5 h-5" />
           {isAllSelected && <span className="game-icon-indicator" />}

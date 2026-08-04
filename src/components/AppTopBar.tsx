@@ -1,4 +1,5 @@
 import { Settings, Bell, User, Sun, Moon, SunMoon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 
@@ -21,6 +22,7 @@ export function AppTopBar({
   onPlayerClick,
   onDoubleClick,
 }: AppTopBarProps) {
+  const { t } = useTranslation();
   const { settings, setSettings } = useLauncherStore();
   const currentTheme = settings?.theme || 'adaptive';
 
@@ -39,13 +41,19 @@ export function AppTopBar({
     ) : (
       <SunMoon className="w-5 h-5" />
     );
-  const themeTitle =
-    currentTheme === 'light' ? 'Light' : currentTheme === 'dark' ? 'Dark' : 'Adaptive';
+  const themeNames: Record<string, string> = {
+    adaptive: t('topBar.themeNames.adaptive'),
+    light: t('topBar.themeNames.light'),
+    dark: t('topBar.themeNames.dark'),
+  };
+  const themeTitle = t('topBar.themeLabel', {
+    theme: themeNames[currentTheme] ?? currentTheme,
+  });
 
   const navItems = [
-    { id: 'games' as const, label: 'Games', onClick: onGamesClick },
-    { id: 'news' as const, label: 'News', onClick: onNewsClick },
-    { id: 'store' as const, label: 'Store', onClick: onStoreClick },
+    { id: 'games' as const, label: t('topBar.games'), onClick: onGamesClick },
+    { id: 'news' as const, label: t('topBar.news'), onClick: onNewsClick },
+    { id: 'store' as const, label: t('topBar.store'), onClick: onStoreClick },
   ];
 
   return (
@@ -75,19 +83,27 @@ export function AppTopBar({
             <button
               onClick={handleThemeToggle}
               className="icon-btn"
-              title={`Theme: ${themeTitle}`}
-              aria-label={`Theme: ${themeTitle}`}
+              title={themeTitle}
+              aria-label={themeTitle}
             >
               {themeIcon}
             </button>
-            <button onClick={onSettingsClick} className="icon-btn" aria-label="Settings">
+            <button
+              onClick={onSettingsClick}
+              className="icon-btn"
+              aria-label={t('topBar.settings')}
+            >
               <Settings className="w-5 h-5" />
             </button>
-            <button className="icon-btn" aria-label="Notifications">
+            <button className="icon-btn" aria-label={t('topBar.notifications')}>
               <Bell className="w-5 h-5" />
             </button>
           </div>
-          <button onClick={onPlayerClick} className="profile-btn" aria-label="Player profile">
+          <button
+            onClick={onPlayerClick}
+            className="profile-btn"
+            aria-label={t('topBar.playerProfile')}
+          >
             <User className="w-6 h-6" />
           </button>
         </div>
