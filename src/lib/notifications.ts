@@ -3,21 +3,14 @@ import {
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
-import { useLauncherStore } from './store';
 import { logger } from './logger';
-import type { LauncherSettings } from '@/types';
 
-type NotificationToggle = keyof Pick<
-  LauncherSettings,
-  'notifyGameUpdates' | 'notifyDownloadComplete' | 'notifyFriendActivity' | 'notifyNewsEvents'
->;
-
-// The default settings in Settings.tsx enable all notification types we use,
-// so a missing settings object (not loaded yet) is treated as "on".
-async function notify(title: string, body: string, toggleKey: NotificationToggle): Promise<void> {
+// `enabled` is the resolved settings toggle for this notification type,
+// supplied by the caller (the launcher store) so this module stays
+// dependency-free of the store.
+async function notify(title: string, body: string, enabled: boolean): Promise<void> {
   try {
-    const settings = useLauncherStore.getState().settings;
-    if (settings && !settings[toggleKey]) {
+    if (!enabled) {
       return;
     }
 
@@ -37,14 +30,14 @@ async function notify(title: string, body: string, toggleKey: NotificationToggle
   }
 }
 
-export function notifyInstallComplete(gameName: string): Promise<void> {
-  return notify(gameName, 'Installation complete', 'notifyDownloadComplete');
+export function notifyInstallComplete(gameName: string, enabled: boolean): Promise<void> {
+  return notify(gameName, 'Installation complete', enabled);
 }
 
-export function notifyUpdateComplete(gameName: string): Promise<void> {
-  return notify(gameName, 'Update complete', 'notifyDownloadComplete');
+export function notifyUpdateComplete(gameName: string, enabled: boolean): Promise<void> {
+  return notify(gameName, 'Update complete', enabled);
 }
 
-export function notifyUpdateAvailable(gameName: string): Promise<void> {
-  return notify(gameName, 'Update available', 'notifyGameUpdates');
+export function notifyUpdateAvailable(gameName: string, enabled: boolean): Promise<void> {
+  return notify(gameName, 'Update available', enabled);
 }

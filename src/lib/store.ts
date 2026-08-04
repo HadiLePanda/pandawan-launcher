@@ -316,10 +316,13 @@ async function runPatchFlow(
     }));
 
     const gameName = get().games.find((g) => g.info.id === gameId)?.info.name ?? gameId;
+    // Missing settings (not loaded yet) are treated as enabled, matching the
+    // DEFAULT_SETTINGS in Settings.tsx where these toggles default to true.
+    const downloadNotify = get().settings?.notifyDownloadComplete ?? true;
     if (activeStatus === 'updating') {
-      void notifyUpdateComplete(gameName);
+      void notifyUpdateComplete(gameName, downloadNotify);
     } else {
-      void notifyInstallComplete(gameName);
+      void notifyInstallComplete(gameName, downloadNotify);
     }
   } catch (err) {
     const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
@@ -336,6 +339,7 @@ function setGameHasUpdate(get: GetState, set: SetState, gameId: string, hasUpdat
     games: state.games.map((g) => (g.info.id === gameId ? { ...g, hasUpdate } : g)),
   }));
   if (hasUpdate && previous && !previous.hasUpdate) {
-    void notifyUpdateAvailable(previous.info.name);
+    const enabled = get().settings?.notifyGameUpdates ?? true;
+    void notifyUpdateAvailable(previous.info.name, enabled);
   }
 }

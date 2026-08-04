@@ -4,7 +4,11 @@ import {
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
-import type { LauncherSettings } from '@/types';
+import {
+  notifyInstallComplete,
+  notifyUpdateAvailable,
+  notifyUpdateComplete,
+} from './notifications';
 
 vi.mock('@tauri-apps/plugin-notification', () => ({
   isPermissionGranted: vi.fn(),
@@ -12,45 +16,18 @@ vi.mock('@tauri-apps/plugin-notification', () => ({
   sendNotification: vi.fn(),
 }));
 
-const DEFAULT_SETTINGS: LauncherSettings = {
-  gamesInstallPath: null,
-  maxDownloadSpeed: null,
-  maxConcurrentDownloads: 4,
-  autoUpdateGames: true,
-  autoUpdateLauncher: true,
-  minimizeToTray: true,
-  closeToTray: false,
-  language: 'en',
-  theme: 'adaptive',
-  notifyGameUpdates: true,
-  notifyDownloadComplete: true,
-  notifyFriendActivity: false,
-  notifyNewsEvents: true,
-};
-
-let mockSettings: LauncherSettings | null = DEFAULT_SETTINGS;
-
-vi.mock('./store', () => ({
-  useLauncherStore: {
-    getState: () => ({ settings: mockSettings }),
-  },
-}));
-
 describe('notifications', () => {
-  let notifications: typeof import('./notifications');
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    vi.resetModules();
-    mockSettings = { ...DEFAULT_SETTINGS };
+  beforeEach(() => {
+    // resetAllMocks also clears implementations, so defaults are
+    // re-established here for every test.
+    vi.resetAllMocks();
     (isPermissionGranted as Mock).mockResolvedValue(true);
     (requestPermission as Mock).mockResolvedValue('granted');
-    notifications = await import('./notifications');
   });
 
   describe('notifyInstallComplete', () => {
-    it('sends a notification when the toggle is on and permission is granted', async () => {
-      await notifications.notifyInstallComplete('Quirheim Online');
+    it('sends a notification when enabled and permission is granted', async () => {
+      await notifyInstallComplete('Quirheim Online', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
         title: 'Quirheim Online',
@@ -60,10 +37,8 @@ describe('notifications', () => {
       expect(requestPermission).not.toHaveBeenCalled();
     });
 
-    it('does nothing when notifyDownloadComplete is off', async () => {
-      mockSettings = { ...DEFAULT_SETTINGS, notifyDownloadComplete: false };
-
-      await notifications.notifyInstallComplete('Quirheim Online');
+    it('does nothing when disabled', async () => {
+      await notifyInstallComplete('Quirheim Online', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
       expect(isPermissionGranted).not.toHaveBeenCalled();
@@ -71,8 +46,8 @@ describe('notifications', () => {
   });
 
   describe('notifyUpdateComplete', () => {
-    it('sends an update-complete notification gated on notifyDownloadComplete', async () => {
-      await notifications.notifyUpdateComplete('Quirheim Online');
+    it('sends an update-complete notification', async () => {
+      await notifyUpdateComplete('Quirheim Online', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
         title: 'Quirheim Online',
@@ -80,18 +55,16 @@ describe('notifications', () => {
       });
     });
 
-    it('does nothing when notifyDownloadComplete is off', async () => {
-      mockSettings = { ...DEFAULT_SETTINGS, notifyDownloadComplete: false };
-
-      await notifications.notifyUpdateComplete('Quirheim Online');
+    it('does nothing when disabled', async () => {
+      await notifyUpdateComplete('Quirheim Online', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
   });
 
   describe('notifyUpdateAvailable', () => {
-    it('sends an update-available notification gated on notifyGameUpdates', async () => {
-      await notifications.notifyUpdateAvailable('Quirheim Online');
+    it('sends an update-available notification', async () => {
+      await notifyUpdateAvailable('Quirheim Online', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
         title: 'Quirheim Online',
@@ -99,10 +72,8 @@ describe('notifications', () => {
       });
     });
 
-    it('does nothing when notifyGameUpdates is off', async () => {
-      mockSettings = { ...DEFAULT_SETTINGS, notifyGameUpdates: false };
-
-      await notifications.notifyUpdateAvailable('Quirheim Online');
+    it('does nothing when disabled', async () => {
+      await notifyUpdateAvailable('Quirheim Online', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -113,7 +84,7 @@ describe('notifications', () => {
       (isPermissionGranted as Mock).mockResolvedValue(false);
       (requestPermission as Mock).mockResolvedValue('granted');
 
-      await notifications.notifyInstallComplete('Quirheim Online');
+      await notifyInstallComplete('Quirheim Online', true);
 
       expect(requestPermission).toHaveBeenCalledTimes(1);
       expect(sendNotification).toHaveBeenCalledTimes(1);
@@ -123,7 +94,7 @@ describe('notifications', () => {
       (isPermissionGranted as Mock).mockResolvedValue(false);
       (requestPermission as Mock).mockResolvedValue('denied');
 
-      await expect(notifications.notifyInstallComplete('Quirheim Online')).resolves.toBeUndefined();
+      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -133,7 +104,7 @@ describe('notifications', () => {
     it('swallows plugin errors', async () => {
       (isPermissionGranted as Mock).mockRejectedValue(new Error('plugin unavailable'));
 
-      await expect(notifications.notifyInstallComplete('Quirheim Online')).resolves.toBeUndefined();
+      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -143,17 +114,7 @@ describe('notifications', () => {
         throw new Error('delivery failed');
       });
 
-      await expect(notifications.notifyInstallComplete('Quirheim Online')).resolves.toBeUndefined();
-    });
-  });
-
-  describe('missing settings', () => {
-    it('treats unloaded settings as enabled (matches UI defaults)', async () => {
-      mockSettings = null;
-
-      await notifications.notifyUpdateAvailable('Quirheim Online');
-
-      expect(sendNotification).toHaveBeenCalledTimes(1);
+      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
     });
   });
 });
