@@ -1,20 +1,60 @@
 {
   "app": {
-    "confirmUninstall": "Voulez-vous vraiment désinstaller ce jeu ?",
-    "connectionBanner": "Le serveur du catalogue est injoignable. Affichage des jeux intégrés ; l'installation et le lancement nécessitent un serveur actif.",
-    "dismiss": "Ignorer",
-    "retry": "Réessayer",
-    "storeComingSoonDescription": "Parcourez et installez de nouveaux jeux Pandawan ici.",
+    "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
+    "connectionBanner": "Le serveur du catalogue est injoignable. Affichage des jeux intégrés ; l'installation et le lancement nécessitent un serveur actif.",
+    "storeComingSoonDescription": "Parcours et installe de nouveaux jeux Pandawan ici.",
     "storeComingSoonTitle": "Boutique bientôt disponible"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "dismiss": "Ignorer",
+    "retry": "Réessayer"
   },
   "gameIconsBar": {
     "allGames": "Tous les jeux"
   },
-  "titleBar": {
-    "close": "Fermer",
-    "maximize": "Agrandir",
-    "minimize": "Réduire",
-    "restore": "Restaurer"
+  "gamePage": {
+    "developer": "Développeur",
+    "filesProgress": "{{completed}} / {{total}} fichiers",
+    "gameInfo": "Infos du jeu",
+    "install": "Installer",
+    "installing": "Installation",
+    "moreOptions": "Plus d'options",
+    "news": "Actualités",
+    "noNewsForGame": "Aucune actualité disponible pour ce jeu.",
+    "noPatchNotes": "Aucune note de patch disponible.",
+    "patchNotes": "Notes de patch",
+    "platforms": "Plateformes",
+    "play": "Jouer",
+    "playing": "En cours",
+    "size": "Taille",
+    "uninstall": "Désinstaller",
+    "update": "Mettre à jour",
+    "updating": "Mise à jour",
+    "verifyFiles": "Vérifier les fichiers",
+    "version": "Version"
+  },
+  "gamesHome": {
+    "availableCount": "{{count}} disponibles",
+    "installAGame": "Installer un jeu",
+    "installed": "Installé",
+    "notInstalled": "Non installé"
+  },
+  "gamesPage": {
+    "emptyDescription": "Installe un jeu depuis la boutique pour commencer.",
+    "emptyTitle": "Aucun jeu pour le moment"
+  },
+  "news": {
+    "backToNews": "Retour aux actualités",
+    "emptyDescription": "Reviens plus tard pour découvrir les nouveautés.",
+    "emptyTitle": "Aucune actualité pour le moment"
+  },
+  "playerProfile": {
+    "comingSoonDescription": "Les fonctionnalités de compte arrivent bientôt. Tu pourras y gérer ton compte Pandawan, ta liste d'amis et tes achats.",
+    "playerName": "Joueur",
+    "statusOffline": "Hors ligne",
+    "title": "Profil du joueur"
   },
   "topBar": {
     "games": "Jeux",
@@ -23,11 +63,17 @@
     "playerProfile": "Profil du joueur",
     "settings": "Paramètres",
     "store": "Boutique",
-    "themeLabel": "Thème : {{theme}}",
+    "themeLabel": "Thème : {{theme}}",
     "themeNames": {
       "adaptive": "Automatique",
       "dark": "Sombre",
       "light": "Clair"
     }
+  },
+  "windowControls": {
+    "close": "Fermer",
+    "maximize": "Agrandir",
+    "minimize": "Réduire",
+    "restore": "Restaurer"
   }
 }

@@ -1,20 +1,60 @@
 {
   "app": {
     "confirmUninstall": "¿Seguro que quieres desinstalar este juego?",
-    "connectionBanner": "El servidor del catálogo no está disponible. Se muestran los juegos incluidos; instalar y ejecutar requiere un servidor activo.",
-    "dismiss": "Descartar",
-    "retry": "Reintentar",
+    "connectionBanner": "El servidor del catálogo no está disponible. Se muestran los juegos incluidos; instalar y ejecutar requieren un servidor activo.",
     "storeComingSoonDescription": "Explora e instala nuevos juegos de Pandawan aquí.",
     "storeComingSoonTitle": "Tienda disponible próximamente"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "dismiss": "Descartar",
+    "retry": "Reintentar"
   },
   "gameIconsBar": {
     "allGames": "Todos los juegos"
   },
-  "titleBar": {
-    "close": "Cerrar",
-    "maximize": "Maximizar",
-    "minimize": "Minimizar",
-    "restore": "Restaurar"
+  "gamePage": {
+    "developer": "Desarrollador",
+    "filesProgress": "{{completed}} / {{total}} archivos",
+    "gameInfo": "Información del juego",
+    "install": "Instalar",
+    "installing": "Instalando",
+    "moreOptions": "Más opciones",
+    "news": "Noticias",
+    "noNewsForGame": "No hay noticias disponibles para este juego.",
+    "noPatchNotes": "No hay notas del parche disponibles.",
+    "patchNotes": "Notas del parche",
+    "platforms": "Plataformas",
+    "play": "Jugar",
+    "playing": "Jugando",
+    "size": "Tamaño",
+    "uninstall": "Desinstalar",
+    "update": "Actualizar",
+    "updating": "Actualizando",
+    "verifyFiles": "Verificar archivos",
+    "version": "Versión"
+  },
+  "gamesHome": {
+    "availableCount": "{{count}} disponibles",
+    "installAGame": "Instalar un juego",
+    "installed": "Instalado",
+    "notInstalled": "No instalado"
+  },
+  "gamesPage": {
+    "emptyDescription": "Instala un juego de la tienda para empezar.",
+    "emptyTitle": "Aún no hay juegos"
+  },
+  "news": {
+    "backToNews": "Volver a las noticias",
+    "emptyDescription": "Vuelve más tarde para ver las novedades.",
+    "emptyTitle": "Aún no hay noticias"
+  },
+  "playerProfile": {
+    "comingSoonDescription": "Las funciones de la cuenta llegarán pronto. Aquí podrás gestionar tu cuenta de Pandawan, tu lista de amigos y tus compras.",
+    "playerName": "Jugador",
+    "statusOffline": "Sin conexión",
+    "title": "Perfil del jugador"
   },
   "topBar": {
     "games": "Juegos",
@@ -29,5 +69,11 @@
       "dark": "Oscuro",
       "light": "Claro"
     }
+  },
+  "windowControls": {
+    "close": "Cerrar",
+    "maximize": "Maximizar",
+    "minimize": "Minimizar",
+    "restore": "Restaurar"
   }
 }

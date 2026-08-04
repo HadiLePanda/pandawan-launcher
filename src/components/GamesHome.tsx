@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn, formatBytes } from '@/lib/utils';
 import type { Game } from '@/types';
 import { Plus } from 'lucide-react';
@@ -9,6 +10,7 @@ interface GamesHomeProps {
 }
 
 export function GamesHome({ games, onSelectGame, onInstallGame }: GamesHomeProps) {
+  const { t } = useTranslation();
   const uninstalledCount = games.filter((g) => g.status === 'not_installed').length;
 
   return (
@@ -23,8 +25,10 @@ export function GamesHome({ games, onSelectGame, onInstallGame }: GamesHomeProps
               <Plus className="w-10 h-10" />
             </div>
             <div className="game-card-content">
-              <h3 className="game-card-title">Install a Game</h3>
-              <p className="caption">{uninstalledCount} available</p>
+              <h3 className="game-card-title">{t('gamesHome.installAGame')}</h3>
+              <p className="caption">
+                {t('gamesHome.availableCount', { count: uninstalledCount })}
+              </p>
             </div>
           </button>
         )}
@@ -34,6 +38,7 @@ export function GamesHome({ games, onSelectGame, onInstallGame }: GamesHomeProps
 }
 
 function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
+  const { t } = useTranslation();
   const initials = game.info.name
     .split(' ')
     .map((w) => w[0])
@@ -52,7 +57,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
         <h3 className="game-card-title">{game.info.name}</h3>
         <div className="game-card-meta">
           <span className={cn('badge', isInstalled ? 'badge-success' : 'badge-default')}>
-            {isInstalled ? 'Installed' : 'Not Installed'}
+            {isInstalled ? t('gamesHome.installed') : t('gamesHome.notInstalled')}
           </span>
           <span className="caption">{formatBytes(game.info.sizeBytes)}</span>
         </div>

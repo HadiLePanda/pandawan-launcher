@@ -14,10 +14,10 @@ describe('i18n', () => {
 
   it('resolves the core chrome keys in English', () => {
     expect(i18n.t('topBar.games')).toBe('Games');
-    expect(i18n.t('app.retry')).toBe('Retry');
+    expect(i18n.t('common.retry')).toBe('Retry');
     expect(i18n.t('app.connectionBanner')).toContain('unreachable');
     expect(i18n.t('gameIconsBar.allGames')).toBe('All Games');
-    expect(i18n.t('titleBar.close')).toBe('Close');
+    expect(i18n.t('windowControls.close')).toBe('Close');
   });
 
   it.each([
@@ -28,9 +28,9 @@ describe('i18n', () => {
     await i18n.changeLanguage(language);
 
     expect(i18n.t('topBar.games')).toBe(games);
-    expect(i18n.t('titleBar.close')).toBe(close);
+    expect(i18n.t('windowControls.close')).toBe(close);
     expect(i18n.t('gameIconsBar.allGames')).toBe(allGames);
-    expect(i18n.t('app.retry')).toBe(retry);
+    expect(i18n.t('common.retry')).toBe(retry);
   });
 
   it('interpolates values into translated strings', () => {

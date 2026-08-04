@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@components/EmptyState';
 import { GameIconsBar } from '@components/GameIconsBar';
 import type { Game } from '@/types';
@@ -11,6 +12,7 @@ interface GamesPageProps {
 }
 
 export function GamesPage({ games, selectedGameId, onSelectGameIcon, children }: GamesPageProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
       <GameIconsBar
@@ -22,8 +24,8 @@ export function GamesPage({ games, selectedGameId, onSelectGameIcon, children }:
         {games.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <EmptyState
-              title="No Games Yet"
-              description="Install a game from the store to get started."
+              title={t('gamesPage.emptyTitle')}
+              description={t('gamesPage.emptyDescription')}
             />
           </div>
         ) : (

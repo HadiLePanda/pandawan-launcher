@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { X, User } from 'lucide-react';
 
 interface PlayerProfileProps {
@@ -6,6 +7,7 @@ interface PlayerProfileProps {
 }
 
 export function PlayerProfile({ isOpen, onClose }: PlayerProfileProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -13,8 +15,8 @@ export function PlayerProfile({ isOpen, onClose }: PlayerProfileProps) {
       <div className="absolute inset-0" onClick={onClose} />
       <div className="modal animate-slide-up max-w-md">
         <div className="modal-header">
-          <h3 className="title-3">Player Profile</h3>
-          <button onClick={onClose} className="icon-btn" aria-label="Close">
+          <h3 className="title-3">{t('playerProfile.title')}</h3>
+          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -24,15 +26,12 @@ export function PlayerProfile({ isOpen, onClose }: PlayerProfileProps) {
               <User className="w-10 h-10 text-ink-muted" />
             </div>
             <div className="text-center">
-              <h4 className="title-3">Player</h4>
-              <p className="caption">Offline</p>
+              <h4 className="title-3">{t('playerProfile.playerName')}</h4>
+              <p className="caption">{t('playerProfile.statusOffline')}</p>
             </div>
           </div>
           <div className="p-4 rounded-xl bg-surface border border-border">
-            <p className="body text-center">
-              Account features are coming soon. Here you'll manage your Pandawan account, friends
-              list, and purchases.
-            </p>
+            <p className="body text-center">{t('playerProfile.comingSoonDescription')}</p>
           </div>
         </div>
       </div>

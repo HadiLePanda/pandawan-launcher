@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 import { useLauncherStore } from '@/lib/store';
@@ -6,13 +7,14 @@ import { resolveCdnUrl } from '@/lib/cdn';
 import type { NewsItem } from '@/types';
 
 export function News() {
+  const { t } = useTranslation();
   const { news } = useLauncherStore();
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
 
   if (news.length === 0) {
     return (
       <div className="flex-1 flex flex-col justify-center">
-        <EmptyState title="No News Yet" description="Check back later for updates." />
+        <EmptyState title={t('news.emptyTitle')} description={t('news.emptyDescription')} />
       </div>
     );
   }
@@ -23,7 +25,7 @@ export function News() {
         <div className="max-w-3xl mx-auto">
           <button onClick={() => setSelectedItem(null)} className="btn btn-ghost mb-4 -ml-2">
             <ArrowLeft className="w-4 h-4" />
-            Back to news
+            {t('news.backToNews')}
           </button>
 
           <article className="news-detail-card">

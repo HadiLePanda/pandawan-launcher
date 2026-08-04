@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDropdownPosition } from '@/hooks/useDropdownPosition';
 import {
   Play,
@@ -61,6 +62,7 @@ export function GamePage({
   onVerify,
   onCancel,
 }: GamePageProps) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -112,12 +114,17 @@ export function GamePage({
         <div className="download-progress">
           <div className="download-progress-header">
             <span className="download-progress-label">
-              {game.status === 'updating' ? 'Updating' : 'Installing'}
+              {game.status === 'updating' ? t('gamePage.updating') : t('gamePage.installing')}
             </span>
             <div className="download-progress-stats">
               <span className="download-progress-percent">{pct}%</span>
               {onCancel && (
-                <button onClick={onCancel} className="icon-btn" title="Cancel" aria-label="Cancel">
+                <button
+                  onClick={onCancel}
+                  className="icon-btn"
+                  title={t('common.cancel')}
+                  aria-label={t('common.cancel')}
+                >
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -128,7 +135,10 @@ export function GamePage({
           </div>
           <div className="download-progress-meta">
             <span>
-              {downloadProgress?.completedFiles ?? 0} / {downloadProgress?.totalFiles ?? 0} files
+              {t('gamePage.filesProgress', {
+                completed: downloadProgress?.completedFiles ?? 0,
+                total: downloadProgress?.totalFiles ?? 0,
+              })}
             </span>
             <span>{downloadProgress?.speed}</span>
           </div>
@@ -141,7 +151,7 @@ export function GamePage({
         return (
           <button onClick={onUpdate} className="btn btn-install btn-xl">
             <RefreshCw className="w-5 h-5" />
-            Update
+            {t('gamePage.update')}
           </button>
         );
       }
@@ -155,7 +165,7 @@ export function GamePage({
           )}
         >
           <Play className="w-5 h-5 fill-current" />
-          {isRunning ? 'Playing' : 'Play'}
+          {isRunning ? t('gamePage.playing') : t('gamePage.play')}
         </button>
       );
     }
@@ -163,7 +173,7 @@ export function GamePage({
     return (
       <button onClick={onInstall} className="btn btn-install btn-xl">
         <Download className="w-5 h-5" />
-        Install
+        {t('gamePage.install')}
       </button>
     );
   };
@@ -177,24 +187,34 @@ export function GamePage({
   }[] = [
     {
       id: 'patchNotes',
-      label: 'Patch Notes',
+      label: t('gamePage.patchNotes'),
       icon: FileText,
       onClick: () => setActiveModal('patchNotes'),
     },
-    { id: 'news', label: 'News', icon: Newspaper, onClick: () => setActiveModal('news') },
-    { id: 'info', label: 'Game Info', icon: Info, onClick: () => setActiveModal('info') },
+    {
+      id: 'news',
+      label: t('gamePage.news'),
+      icon: Newspaper,
+      onClick: () => setActiveModal('news'),
+    },
+    {
+      id: 'info',
+      label: t('gamePage.gameInfo'),
+      icon: Info,
+      onClick: () => setActiveModal('info'),
+    },
   ];
 
   if (isInstalled) {
     menuItems.unshift({
       id: 'verify',
-      label: 'Verify Files',
+      label: t('gamePage.verifyFiles'),
       icon: ShieldCheck,
       onClick: onVerify,
     });
     menuItems.push({
       id: 'uninstall',
-      label: 'Uninstall',
+      label: t('gamePage.uninstall'),
       icon: Trash2,
       onClick: onUninstall,
       danger: true,
@@ -241,8 +261,8 @@ export function GamePage({
                     ref={menuTriggerRef}
                     onClick={() => setMenuOpen((v) => !v)}
                     className="icon-btn"
-                    title="More options"
-                    aria-label="More options"
+                    title={t('gamePage.moreOptions')}
+                    aria-label={t('gamePage.moreOptions')}
                     aria-expanded={menuOpen}
                     aria-haspopup="menu"
                   >
@@ -330,10 +350,11 @@ export function GamePage({
 }
 
 function GameNewsSection({ news }: { news: NewsItem[] }) {
+  const { t } = useTranslation();
   return (
     <div className="game-news">
       <div className="game-news-header">
-        <h3 className="game-news-title">News</h3>
+        <h3 className="game-news-title">{t('gamePage.news')}</h3>
       </div>
       <div className="game-news-list">
         {news.map((item) => (
@@ -372,14 +393,20 @@ function GameDetailsModal({
   view: 'patchNotes' | 'news' | 'info';
   onClose: () => void;
 }) {
-  const title = view === 'patchNotes' ? 'Patch Notes' : view === 'news' ? 'News' : 'Game Info';
+  const { t } = useTranslation();
+  const title =
+    view === 'patchNotes'
+      ? t('gamePage.patchNotes')
+      : view === 'news'
+        ? t('gamePage.news')
+        : t('gamePage.gameInfo');
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="game-details-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="title-3">{title}</h3>
-          <button onClick={onClose} className="icon-btn" aria-label="Close">
+          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -419,13 +446,16 @@ function GameDetailsModal({
 
               <div className="game-info-grid">
                 <InfoRow
-                  label="Version"
+                  label={t('gamePage.version')}
                   value={versionText(game.info.channel, game.info.version)}
                 />
-                <InfoRow label="Size" value={formatBytes(game.info.sizeBytes)} />
-                <InfoRow label="Developer" value={game.info.developer} />
+                <InfoRow label={t('gamePage.size')} value={formatBytes(game.info.sizeBytes)} />
+                <InfoRow label={t('gamePage.developer')} value={game.info.developer} />
                 {game.info.supportedPlatforms && (
-                  <InfoRow label="Platforms" value={game.info.supportedPlatforms.join(', ')} />
+                  <InfoRow
+                    label={t('gamePage.platforms')}
+                    value={game.info.supportedPlatforms.join(', ')}
+                  />
                 )}
               </div>
             </div>
@@ -450,7 +480,7 @@ function GameDetailsModal({
                   </article>
                 ))
               ) : (
-                <p className="caption">No patch notes available.</p>
+                <p className="caption">{t('gamePage.noPatchNotes')}</p>
               )}
             </div>
           )}
@@ -481,7 +511,7 @@ function GameDetailsModal({
                   </article>
                 ))
               ) : (
-                <p className="caption">No news available for this game.</p>
+                <p className="caption">{t('gamePage.noNewsForGame')}</p>
               )}
             </div>
           )}

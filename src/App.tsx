@@ -32,7 +32,7 @@ function ConnectionBanner({ onRetry, className }: { onRetry: () => void; classNa
       </div>
       <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember shrink-0">
         <RefreshCw className="w-4 h-4" />
-        {t('app.retry')}
+        {t('common.retry')}
       </button>
     </div>
   );
@@ -283,7 +283,7 @@ function App() {
           <div className="toast-content">
             <div className="toast-message">{error}</div>
             <button onClick={clearError} className="toast-dismiss">
-              {t('app.dismiss')}
+              {t('common.dismiss')}
             </button>
           </div>
         </div>

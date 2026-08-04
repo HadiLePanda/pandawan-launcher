@@ -2,19 +2,59 @@
   "app": {
     "confirmUninstall": "Are you sure you want to uninstall this game?",
     "connectionBanner": "Catalog server is unreachable. Showing bundled games; install and launch require a live server.",
-    "dismiss": "Dismiss",
-    "retry": "Retry",
     "storeComingSoonDescription": "Browse and install new Pandawan games here.",
     "storeComingSoonTitle": "Store Coming Soon"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "retry": "Retry"
   },
   "gameIconsBar": {
     "allGames": "All Games"
   },
-  "titleBar": {
-    "close": "Close",
-    "maximize": "Maximize",
-    "minimize": "Minimize",
-    "restore": "Restore"
+  "gamePage": {
+    "developer": "Developer",
+    "filesProgress": "{{completed}} / {{total}} files",
+    "gameInfo": "Game Info",
+    "install": "Install",
+    "installing": "Installing",
+    "moreOptions": "More options",
+    "news": "News",
+    "noNewsForGame": "No news available for this game.",
+    "noPatchNotes": "No patch notes available.",
+    "patchNotes": "Patch Notes",
+    "platforms": "Platforms",
+    "play": "Play",
+    "playing": "Playing",
+    "size": "Size",
+    "uninstall": "Uninstall",
+    "update": "Update",
+    "updating": "Updating",
+    "verifyFiles": "Verify Files",
+    "version": "Version"
+  },
+  "gamesHome": {
+    "availableCount": "{{count}} available",
+    "installAGame": "Install a Game",
+    "installed": "Installed",
+    "notInstalled": "Not Installed"
+  },
+  "gamesPage": {
+    "emptyDescription": "Install a game from the store to get started.",
+    "emptyTitle": "No Games Yet"
+  },
+  "news": {
+    "backToNews": "Back to news",
+    "emptyDescription": "Check back later for updates.",
+    "emptyTitle": "No News Yet"
+  },
+  "playerProfile": {
+    "comingSoonDescription": "Account features are coming soon. Here you'll manage your Pandawan account, friends list, and purchases.",
+    "playerName": "Player",
+    "statusOffline": "Offline",
+    "title": "Player Profile"
   },
   "topBar": {
     "games": "Games",
@@ -29,5 +69,11 @@
       "dark": "Dark",
       "light": "Light"
     }
+  },
+  "windowControls": {
+    "close": "Close",
+    "maximize": "Maximize",
+    "minimize": "Minimize",
+    "restore": "Restore"
   }
 }
