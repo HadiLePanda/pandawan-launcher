@@ -11,6 +11,10 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 - ⏯️ **Resume Downloads** - Interrupted downloads automatically resume from where they left off
 - ⚡ **Parallel Downloads** - Download multiple files concurrently for faster installation
 - 🔄 **Auto-Updates** - Games automatically check for and install updates
+- ⬆️ **Launcher Self-Updates** - The launcher checks for, downloads, and installs its own updates
+- ⏱️ **Playtime Tracking** - Track total playtime and last-played date for every game
+- 🔔 **OS Notifications** - Get notified when installs finish or launcher updates are available
+- 🌐 **Multi-Language** - Available in English, French, German, and Spanish
 - 🎨 **Modern UI** - Dark theme with glass morphism inspired by Battle.net
 - 🔧 **Configurable** - Customizable install paths, bandwidth limits, and behavior settings
 - 🖥️ **Cross-Platform** - Built with Tauri for Windows, macOS, and Linux support
@@ -38,6 +42,7 @@ pandawan-launcher/
 │   │   ├── GamePage.tsx         # Selected game detail view
 │   │   ├── News.tsx             # News feed view
 │   │   ├── Settings.tsx         # Settings page
+│   │   ├── UpdateBanner.tsx     # Launcher self-update banner
 │   │   └── AddGameModal.tsx     # Manual game install modal
 │   ├── lib/                      # Utilities, services, and state
 │   │   ├── store.ts             # Zustand state management
@@ -47,8 +52,13 @@ pandawan-launcher/
 │   │   ├── news-service.ts      # News feed loader
 │   │   ├── commands.ts          # Typed Tauri invoke helpers
 │   │   ├── download-channel.ts  # Download progress event mapping
-│   │   ├── logger.ts            # Lightweight structured logging
+│   │   ├── updater-service.ts   # Launcher self-update flow (check/download/relaunch)
+│   │   ├── notifications.ts     # OS notifications (install/update complete, update available)
+│   │   ├── i18n.ts              # i18next setup and language switching
+│   │   ├── utils.ts             # Shared helpers (e.g. playtime formatting)
+│   │   ├── logger.ts            # Structured logging (+ launcher.log in app log dir)
 │   │   └── window.ts            # Custom title-bar window controls
+│   ├── locales/                 # i18next resources (en/fr/de/es.json)
 │   ├── types/
 │   │   └── index.ts             # TypeScript type definitions
 │   ├── App.tsx                  # Main app component
@@ -176,11 +186,14 @@ The launcher exposes these commands to the frontend:
 | `launch_game(gameId)`                 | Launch an installed game     |
 | `uninstall_game(gameId)`              | Remove a game installation   |
 | `get_installed_games()`               | List all installed games     |
+| `get_game_installation(gameId)`       | Get one game's installation  |
 | `check_game_update(gameId, manifest)` | Check if update is available |
 | `verify_game(manifest, installPath)`  | Verify game file integrity   |
 | `get_settings()`                      | Get launcher settings        |
 | `save_settings(settings)`             | Save launcher settings       |
 | `select_install_folder()`             | Open folder picker dialog    |
+| `cancel_operation()`                  | Cancel the active operation  |
+| `get_app_data_dir()`                  | Get the app data directory   |
 
 ## Self-Updates
 
@@ -250,7 +263,6 @@ public class LauncherIntegration : MonoBehaviour
 ## Roadmap
 
 - [ ] Delta patching (bsdiff/xdelta) for large files
-- [ ] Automatic update notifications
 - [ ] Cloud saves synchronization
 - [ ] Friends list and multiplayer integration
 - [ ] Achievements system
