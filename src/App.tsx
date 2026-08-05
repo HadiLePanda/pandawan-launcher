@@ -10,6 +10,7 @@ import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
 import { NewsArticleView } from '@components/NewsArticleView';
+import { DownloadsPage } from '@components/DownloadsPage';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
@@ -55,7 +56,7 @@ function App() {
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
+  const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(
@@ -297,6 +298,15 @@ function App() {
         />
       );
     }
+    if (activeView === 'downloads') {
+      return (
+        <DownloadsPage
+          downloads={activeDownloads}
+          games={games.map((g) => g.info)}
+          onCancel={cancelOperation}
+        />
+      );
+    }
     if (activeView === 'store') {
       return (
         <div className="flex-1 flex flex-col justify-center">
@@ -359,9 +369,10 @@ function App() {
             setActiveView('store');
             setSelectedGameId(lastSelectedGameId);
           }}
+          onDownloadsClick={() => setActiveView('downloads')}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
-          downloadsBadge={0}
+          downloadsBadge={activeDownloads.size}
           notificationsBadge={0}
         />
 

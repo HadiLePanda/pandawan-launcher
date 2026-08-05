@@ -79,6 +79,11 @@
     "updateAvailable": "Update available",
     "updateComplete": "Update complete"
   },
+  "downloads": {
+    "cancel": "Cancel",
+    "empty": "No active downloads",
+    "title": "Downloads"
+  },
   "settings": {
     "about": {
       "developer": "Developer",

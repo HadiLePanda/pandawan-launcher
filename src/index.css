@@ -2967,3 +2967,126 @@ input[type='search']::placeholder {
   line-height: 1.65;
   color: var(--ink-default);
 }
+
+
+/* ----- Downloads page ----- */
+.downloads-page {
+  padding: 24px;
+}
+
+.downloads-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink-default);
+  margin-bottom: 16px;
+}
+
+.downloads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.download-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.download-row-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.download-row-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.download-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.download-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.download-row-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.download-row-percent {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.download-row-bar {
+  height: 4px;
+  background: var(--surface-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.download-row-fill {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.2s ease;
+}
+
+.download-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.download-row-cancel {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.download-row-cancel:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+.downloads-empty {
+  color: var(--ink-muted);
+}

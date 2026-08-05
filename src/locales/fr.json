@@ -79,6 +79,11 @@
     "updateAvailable": "Mise à jour disponible",
     "updateComplete": "Mise à jour terminée"
   },
+  "downloads": {
+    "cancel": "Annuler",
+    "empty": "Aucun téléchargement actif",
+    "title": "Téléchargements"
+  },
   "settings": {
     "about": {
       "developer": "Développeur",

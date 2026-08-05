@@ -5,10 +5,11 @@ import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 
 interface AppTopBarProps {
-  activeView: 'games' | 'news' | 'store';
+  activeView: 'games' | 'news' | 'store' | 'downloads';
   onGamesClick: () => void;
   onNewsClick: () => void;
   onStoreClick: () => void;
+  onDownloadsClick: () => void;
   onSettingsClick: () => void;
   onDoubleClick?: () => void;
 }
@@ -45,6 +46,7 @@ export function AppTopBar({
   onGamesClick,
   onNewsClick,
   onStoreClick,
+  onDownloadsClick,
   onSettingsClick,
   onDoubleClick,
   downloadsBadge,
@@ -122,6 +124,7 @@ export function AppTopBar({
             icon={<Download className="w-4 h-4" />}
             label={t('topBar.downloads')}
             badge={downloadsBadge}
+            onClick={onDownloadsClick}
           />
           <TopBarButton
             icon={<Bell className="w-4 h-4" />}
