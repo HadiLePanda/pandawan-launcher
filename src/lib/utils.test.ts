@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPlaytime } from './utils';
+import { formatPlaytime, formatPlaytimeDecimal, formatNewsDate } from './utils';
 
 describe('formatPlaytime', () => {
   it('formats zero as 0 min', () => {
@@ -33,5 +33,26 @@ describe('formatPlaytime', () => {
   it('strips trailing .0 for large whole hours', () => {
     expect(formatPlaytime(36000)).toBe('10 h');
     expect(formatPlaytime(360000)).toBe('100 h');
+  });
+});
+
+describe('formatPlaytimeDecimal', () => {
+  it('formats zero as 0h', () => {
+    expect(formatPlaytimeDecimal(0)).toBe('0h');
+  });
+
+  it('formats fractional hours with one decimal', () => {
+    expect(formatPlaytimeDecimal(360)).toBe('0.1h');
+    expect(formatPlaytimeDecimal(9000)).toBe('2.5h');
+  });
+
+  it('keeps trailing .0', () => {
+    expect(formatPlaytimeDecimal(3600)).toBe('1.0h');
+  });
+});
+
+describe('formatNewsDate', () => {
+  it('formats as day month year', () => {
+    expect(formatNewsDate('2026-06-03T10:00:00Z')).toBe('3 June 2026');
   });
 });

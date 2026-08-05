@@ -42,6 +42,20 @@ export function formatPlaytime(seconds: number): string {
   return `${parseFloat((seconds / 3600).toFixed(1))} h`;
 }
 
+export function formatPlaytimeDecimal(seconds: number): string {
+  if (seconds <= 0) return '0h';
+  return `${(seconds / 3600).toFixed(1)}h`;
+}
+
+export function formatNewsDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleDateString(undefined, {
