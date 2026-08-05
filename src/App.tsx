@@ -5,6 +5,7 @@ import { events } from '@/lib/bindings';
 import { AppHeader } from '@components/AppHeader';
 import { FiltersPanel } from '@components/FiltersPanel';
 import { GamesBar } from '@components/GamesBar';
+import { GameRail } from '@components/GameRail';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
@@ -426,6 +427,15 @@ function App() {
               games={games.map((g) => g.info)}
               filters={gameFilters}
               onFilterChange={setGameFilters}
+            />
+          )}
+          {activeView === 'games' && selectedGameId && (
+            <GameRail
+              games={games.map((g) => g.info)}
+              installedIds={installedIds}
+              selectedGameId={selectedGameId}
+              onSelect={handleSelectGameIcon}
+              onContextMenu={handleContextMenu}
             />
           )}
           <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>

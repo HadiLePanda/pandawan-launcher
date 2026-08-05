@@ -335,7 +335,10 @@ body {
   border: 1px solid transparent;
   opacity: 0.55;
   filter: grayscale(60%);
-  transition: opacity 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease,
+    border-color 0.15s ease;
   cursor: pointer;
   background: transparent;
   padding: 0;
@@ -397,7 +400,9 @@ body {
   color: var(--ink-muted);
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -501,7 +506,88 @@ body {
   color: var(--ink-default);
 }
 
+/* Game rail — vertical icon rail for game details */
+.game-rail {
+  width: 64px;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--canvas-default);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
 
+.game-rail-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-rail-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid transparent;
+  opacity: 0.55;
+  filter: grayscale(60%);
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease,
+    border-color 0.15s ease;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.game-rail-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.game-rail-icon.installed {
+  opacity: 1;
+  filter: none;
+}
+
+.game-rail-icon.selected {
+  border-color: var(--border-default);
+  opacity: 1;
+  filter: none;
+}
+
+.game-rail-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--ink-default);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease 0s;
+  z-index: 40;
+}
+
+.game-rail-item:hover .game-rail-tip {
+  opacity: 1;
+  transition-delay: 1s;
+}
 
 /* Status indicator pulse */
 .status-pulse {
@@ -1623,7 +1709,9 @@ input[type='search']::placeholder {
   border-radius: 0;
   text-align: left;
   cursor: pointer;
-  transition: opacity 0.2s ease, filter 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
 }
 
 .game-card-uninstalled {
@@ -1649,7 +1737,9 @@ input[type='search']::placeholder {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.25s ease, filter 0.2s ease;
+  transition:
+    transform 0.25s ease,
+    filter 0.2s ease;
 }
 
 .game-card:hover .game-card-image {
@@ -2625,7 +2715,6 @@ input[type='search']::placeholder {
   border-width: 0;
 }
 
-
 /* ----- Game detail redesign ----- */
 .game-detail {
   display: grid;
@@ -2665,7 +2754,12 @@ input[type='search']::placeholder {
 .game-detail-banner-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.2) 50%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.2) 50%,
+    transparent 100%
+  );
 }
 
 .game-detail-banner-content {
@@ -2800,7 +2894,9 @@ input[type='search']::placeholder {
   background: transparent;
   border: 1px solid var(--border-default);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .game-detail-settings-btn:hover {
@@ -2944,7 +3040,6 @@ input[type='search']::placeholder {
   }
 }
 
-
 /* ----- Game context menu ----- */
 .game-context-menu {
   min-width: 180px;
@@ -2983,7 +3078,6 @@ input[type='search']::placeholder {
   background: var(--ember-muted);
 }
 
-
 /* ----- News article view ----- */
 .news-article-view {
   padding: 24px;
@@ -3007,7 +3101,9 @@ input[type='search']::placeholder {
   background: transparent;
   border: 1px solid var(--border-default);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .news-article-header-btn:hover {
@@ -3086,7 +3182,6 @@ input[type='search']::placeholder {
   line-height: 1.65;
   color: var(--ink-default);
 }
-
 
 /* ----- Downloads page ----- */
 .downloads-page {
@@ -3198,7 +3293,9 @@ input[type='search']::placeholder {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .download-row-cancel:hover {
@@ -3209,7 +3306,6 @@ input[type='search']::placeholder {
 .downloads-empty {
   color: var(--ink-muted);
 }
-
 
 /* ----- Notifications panel ----- */
 .notifications-panel {
@@ -3259,7 +3355,9 @@ input[type='search']::placeholder {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .notifications-panel-action:hover {
