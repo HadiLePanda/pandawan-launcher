@@ -31,6 +31,17 @@ export function formatDuration(seconds: number): string {
   return `${minutes}m`;
 }
 
+export function formatPlaytime(seconds: number): string {
+  if (seconds <= 0) return '0 min';
+
+  if (seconds < 3600) {
+    return `${Math.max(1, Math.round(seconds / 60))} min`;
+  }
+
+  // Match formatBytes: one decimal, trailing .0 stripped via parseFloat.
+  return `${parseFloat((seconds / 3600).toFixed(1))} h`;
+}
+
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleDateString(undefined, {

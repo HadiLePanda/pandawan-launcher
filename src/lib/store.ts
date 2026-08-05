@@ -54,6 +54,7 @@ interface LauncherState {
   uninstallGame: (gameId: string) => Promise<void>;
   checkForUpdates: (gameId: string, channel: string) => Promise<boolean>;
   refreshUpdateStatus: () => Promise<void>;
+  refreshInstallation: (gameId: string) => Promise<void>;
   cancelOperation: () => Promise<void>;
 }
 
@@ -232,6 +233,20 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       await gameService.cancelOperation();
     } catch (err) {
       handleStoreError(err, set, 'cancelOperation');
+    }
+  },
+
+  // Re-fetches one installation record (playtime/last played). Used after a
+  // game exits. Failures keep the cached record; they only stale the display.
+  refreshInstallation: async (gameId) => {
+    try {
+      const installation = await gameService.loadInstallation(gameId);
+      if (!installation) return;
+      set((state) => ({
+        games: state.games.map((g) => (g.info.id === gameId ? { ...g, installation } : g)),
+      }));
+    } catch (err) {
+      logger.warn('Failed to refresh installation', { gameId, error: String(err) });
     }
   },
 }));

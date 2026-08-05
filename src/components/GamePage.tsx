@@ -14,8 +14,9 @@ import {
   Trash2,
   ShieldCheck,
   Calendar,
+  Clock,
 } from 'lucide-react';
-import { cn, formatBytes } from '@/lib/utils';
+import { cn, formatBytes, formatDate, formatPlaytime } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
 import type { Game, NewsItem } from '@/types';
 
@@ -313,6 +314,31 @@ export function GamePage({
                   {formatBytes(game.info.sizeBytes)}
                 </span>
               )}
+              {game.status !== 'not_installed' &&
+                game.installation &&
+                (game.installation.total_playtime_seconds > 0 ? (
+                  <>
+                    <span className="game-page-meta-item">
+                      <Clock className="w-4 h-4" />
+                      {t('gamePage.playtime', {
+                        playtime: formatPlaytime(game.installation.total_playtime_seconds),
+                      })}
+                    </span>
+                    {game.installation.last_played && (
+                      <span className="game-page-meta-item">
+                        <Calendar className="w-4 h-4" />
+                        {t('gamePage.lastPlayed', {
+                          date: formatDate(game.installation.last_played),
+                        })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="game-page-meta-item">
+                    <Clock className="w-4 h-4" />
+                    {t('gamePage.neverPlayed')}
+                  </span>
+                ))}
               <span className="font-medium tabular-nums">
                 {versionText(game.info.channel, game.info.version)}
               </span>

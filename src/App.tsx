@@ -61,6 +61,7 @@ function App() {
     uninstallGame,
     cancelOperation,
     updateGameStatus,
+    refreshInstallation,
     loadCatalog,
     loadNews,
     loadGames,
@@ -144,12 +145,13 @@ function App() {
   useEffect(() => {
     const unlisten = events.gameExited.listen((event) => {
       updateGameStatus(event.payload.game_id, 'installed');
+      void refreshInstallation(event.payload.game_id);
     });
 
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [updateGameStatus]);
+  }, [updateGameStatus, refreshInstallation]);
 
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 

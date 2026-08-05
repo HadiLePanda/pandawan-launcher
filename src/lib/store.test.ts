@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { checkForUpdates as serviceCheckForUpdates, patchGame } from './game-service';
+import {
+  checkForUpdates as serviceCheckForUpdates,
+  loadInstallation,
+  patchGame,
+} from './game-service';
 import {
   notifyInstallComplete,
   notifyUpdateAvailable,
@@ -9,6 +13,7 @@ import type { Game, GameInfo, GameInstallation, LauncherSettings } from '@/types
 
 vi.mock('./game-service', () => ({
   checkForUpdates: vi.fn(),
+  loadInstallation: vi.fn(),
   patchGame: vi.fn(),
 }));
 
@@ -163,5 +168,53 @@ describe('store update-notification gating', () => {
 
     expect(notifyInstallComplete).toHaveBeenCalledTimes(1);
     expect(notifyInstallComplete).toHaveBeenCalledWith('Quirheim Online', false);
+  });
+});
+
+// Focused coverage for refreshInstallation, which re-fetches one installation
+// record (playtime/last played) after a game exits.
+describe('store refreshInstallation', () => {
+  let store: typeof import('./store');
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    store = await import('./store');
+    store.useLauncherStore.setState({
+      games: [makeGame({ installation: makeInstallation() })],
+      settings: makeSettings(),
+    });
+  });
+
+  it('replaces the cached installation record with the refreshed one', async () => {
+    const refreshed: GameInstallation = {
+      ...makeInstallation(),
+      total_playtime_seconds: 45000,
+      last_played: '2026-08-03T12:00:00Z',
+    };
+    (loadInstallation as Mock).mockResolvedValue(refreshed);
+
+    await store.useLauncherStore.getState().refreshInstallation('game-1');
+
+    expect(loadInstallation).toHaveBeenCalledWith('game-1');
+    expect(store.useLauncherStore.getState().games[0].installation).toEqual(refreshed);
+  });
+
+  it('keeps the cached record and does not throw when the fetch fails', async () => {
+    (loadInstallation as Mock).mockRejectedValue(new Error('backend gone'));
+
+    await expect(
+      store.useLauncherStore.getState().refreshInstallation('game-1')
+    ).resolves.toBeUndefined();
+
+    expect(store.useLauncherStore.getState().games[0].installation).toEqual(makeInstallation());
+  });
+
+  it('keeps the cached record when the backend returns no installation', async () => {
+    (loadInstallation as Mock).mockResolvedValue(null);
+
+    await store.useLauncherStore.getState().refreshInstallation('game-1');
+
+    expect(store.useLauncherStore.getState().games[0].installation).toEqual(makeInstallation());
   });
 });

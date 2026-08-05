@@ -68,6 +68,10 @@ export async function loadInstalledGames(): Promise<GameInstallation[]> {
   return unwrapResult(await commands.getInstalledGames());
 }
 
+export async function loadInstallation(gameId: string): Promise<GameInstallation | null> {
+  return unwrapResult(await commands.getGameInstallation(gameId));
+}
+
 export async function loadSettings(): Promise<LauncherSettings> {
   return unwrapResult(await commands.getSettings());
 }
