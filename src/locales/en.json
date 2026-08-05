@@ -206,8 +206,8 @@
     "notifications": "Notifications",
     "playerProfile": "Player Profile",
     "profileSettings": "Settings",
-    "store": "Store",
-    "themeLabel": "Theme"
+    "settings": "Settings",
+    "store": "Store"
   },
   "updateBanner": {
     "available": "Update v{{version}} available",

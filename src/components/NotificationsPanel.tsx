@@ -22,6 +22,7 @@ export function NotificationsPanel({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      if ((e.target as Element).closest('[data-panel-trigger]')) return;
       if (!panelRef.current?.contains(e.target as Node)) {
         onClose();
       }
@@ -39,9 +40,17 @@ export function NotificationsPanel({
   }, [onClose]);
 
   return (
-    <div ref={panelRef} className="notifications-panel">
+    <div
+      ref={panelRef}
+      className="notifications-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="notifications-panel-title"
+    >
       <div className="notifications-panel-header">
-        <span className="notifications-panel-title">{t('notificationsPanel.title')}</span>
+        <span id="notifications-panel-title" className="notifications-panel-title">
+          {t('notificationsPanel.title')}
+        </span>
         <div className="notifications-panel-actions">
           <button
             type="button"
@@ -74,7 +83,10 @@ export function NotificationsPanel({
           notifications.map((n) => (
             <div
               key={n.id}
-              className={cn('notifications-panel-item', !n.read && 'notifications-panel-item-unread')}
+              className={cn(
+                'notifications-panel-item',
+                !n.read && 'notifications-panel-item-unread'
+              )}
             >
               <div className="notifications-panel-item-body">
                 <span className="notifications-panel-item-title">{n.title}</span>

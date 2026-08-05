@@ -206,8 +206,8 @@
     "notifications": "Notifications",
     "playerProfile": "Profil du joueur",
     "profileSettings": "Paramètres",
-    "store": "Boutique",
-    "themeLabel": "Thème"
+    "settings": "Paramètres",
+    "store": "Boutique"
   },
   "updateBanner": {
     "available": "Mise à jour v{{version}} disponible",

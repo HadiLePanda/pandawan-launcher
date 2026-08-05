@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { SunMoon, Download, Bell, User, Settings, ServerOff, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Download, Bell, User, Settings, ServerOff, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { useLauncherStore } from '@/lib/store';
 import { WindowControls } from './WindowControls';
+import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 
 interface AppHeaderProps {
   activeView: 'games' | 'news' | 'store' | 'downloads';
@@ -14,7 +14,7 @@ interface AppHeaderProps {
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
   onDoubleClick?: () => void;
-  downloadsBadge?: number;
+  activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
   catalogUnreachable: boolean;
   catalogSource: 'remote' | 'local' | 'embedded' | null;
@@ -25,18 +25,25 @@ function TopBarButton({
   icon,
   label,
   badge,
+  active,
+  trigger,
   onClick,
+  children,
 }: {
   icon: React.ReactNode;
   label: string;
   badge?: number | null;
+  active?: boolean;
+  trigger?: string;
   onClick?: () => void;
+  children?: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="topbar-btn"
+      className={cn('topbar-btn', active && 'topbar-btn-active')}
+      data-panel-trigger={trigger}
       aria-label={label}
       title={label}
     >
@@ -44,6 +51,7 @@ function TopBarButton({
         {icon}
         {badge != null && badge > 0 && <span className="topbar-badge">{badge}</span>}
       </span>
+      {children}
     </button>
   );
 }
@@ -51,7 +59,7 @@ function TopBarButton({
 function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className="banner no-drag">
+    <div className="banner-inline no-drag">
       <ServerOff className="w-4 h-4 shrink-0" />
       <span className="truncate">{t('app.connectionBanner')}</span>
       <button
@@ -77,15 +85,13 @@ export function AppHeader({
   onNotificationsClick,
   onSettingsClick,
   onDoubleClick,
-  downloadsBadge,
+  activeDownloads,
   notificationsBadge,
   catalogUnreachable,
   catalogSource,
   onRetry,
 }: AppHeaderProps) {
   const { t } = useTranslation();
-  const { settings, setSettings } = useLauncherStore();
-  const currentTheme = settings?.theme || 'adaptive';
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -113,13 +119,15 @@ export function AppHeader({
     };
   }, [isProfileMenuOpen]);
 
-  const handleThemeToggle = () => {
-    if (!settings) return;
-    const order = ['adaptive', 'light', 'dark'];
-    const next = order[(order.indexOf(currentTheme) + 1) % order.length];
-    document.documentElement.classList.toggle('light', next === 'light');
-    setSettings({ ...settings, theme: next });
-  };
+  const downloadsBadge = activeDownloads.size;
+  const averageProgress = useMemo(() => {
+    if (activeDownloads.size === 0) return 0;
+    let sum = 0;
+    for (const entry of activeDownloads.values()) {
+      sum += entry.overallProgress ?? 0;
+    }
+    return sum / activeDownloads.size;
+  }, [activeDownloads]);
 
   const navItems = [
     { id: 'games' as const, label: t('topBar.games'), onClick: onGamesClick },
@@ -137,15 +145,11 @@ export function AppHeader({
   const showConnectionBanner = catalogUnreachable && catalogSource !== 'remote';
 
   return (
-    <div
-      data-tauri-drag-region
-      onDoubleClick={handleDoubleClick}
-      className="app-topbar"
-    >
+    <div data-tauri-drag-region onDoubleClick={handleDoubleClick} className="app-topbar">
       <div className="app-topbar-row">
         <div className="cluster cluster-md no-drag">
           <div className="app-logo">P</div>
-          <nav className="cluster cluster-lg app-topbar-tabs">
+          <nav className="cluster cluster-lg">
             {navItems.map((item) => (
               <button
                 type="button"
@@ -163,30 +167,48 @@ export function AppHeader({
           {showConnectionBanner && <ConnectionBanner onRetry={onRetry} />}
         </div>
 
-        <div className="cluster cluster-sm no-drag app-header-actions">
-          <TopBarButton
-            icon={<SunMoon className="w-4 h-4" />}
-            label={t('topBar.themeLabel')}
-            onClick={handleThemeToggle}
-          />
-          <TopBarButton
-            icon={<Download className="w-4 h-4" />}
-            label={t('topBar.downloads')}
-            badge={downloadsBadge}
-            onClick={onDownloadsClick}
-          />
+        <div className="cluster cluster-sm no-drag">
+          {downloadsBadge > 0 && (
+            <TopBarButton
+              icon={<Download className="w-4 h-4" />}
+              label={t('topBar.downloads')}
+              badge={downloadsBadge}
+              active
+              trigger="downloads"
+              onClick={onDownloadsClick}
+            >
+              <span className="topbar-progress" aria-hidden="true">
+                <span className="topbar-progress-fill" style={{ width: `${averageProgress}%` }} />
+              </span>
+            </TopBarButton>
+          )}
           <TopBarButton
             icon={<Bell className="w-4 h-4" />}
             label={t('topBar.notifications')}
             badge={notificationsBadge}
+            active={(notificationsBadge ?? 0) > 0}
+            trigger="notifications"
             onClick={onNotificationsClick}
           />
+          <TopBarButton
+            icon={<Settings className="w-4 h-4" />}
+            label={t('topBar.settings')}
+            trigger="settings"
+            onClick={onSettingsClick}
+          />
           <div className="relative" ref={profileMenuRef}>
-            <TopBarButton
-              icon={<User className="w-4 h-4" />}
-              label={t('topBar.playerProfile')}
+            <button
+              type="button"
+              className="topbar-btn"
+              data-panel-trigger="profile"
+              aria-label={t('topBar.playerProfile')}
+              title={t('topBar.playerProfile')}
               onClick={() => setIsProfileMenuOpen((open) => !open)}
-            />
+            >
+              <span className="topbar-avatar">
+                <User className="w-3.5 h-3.5" />
+              </span>
+            </button>
             {isProfileMenuOpen && (
               <div className="profile-menu">
                 <button

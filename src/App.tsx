@@ -10,6 +10,7 @@ import { GameContextMenu } from '@components/GameContextMenu';
 import { NewsArticleView } from '@components/NewsArticleView';
 import { DownloadsPage } from '@components/DownloadsPage';
 import { NotificationsPanel } from '@components/NotificationsPanel';
+import { DownloadsPopup } from '@components/DownloadsPopup';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
@@ -36,6 +37,7 @@ function App() {
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
@@ -46,9 +48,10 @@ function App() {
   const [contextMenu, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(
     null
   );
-  const [detailsModal, setDetailsModal] = useState<
-    { gameId: string; view: 'patchNotes' | 'news' | 'info' } | null
-  >(null);
+  const [detailsModal, setDetailsModal] = useState<{
+    gameId: string;
+    view: 'patchNotes' | 'news' | 'info';
+  } | null>(null);
   const [newsArticle, setNewsArticle] = useState<{ gameId: string; articleId: string } | null>(
     null
   );
@@ -85,10 +88,7 @@ function App() {
     [games]
   );
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
-  );
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const filteredGameIds = useMemo(() => {
     const infos = games.map((g) => g.info);
@@ -221,7 +221,10 @@ function App() {
       case 'patchNotes':
       case 'gameNews':
       case 'gameInfo':
-        setDetailsModal({ gameId, view: action === 'gameNews' ? 'news' : action === 'patchNotes' ? 'patchNotes' : 'info' });
+        setDetailsModal({
+          gameId,
+          view: action === 'gameNews' ? 'news' : action === 'patchNotes' ? 'patchNotes' : 'info',
+        });
         return;
     }
   };
@@ -359,11 +362,21 @@ function App() {
           setActiveView('store');
           setSelectedGameId(lastSelectedGameId);
         }}
-        onDownloadsClick={() => setActiveView('downloads')}
-        onNotificationsClick={() => setIsNotificationsOpen((v) => !v)}
-        onSettingsClick={() => setIsSettingsOpen(true)}
+        onDownloadsClick={() => {
+          setIsNotificationsOpen(false);
+          setIsDownloadsOpen((v) => !v);
+        }}
+        onNotificationsClick={() => {
+          setIsDownloadsOpen(false);
+          setIsNotificationsOpen((v) => !v);
+        }}
+        onSettingsClick={() => {
+          setIsDownloadsOpen(false);
+          setIsNotificationsOpen(false);
+          setIsSettingsOpen(true);
+        }}
         onDoubleClick={() => windowTitlebarToggleMaximize()}
-        downloadsBadge={activeDownloads.size}
+        activeDownloads={activeDownloads}
         notificationsBadge={unreadCount}
         catalogUnreachable={catalogUnreachable}
         catalogSource={catalogSource}
@@ -377,6 +390,15 @@ function App() {
             onMarkAllRead={markAllNotificationsRead}
             onClear={clearNotifications}
             onClose={() => setIsNotificationsOpen(false)}
+          />
+        )}
+
+        {isDownloadsOpen && (
+          <DownloadsPopup
+            downloads={activeDownloads}
+            games={games.map((g) => g.info)}
+            onCancel={cancelOperation}
+            onClose={() => setIsDownloadsOpen(false)}
           />
         )}
 

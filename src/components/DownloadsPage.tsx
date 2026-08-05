@@ -28,7 +28,7 @@ export function DownloadsPage({ downloads, games, onCancel }: DownloadsPageProps
       <div className="downloads-list">
         {Array.from(downloads.entries()).map(([gameId, progress]) => {
           const game = games.find((g) => g.id === gameId);
-          const pct = Math.round(progress.overallProgress || progress.progress || 0);
+          const pct = Math.round(progress.overallProgress ?? progress.progress ?? 0);
 
           return (
             <div key={gameId} className="download-row">
