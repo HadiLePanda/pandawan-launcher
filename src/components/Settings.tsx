@@ -14,6 +14,7 @@ import {
 import { getVersion } from '@tauri-apps/api/app';
 import { appLogDir } from '@tauri-apps/api/path';
 import { open } from '@tauri-apps/plugin-shell';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
@@ -29,10 +30,10 @@ interface SettingsProps {
 type SettingsTab = 'general' | 'downloads' | 'notifications' | 'about';
 
 const tabs = [
-  { id: 'general' as SettingsTab, label: 'General', icon: HardDrive },
-  { id: 'downloads' as SettingsTab, label: 'Downloads', icon: Download },
-  { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
-  { id: 'about' as SettingsTab, label: 'About', icon: Info },
+  { id: 'general' as SettingsTab, icon: HardDrive },
+  { id: 'downloads' as SettingsTab, icon: Download },
+  { id: 'notifications' as SettingsTab, icon: Bell },
+  { id: 'about' as SettingsTab, icon: Info },
 ];
 
 const DEFAULT_SETTINGS: LauncherSettings = {
@@ -52,10 +53,18 @@ const DEFAULT_SETTINGS: LauncherSettings = {
 };
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
+  const { t } = useTranslation();
   const { settings, setSettings, error } = useLauncherStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const tabLabels: Record<SettingsTab, string> = {
+    general: t('settings.tabs.general'),
+    downloads: t('settings.tabs.downloads'),
+    notifications: t('settings.tabs.notifications'),
+    about: t('settings.tabs.about'),
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -86,7 +95,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
       <div className="modal animate-slide-up">
         <div className="modal-sidebar">
-          <h2 className="modal-title">Settings</h2>
+          <h2 className="modal-title">{t('settings.title')}</h2>
           <nav className="stack-sm">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -97,7 +106,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                   className={cn('modal-nav-item', activeTab === tab.id && 'modal-nav-item-active')}
                 >
                   <Icon className="modal-nav-icon" />
-                  {tab.label}
+                  {tabLabels[tab.id]}
                 </button>
               );
             })}
@@ -106,7 +115,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="modal-header">
-            <h3 className="title-3">{tabs.find((t) => t.id === activeTab)?.label}</h3>
+            <h3 className="title-3">{tabLabels[activeTab]}</h3>
             <button onClick={onClose} className="icon-btn">
               <X className="w-5 h-5" />
             </button>
@@ -132,10 +141,10 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
 
           <div className="modal-footer">
             <button onClick={onClose} className="btn btn-ghost">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button onClick={handleSave} className="btn btn-primary">
-              Save Changes
+              {t('settings.saveChanges')}
             </button>
           </div>
         </div>
@@ -150,6 +159,7 @@ interface TabProps {
 }
 
 function GeneralSettings({ settings, onChange }: TabProps) {
+  const { t } = useTranslation();
   const handleBrowse = async () => {
     try {
       const selected = await gameService.selectInstallFolder();
@@ -165,55 +175,63 @@ function GeneralSettings({ settings, onChange }: TabProps) {
     <div className="setting-group">
       <SettingItem
         icon={Folder}
-        title="Game Install Location"
-        description="Where your games are installed"
+        title={t('settings.general.installLocation.title')}
+        description={t('settings.general.installLocation.description')}
       >
         <div className="cluster cluster-md">
           <div className="install-path-box">
-            {settings.gamesInstallPath || 'Default (PandawanGames)'}
+            {settings.gamesInstallPath || t('settings.general.installLocation.defaultPath')}
           </div>
           <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
-            Browse
+            {t('settings.general.installLocation.browse')}
           </button>
         </div>
       </SettingItem>
 
-      <SettingItem icon={Globe} title="Language" description="Interface language">
+      <SettingItem
+        icon={Globe}
+        title={t('settings.general.language.title')}
+        description={t('settings.general.language.description')}
+      >
         <select
           value={settings.language}
           onChange={(e) => onChange({ language: e.target.value })}
           className="w-full"
         >
           <option value="en">English</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="es">Spanish</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
         </select>
       </SettingItem>
 
-      <SettingItem icon={SunMoon} title="Theme" description="Launcher appearance theme">
+      <SettingItem
+        icon={SunMoon}
+        title={t('settings.general.theme.title')}
+        description={t('settings.general.theme.description')}
+      >
         <select
           value={settings.theme}
           onChange={(e) => onChange({ theme: e.target.value })}
           className="w-full"
         >
-          <option value="adaptive">Adaptive (System)</option>
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
+          <option value="adaptive">{t('settings.general.theme.adaptive')}</option>
+          <option value="dark">{t('settings.general.theme.dark')}</option>
+          <option value="light">{t('settings.general.theme.light')}</option>
         </select>
       </SettingItem>
 
       <hr className="border-border" />
 
       <ToggleSetting
-        title="Minimize to tray"
-        description="Keep launcher running in system tray when minimized"
+        title={t('settings.general.minimizeToTray.title')}
+        description={t('settings.general.minimizeToTray.description')}
         checked={settings.minimizeToTray}
         onChange={(checked) => onChange({ minimizeToTray: checked })}
       />
       <ToggleSetting
-        title="Close to tray"
-        description="Minimize to tray instead of closing"
+        title={t('settings.general.closeToTray.title')}
+        description={t('settings.general.closeToTray.description')}
         checked={settings.closeToTray}
         onChange={(checked) => onChange({ closeToTray: checked })}
       />
@@ -222,8 +240,9 @@ function GeneralSettings({ settings, onChange }: TabProps) {
 }
 
 function DownloadSettings({ settings, onChange }: TabProps) {
+  const { t } = useTranslation();
   const speedOptions = [
-    { value: 'unlimited', label: 'Unlimited' },
+    { value: 'unlimited', label: t('settings.downloads.speedLimit.unlimited') },
     { value: '1000000', label: '1 MB/s' },
     { value: '5000000', label: '5 MB/s' },
     { value: '10000000', label: '10 MB/s' },
@@ -247,8 +266,8 @@ function DownloadSettings({ settings, onChange }: TabProps) {
     <div className="setting-group">
       <SettingItem
         icon={Download}
-        title="Download Speed Limit"
-        description="Maximum download speed limit"
+        title={t('settings.downloads.speedLimit.title')}
+        description={t('settings.downloads.speedLimit.description')}
       >
         <select
           value={currentSpeedValue}
@@ -265,8 +284,8 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 
       <SettingItem
         icon={HardDrive}
-        title="Concurrent Downloads"
-        description="Number of files to download simultaneously"
+        title={t('settings.downloads.concurrent.title')}
+        description={t('settings.downloads.concurrent.description')}
       >
         <div className="cluster cluster-md">
           {[1, 2, 4, 6, 8].map((n) => (
@@ -287,14 +306,14 @@ function DownloadSettings({ settings, onChange }: TabProps) {
       <hr className="border-border" />
 
       <ToggleSetting
-        title="Auto-update games"
-        description="Automatically update games when available"
+        title={t('settings.downloads.autoUpdateGames.title')}
+        description={t('settings.downloads.autoUpdateGames.description')}
         checked={settings.autoUpdateGames}
         onChange={(checked) => onChange({ autoUpdateGames: checked })}
       />
       <ToggleSetting
-        title="Auto-update launcher"
-        description="Automatically install launcher updates"
+        title={t('settings.downloads.autoUpdateLauncher.title')}
+        description={t('settings.downloads.autoUpdateLauncher.description')}
         checked={settings.autoUpdateLauncher}
         onChange={(checked) => onChange({ autoUpdateLauncher: checked })}
       />
@@ -303,29 +322,30 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 }
 
 function NotificationSettings({ settings, onChange }: TabProps) {
+  const { t } = useTranslation();
   return (
     <div className="setting-group">
       <ToggleSetting
-        title="Game updates available"
-        description="Notify when game updates are available"
+        title={t('settings.notifications.gameUpdates.title')}
+        description={t('settings.notifications.gameUpdates.description')}
         checked={settings.notifyGameUpdates}
         onChange={(checked) => onChange({ notifyGameUpdates: checked })}
       />
       <ToggleSetting
-        title="Download complete"
-        description="Notify when downloads finish"
+        title={t('settings.notifications.downloadComplete.title')}
+        description={t('settings.notifications.downloadComplete.description')}
         checked={settings.notifyDownloadComplete}
         onChange={(checked) => onChange({ notifyDownloadComplete: checked })}
       />
       <ToggleSetting
-        title="Friend activity"
-        description="Notify about friends' game activity"
+        title={t('settings.notifications.friendActivity.title')}
+        description={t('settings.notifications.friendActivity.description')}
         checked={settings.notifyFriendActivity}
         onChange={(checked) => onChange({ notifyFriendActivity: checked })}
       />
       <ToggleSetting
-        title="News and events"
-        description="Receive news about games and events"
+        title={t('settings.notifications.newsEvents.title')}
+        description={t('settings.notifications.newsEvents.description')}
         checked={settings.notifyNewsEvents}
         onChange={(checked) => onChange({ notifyNewsEvents: checked })}
       />
@@ -334,6 +354,7 @@ function NotificationSettings({ settings, onChange }: TabProps) {
 }
 
 function AboutSettings() {
+  const { t } = useTranslation();
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [logsError, setLogsError] = useState<string | null>(null);
   const [openingLogs, setOpeningLogs] = useState(false);
@@ -356,7 +377,7 @@ function AboutSettings() {
       const dir = await appLogDir();
       await open(dir);
     } catch (err) {
-      setLogsError(`Failed to open logs folder: ${String(err)}`);
+      setLogsError(t('settings.about.logs.openError', { error: String(err) }));
     } finally {
       setOpeningLogs(false);
     }
@@ -365,17 +386,19 @@ function AboutSettings() {
   const busy = updaterStatus === 'checking' || updaterStatus === 'downloading';
   const statusText =
     updaterStatus === 'checking'
-      ? 'Checking…'
+      ? t('settings.about.updates.checking')
       : updaterStatus === 'up-to-date'
-        ? `You're up to date${currentVersion ? ` (v${currentVersion})` : ''}`
+        ? t('settings.about.updates.upToDate', {
+            suffix: currentVersion ? ` (v${currentVersion})` : '',
+          })
         : updaterStatus === 'available'
-          ? `Update v${updateVersion} available`
+          ? t('settings.about.updates.available', { version: updateVersion })
           : updaterStatus === 'downloading'
-            ? 'Downloading update…'
+            ? t('settings.about.updates.downloading')
             : updaterStatus === 'ready'
-              ? 'Restart the launcher to apply the update.'
+              ? t('settings.about.updates.ready')
               : updaterStatus === 'error'
-                ? `Update check failed: ${updaterError}`
+                ? t('settings.about.updates.error', { error: updaterError })
                 : null;
 
   return (
@@ -386,14 +409,16 @@ function AboutSettings() {
         </div>
         <div>
           <h4 className="title-3">Pandawan Launcher</h4>
-          <p className="caption">Version {currentVersion || '—'}</p>
+          <p className="caption">
+            {t('settings.about.version', { version: currentVersion || '—' })}
+          </p>
         </div>
       </div>
 
       <SettingItem
         icon={RefreshCw}
-        title="Launcher Updates"
-        description="Check for a new version of the launcher"
+        title={t('settings.about.updates.title')}
+        description={t('settings.about.updates.description')}
       >
         <div className="cluster cluster-md">
           {statusText && <span className="caption">{statusText}</span>}
@@ -402,15 +427,15 @@ function AboutSettings() {
             disabled={busy}
             className="btn btn-secondary btn-sm"
           >
-            Check for updates
+            {t('settings.about.updates.checkButton')}
           </button>
         </div>
       </SettingItem>
 
       <SettingItem
         icon={FileText}
-        title="Logs"
-        description="Diagnostic logs written by the launcher"
+        title={t('settings.about.logs.title')}
+        description={t('settings.about.logs.description')}
       >
         <div className="cluster cluster-md">
           {logsError && <span className="caption">{logsError}</span>}
@@ -419,22 +444,22 @@ function AboutSettings() {
             disabled={openingLogs}
             className="btn btn-secondary btn-sm"
           >
-            Open logs folder
+            {t('settings.about.logs.openButton')}
           </button>
         </div>
       </SettingItem>
 
       <div className="stack-md">
         <div className="flex justify-between py-3">
-          <span className="body">Developer</span>
+          <span className="body">{t('settings.about.developer')}</span>
           <span>Pandawan Corp</span>
         </div>
         <div className="flex justify-between py-3">
-          <span className="body">License</span>
+          <span className="body">{t('settings.about.license')}</span>
           <span>MIT License</span>
         </div>
         <div className="flex justify-between py-3">
-          <span className="body">Tauri Version</span>
+          <span className="body">{t('settings.about.tauriVersion')}</span>
           <span>2.0.0</span>
         </div>
       </div>

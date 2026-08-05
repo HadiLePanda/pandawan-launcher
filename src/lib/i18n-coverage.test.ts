@@ -1,0 +1,111 @@
+import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import en from '@/locales/en.json';
+import fr from '@/locales/fr.json';
+import de from '@/locales/de.json';
+import es from '@/locales/es.json';
+
+type LocaleMessages = Record<string, unknown>;
+
+function flattenKeys(messages: LocaleMessages, prefix = ''): string[] {
+  return Object.entries(messages).flatMap(([key, value]) => {
+    const fullKey = `${prefix}${key}`;
+    if (value !== null && typeof value === 'object') {
+      return flattenKeys(value as LocaleMessages, `${fullKey}.`);
+    }
+    return [fullKey];
+  });
+}
+
+/**
+ * Collects every `t('...')` call with a string-literal key from src/**.tsx
+ * component sources. Only single/double-quoted literal keys are captured;
+ * template literals (dynamic keys like t(`prefix.${id}`)) are not matchable
+ * by this regex and are intentionally out of scope — none exist today.
+ * Test files are excluded: i18n.test.ts deliberately resolves unknown keys.
+ */
+function collectReferencedKeys(rootDir: string): Map<string, string[]> {
+  const referenced = new Map<string, string[]>();
+  // t('key') or t("key"), optionally followed by interpolation options.
+  const tCall = /\bt\(\s*(['"])((?:[^\\'"]|\\.)*)\1/g;
+
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') continue;
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.name.endsWith('.tsx') && !entry.name.endsWith('.test.tsx')) {
+        const source = readFileSync(fullPath, 'utf-8');
+        for (const match of source.matchAll(tCall)) {
+          const key = match[2];
+          const locations = referenced.get(key) ?? [];
+          locations.push(fullPath);
+          referenced.set(key, locations);
+        }
+      }
+    }
+  };
+
+  walk(rootDir);
+  return referenced;
+}
+
+describe('i18n key coverage', () => {
+  const referencedKeys = collectReferencedKeys(join(process.cwd(), 'src'));
+  const enKeys = new Set(flattenKeys(en as LocaleMessages));
+
+  it('finds t() calls in the component sources', () => {
+    // Sanity guard: if the scan breaks silently this fails instead of
+    // vacuously passing the per-key assertions below.
+    expect(referencedKeys.size).toBeGreaterThan(50);
+    expect(referencedKeys.has('topBar.games')).toBe(true);
+    expect(referencedKeys.has('settings.title')).toBe(true);
+  });
+
+  it('every t() key referenced in src exists in en.json', () => {
+    const missing = [...referencedKeys.entries()]
+      .filter(([key]) => !enKeys.has(key))
+      .map(([key, locations]) => `${key} (used in ${locations.join(', ')})`);
+
+    expect(missing).toEqual([]);
+  });
+
+  it('en.json has no unused keys (stale translations)', () => {
+    // Keys kept intentionally despite no current t() reference (e.g. shared
+    // keys reserved for an upcoming feature) must be whitelisted here.
+    const allowedUnused: string[] = [];
+    const unused = [...enKeys].filter(
+      (key) => !referencedKeys.has(key) && !allowedUnused.includes(key)
+    );
+
+    expect(unused).toEqual([]);
+  });
+
+  it.each([
+    ['fr', fr as LocaleMessages],
+    ['de', de as LocaleMessages],
+    ['es', es as LocaleMessages],
+  ])('%s.json has exactly the same key set as en.json', (_language, messages) => {
+    const keys = flattenKeys(messages);
+
+    expect(keys.length).toBe(enKeys.size);
+    expect(keys.sort()).toEqual([...enKeys].sort());
+  });
+
+  it('no locale value is left empty', () => {
+    for (const [language, messages] of Object.entries({ en, fr, de, es })) {
+      const flattened = flattenKeys(messages as LocaleMessages);
+      for (const key of flattened) {
+        const value = key
+          .split('.')
+          .reduce<unknown>(
+            (node, part) => (node as LocaleMessages)[part],
+            messages as LocaleMessages
+          );
+        expect(value, `${language}:${key} must not be empty`).not.toBe('');
+      }
+    }
+  });
+});

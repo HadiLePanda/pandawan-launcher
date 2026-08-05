@@ -1,7 +1,9 @@
 import { ArrowUpCircle, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
 
 export function UpdateBanner() {
+  const { t } = useTranslation();
   const { status, version, downloadedBytes, totalBytes, dismissed, error, dismissBanner } =
     useUpdaterStore();
 
@@ -18,11 +20,14 @@ export function UpdateBanner() {
       <div className="banner-text truncate">
         <ArrowUpCircle className="w-4 h-4 shrink-0" />
         <span className="truncate">
-          {status === 'available' && `Update v${version} available`}
+          {status === 'available' && t('updateBanner.available', { version })}
           {status === 'downloading' &&
-            `Downloading update v${version}…${pct !== null ? ` ${pct}%` : ''}`}
-          {status === 'ready' && `Update v${version} is ready to install`}
-          {status === 'available' && error && ' — download failed, try again'}
+            t('updateBanner.downloading', {
+              version,
+              progress: pct !== null ? ` ${pct}%` : '',
+            })}
+          {status === 'ready' && t('updateBanner.ready', { version })}
+          {status === 'available' && error && ` — ${t('updateBanner.downloadFailed')}`}
         </span>
       </div>
 
@@ -41,18 +46,18 @@ export function UpdateBanner() {
       <div className="flex items-center gap-1 shrink-0">
         {status === 'available' && (
           <button onClick={() => void downloadAndInstall()} className="btn btn-sm btn-ghost">
-            Update
+            {t('updateBanner.update')}
           </button>
         )}
         {status === 'ready' && (
           <button onClick={() => void restartToApplyUpdate()} className="btn btn-sm btn-ghost">
-            Restart to update
+            {t('updateBanner.restart')}
           </button>
         )}
         <button
           onClick={dismissBanner}
           className="btn btn-sm btn-ghost"
-          aria-label="Dismiss update banner"
+          aria-label={t('updateBanner.dismiss')}
         >
           <X className="w-4 h-4" />
         </button>

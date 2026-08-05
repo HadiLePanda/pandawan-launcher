@@ -1,4 +1,5 @@
 import { X, ShieldCheck, AlertTriangle, FileCheck, FileX, FileQuestion } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Game, VerificationResult } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,8 @@ interface VerifyGameModalProps {
 }
 
 export function VerifyGameModal({ game, result, error, onClose }: VerifyGameModalProps) {
+  const { t } = useTranslation();
+
   if (!game) return null;
 
   return (
@@ -19,16 +22,16 @@ export function VerifyGameModal({ game, result, error, onClose }: VerifyGameModa
         <div className="modal-header">
           <div className="cluster cluster-md">
             <ShieldCheck className="w-5 h-5 text-ember" />
-            <h3 className="title-3">Verify Files — {game.info.name}</h3>
+            <h3 className="title-3">{t('verifyGameModal.title', { game: game.info.name })}</h3>
           </div>
-          <button onClick={onClose} className="icon-btn" aria-label="Close">
+          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="modal-body">
           {!result && !error && (
-            <p className="body text-ink-muted">Verifying installation integrity...</p>
+            <p className="body text-ink-muted">{t('verifyGameModal.verifying')}</p>
           )}
 
           {error && (
@@ -51,34 +54,46 @@ export function VerifyGameModal({ game, result, error, onClose }: VerifyGameModa
                 {result.is_valid ? (
                   <>
                     <FileCheck className="w-5 h-5 shrink-0" />
-                    <span className="body font-medium">All files verified successfully.</span>
+                    <span className="body font-medium">{t('verifyGameModal.allValid')}</span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="w-5 h-5 shrink-0" />
-                    <span className="body font-medium">Some files need repair.</span>
+                    <span className="body font-medium">{t('verifyGameModal.needsRepair')}</span>
                   </>
                 )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <StatBox icon={FileCheck} label="Valid" value={result.valid_files} />
-                <StatBox icon={FileX} label="Invalid" value={result.invalid_files.length} />
-                <StatBox icon={FileQuestion} label="Missing" value={result.missing_files.length} />
+                <StatBox
+                  icon={FileCheck}
+                  label={t('verifyGameModal.stats.valid')}
+                  value={result.valid_files}
+                />
+                <StatBox
+                  icon={FileX}
+                  label={t('verifyGameModal.stats.invalid')}
+                  value={result.invalid_files.length}
+                />
+                <StatBox
+                  icon={FileQuestion}
+                  label={t('verifyGameModal.stats.missing')}
+                  value={result.missing_files.length}
+                />
               </div>
 
               {(result.invalid_files.length > 0 || result.missing_files.length > 0) && (
                 <div className="p-4 rounded-xl bg-surface border border-border max-h-60 overflow-auto">
-                  <h4 className="title-3 mb-2">Problem files</h4>
+                  <h4 className="title-3 mb-2">{t('verifyGameModal.problemFiles')}</h4>
                   <ul className="stack-xs">
                     {result.invalid_files.map((path) => (
                       <li key={path} className="caption text-amber-400">
-                        {path} (invalid)
+                        {t('verifyGameModal.fileInvalid', { path })}
                       </li>
                     ))}
                     {result.missing_files.map((path) => (
                       <li key={path} className="caption text-red-400">
-                        {path} (missing)
+                        {t('verifyGameModal.fileMissing', { path })}
                       </li>
                     ))}
                   </ul>
@@ -90,7 +105,7 @@ export function VerifyGameModal({ game, result, error, onClose }: VerifyGameModa
 
         <div className="modal-footer">
           <button onClick={onClose} className="btn btn-primary">
-            Close
+            {t('common.close')}
           </button>
         </div>
       </div>

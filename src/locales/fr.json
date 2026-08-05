@@ -1,6 +1,14 @@
 {
+  "addGameModal": {
+    "emptyDescription": "Essaie un autre terme de recherche",
+    "emptyTitle": "Aucun jeu trouvé",
+    "install": "Installer",
+    "searchPlaceholder": "Rechercher des jeux...",
+    "subtitle": "Sélectionne un jeu à installer depuis ta bibliothèque",
+    "title": "Installer un jeu"
+  },
   "app": {
-    "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
+    "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
     "connectionBanner": "Le serveur du catalogue est injoignable. Affichage des jeux intégrés ; l'installation et le lancement nécessitent un serveur actif.",
     "storeComingSoonDescription": "Parcours et installe de nouveaux jeux Pandawan ici.",
     "storeComingSoonTitle": "Boutique bientôt disponible"
@@ -56,6 +64,103 @@
     "statusOffline": "Hors ligne",
     "title": "Profil du joueur"
   },
+  "settings": {
+    "about": {
+      "developer": "Développeur",
+      "license": "Licence",
+      "logs": {
+        "description": "Journaux de diagnostic écrits par le launcher",
+        "openButton": "Ouvrir le dossier des journaux",
+        "openError": "Impossible d'ouvrir le dossier des journaux : {{error}}",
+        "title": "Journaux"
+      },
+      "tauriVersion": "Version de Tauri",
+      "updates": {
+        "available": "Mise à jour v{{version}} disponible",
+        "checkButton": "Rechercher des mises à jour",
+        "checking": "Vérification…",
+        "description": "Vérifier si une nouvelle version du launcher est disponible",
+        "downloading": "Téléchargement de la mise à jour…",
+        "error": "Échec de la vérification des mises à jour : {{error}}",
+        "ready": "Redémarre le launcher pour appliquer la mise à jour.",
+        "title": "Mises à jour du launcher",
+        "upToDate": "Le launcher est à jour{{suffix}}"
+      },
+      "version": "Version {{version}}"
+    },
+    "downloads": {
+      "autoUpdateGames": {
+        "description": "Mettre à jour automatiquement les jeux lorsqu'une mise à jour est disponible",
+        "title": "Mise à jour automatique des jeux"
+      },
+      "autoUpdateLauncher": {
+        "description": "Installer automatiquement les mises à jour du launcher",
+        "title": "Mise à jour automatique du launcher"
+      },
+      "concurrent": {
+        "description": "Nombre de fichiers à télécharger simultanément",
+        "title": "Téléchargements simultanés"
+      },
+      "speedLimit": {
+        "description": "Vitesse de téléchargement maximale",
+        "title": "Limite de vitesse de téléchargement",
+        "unlimited": "Illimitée"
+      }
+    },
+    "general": {
+      "closeToTray": {
+        "description": "Réduire dans la zone de notification au lieu de fermer",
+        "title": "Fermer dans la zone de notification"
+      },
+      "installLocation": {
+        "browse": "Parcourir",
+        "defaultPath": "Par défaut (PandawanGames)",
+        "description": "Dossier dans lequel tes jeux sont installés",
+        "title": "Emplacement d'installation des jeux"
+      },
+      "language": {
+        "description": "Langue de l'interface",
+        "title": "Langue"
+      },
+      "minimizeToTray": {
+        "description": "Garder le launcher actif dans la zone de notification lorsqu'il est réduit",
+        "title": "Réduire dans la zone de notification"
+      },
+      "theme": {
+        "adaptive": "Automatique (système)",
+        "dark": "Sombre",
+        "description": "Thème d'apparence du launcher",
+        "light": "Clair",
+        "title": "Thème"
+      }
+    },
+    "notifications": {
+      "downloadComplete": {
+        "description": "Notifier lorsque les téléchargements sont terminés",
+        "title": "Téléchargement terminé"
+      },
+      "friendActivity": {
+        "description": "Notifier l'activité de jeu des amis",
+        "title": "Activité des amis"
+      },
+      "gameUpdates": {
+        "description": "Notifier lorsque des mises à jour de jeux sont disponibles",
+        "title": "Mises à jour de jeux disponibles"
+      },
+      "newsEvents": {
+        "description": "Recevoir des actualités sur les jeux et les événements",
+        "title": "Actualités et événements"
+      }
+    },
+    "saveChanges": "Enregistrer les modifications",
+    "tabs": {
+      "about": "À propos",
+      "downloads": "Téléchargements",
+      "general": "Général",
+      "notifications": "Notifications"
+    },
+    "title": "Paramètres"
+  },
   "topBar": {
     "games": "Jeux",
     "news": "Actualités",
@@ -63,12 +168,35 @@
     "playerProfile": "Profil du joueur",
     "settings": "Paramètres",
     "store": "Boutique",
-    "themeLabel": "Thème : {{theme}}",
+    "themeLabel": "Thème : {{theme}}",
     "themeNames": {
       "adaptive": "Automatique",
       "dark": "Sombre",
       "light": "Clair"
     }
+  },
+  "updateBanner": {
+    "available": "Mise à jour v{{version}} disponible",
+    "dismiss": "Ignorer la bannière de mise à jour",
+    "downloadFailed": "échec du téléchargement, réessaie",
+    "downloading": "Téléchargement de la mise à jour v{{version}}…{{progress}}",
+    "ready": "La mise à jour v{{version}} est prête à être installée",
+    "restart": "Redémarrer pour mettre à jour",
+    "update": "Mettre à jour"
+  },
+  "verifyGameModal": {
+    "allValid": "Tous les fichiers ont été vérifiés avec succès.",
+    "fileInvalid": "{{path}} (invalide)",
+    "fileMissing": "{{path}} (manquant)",
+    "needsRepair": "Certains fichiers doivent être réparés.",
+    "problemFiles": "Fichiers problématiques",
+    "stats": {
+      "invalid": "Invalides",
+      "missing": "Manquants",
+      "valid": "Valides"
+    },
+    "title": "Vérifier les fichiers — {{game}}",
+    "verifying": "Vérification de l'intégrité de l'installation..."
   },
   "windowControls": {
     "close": "Fermer",

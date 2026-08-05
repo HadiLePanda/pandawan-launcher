@@ -1,4 +1,12 @@
 {
+  "addGameModal": {
+    "emptyDescription": "Versuch es mit einem anderen Suchbegriff",
+    "emptyTitle": "Keine Spiele gefunden",
+    "install": "Installieren",
+    "searchPlaceholder": "Spiele suchen...",
+    "subtitle": "Wähle ein Spiel aus deiner Bibliothek zum Installieren aus",
+    "title": "Spiel installieren"
+  },
   "app": {
     "confirmUninstall": "Möchtest du dieses Spiel wirklich deinstallieren?",
     "connectionBanner": "Der Katalogserver ist nicht erreichbar. Es werden die gebündelten Spiele angezeigt; Installieren und Starten erfordern einen aktiven Server.",
@@ -56,6 +64,103 @@
     "statusOffline": "Offline",
     "title": "Spielerprofil"
   },
+  "settings": {
+    "about": {
+      "developer": "Entwickler",
+      "license": "Lizenz",
+      "logs": {
+        "description": "Diagnoseprotokolle des Launchers",
+        "openButton": "Protokollordner öffnen",
+        "openError": "Protokollordner konnte nicht geöffnet werden: {{error}}",
+        "title": "Protokolle"
+      },
+      "tauriVersion": "Tauri-Version",
+      "updates": {
+        "available": "Update v{{version}} verfügbar",
+        "checkButton": "Nach Updates suchen",
+        "checking": "Überprüfe…",
+        "description": "Nach einer neuen Version des Launchers suchen",
+        "downloading": "Update wird heruntergeladen…",
+        "error": "Update-Prüfung fehlgeschlagen: {{error}}",
+        "ready": "Starte den Launcher neu, um das Update anzuwenden.",
+        "title": "Launcher-Updates",
+        "upToDate": "Der Launcher ist auf dem neuesten Stand{{suffix}}"
+      },
+      "version": "Version {{version}}"
+    },
+    "downloads": {
+      "autoUpdateGames": {
+        "description": "Spiele bei Verfügbarkeit automatisch aktualisieren",
+        "title": "Spiele automatisch aktualisieren"
+      },
+      "autoUpdateLauncher": {
+        "description": "Launcher-Updates automatisch installieren",
+        "title": "Launcher automatisch aktualisieren"
+      },
+      "concurrent": {
+        "description": "Anzahl der Dateien, die gleichzeitig heruntergeladen werden",
+        "title": "Gleichzeitige Downloads"
+      },
+      "speedLimit": {
+        "description": "Maximale Download-Geschwindigkeit",
+        "title": "Download-Geschwindigkeitslimit",
+        "unlimited": "Unbegrenzt"
+      }
+    },
+    "general": {
+      "closeToTray": {
+        "description": "Beim Schließen in den Infobereich minimieren",
+        "title": "In den Infobereich schließen"
+      },
+      "installLocation": {
+        "browse": "Durchsuchen",
+        "defaultPath": "Standard (PandawanGames)",
+        "description": "Hier werden deine Spiele installiert",
+        "title": "Installationsort der Spiele"
+      },
+      "language": {
+        "description": "Sprache der Benutzeroberfläche",
+        "title": "Sprache"
+      },
+      "minimizeToTray": {
+        "description": "Launcher beim Minimieren im Infobereich weiterlaufen lassen",
+        "title": "Im Infobereich minimieren"
+      },
+      "theme": {
+        "adaptive": "Automatisch (System)",
+        "dark": "Dunkel",
+        "description": "Darstellung des Launchers",
+        "light": "Hell",
+        "title": "Design"
+      }
+    },
+    "notifications": {
+      "downloadComplete": {
+        "description": "Benachrichtigen, wenn Downloads abgeschlossen sind",
+        "title": "Download abgeschlossen"
+      },
+      "friendActivity": {
+        "description": "Über Spielaktivität von Freunden benachrichtigen",
+        "title": "Freundesaktivität"
+      },
+      "gameUpdates": {
+        "description": "Benachrichtigen, wenn Spiel-Updates verfügbar sind",
+        "title": "Spiel-Updates verfügbar"
+      },
+      "newsEvents": {
+        "description": "Neuigkeiten zu Spielen und Events erhalten",
+        "title": "Neuigkeiten und Events"
+      }
+    },
+    "saveChanges": "Änderungen speichern",
+    "tabs": {
+      "about": "Über",
+      "downloads": "Downloads",
+      "general": "Allgemein",
+      "notifications": "Benachrichtigungen"
+    },
+    "title": "Einstellungen"
+  },
   "topBar": {
     "games": "Spiele",
     "news": "Neuigkeiten",
@@ -69,6 +174,29 @@
       "dark": "Dunkel",
       "light": "Hell"
     }
+  },
+  "updateBanner": {
+    "available": "Update v{{version}} verfügbar",
+    "dismiss": "Update-Banner verwerfen",
+    "downloadFailed": "Download fehlgeschlagen, versuch es erneut",
+    "downloading": "Update v{{version}} wird heruntergeladen…{{progress}}",
+    "ready": "Update v{{version}} ist bereit zur Installation",
+    "restart": "Zum Aktualisieren neu starten",
+    "update": "Aktualisieren"
+  },
+  "verifyGameModal": {
+    "allValid": "Alle Dateien wurden erfolgreich überprüft.",
+    "fileInvalid": "{{path}} (ungültig)",
+    "fileMissing": "{{path}} (fehlend)",
+    "needsRepair": "Einige Dateien müssen repariert werden.",
+    "problemFiles": "Problematische Dateien",
+    "stats": {
+      "invalid": "Ungültig",
+      "missing": "Fehlend",
+      "valid": "Gültig"
+    },
+    "title": "Dateien überprüfen — {{game}}",
+    "verifying": "Installationsintegrität wird überprüft..."
   },
   "windowControls": {
     "close": "Schließen",

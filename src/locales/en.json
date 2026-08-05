@@ -1,4 +1,12 @@
 {
+  "addGameModal": {
+    "emptyDescription": "Try a different search term",
+    "emptyTitle": "No games found",
+    "install": "Install",
+    "searchPlaceholder": "Search games...",
+    "subtitle": "Select a game to install from your library",
+    "title": "Install a Game"
+  },
   "app": {
     "confirmUninstall": "Are you sure you want to uninstall this game?",
     "connectionBanner": "Catalog server is unreachable. Showing bundled games; install and launch require a live server.",
@@ -56,11 +64,108 @@
     "statusOffline": "Offline",
     "title": "Player Profile"
   },
+  "settings": {
+    "about": {
+      "developer": "Developer",
+      "license": "License",
+      "logs": {
+        "description": "Diagnostic logs written by the launcher",
+        "openButton": "Open logs folder",
+        "openError": "Failed to open logs folder: {{error}}",
+        "title": "Logs"
+      },
+      "tauriVersion": "Tauri Version",
+      "updates": {
+        "available": "Update v{{version}} available",
+        "checkButton": "Check for updates",
+        "checking": "Checking…",
+        "description": "Check for a new version of the launcher",
+        "downloading": "Downloading update…",
+        "error": "Update check failed: {{error}}",
+        "ready": "Restart the launcher to apply the update.",
+        "title": "Launcher Updates",
+        "upToDate": "You're up to date{{suffix}}"
+      },
+      "version": "Version {{version}}"
+    },
+    "downloads": {
+      "autoUpdateGames": {
+        "description": "Automatically update games when available",
+        "title": "Auto-update games"
+      },
+      "autoUpdateLauncher": {
+        "description": "Automatically install launcher updates",
+        "title": "Auto-update launcher"
+      },
+      "concurrent": {
+        "description": "Number of files to download simultaneously",
+        "title": "Concurrent Downloads"
+      },
+      "speedLimit": {
+        "description": "Maximum download speed limit",
+        "title": "Download Speed Limit",
+        "unlimited": "Unlimited"
+      }
+    },
+    "general": {
+      "closeToTray": {
+        "description": "Minimize to tray instead of closing",
+        "title": "Close to tray"
+      },
+      "installLocation": {
+        "browse": "Browse",
+        "defaultPath": "Default (PandawanGames)",
+        "description": "Where your games are installed",
+        "title": "Game Install Location"
+      },
+      "language": {
+        "description": "Interface language",
+        "title": "Language"
+      },
+      "minimizeToTray": {
+        "description": "Keep launcher running in system tray when minimized",
+        "title": "Minimize to tray"
+      },
+      "theme": {
+        "adaptive": "Adaptive (System)",
+        "dark": "Dark",
+        "description": "Launcher appearance theme",
+        "light": "Light",
+        "title": "Theme"
+      }
+    },
+    "notifications": {
+      "downloadComplete": {
+        "description": "Notify when downloads finish",
+        "title": "Download complete"
+      },
+      "friendActivity": {
+        "description": "Notify about friends' game activity",
+        "title": "Friend activity"
+      },
+      "gameUpdates": {
+        "description": "Notify when game updates are available",
+        "title": "Game updates available"
+      },
+      "newsEvents": {
+        "description": "Receive news about games and events",
+        "title": "News and events"
+      }
+    },
+    "saveChanges": "Save Changes",
+    "tabs": {
+      "about": "About",
+      "downloads": "Downloads",
+      "general": "General",
+      "notifications": "Notifications"
+    },
+    "title": "Settings"
+  },
   "topBar": {
     "games": "Games",
     "news": "News",
     "notifications": "Notifications",
-    "playerProfile": "Player profile",
+    "playerProfile": "Player Profile",
     "settings": "Settings",
     "store": "Store",
     "themeLabel": "Theme: {{theme}}",
@@ -69,6 +174,29 @@
       "dark": "Dark",
       "light": "Light"
     }
+  },
+  "updateBanner": {
+    "available": "Update v{{version}} available",
+    "dismiss": "Dismiss update banner",
+    "downloadFailed": "download failed, try again",
+    "downloading": "Downloading update v{{version}}…{{progress}}",
+    "ready": "Update v{{version}} is ready to install",
+    "restart": "Restart to update",
+    "update": "Update"
+  },
+  "verifyGameModal": {
+    "allValid": "All files verified successfully.",
+    "fileInvalid": "{{path}} (invalid)",
+    "fileMissing": "{{path}} (missing)",
+    "needsRepair": "Some files need repair.",
+    "problemFiles": "Problem files",
+    "stats": {
+      "invalid": "Invalid",
+      "missing": "Missing",
+      "valid": "Valid"
+    },
+    "title": "Verify Files — {{game}}",
+    "verifying": "Verifying installation integrity..."
   },
   "windowControls": {
     "close": "Close",

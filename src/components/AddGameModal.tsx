@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Search, Download, Globe, HardDrive } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn, formatBytes } from '@/lib/utils';
 import type { GameInfo } from '@/types';
 
@@ -11,6 +12,7 @@ interface AddGameModalProps {
 }
 
 export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: AddGameModalProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGame, setSelectedGame] = useState<GameInfo | null>(null);
 
@@ -27,10 +29,10 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
       <div className="modal animate-slide-up max-w-4xl h-[700px] flex-col">
         <div className="modal-header">
           <div>
-            <h2 className="title-2">Install a Game</h2>
-            <p className="caption mt-1">Select a game to install from your library</p>
+            <h2 className="title-2">{t('addGameModal.title')}</h2>
+            <p className="caption mt-1">{t('addGameModal.subtitle')}</p>
           </div>
-          <button onClick={onClose} className="icon-btn">
+          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -40,7 +42,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
             <input
               type="text"
-              placeholder="Search games..."
+              placeholder={t('addGameModal.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-xl"
@@ -65,8 +67,8 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               <div className="empty-state-icon">
                 <Search className="w-8 h-8 text-ink-dim" />
               </div>
-              <h3 className="empty-state-title">No games found</h3>
-              <p className="empty-state-desc">Try a different search term</p>
+              <h3 className="empty-state-title">{t('addGameModal.emptyTitle')}</h3>
+              <p className="empty-state-desc">{t('addGameModal.emptyDescription')}</p>
             </div>
           )}
         </div>
@@ -88,7 +90,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
           </div>
           <div className="cluster cluster-md">
             <button onClick={onClose} className="btn btn-ghost">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={() => selectedGame && onInstall(selectedGame.id)}
@@ -99,7 +101,7 @@ export function AddGameModal({ isOpen, onClose, onInstall, availableGames }: Add
               )}
             >
               <Download className="w-4 h-4" />
-              Install
+              {t('addGameModal.install')}
             </button>
           </div>
         </div>
