@@ -1362,8 +1362,8 @@ input[type='search']::placeholder {
 
 .modal-nav-item-active,
 .modal-nav-item-active:hover {
-  color: white;
-  background: var(--action);
+  color: var(--ink-default);
+  background: var(--surface-hover);
 }
 
 .light .modal-nav-item:hover:not(.modal-nav-item-active) {
