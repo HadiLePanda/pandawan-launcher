@@ -2728,7 +2728,7 @@ input[type='search']::placeholder {
 .game-detail-main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   min-width: 0;
   overflow-y: auto;
 }
@@ -2738,10 +2738,8 @@ input[type='search']::placeholder {
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 420px;
-  border-radius: 8px;
   overflow: hidden;
   background: var(--surface-default);
-  border: 1px solid var(--border-default);
 }
 
 .game-detail-banner-image,
@@ -2778,21 +2776,12 @@ input[type='search']::placeholder {
   margin-bottom: 4px;
 }
 
-.game-detail-status {
-  font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.8);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .game-detail-action-panel {
   display: flex;
   align-items: center;
   gap: 24px;
   padding: 16px;
   background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
 }
 
 .game-detail-actions-left {
@@ -2909,9 +2898,8 @@ input[type='search']::placeholder {
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
+  margin-top: 16px;
   background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
 }
 
 .game-detail-download-bar {

@@ -137,13 +137,6 @@ export function GamePage({
           <div className="game-detail-banner-scrim" />
           <div className="game-detail-banner-content">
             <h1 className="game-detail-title">{game.info.name}</h1>
-            <p className="game-detail-status">
-              {isInstalled
-                ? hasUpdate
-                  ? t('gamePage.updateAvailable')
-                  : t('gamePage.installed')
-                : t('gamePage.notInstalled')}
-            </p>
           </div>
         </div>
 
