@@ -200,8 +200,6 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         >
           <option value="en">English</option>
           <option value="fr">Français</option>
-          <option value="de">Deutsch</option>
-          <option value="es">Español</option>
         </select>
       </SettingItem>
 

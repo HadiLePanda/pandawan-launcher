@@ -2863,3 +2863,107 @@ input[type='search']::placeholder {
 .game-context-menu-item-danger:hover {
   background: var(--ember-muted);
 }
+
+
+/* ----- News article view ----- */
+.news-article-view {
+  padding: 24px;
+}
+
+.news-article-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.news-article-header-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.news-article-header-btn:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+.news-article-banner {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+}
+
+.news-article-banner img {
+  width: 100%;
+  height: 100%;
+  max-height: 360px;
+  object-fit: cover;
+}
+
+.news-article-body {
+  max-width: 3xl;
+  margin: 0 auto;
+}
+
+.news-article-game {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.news-article-game-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.news-article-game-icon.fallback {
+  background: var(--surface-light);
+}
+
+.news-article-game-name {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.news-article-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ink-default);
+  margin-bottom: 6px;
+}
+
+.news-article-date {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+}
+
+.news-article-excerpt {
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+}
+
+.news-article-content {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-default);
+}

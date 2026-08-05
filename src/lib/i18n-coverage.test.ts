@@ -3,8 +3,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import en from '@/locales/en.json';
 import fr from '@/locales/fr.json';
-import de from '@/locales/de.json';
-import es from '@/locales/es.json';
 
 type LocaleMessages = Record<string, unknown>;
 
@@ -99,11 +97,9 @@ describe('i18n key coverage', () => {
     expect(unused).toEqual([]);
   });
 
-  it.each([
-    ['fr', fr as LocaleMessages],
-    ['de', de as LocaleMessages],
-    ['es', es as LocaleMessages],
-  ])('%s.json has exactly the same key set as en.json', (_language, messages) => {
+  it.each([['fr', fr as LocaleMessages]])(
+    '%s.json has exactly the same key set as en.json',
+    (_language, messages) => {
     const keys = flattenKeys(messages);
 
     expect(keys.length).toBe(enKeys.size);
@@ -116,7 +112,7 @@ describe('i18n key coverage', () => {
       const enValue = getValue(en as LocaleMessages, key);
       if (typeof enValue !== 'string') continue;
       const expected = placeholders(enValue);
-      for (const [language, messages] of Object.entries({ fr, de, es })) {
+      for (const [language, messages] of Object.entries({ fr })) {
         const actual = placeholders(String(getValue(messages as LocaleMessages, key)));
         if (actual.join() !== expected.join()) {
           mismatches.push(`${language}:${key} has [${actual}] expected [${expected}]`);
@@ -128,7 +124,7 @@ describe('i18n key coverage', () => {
   });
 
   it('no locale value is left empty', () => {
-    for (const [language, messages] of Object.entries({ en, fr, de, es })) {
+    for (const [language, messages] of Object.entries({ en, fr })) {
       const flattened = flattenKeys(messages as LocaleMessages);
       for (const key of flattened) {
         const value = getValue(messages as LocaleMessages, key);

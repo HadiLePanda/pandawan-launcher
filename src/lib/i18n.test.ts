@@ -22,8 +22,6 @@ describe('i18n', () => {
 
   it.each([
     ['fr', 'Jeux', 'Fermer', 'Aucun jeu pour le moment', 'Réessayer'],
-    ['de', 'Spiele', 'Schließen', 'Noch keine Spiele', 'Erneut versuchen'],
-    ['es', 'Juegos', 'Cerrar', 'Aún no hay juegos', 'Reintentar'],
   ])('resolves the core chrome keys in %s', async (language, games, close, emptyTitle, retry) => {
     await i18n.changeLanguage(language);
 
@@ -64,7 +62,7 @@ describe('i18n', () => {
     });
 
     it('defaults to English when settings are missing', async () => {
-      await applyLanguage('de');
+      await applyLanguage('fr');
       await applyLanguage(undefined);
 
       expect(i18n.language).toBe('en');

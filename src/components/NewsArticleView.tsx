@@ -1,0 +1,74 @@
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, X } from 'lucide-react';
+import { formatNewsDate } from '@/lib/utils';
+import { resolveCdnUrl } from '@/lib/cdn';
+import type { NewsItem } from '@/types';
+
+interface NewsArticleViewProps {
+  article: NewsItem;
+  gameName: string;
+  gameIconUrl?: string | null;
+  onBack: () => void;
+  onClose: () => void;
+}
+
+export function NewsArticleView({
+  article,
+  gameName,
+  gameIconUrl,
+  onBack,
+  onClose,
+}: NewsArticleViewProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="h-full overflow-auto news-article-view">
+      <div className="news-article-header">
+        <button
+          type="button"
+          onClick={onBack}
+          className="news-article-header-btn"
+          aria-label={t('news.backToNews')}
+          title={t('news.backToNews')}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="news-article-header-btn"
+          aria-label={t('common.close')}
+          title={t('common.close')}
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {article.imageUrl && (
+        <div className="news-article-banner">
+          <img src={resolveCdnUrl(article.imageUrl)} alt="" />
+        </div>
+      )}
+
+      <article className="news-article-body">
+        <div className="news-article-game">
+          {gameIconUrl ? (
+            <img src={gameIconUrl} alt="" className="news-article-game-icon" />
+          ) : (
+            <div className="news-article-game-icon fallback" />
+          )}
+          <span className="news-article-game-name">{gameName}</span>
+        </div>
+
+        <h1 className="news-article-title">{article.title}</h1>
+        <time className="news-article-date" dateTime={article.date}>
+          {formatNewsDate(article.date)}
+        </time>
+
+        {article.excerpt && <p className="news-article-excerpt">{article.excerpt}</p>}
+
+        {article.content && <div className="news-article-content">{article.content}</div>}
+      </article>
+    </div>
+  );
+}

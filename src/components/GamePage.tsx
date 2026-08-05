@@ -33,6 +33,7 @@ interface GamePageProps {
   onUninstall: () => void;
   onVerify: () => void;
   onSettings?: () => void;
+  onSelectNewsArticle?: (articleId: string) => void;
   onCancel?: () => void;
 }
 
@@ -59,6 +60,7 @@ export function GamePage({
   onUninstall,
   onVerify,
   onSettings,
+  onSelectNewsArticle,
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
@@ -283,7 +285,11 @@ export function GamePage({
         {gameNews.length > 0 ? (
           <div className="game-detail-news-list">
             {gameNews.map((item) => (
-              <article key={item.id} className="game-detail-news-card">
+              <article
+                key={item.id}
+                className="game-detail-news-card"
+                onClick={() => onSelectNewsArticle?.(item.id)}
+              >
                 {item.imageUrl && (
                   <div className="game-detail-news-thumb">
                     <img src={resolveCdnUrl(item.imageUrl)} alt="" />

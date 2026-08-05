@@ -95,13 +95,13 @@ describe('notifications', () => {
     });
 
     it('keeps the game name as the title regardless of language', async () => {
-      await i18n.changeLanguage('de');
+      await i18n.changeLanguage('fr');
 
       await notifyUpdateAvailable('Quirheim Online', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
         title: 'Quirheim Online',
-        body: 'Update verfügbar',
+        body: 'Mise à jour disponible',
       });
     });
   });

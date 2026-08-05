@@ -9,6 +9,7 @@ import { GameSidebar } from '@components/GameSidebar';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
+import { NewsArticleView } from '@components/NewsArticleView';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
@@ -63,6 +64,9 @@ function App() {
   const [detailsModal, setDetailsModal] = useState<
     { gameId: string; view: 'patchNotes' | 'news' | 'info' } | null
   >(null);
+  const [newsArticle, setNewsArticle] = useState<{ gameId: string; articleId: string } | null>(
+    null
+  );
 
   const {
     games,
@@ -266,8 +270,32 @@ function App() {
   const uninstalledGames = games.filter((g) => g.status === 'not_installed').map((g) => g.info);
 
   const renderContent = () => {
+    if (newsArticle) {
+      const article = news.find((n) => n.id === newsArticle.articleId);
+      const articleGame = games.find((g) => g.info.id === newsArticle.gameId);
+      if (article && articleGame) {
+        return (
+          <NewsArticleView
+            article={article}
+            gameName={articleGame.info.name}
+            gameIconUrl={articleGame.info.iconUrl}
+            onBack={() => setNewsArticle(null)}
+            onClose={() => setNewsArticle(null)}
+          />
+        );
+      }
+      setNewsArticle(null);
+    }
+
     if (activeView === 'news') {
-      return <News />;
+      return (
+        <News
+          onSelectArticle={(article) => {
+            if (!article.gameId) return;
+            setNewsArticle({ articleId: article.id, gameId: article.gameId });
+          }}
+        />
+      );
     }
     if (activeView === 'store') {
       return (
@@ -293,6 +321,9 @@ function App() {
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}
             onVerify={() => handleVerifyGame(selectedGame.info.id)}
             onSettings={() => setIsSettingsOpen(true)}
+            onSelectNewsArticle={(articleId) =>
+              setNewsArticle({ articleId, gameId: selectedGame.info.id })
+            }
             onCancel={cancelOperation}
           />
         ) : (

@@ -1,57 +1,22 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, ArrowLeft } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 import { useLauncherStore } from '@/lib/store';
 import { resolveCdnUrl } from '@/lib/cdn';
 import type { NewsItem } from '@/types';
 
-export function News() {
+interface NewsProps {
+  onSelectArticle?: (article: NewsItem) => void;
+}
+
+export function News({ onSelectArticle }: NewsProps) {
   const { t } = useTranslation();
   const { news } = useLauncherStore();
-  const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
 
   if (news.length === 0) {
     return (
       <div className="flex-1 flex flex-col justify-center">
         <EmptyState title={t('news.emptyTitle')} description={t('news.emptyDescription')} />
-      </div>
-    );
-  }
-
-  if (selectedItem) {
-    return (
-      <div className="h-full overflow-auto page">
-        <div className="max-w-3xl mx-auto">
-          <button onClick={() => setSelectedItem(null)} className="btn btn-ghost mb-4 -ml-2">
-            <ArrowLeft className="w-4 h-4" />
-            {t('news.backToNews')}
-          </button>
-
-          <article className="news-detail-card">
-            {selectedItem.imageUrl && (
-              <div className="news-detail-image">
-                <img src={resolveCdnUrl(selectedItem.imageUrl)} alt={selectedItem.title} />
-              </div>
-            )}
-            <div className="news-detail-body">
-              <div className="news-detail-meta">
-                {selectedItem.category && (
-                  <span className="badge badge-default">{selectedItem.category}</span>
-                )}
-                <span className="cluster cluster-sm caption">
-                  <Calendar className="w-4 h-4" />
-                  {new Date(selectedItem.date).toLocaleDateString()}
-                </span>
-              </div>
-              <h1 className="news-detail-title">{selectedItem.title}</h1>
-              <p className="news-detail-excerpt">{selectedItem.excerpt}</p>
-              {selectedItem.content && (
-                <div className="news-detail-content">{selectedItem.content}</div>
-              )}
-            </div>
-          </article>
-        </div>
       </div>
     );
   }
@@ -63,7 +28,7 @@ export function News() {
           <article
             key={item.id}
             className="news-card cursor-pointer"
-            onClick={() => setSelectedItem(item)}
+            onClick={() => onSelectArticle?.(item)}
           >
             <div className="news-body">
               <div>
