@@ -14,6 +14,7 @@ pub struct GameManifest {
     pub game_id: String,
     pub name: String,
     pub version: String,
+    #[specta(type = u32)]
     pub build_number: u64,
     pub description: Option<String>,
     pub icon_url: Option<String>,
@@ -28,6 +29,7 @@ pub struct GameManifest {
 pub struct FileEntry {
     pub path: String,
     pub hash: String, // SHA256
+    #[specta(type = u32)]
     pub size: u64,
     pub url: String,
     pub compress: Option<bool>,
@@ -38,11 +40,13 @@ pub struct FileEntry {
 pub struct GameInstallation {
     pub game_id: String,
     pub installed_version: String,
+    #[specta(type = u32)]
     pub installed_build: u64,
     pub install_path: PathBuf,
     pub installed_files: HashMap<String, String>, // path -> hash
     pub installed_at: chrono::DateTime<chrono::Utc>,
     pub last_played: Option<chrono::DateTime<chrono::Utc>>,
+    #[specta(type = u32)]
     pub total_playtime_seconds: u64,
     pub executable: String,
 }
@@ -54,26 +58,37 @@ pub enum DownloadEvent {
     #[serde(rename_all = "camelCase")]
     Started {
         file_path: String,
+        #[specta(type = u32)]
         total_size: u64,
+        #[specta(type = u32)]
         file_index: usize,
+        #[specta(type = u32)]
         total_files: usize,
     },
     #[serde(rename_all = "camelCase")]
     Progress {
         file_path: String,
+        #[specta(type = u32)]
         downloaded: u64,
+        #[specta(type = u32)]
         total: u64,
         speed_bps: f64,
+        #[specta(type = Option<u32>)]
         overall_downloaded: Option<u64>,
+        #[specta(type = Option<u32>)]
         overall_total: Option<u64>,
+        #[specta(type = Option<u32>)]
         completed_files: Option<usize>,
+        #[specta(type = Option<u32>)]
         total_files: Option<usize>,
         current_file: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     FileComplete {
         file_path: String,
+        #[specta(type = Option<u32>)]
         completed_files: Option<usize>,
+        #[specta(type = Option<u32>)]
         total_files: Option<usize>,
     },
     #[serde(rename_all = "camelCase")]
@@ -85,7 +100,9 @@ pub enum DownloadEvent {
     },
     #[serde(rename_all = "camelCase")]
     Complete {
+        #[specta(type = u32)]
         completed_files: usize,
+        #[specta(type = u32)]
         total_files: usize,
     },
     #[serde(rename_all = "camelCase")]
@@ -232,6 +249,7 @@ pub struct LaunchResult {
 #[tauri_specta(event_name = "game-exited")]
 pub struct GameExited {
     pub game_id: String,
+    #[specta(type = u32)]
     pub duration_seconds: u64,
 }
 
@@ -270,7 +288,9 @@ impl From<std::io::Error> for LauncherError {
 #[serde(default, rename_all = "camelCase")]
 pub struct LauncherSettings {
     pub games_install_path: Option<PathBuf>,
+    #[specta(type = Option<u32>)]
     pub max_download_speed: Option<u64>, // bytes per second, None = unlimited
+    #[specta(type = u32)]
     pub max_concurrent_downloads: usize,
     pub auto_update_games: bool,
     pub auto_update_launcher: bool,

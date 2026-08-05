@@ -390,6 +390,7 @@ pub fn compute_file_hash_sync(path: &Path) -> Result<String, PatchError> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct VerificationResult {
+    #[specta(type = u32)]
     pub valid_files: usize,
     pub invalid_files: Vec<String>,
     pub missing_files: Vec<String>,

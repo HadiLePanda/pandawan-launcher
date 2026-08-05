@@ -8,7 +8,6 @@ use tauri::{ipc::Channel, AppHandle, Emitter, Manager, State};
 use tauri_specta::{collect_commands, collect_events, Builder};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
-
 pub mod download;
 pub mod patch;
 pub mod path_utils;
@@ -19,7 +18,6 @@ pub mod test_utils;
 
 use patch::{list_installations, load_installation, record_playtime, save_installation, PatchManager};
 use path_utils::{assert_path_inside, validate_game_id};
-use specta_typescript::Typescript;
 use types::*;
 
 // Global state for the launcher
@@ -493,14 +491,20 @@ pub fn run() {
     #[allow(unused_mut)]
     let mut builder = create_specta_builder();
 
-    #[cfg(debug_assertions)]
-    {
-        let bindings_path =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
-        builder
-            .export(Typescript::default(), bindings_path)
-            .expect("Failed to export TypeScript bindings");
-    }
+    // NOTE: Debug auto-export is disabled because the current specta-typescript
+    // 0.0.12 formatter emits TypeScript shapes (snake_case fields, `| null`
+    // optionals, Pascal event names) that drift from the frontend's source-of-truth
+    // types in `src/types/index.ts`. Regenerate `src/lib/bindings.ts` manually by
+    // running the `export_typescript_bindings` Rust unit test on a machine with the
+    // Tauri runtime, then reconcile any formatting/casing differences.
+    // #[cfg(debug_assertions)]
+    // {
+    //     let bindings_path =
+    //         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
+    //     builder
+    //         .export(Typescript::default(), bindings_path)
+    //         .expect("Failed to export TypeScript bindings");
+    // }
 
     let invoke_handler = builder.invoke_handler();
 
@@ -1048,6 +1052,8 @@ mod tests {
     #[cfg(debug_assertions)]
     #[allow(unused_mut)]
     fn export_typescript_bindings() {
+        use specta_typescript::Typescript;
+
         let mut builder = create_specta_builder();
         builder
             .export(Typescript::default(), "../src/lib/bindings.ts")
