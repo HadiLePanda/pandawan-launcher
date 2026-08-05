@@ -2824,3 +2824,42 @@ input[type='search']::placeholder {
     width: 100%;
   }
 }
+
+
+/* ----- Game context menu ----- */
+.game-context-menu {
+  min-width: 180px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.game-context-menu-item {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: var(--ink-default);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.game-context-menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.game-context-menu-item-danger {
+  color: var(--ember);
+}
+
+.game-context-menu-item-danger:hover {
+  background: var(--ember-muted);
+}

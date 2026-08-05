@@ -6,8 +6,10 @@ import { events } from '@/lib/bindings';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
 import { GameSidebar } from '@components/GameSidebar';
-import { GamePage } from '@components/GamePage';
+import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
+import { GameContextMenu } from '@components/GameContextMenu';
+import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
@@ -55,8 +57,12 @@ function App() {
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
-  // TODO(Task 9): wire this state to GameContextMenu when rendering the menu.
-  const [, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(
+    null
+  );
+  const [detailsModal, setDetailsModal] = useState<
+    { gameId: string; view: 'patchNotes' | 'news' | 'info' } | null
+  >(null);
 
   const {
     games,
@@ -201,7 +207,26 @@ function App() {
   };
 
   const handleContextMenu = (e: React.MouseEvent, gameId: string) => {
+    e.preventDefault();
     setContextMenu({ gameId, x: e.clientX, y: e.clientY });
+  };
+
+  const handleMenuAction = (action: GameContextAction, gameId: string) => {
+    switch (action) {
+      case 'play':
+        return launchGame(gameId);
+      case 'install':
+        return handleInstallGame(gameId);
+      case 'verify':
+        return handleVerifyGame(gameId);
+      case 'uninstall':
+        return handleUninstallGame(gameId);
+      case 'patchNotes':
+      case 'gameNews':
+      case 'gameInfo':
+        setDetailsModal({ gameId, view: action === 'gameNews' ? 'news' : action === 'patchNotes' ? 'patchNotes' : 'info' });
+        return;
+    }
   };
 
   const handleInstallGame = async (gameId: string) => {
@@ -330,6 +355,24 @@ function App() {
           <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>
         </div>
       </div>
+      {contextMenu && (
+        <GameContextMenu
+          game={games.find((g) => g.info.id === contextMenu.gameId)!}
+          anchor={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={() => setContextMenu(null)}
+          onAction={(action) => handleMenuAction(action, contextMenu.gameId)}
+        />
+      )}
+
+      {detailsModal && (
+        <GameDetailsModal
+          game={games.find((g) => g.info.id === detailsModal.gameId)!}
+          news={news.filter((n) => n.gameId === detailsModal.gameId)}
+          view={detailsModal.view}
+          onClose={() => setDetailsModal(null)}
+        />
+      )}
+
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {error && (

@@ -28,6 +28,15 @@
     "searchPlaceholder": "Buscar juegos…",
     "status": "Estado"
   },
+  "contextMenu": {
+    "gameInfo": "Información del juego",
+    "gameNews": "Noticias del juego",
+    "install": "Instalar",
+    "patchNotes": "Notas del parche",
+    "play": "Jugar",
+    "uninstall": "Desinstalar",
+    "verifyFiles": "Verificar archivos"
+  },
   "gamePage": {
     "developer": "Desarrollador",
     "filesProgress": "{{completed}} / {{total}} archivos",
@@ -48,11 +57,9 @@
     "playing": "Jugando",
     "playtimeLabel": "Tiempo de juego",
     "size": "Tamaño",
-    "uninstall": "Desinstalar",
     "update": "Actualizar",
     "updateAvailable": "Actualización disponible",
     "updating": "Actualizando",
-    "verifyFiles": "Verificar archivos",
     "version": "Versión"
   },
   "gamesHome": {

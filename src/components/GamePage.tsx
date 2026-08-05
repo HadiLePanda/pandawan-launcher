@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDropdownPosition } from '@/hooks/useDropdownPosition';
 import {
   Play,
   Download,
@@ -9,15 +8,12 @@ import {
   X,
   MoreVertical,
   Settings,
-  Info,
-  FileText,
-  Newspaper,
-  Trash2,
-  ShieldCheck,
   Clock,
 } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
+import { GameContextMenu } from '@components/GameContextMenu';
+import type { GameContextAction } from '@/lib/game-context';
 import type { Game, NewsItem } from '@/types';
 
 interface GamePageProps {
@@ -66,34 +62,9 @@ export function GamePage({
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
-  const lastMenuPosition = useRef<{ top: number; left: number } | null>(null);
-
-  const menuPosition = useDropdownPosition(menuTriggerRef, menuRef, menuOpen);
-  if (menuPosition) {
-    lastMenuPosition.current = menuPosition;
-  }
-  const menuStylePosition = menuPosition ?? lastMenuPosition.current;
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        menuTriggerRef.current &&
-        !menuTriggerRef.current.contains(target)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [menuOpen]);
 
   const isDownloading = game.status === 'downloading' || game.status === 'updating';
   const isRunning = game.status === 'running';
@@ -133,48 +104,24 @@ export function GamePage({
     ? Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0)
     : 0;
 
-  const menuItems: {
-    id: string;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    onClick: () => void;
-    danger?: boolean;
-  }[] = [
-    {
-      id: 'patchNotes',
-      label: t('gamePage.patchNotes'),
-      icon: FileText,
-      onClick: () => setActiveModal('patchNotes'),
-    },
-    {
-      id: 'news',
-      label: t('gamePage.news'),
-      icon: Newspaper,
-      onClick: () => setActiveModal('news'),
-    },
-    {
-      id: 'info',
-      label: t('gamePage.gameInfo'),
-      icon: Info,
-      onClick: () => setActiveModal('info'),
-    },
-  ];
-
-  if (isInstalled) {
-    menuItems.unshift({
-      id: 'verify',
-      label: t('gamePage.verifyFiles'),
-      icon: ShieldCheck,
-      onClick: onVerify,
-    });
-    menuItems.push({
-      id: 'uninstall',
-      label: t('gamePage.uninstall'),
-      icon: Trash2,
-      onClick: onUninstall,
-      danger: true,
-    });
-  }
+  const handleMenuAction = (action: GameContextAction) => {
+    switch (action) {
+      case 'play':
+        return onPlay();
+      case 'install':
+        return onInstall();
+      case 'verify':
+        return onVerify();
+      case 'uninstall':
+        return onUninstall();
+      case 'patchNotes':
+        return setActiveModal('patchNotes');
+      case 'gameNews':
+        return setActiveModal('news');
+      case 'gameInfo':
+        return setActiveModal('info');
+    }
+  };
 
   return (
     <div className="game-detail">
@@ -232,49 +179,26 @@ export function GamePage({
             <button
               type="button"
               ref={menuTriggerRef}
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => {
+                const rect = menuTriggerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setMenuAnchor({ x: rect.left, y: rect.bottom + 4 });
+                }
+              }}
               className={cn('game-detail-menu-btn', primaryColorClass())}
               title={t('gamePage.moreOptions')}
               aria-label={t('gamePage.moreOptions')}
-              aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
               <MoreVertical className="w-5 h-5" />
             </button>
 
-            <div
-              ref={menuRef}
-              className="game-options-menu"
-              data-open={menuOpen}
-              data-positioned={Boolean(menuStylePosition)}
-              role="menu"
-              aria-hidden={!menuOpen}
-              style={
-                menuStylePosition
-                  ? {
-                      position: 'fixed',
-                      top: menuStylePosition.top,
-                      left: menuStylePosition.left,
-                    }
-                  : { position: 'fixed' }
-              }
-            >
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    item.onClick();
-                  }}
-                  className={cn('game-options-item', item.danger && 'game-options-item-danger')}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
+            <GameContextMenu
+              game={game}
+              anchor={menuAnchor}
+              onClose={() => setMenuAnchor(null)}
+              onAction={handleMenuAction}
+            />
           </div>
 
           <div className="game-detail-meta">
@@ -389,7 +313,7 @@ export function GamePage({
   );
 }
 
-function GameDetailsModal({
+export function GameDetailsModal({
   game,
   news,
   view,
