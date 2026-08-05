@@ -3,7 +3,7 @@
     "emptyDescription": "Try a different search term",
     "emptyTitle": "No games found",
     "install": "Install",
-    "searchPlaceholder": "Search games...",
+    "searchPlaceholder": "Search games…",
     "subtitle": "Select a game to install from your library",
     "title": "Install a Game"
   },
@@ -196,7 +196,7 @@
       "valid": "Valid"
     },
     "title": "Verify Files — {{game}}",
-    "verifying": "Verifying installation integrity..."
+    "verifying": "Verifying installation integrity…"
   },
   "windowControls": {
     "close": "Close",

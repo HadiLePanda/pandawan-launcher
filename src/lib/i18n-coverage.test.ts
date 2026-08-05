@@ -24,6 +24,13 @@ function flattenKeys(messages: LocaleMessages, prefix = ''): string[] {
  * template literals (dynamic keys like t(`prefix.${id}`)) are not matchable
  * by this regex and are intentionally out of scope — none exist today.
  * Test files are excluded: i18n.test.ts deliberately resolves unknown keys.
+ *
+ * Known blind spots to address when they first occur:
+ * (a) only .tsx files are scanned — t() calls in .ts modules are invisible;
+ * (b) i18next plural forms (key_one/key_other) will need special handling
+ *     once the first plural key arrives;
+ * (c) the regex can false-positive on a local variable named `t` that is
+ *     not the translation function.
  */
 function collectReferencedKeys(rootDir: string): Map<string, string[]> {
   const referenced = new Map<string, string[]>();
@@ -55,6 +62,12 @@ function collectReferencedKeys(rootDir: string): Map<string, string[]> {
 describe('i18n key coverage', () => {
   const referencedKeys = collectReferencedKeys(join(process.cwd(), 'src'));
   const enKeys = new Set(flattenKeys(en as LocaleMessages));
+
+  const getValue = (messages: LocaleMessages, key: string): unknown =>
+    key.split('.').reduce<unknown>((node, part) => (node as LocaleMessages)[part], messages);
+
+  const placeholders = (value: string): string[] =>
+    [...value.matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1].trim()).sort();
 
   it('finds t() calls in the component sources', () => {
     // Sanity guard: if the scan breaks silently this fails instead of
@@ -94,16 +107,28 @@ describe('i18n key coverage', () => {
     expect(keys.sort()).toEqual([...enKeys].sort());
   });
 
+  it('translations keep the same {{placeholders}} as the English source', () => {
+    const mismatches: string[] = [];
+    for (const key of enKeys) {
+      const enValue = getValue(en as LocaleMessages, key);
+      if (typeof enValue !== 'string') continue;
+      const expected = placeholders(enValue);
+      for (const [language, messages] of Object.entries({ fr, de, es })) {
+        const actual = placeholders(String(getValue(messages as LocaleMessages, key)));
+        if (actual.join() !== expected.join()) {
+          mismatches.push(`${language}:${key} has [${actual}] expected [${expected}]`);
+        }
+      }
+    }
+
+    expect(mismatches).toEqual([]);
+  });
+
   it('no locale value is left empty', () => {
     for (const [language, messages] of Object.entries({ en, fr, de, es })) {
       const flattened = flattenKeys(messages as LocaleMessages);
       for (const key of flattened) {
-        const value = key
-          .split('.')
-          .reduce<unknown>(
-            (node, part) => (node as LocaleMessages)[part],
-            messages as LocaleMessages
-          );
+        const value = getValue(messages as LocaleMessages, key);
         expect(value, `${language}:${key} must not be empty`).not.toBe('');
       }
     }

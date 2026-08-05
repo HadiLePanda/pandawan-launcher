@@ -3,7 +3,7 @@
     "emptyDescription": "Essaie un autre terme de recherche",
     "emptyTitle": "Aucun jeu trouvé",
     "install": "Installer",
-    "searchPlaceholder": "Rechercher des jeux...",
+    "searchPlaceholder": "Rechercher des jeux…",
     "subtitle": "Sélectionne un jeu à installer depuis ta bibliothèque",
     "title": "Installer un jeu"
   },
@@ -196,7 +196,7 @@
       "valid": "Valides"
     },
     "title": "Vérifier les fichiers — {{game}}",
-    "verifying": "Vérification de l'intégrité de l'installation..."
+    "verifying": "Vérification de l'intégrité de l'installation…"
   },
   "windowControls": {
     "close": "Fermer",

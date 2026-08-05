@@ -3,7 +3,7 @@
     "emptyDescription": "Versuch es mit einem anderen Suchbegriff",
     "emptyTitle": "Keine Spiele gefunden",
     "install": "Installieren",
-    "searchPlaceholder": "Spiele suchen...",
+    "searchPlaceholder": "Spiele suchen…",
     "subtitle": "Wähle ein Spiel aus deiner Bibliothek zum Installieren aus",
     "title": "Spiel installieren"
   },
@@ -196,7 +196,7 @@
       "valid": "Gültig"
     },
     "title": "Dateien überprüfen — {{game}}",
-    "verifying": "Installationsintegrität wird überprüft..."
+    "verifying": "Installationsintegrität wird überprüft…"
   },
   "windowControls": {
     "close": "Schließen",
