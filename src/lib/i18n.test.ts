@@ -34,7 +34,7 @@ describe('i18n', () => {
   });
 
   it('interpolates values into translated strings', () => {
-    expect(i18n.t('topBar.themeLabel', { theme: 'Dark' })).toBe('Theme: Dark');
+    expect(i18n.t('gamePage.filesProgress', { completed: 1, total: 3 })).toBe('1 / 3 files');
   });
 
   it('falls back to English for keys missing in the active language', async () => {

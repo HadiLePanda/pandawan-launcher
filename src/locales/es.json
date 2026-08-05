@@ -66,12 +66,6 @@
     "updateAvailable": "Actualización disponible",
     "updateComplete": "Actualización completada"
   },
-  "playerProfile": {
-    "comingSoonDescription": "Las funciones de la cuenta llegarán pronto. Aquí podrás gestionar tu cuenta de Pandawan, tu lista de amigos y tus compras.",
-    "playerName": "Jugador",
-    "statusOffline": "Sin conexión",
-    "title": "Perfil del jugador"
-  },
   "settings": {
     "about": {
       "developer": "Desarrollador",
@@ -154,18 +148,14 @@
     "title": "Configuración"
   },
   "topBar": {
+    "downloads": "Descargas",
     "games": "Juegos",
     "news": "Noticias",
     "notifications": "Notificaciones",
     "playerProfile": "Perfil del jugador",
-    "settings": "Configuración",
+    "profileSettings": "Configuración",
     "store": "Tienda",
-    "themeLabel": "Tema: {{theme}}",
-    "themeNames": {
-      "adaptive": "Automático",
-      "dark": "Oscuro",
-      "light": "Claro"
-    }
+    "themeLabel": "Tema"
   },
   "updateBanner": {
     "available": "Actualización v{{version}} disponible",

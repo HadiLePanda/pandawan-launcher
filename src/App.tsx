@@ -11,7 +11,6 @@ import { Settings } from '@components/Settings';
 import { AddGameModal } from '@components/AddGameModal';
 import { News } from '@components/News';
 import { UpdateBanner } from '@components/UpdateBanner';
-import { PlayerProfile } from '@components/PlayerProfile';
 import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
@@ -48,7 +47,6 @@ function App() {
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -279,8 +277,9 @@ function App() {
             setSelectedGameId(lastSelectedGameId);
           }}
           onSettingsClick={() => setIsSettingsOpen(true)}
-          onPlayerClick={() => setIsProfileOpen(true)}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
+          downloadsBadge={0}
+          notificationsBadge={0}
         />
 
         {catalogUnreachable && catalogSource !== 'remote' && (
@@ -322,7 +321,6 @@ function App() {
         }}
       />
 
-      <PlayerProfile isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }

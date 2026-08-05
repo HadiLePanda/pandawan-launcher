@@ -986,12 +986,13 @@ input[type='search']::placeholder {
 
 /* ----- Title bar ----- */
 .titlebar {
-  height: 2.25rem;
+  height: 32px;
+  background: var(--canvas-default);
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  position: relative;
-  z-index: 50;
+  padding-right: 8px;
 }
 
 .window-controls {
@@ -1027,66 +1028,59 @@ input[type='search']::placeholder {
 
 /* ----- App top bar ----- */
 .app-topbar {
-  display: flex;
-  flex-direction: column;
-  padding: 0 1.25rem 0.25rem;
-  flex-shrink: 0;
+  height: 48px;
+  background: var(--surface-default);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .app-topbar-row {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 4rem;
+  padding: 0 16px;
 }
 
 .app-logo {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, var(--action), var(--accent));
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-default);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 1.375rem;
+  font-size: 11px;
   font-weight: 700;
-  box-shadow: 0 10px 15px -3px color-mix(in oklab, var(--action) 20%, transparent);
+  color: var(--ink-default);
 }
 
-.nav-link {
-  padding: 0.625rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.nav-tab {
+  position: relative;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-size: 0.8125rem;
   color: var(--ink-muted);
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.nav-link:hover {
+.nav-tab-active {
   color: var(--ink-default);
+  font-weight: 500;
 }
 
-.light .nav-link:hover {
-  background: var(--canvas-elevated);
-}
-
-.nav-link-active {
-  color: var(--ink-default);
-  background: var(--surface-light);
-  border-color: var(--border-strong);
-}
-
-.light .nav-link-active,
-.light .nav-link-active:hover {
-  background: var(--canvas-elevated);
-  border-color: var(--border-strong);
-  color: var(--ink-default);
+.nav-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--selection);
+  opacity: 0.6;
 }
 
 .icon-btn {
@@ -1113,35 +1107,68 @@ input[type='search']::placeholder {
   background: var(--canvas-elevated);
 }
 
-.profile-btn {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
-  background: linear-gradient(135deg, var(--surface-light), var(--surface-default));
+.topbar-btn {
+  width: 28px;
+  height: 22px;
+  border-radius: 4px;
+  background: transparent;
   border: 1px solid var(--border-default);
+  color: var(--ink-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.profile-btn:hover {
-  color: var(--ink-default);
-  border-color: var(--border-strong);
-}
-
-.light .profile-btn {
-  background: var(--canvas-elevated);
-  border-color: var(--border-strong);
-  color: var(--ink-muted);
-}
-
-.light .profile-btn:hover {
+.topbar-btn:hover {
   background: var(--surface-hover);
   color: var(--ink-default);
-  border-color: var(--border-strong);
+}
+
+.topbar-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.profile-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 180px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.profile-menu-item {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--ink-default);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.profile-menu-item:hover {
+  background: var(--surface-hover);
 }
 
 .games-navbar-wrap {

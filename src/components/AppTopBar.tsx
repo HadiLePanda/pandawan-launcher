@@ -1,4 +1,5 @@
-import { Settings, Bell, User, Sun, Moon, SunMoon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { SunMoon, Download, Bell, User, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
@@ -9,8 +10,34 @@ interface AppTopBarProps {
   onNewsClick: () => void;
   onStoreClick: () => void;
   onSettingsClick: () => void;
-  onPlayerClick: () => void;
   onDoubleClick?: () => void;
+}
+
+function TopBarButton({
+  icon,
+  label,
+  badge,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: number | null;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="topbar-btn"
+      aria-label={label}
+      title={label}
+    >
+      <span className="relative">
+        {icon}
+        {badge != null && badge > 0 && <span className="topbar-badge">{badge}</span>}
+      </span>
+    </button>
+  );
 }
 
 export function AppTopBar({
@@ -19,36 +46,47 @@ export function AppTopBar({
   onNewsClick,
   onStoreClick,
   onSettingsClick,
-  onPlayerClick,
   onDoubleClick,
-}: AppTopBarProps) {
+  downloadsBadge,
+  notificationsBadge,
+}: AppTopBarProps & { downloadsBadge?: number; notificationsBadge?: number }) {
   const { t } = useTranslation();
   const { settings, setSettings } = useLauncherStore();
   const currentTheme = settings?.theme || 'adaptive';
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isProfileMenuOpen]);
 
   const handleThemeToggle = () => {
     if (!settings) return;
     const order = ['adaptive', 'light', 'dark'];
     const next = order[(order.indexOf(currentTheme) + 1) % order.length];
+    document.documentElement.classList.toggle('light', next === 'light');
     setSettings({ ...settings, theme: next });
   };
-
-  const themeIcon =
-    currentTheme === 'light' ? (
-      <Sun className="w-5 h-5" />
-    ) : currentTheme === 'dark' ? (
-      <Moon className="w-5 h-5" />
-    ) : (
-      <SunMoon className="w-5 h-5" />
-    );
-  const themeNames: Record<string, string> = {
-    adaptive: t('topBar.themeNames.adaptive'),
-    light: t('topBar.themeNames.light'),
-    dark: t('topBar.themeNames.dark'),
-  };
-  const themeTitle = t('topBar.themeLabel', {
-    theme: themeNames[currentTheme] ?? currentTheme,
-  });
 
   const navItems = [
     { id: 'games' as const, label: t('topBar.games'), onClick: onGamesClick },
@@ -61,51 +99,57 @@ export function AppTopBar({
       <div className="app-topbar-row">
         <div className="cluster cluster-md">
           <div className="app-logo">P</div>
-
-          <nav className="cluster cluster-xs no-drag">
-            {navItems.map((item) => {
-              const isActive = activeView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={item.onClick}
-                  className={cn('nav-link', isActive && 'nav-link-active')}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+          <nav className="cluster cluster-lg no-drag app-topbar-tabs">
+            {navItems.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                onClick={item.onClick}
+                className={cn('nav-tab', activeView === item.id && 'nav-tab-active')}
+              >
+                {item.label}
+              </button>
+            ))}
           </nav>
         </div>
-
-        <div className="cluster cluster-xl no-drag">
-          <div className="cluster cluster-sm no-drag">
-            <button
-              onClick={handleThemeToggle}
-              className="icon-btn"
-              title={themeTitle}
-              aria-label={themeTitle}
-            >
-              {themeIcon}
-            </button>
-            <button
-              onClick={onSettingsClick}
-              className="icon-btn"
-              aria-label={t('topBar.settings')}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            <button className="icon-btn" aria-label={t('topBar.notifications')}>
-              <Bell className="w-5 h-5" />
-            </button>
+        <div className="cluster cluster-sm no-drag">
+          <TopBarButton
+            icon={<SunMoon className="w-4 h-4" />}
+            label={t('topBar.themeLabel')}
+            onClick={handleThemeToggle}
+          />
+          <TopBarButton
+            icon={<Download className="w-4 h-4" />}
+            label={t('topBar.downloads')}
+            badge={downloadsBadge}
+          />
+          <TopBarButton
+            icon={<Bell className="w-4 h-4" />}
+            label={t('topBar.notifications')}
+            badge={notificationsBadge}
+          />
+          <div className="relative" ref={profileMenuRef}>
+            <TopBarButton
+              icon={<User className="w-4 h-4" />}
+              label={t('topBar.playerProfile')}
+              onClick={() => setIsProfileMenuOpen((open) => !open)}
+            />
+            {isProfileMenuOpen && (
+              <div className="profile-menu">
+                <button
+                  type="button"
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    onSettingsClick();
+                  }}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>{t('topBar.profileSettings')}</span>
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={onPlayerClick}
-            className="profile-btn"
-            aria-label={t('topBar.playerProfile')}
-          >
-            <User className="w-6 h-6" />
-          </button>
         </div>
       </div>
     </div>

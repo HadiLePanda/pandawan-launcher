@@ -66,12 +66,6 @@
     "updateAvailable": "Update available",
     "updateComplete": "Update complete"
   },
-  "playerProfile": {
-    "comingSoonDescription": "Account features are coming soon. Here you'll manage your Pandawan account, friends list, and purchases.",
-    "playerName": "Player",
-    "statusOffline": "Offline",
-    "title": "Player Profile"
-  },
   "settings": {
     "about": {
       "developer": "Developer",
@@ -154,18 +148,14 @@
     "title": "Settings"
   },
   "topBar": {
+    "downloads": "Downloads",
     "games": "Games",
     "news": "News",
     "notifications": "Notifications",
     "playerProfile": "Player Profile",
-    "settings": "Settings",
+    "profileSettings": "Settings",
     "store": "Store",
-    "themeLabel": "Theme: {{theme}}",
-    "themeNames": {
-      "adaptive": "Adaptive",
-      "dark": "Dark",
-      "light": "Light"
-    }
+    "themeLabel": "Theme"
   },
   "updateBanner": {
     "available": "Update v{{version}} available",
