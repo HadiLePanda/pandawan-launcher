@@ -19,9 +19,6 @@
     "dismiss": "Dismiss",
     "retry": "Retry"
   },
-  "gameIconsBar": {
-    "allGames": "All Games"
-  },
   "gamePage": {
     "developer": "Developer",
     "filesProgress": "{{completed}} / {{total}} files",

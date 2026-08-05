@@ -291,24 +291,6 @@ body {
   transform: scale(0.97);
 }
 
-/* Game icon placeholder background — distinct from the card so initials/icons read clearly */
-.game-icon-bg {
-  background-color: #282b32;
-}
-
-.light .game-icon-bg {
-  background-color: #e8e6e0;
-}
-
-/* Games icons panel — background for the navbar game icons row */
-.game-icons-panel {
-  background-color: var(--surface-light);
-}
-
-.light .game-icons-panel {
-  background-color: var(--canvas-elevated);
-}
-
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -317,6 +299,53 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Game sidebar — vertical left icon rail */
+.game-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid var(--border-default);
+  background: var(--canvas-default);
+}
+
+.game-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-sidebar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  object-fit: cover;
+  opacity: 0.55;
+  filter: grayscale(60%);
+  transition: opacity 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.game-sidebar-icon.installed {
+  opacity: 1;
+  filter: none;
+}
+
+.game-sidebar-icon.selected {
+  border-color: var(--border-default);
+  opacity: 1;
+  filter: none;
+}
+
+.sidebar-separator {
+  height: 1px;
+  background: var(--border-default);
+  margin: 8px 0;
 }
 
 /* Game card hover effect */
@@ -1169,83 +1198,6 @@ input[type='search']::placeholder {
 
 .profile-menu-item:hover {
   background: var(--surface-hover);
-}
-
-.games-navbar-wrap {
-  padding: 0.25rem 1.25rem;
-}
-
-.games-navbar-panel {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.375rem;
-  border-radius: 0.75rem;
-  background: var(--surface-light);
-  border: 1px solid var(--border-default);
-}
-
-.light .games-navbar-panel {
-  background: var(--canvas-elevated);
-  border-color: var(--border-strong);
-}
-
-.games-list {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1 1 0%;
-  min-width: 0;
-  overflow-x: auto;
-}
-
-.game-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
-}
-
-.game-icon:hover {
-  color: var(--ink-default);
-  transform: translateY(-1px) scale(1.05);
-}
-
-.game-icon-active {
-  color: var(--ink-default);
-  background: var(--surface-light);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 16px rgba(40, 185, 104, 0.25);
-}
-
-.game-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.game-icon-indicator {
-  position: absolute;
-  bottom: 0.25rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1rem;
-  height: 0.25rem;
-  border-radius: 9999px;
-  background: var(--action);
-  box-shadow: 0 0 10px rgba(40, 185, 104, 0.75);
 }
 
 /* ----- Modals ----- */

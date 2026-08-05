@@ -16,20 +16,20 @@ describe('i18n', () => {
     expect(i18n.t('topBar.games')).toBe('Games');
     expect(i18n.t('common.retry')).toBe('Retry');
     expect(i18n.t('app.connectionBanner')).toContain('unreachable');
-    expect(i18n.t('gameIconsBar.allGames')).toBe('All Games');
+    expect(i18n.t('gamesPage.emptyTitle')).toBe('No Games Yet');
     expect(i18n.t('windowControls.close')).toBe('Close');
   });
 
   it.each([
-    ['fr', 'Jeux', 'Fermer', 'Tous les jeux', 'Réessayer'],
-    ['de', 'Spiele', 'Schließen', 'Alle Spiele', 'Erneut versuchen'],
-    ['es', 'Juegos', 'Cerrar', 'Todos los juegos', 'Reintentar'],
-  ])('resolves the core chrome keys in %s', async (language, games, close, allGames, retry) => {
+    ['fr', 'Jeux', 'Fermer', 'Aucun jeu pour le moment', 'Réessayer'],
+    ['de', 'Spiele', 'Schließen', 'Noch keine Spiele', 'Erneut versuchen'],
+    ['es', 'Juegos', 'Cerrar', 'Aún no hay juegos', 'Reintentar'],
+  ])('resolves the core chrome keys in %s', async (language, games, close, emptyTitle, retry) => {
     await i18n.changeLanguage(language);
 
     expect(i18n.t('topBar.games')).toBe(games);
     expect(i18n.t('windowControls.close')).toBe(close);
-    expect(i18n.t('gameIconsBar.allGames')).toBe(allGames);
+    expect(i18n.t('gamesPage.emptyTitle')).toBe(emptyTitle);
     expect(i18n.t('common.retry')).toBe(retry);
   });
 

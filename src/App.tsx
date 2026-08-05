@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { events } from '@/lib/bindings';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
+import { GameSidebar } from '@components/GameSidebar';
 import { GamePage } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GamesHome } from '@components/GamesHome';
@@ -53,6 +54,8 @@ function App() {
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store'>('games');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
+  // TODO(Task 9): wire this state to GameContextMenu when rendering the menu.
+  const [, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(null);
 
   const {
     games,
@@ -75,6 +78,11 @@ function App() {
     catalogSource,
     catalogUnreachable,
   } = useLauncherStore();
+
+  const installedIds = useMemo(
+    () => new Set(games.filter((g) => g.status !== 'not_installed').map((g) => g.info.id)),
+    [games]
+  );
 
   useEffect(() => {
     const MIN_LOADING_MS = 1000;
@@ -178,6 +186,10 @@ function App() {
     handleSelectGame(gameId);
   };
 
+  const handleContextMenu = (e: React.MouseEvent, gameId: string) => {
+    setContextMenu({ gameId, x: e.clientX, y: e.clientY });
+  };
+
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
@@ -230,11 +242,7 @@ function App() {
     }
 
     return (
-      <GamesPage
-        games={games}
-        selectedGameId={selectedGameId}
-        onSelectGameIcon={handleSelectGameIcon}
-      >
+      <GamesPage games={games}>
         {selectedGame ? (
           <GamePage
             game={selectedGame}
@@ -265,8 +273,12 @@ function App() {
         <AppTopBar
           activeView={activeView}
           onGamesClick={() => {
-            setActiveView('games');
-            setSelectedGameId(lastSelectedGameId);
+            if (activeView === 'games') {
+              setSelectedGameId(null);
+            } else {
+              setActiveView('games');
+              setSelectedGameId(lastSelectedGameId);
+            }
           }}
           onNewsClick={() => {
             setActiveView('news');
@@ -288,7 +300,18 @@ function App() {
 
         <UpdateBanner />
 
-        <div className="flex-1 overflow-hidden flex flex-col">{renderContent()}</div>
+        <div className="app-body flex flex-row flex-1 overflow-hidden">
+          {activeView === 'games' && (
+            <GameSidebar
+              games={games.map((g) => g.info)}
+              installedIds={installedIds}
+              selectedGameId={selectedGameId}
+              onSelect={handleSelectGameIcon}
+              onContextMenu={handleContextMenu}
+            />
+          )}
+          <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>
+        </div>
       </div>
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 

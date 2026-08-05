@@ -19,9 +19,6 @@
     "dismiss": "Descartar",
     "retry": "Reintentar"
   },
-  "gameIconsBar": {
-    "allGames": "Todos los juegos"
-  },
   "gamePage": {
     "developer": "Desarrollador",
     "filesProgress": "{{completed}} / {{total}} archivos",
