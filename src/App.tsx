@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
 import { TitleBar } from '@components/TitleBar';
 import { AppTopBar } from '@components/AppTopBar';
@@ -84,6 +85,17 @@ function App() {
   const installedIds = useMemo(
     () => new Set(games.filter((g) => g.status !== 'not_installed').map((g) => g.info.id)),
     [games]
+  );
+
+  const filteredGameIds = useMemo(() => {
+    const infos = games.map((g) => g.info);
+    const filtered = filterGames(infos, installedIds, gameFilters);
+    return new Set(filtered.map((g) => g.id));
+  }, [games, installedIds, gameFilters]);
+
+  const filteredGames = useMemo(
+    () => games.filter((g) => filteredGameIds.has(g.info.id)),
+    [games, filteredGameIds]
   );
 
   useEffect(() => {
@@ -259,9 +271,9 @@ function App() {
           />
         ) : (
           <GamesHome
-            games={games}
+            games={filteredGames}
             onSelectGame={handleSelectGame}
-            onInstallGame={() => setIsAddGameOpen(true)}
+            onContextMenu={handleContextMenu}
           />
         )}
       </GamesPage>

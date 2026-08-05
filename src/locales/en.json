@@ -53,10 +53,7 @@
     "version": "Version"
   },
   "gamesHome": {
-    "availableCount": "{{count}} available",
-    "installAGame": "Install a Game",
-    "installed": "Installed",
-    "notInstalled": "Not Installed"
+    "unknownGenre": "Unknown Genre"
   },
   "gamesPage": {
     "emptyDescription": "Install a game from the store to get started.",

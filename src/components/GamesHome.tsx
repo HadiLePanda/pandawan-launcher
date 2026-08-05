@@ -1,66 +1,66 @@
 import { useTranslation } from 'react-i18next';
-import { cn, formatBytes } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { Game } from '@/types';
-import { Plus } from 'lucide-react';
+import { Gamepad2 } from 'lucide-react';
 
 interface GamesHomeProps {
   games: Game[];
-  onSelectGame: (gameId: string | null) => void;
-  onInstallGame?: () => void;
+  onSelectGame: (gameId: string) => void;
+  onContextMenu?: (e: React.MouseEvent, gameId: string) => void;
 }
 
-export function GamesHome({ games, onSelectGame, onInstallGame }: GamesHomeProps) {
-  const { t } = useTranslation();
-  const uninstalledCount = games.filter((g) => g.status === 'not_installed').length;
-
+export function GamesHome({ games, onSelectGame, onContextMenu }: GamesHomeProps) {
   return (
-    <div className="h-full overflow-auto page">
+    <div className="h-full overflow-auto games-home">
       <div className="games-grid">
         {games.map((game) => (
-          <GameCard key={game.info.id} game={game} onClick={() => onSelectGame(game.info.id)} />
+          <GameCard
+            key={game.info.id}
+            game={game}
+            onClick={() => onSelectGame(game.info.id)}
+            onContextMenu={onContextMenu}
+          />
         ))}
-        {onInstallGame && uninstalledCount > 0 && (
-          <button onClick={onInstallGame} className="game-card game-card-add">
-            <div className="game-card-art">
-              <Plus className="w-10 h-10" />
-            </div>
-            <div className="game-card-content">
-              <h3 className="game-card-title">{t('gamesHome.installAGame')}</h3>
-              <p className="caption">
-                {t('gamesHome.availableCount', { count: uninstalledCount })}
-              </p>
-            </div>
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
-function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
+function GameCard({
+  game,
+  onClick,
+  onContextMenu,
+}: {
+  game: Game;
+  onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent, gameId: string) => void;
+}) {
   const { t } = useTranslation();
-  const initials = game.info.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   const isInstalled = game.status === 'installed';
+  const genres = game.info.genre.join(', ');
 
   return (
-    <button onClick={onClick} className="game-card">
+    <button
+      type="button"
+      onClick={onClick}
+      onContextMenu={(e) => onContextMenu?.(e, game.info.id)}
+      className={cn('game-card', !isInstalled && 'game-card-uninstalled')}
+      title={game.info.name}
+    >
       <div className="game-card-art">
-        {game.info.iconUrl ? <img src={game.info.iconUrl} alt={game.info.name} /> : initials}
+        {game.info.bannerUrl ? (
+          <img src={game.info.bannerUrl} alt="" className="game-card-image" />
+        ) : game.info.iconUrl ? (
+          <img src={game.info.iconUrl} alt="" className="game-card-image" />
+        ) : (
+          <div className="game-card-fallback">
+            <Gamepad2 className="w-10 h-10" />
+          </div>
+        )}
       </div>
       <div className="game-card-content">
         <h3 className="game-card-title">{game.info.name}</h3>
-        <div className="game-card-meta">
-          <span className={cn('badge', isInstalled ? 'badge-success' : 'badge-default')}>
-            {isInstalled ? t('gamesHome.installed') : t('gamesHome.notInstalled')}
-          </span>
-          <span className="caption">{formatBytes(game.info.sizeBytes)}</span>
-        </div>
+        <p className="game-card-genre">{genres || t('gamesHome.unknownGenre')}</p>
       </div>
     </button>
   );
