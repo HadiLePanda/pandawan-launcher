@@ -19,6 +19,10 @@
     "dismiss": "Dismiss",
     "retry": "Retry"
   },
+  "gamesMenu": {
+    "downloads": "Downloads",
+    "home": "Home"
+  },
   "filters": {
     "all": "All",
     "genres": "Genres",

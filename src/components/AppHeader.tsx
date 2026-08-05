@@ -11,6 +11,7 @@ interface AppHeaderProps {
   onNewsClick: () => void;
   onStoreClick: () => void;
   onDownloadsClick: () => void;
+  onDownloadsNavigate: () => void;
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
   onDoubleClick?: () => void;
@@ -82,6 +83,7 @@ export function AppHeader({
   onNewsClick,
   onStoreClick,
   onDownloadsClick,
+  onDownloadsNavigate,
   onNotificationsClick,
   onSettingsClick,
   onDoubleClick,
@@ -93,7 +95,10 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isGamesMenuOpen, setIsGamesMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -119,6 +124,59 @@ export function AppHeader({
     };
   }, [isProfileMenuOpen]);
 
+  useEffect(() => {
+    if (!isGamesMenuOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsGamesMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isGamesMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  const clearGamesMenuTimers = () => {
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const handleGamesTabEnter = () => {
+    clearGamesMenuTimers();
+    openTimerRef.current = setTimeout(() => {
+      setIsGamesMenuOpen(true);
+    }, 400);
+  };
+
+  const handleGamesTabLeave = () => {
+    clearGamesMenuTimers();
+    closeTimerRef.current = setTimeout(() => {
+      setIsGamesMenuOpen(false);
+    }, 150);
+  };
+
+  const handleGamesMenuItem = (action: () => void) => {
+    clearGamesMenuTimers();
+    setIsGamesMenuOpen(false);
+    action();
+  };
+
   const downloadsBadge = activeDownloads.size;
   const averageProgress = useMemo(() => {
     if (activeDownloads.size === 0) return 0;
@@ -128,12 +186,6 @@ export function AppHeader({
     }
     return sum / activeDownloads.size;
   }, [activeDownloads]);
-
-  const navItems = [
-    { id: 'games' as const, label: t('topBar.games'), onClick: onGamesClick },
-    { id: 'news' as const, label: t('topBar.news'), onClick: onNewsClick },
-    { id: 'store' as const, label: t('topBar.store'), onClick: onStoreClick },
-  ];
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button, a, input, .no-drag')) {
@@ -150,16 +202,53 @@ export function AppHeader({
         <div className="cluster cluster-md no-drag">
           <div className="app-logo">P</div>
           <nav className="cluster cluster-lg">
-            {navItems.map((item) => (
+            <div
+              className="games-menu"
+              onMouseEnter={clearGamesMenuTimers}
+              onMouseLeave={handleGamesTabLeave}
+            >
               <button
                 type="button"
-                key={item.id}
-                onClick={item.onClick}
-                className={cn('nav-tab', activeView === item.id && 'nav-tab-active')}
+                onClick={onGamesClick}
+                onMouseEnter={handleGamesTabEnter}
+                className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
+                data-panel-trigger="games-menu"
               >
-                {item.label}
+                {t('topBar.games')}
               </button>
-            ))}
+              {isGamesMenuOpen && (
+                <div className="games-menu-dropdown">
+                  <button
+                    type="button"
+                    className="games-menu-item"
+                    onClick={() => handleGamesMenuItem(onGamesClick)}
+                  >
+                    {t('gamesMenu.home')}
+                  </button>
+                  <button
+                    type="button"
+                    className="games-menu-item"
+                    onClick={() => handleGamesMenuItem(onDownloadsNavigate)}
+                  >
+                    {t('gamesMenu.downloads')}
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onNewsClick}
+              className={cn('nav-tab', activeView === 'news' && 'nav-tab-active')}
+            >
+              {t('topBar.news')}
+            </button>
+            <button
+              type="button"
+              onClick={onStoreClick}
+              className={cn('nav-tab', activeView === 'store' && 'nav-tab-active')}
+            >
+              {t('topBar.store')}
+            </button>
           </nav>
         </div>
 

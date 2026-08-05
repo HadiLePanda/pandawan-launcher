@@ -1309,6 +1309,43 @@ input[type='search']::placeholder {
   background: var(--surface-hover);
 }
 
+.games-menu {
+  display: inline-block;
+  position: relative;
+}
+
+.games-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 140px;
+}
+
+.games-menu-item {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--ink-default);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.games-menu-item:hover {
+  background: var(--surface-hover);
+}
+
 /* ----- Modals ----- */
 .modal-overlay {
   position: fixed;

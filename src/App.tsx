@@ -366,6 +366,10 @@ function App() {
           setIsNotificationsOpen(false);
           setIsDownloadsOpen((v) => !v);
         }}
+        onDownloadsNavigate={() => {
+          setActiveView('downloads');
+          setSelectedGameId(lastSelectedGameId);
+        }}
         onNotificationsClick={() => {
           setIsDownloadsOpen(false);
           setIsNotificationsOpen((v) => !v);
