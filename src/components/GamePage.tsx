@@ -8,15 +8,15 @@ import {
   HardDrive,
   X,
   MoreVertical,
+  Settings,
   Info,
   FileText,
   Newspaper,
   Trash2,
   ShieldCheck,
-  Calendar,
   Clock,
 } from 'lucide-react';
-import { cn, formatBytes, formatDate, formatPlaytime } from '@/lib/utils';
+import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
 import type { Game, NewsItem } from '@/types';
 
@@ -36,6 +36,7 @@ interface GamePageProps {
   onUpdate: () => void;
   onUninstall: () => void;
   onVerify: () => void;
+  onSettings?: () => void;
   onCancel?: () => void;
 }
 
@@ -61,6 +62,7 @@ export function GamePage({
   onUpdate,
   onUninstall,
   onVerify,
+  onSettings,
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
@@ -99,85 +101,37 @@ export function GamePage({
   const hasUpdate = game.hasUpdate;
   const showSize = game.status === 'not_installed';
 
-  const initials = game.info.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   const gameNews = news.filter((item) => item.gameId === game.info.id);
 
-  const primaryAction = () => {
+  const primaryLabel = () => {
     if (isDownloading) {
-      const pct = Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0);
-      return (
-        <div className="download-progress">
-          <div className="download-progress-header">
-            <span className="download-progress-label">
-              {game.status === 'updating' ? t('gamePage.updating') : t('gamePage.installing')}
-            </span>
-            <div className="download-progress-stats">
-              <span className="download-progress-percent">{pct}%</span>
-              {onCancel && (
-                <button
-                  onClick={onCancel}
-                  className="icon-btn"
-                  title={t('common.cancel')}
-                  aria-label={t('common.cancel')}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="download-progress-bar">
-            <div className="download-progress-fill" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="download-progress-meta">
-            <span>
-              {t('gamePage.filesProgress', {
-                completed: downloadProgress?.completedFiles ?? 0,
-                total: downloadProgress?.totalFiles ?? 0,
-              })}
-            </span>
-            <span>{downloadProgress?.speed}</span>
-          </div>
-        </div>
-      );
+      return game.status === 'updating' ? t('gamePage.updating') : t('gamePage.installing');
     }
-
     if (isInstalled) {
-      if (hasUpdate) {
-        return (
-          <button onClick={onUpdate} className="btn btn-install btn-xl">
-            <RefreshCw className="w-5 h-5" />
-            {t('gamePage.update')}
-          </button>
-        );
-      }
-      return (
-        <button
-          onClick={onPlay}
-          disabled={isRunning}
-          className={cn(
-            'btn btn-xl text-white',
-            isRunning ? 'btn-secondary cursor-not-allowed opacity-80' : 'btn-play'
-          )}
-        >
-          <Play className="w-5 h-5 fill-current" />
-          {isRunning ? t('gamePage.playing') : t('gamePage.play')}
-        </button>
-      );
+      if (hasUpdate) return t('gamePage.update');
+      return isRunning ? t('gamePage.playing') : t('gamePage.play');
     }
-
-    return (
-      <button onClick={onInstall} className="btn btn-install btn-xl">
-        <Download className="w-5 h-5" />
-        {t('gamePage.install')}
-      </button>
-    );
+    return t('gamePage.install');
   };
+
+  const primaryColorClass = () => {
+    if (isDownloading || (isInstalled && hasUpdate)) return 'action-blue';
+    if (isInstalled) return 'action-green';
+    return 'action-blue';
+  };
+
+  const handlePrimaryClick = () => {
+    if (isDownloading) return;
+    if (isInstalled) {
+      if (hasUpdate) return onUpdate();
+      return onPlay();
+    }
+    return onInstall();
+  };
+
+  const downloadPct = isDownloading
+    ? Math.round(downloadProgress?.overallProgress || downloadProgress?.progress || 0)
+    : 0;
 
   const menuItems: {
     id: string;
@@ -223,145 +177,205 @@ export function GamePage({
   }
 
   return (
-    <div className="game-page">
-      <section className="game-page-layout">
-        <section className="game-page-info">
-          <div className="game-page-info-body">
-            <div className="game-page-header">
-              <div className="game-page-logo">
-                {game.info.iconUrl ? (
-                  <img src={game.info.iconUrl} alt={game.info.name} />
-                ) : (
-                  initials
-                )}
-              </div>
-              <div className="min-w-0">
-                <h1 className="game-page-title truncate">{game.info.name}</h1>
-              </div>
+    <div className="game-detail">
+      <div className="game-detail-main">
+        <div className="game-detail-banner">
+          {game.info.bannerUrl ? (
+            <img src={game.info.bannerUrl} alt="" className="game-detail-banner-image" />
+          ) : (
+            <div className="game-detail-banner-fallback" />
+          )}
+          <div className="game-detail-banner-scrim" />
+          <div className="game-detail-banner-content">
+            <h1 className="game-detail-title">{game.info.name}</h1>
+            <p className="game-detail-status">
+              {isInstalled
+                ? hasUpdate
+                  ? t('gamePage.updateAvailable')
+                  : t('gamePage.installed')
+                : t('gamePage.notInstalled')}
+            </p>
+          </div>
+        </div>
+
+        <div className="game-detail-action-panel">
+          <div className="game-detail-actions-left">
+            <button
+              type="button"
+              onClick={handlePrimaryClick}
+              disabled={isRunning || isDownloading}
+              className={cn('game-detail-play-btn', primaryColorClass())}
+            >
+              {isDownloading ? (
+                <>
+                  <Download className="w-5 h-5" />
+                  <span>{downloadPct}%</span>
+                </>
+              ) : isInstalled && hasUpdate ? (
+                <>
+                  <RefreshCw className="w-5 h-5" />
+                  <span>{primaryLabel()}</span>
+                </>
+              ) : isInstalled ? (
+                <>
+                  <Play className="w-5 h-5 fill-current" />
+                  <span>{primaryLabel()}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  <span>{primaryLabel()}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              ref={menuTriggerRef}
+              onClick={() => setMenuOpen((v) => !v)}
+              className={cn('game-detail-menu-btn', primaryColorClass())}
+              title={t('gamePage.moreOptions')}
+              aria-label={t('gamePage.moreOptions')}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            <div
+              ref={menuRef}
+              className="game-options-menu"
+              data-open={menuOpen}
+              data-positioned={Boolean(menuStylePosition)}
+              role="menu"
+              aria-hidden={!menuOpen}
+              style={
+                menuStylePosition
+                  ? {
+                      position: 'fixed',
+                      top: menuStylePosition.top,
+                      left: menuStylePosition.left,
+                    }
+                  : { position: 'fixed' }
+              }
+            >
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    item.onClick();
+                  }}
+                  className={cn('game-options-item', item.danger && 'game-options-item-danger')}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
             </div>
-
-            {game.info.genre && game.info.genre.length > 0 && (
-              <div className="tags">
-                {game.info.genre.map((g) => (
-                  <span key={g} className="tag">
-                    {g}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {game.info.description && <p className="game-page-desc">{game.info.description}</p>}
           </div>
 
-          <div className="game-page-actions">
-            <div className="flex items-center gap-2 w-full">
-              {primaryAction()}
-              {!isDownloading && (
-                <div className="relative">
-                  <button
-                    ref={menuTriggerRef}
-                    onClick={() => setMenuOpen((v) => !v)}
-                    className="icon-btn"
-                    title={t('gamePage.moreOptions')}
-                    aria-label={t('gamePage.moreOptions')}
-                    aria-expanded={menuOpen}
-                    aria-haspopup="menu"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                  <div
-                    ref={menuRef}
-                    className="game-options-menu"
-                    data-open={menuOpen}
-                    data-positioned={Boolean(menuStylePosition)}
-                    role="menu"
-                    aria-hidden={!menuOpen}
-                    style={
-                      menuStylePosition
-                        ? {
-                            position: 'fixed',
-                            top: menuStylePosition.top,
-                            left: menuStylePosition.left,
-                          }
-                        : { position: 'fixed' }
-                    }
-                  >
-                    {menuItems.map((item) => (
-                      <button
-                        key={item.id}
-                        role="menuitem"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          item.onClick();
-                        }}
-                        className={cn(
-                          'game-options-item',
-                          item.danger && 'game-options-item-danger'
-                        )}
-                      >
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="game-page-meta">
-              {showSize && (
-                <span className="game-page-meta-item">
+          <div className="game-detail-meta">
+            {showSize && (
+              <div className="game-detail-meta-item">
+                <span className="game-detail-meta-label">{t('gamePage.size')}</span>
+                <span className="game-detail-meta-value">
                   <HardDrive className="w-4 h-4" />
                   {formatBytes(game.info.sizeBytes)}
                 </span>
-              )}
-              {game.status !== 'not_installed' &&
-                game.installation &&
-                (game.installation.total_playtime_seconds > 0 ? (
-                  <>
-                    <span className="game-page-meta-item">
-                      <Clock className="w-4 h-4" />
-                      {t('gamePage.playtime', {
-                        playtime: formatPlaytime(game.installation.total_playtime_seconds),
-                      })}
-                    </span>
-                    {game.installation.last_played && (
-                      <span className="game-page-meta-item">
-                        <Calendar className="w-4 h-4" />
-                        {t('gamePage.lastPlayed', {
-                          date: formatDate(game.installation.last_played),
-                        })}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="game-page-meta-item">
-                    <Clock className="w-4 h-4" />
-                    {t('gamePage.neverPlayed')}
-                  </span>
-                ))}
-              <span className="font-medium tabular-nums">
+              </div>
+            )}
+            {game.status !== 'not_installed' && game.installation && (
+              <div className="game-detail-meta-item">
+                <span className="game-detail-meta-label">{t('gamePage.lastPlayedLabel')}</span>
+                <span className="game-detail-meta-value">
+                  {getTimeAgo(game.installation.last_played)}
+                </span>
+              </div>
+            )}
+            {game.status !== 'not_installed' && game.installation && (
+              <div className="game-detail-meta-item">
+                <span className="game-detail-meta-label">{t('gamePage.playtimeLabel')}</span>
+                <span className="game-detail-meta-value">
+                  <Clock className="w-4 h-4" />
+                  {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
+                </span>
+              </div>
+            )}
+            <div className="game-detail-meta-item">
+              <span className="game-detail-meta-label">{t('gamePage.version')}</span>
+              <span className="game-detail-meta-value">
                 {versionText(game.info.channel, game.info.version)}
               </span>
             </div>
           </div>
-        </section>
 
-        <section className="game-page-side">
-          <div className="game-page-media">
-            {game.info.bannerUrl ? (
-              <img src={game.info.bannerUrl} alt={game.info.name} className="game-page-banner" />
-            ) : (
-              <div className="game-page-banner game-page-banner-placeholder">{initials}</div>
-            )}
-          </div>
-
-          {gameNews.length > 0 && (
-            <div className="game-page-news">
-              <GameNewsSection news={gameNews} />
-            </div>
+          {onSettings && (
+            <button
+              type="button"
+              onClick={onSettings}
+              className="game-detail-settings-btn"
+              title={t('gamePage.gameSettings')}
+              aria-label={t('gamePage.gameSettings')}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           )}
-        </section>
-      </section>
+        </div>
+
+        {isDownloading && (
+          <div className="game-detail-download">
+            <div className="game-detail-download-bar">
+              <div className="game-detail-download-fill" style={{ width: `${downloadPct}%` }} />
+            </div>
+            <div className="game-detail-download-meta">
+              <span>
+                {t('gamePage.filesProgress', {
+                  completed: downloadProgress?.completedFiles ?? 0,
+                  total: downloadProgress?.totalFiles ?? 0,
+                })}
+              </span>
+              <span>{downloadProgress?.speed}</span>
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="game-detail-download-cancel"
+                  title={t('common.cancel')}
+                  aria-label={t('common.cancel')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <aside className="game-detail-news">
+        <h3 className="game-detail-news-title">{t('gamePage.news')}</h3>
+        {gameNews.length > 0 ? (
+          <div className="game-detail-news-list">
+            {gameNews.map((item) => (
+              <article key={item.id} className="game-detail-news-card">
+                {item.imageUrl && (
+                  <div className="game-detail-news-thumb">
+                    <img src={resolveCdnUrl(item.imageUrl)} alt="" />
+                  </div>
+                )}
+                <div className="game-detail-news-body">
+                  <h4 className="game-detail-news-card-title">{item.title}</h4>
+                  <p className="game-detail-news-card-excerpt">{item.excerpt}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="game-detail-news-empty">{t('gamePage.noNewsForGame')}</p>
+        )}
+      </aside>
 
       {activeModal && (
         <GameDetailsModal
@@ -371,39 +385,6 @@ export function GamePage({
           onClose={() => setActiveModal(null)}
         />
       )}
-    </div>
-  );
-}
-
-function GameNewsSection({ news }: { news: NewsItem[] }) {
-  const { t } = useTranslation();
-  return (
-    <div className="game-news">
-      <div className="game-news-header">
-        <h3 className="game-news-title">{t('gamePage.news')}</h3>
-      </div>
-      <div className="game-news-list">
-        {news.map((item) => (
-          <article key={item.id} className="game-news-card">
-            <div className="game-news-body">
-              <div className="game-news-meta">
-                {item.category && <span className="badge badge-default">{item.category}</span>}
-                <span className="cluster cluster-sm caption">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(item.date).toLocaleDateString()}
-                </span>
-              </div>
-              <h4 className="game-news-card-title">{item.title}</h4>
-              <p className="game-news-card-excerpt">{item.excerpt}</p>
-            </div>
-            {item.imageUrl && (
-              <div className="game-news-thumb">
-                <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
     </div>
   );
 }
@@ -432,7 +413,12 @@ function GameDetailsModal({
       <div className="game-details-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="title-3">{title}</h3>
-          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="icon-btn"
+            aria-label={t('common.close')}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -527,7 +513,6 @@ function GameDetailsModal({
                           <span className="badge badge-default">{item.category}</span>
                         )}
                         <span className="cluster cluster-sm caption">
-                          <Calendar className="w-3 h-3" />
                           {new Date(item.date).toLocaleDateString()}
                         </span>
                       </div>

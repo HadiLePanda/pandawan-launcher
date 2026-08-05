@@ -2505,3 +2505,322 @@ input[type='search']::placeholder {
   white-space: nowrap;
   border-width: 0;
 }
+
+
+/* ----- Game detail redesign ----- */
+.game-detail {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  padding: 24px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.game-detail-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+}
+
+.game-detail-banner-image,
+.game-detail-banner-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-detail-banner-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.2) 50%, transparent 100%);
+}
+
+.game-detail-banner-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+}
+
+.game-detail-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin-bottom: 4px;
+}
+
+.game-detail-status {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.game-detail-action-panel {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.game-detail-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.game-detail-play-btn,
+.game-detail-menu-btn {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.game-detail-play-btn {
+  min-width: 160px;
+  border-radius: 6px 0 0 6px;
+}
+
+.game-detail-menu-btn {
+  width: 44px;
+  padding: 0;
+  border-left: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 0 6px 6px 0;
+}
+
+.game-detail-play-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.game-detail-play-btn.action-green,
+.game-detail-menu-btn.action-green {
+  background: var(--action);
+}
+
+.game-detail-play-btn.action-green:hover:not(:disabled),
+.game-detail-menu-btn.action-green:hover {
+  background: var(--action-hover);
+}
+
+.game-detail-play-btn.action-blue,
+.game-detail-menu-btn.action-blue {
+  background: var(--blue);
+}
+
+.game-detail-play-btn.action-blue:hover:not(:disabled),
+.game-detail-menu-btn.action-blue:hover {
+  background: var(--blue-hover);
+}
+
+.game-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.game-detail-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.game-detail-meta-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
+.game-detail-meta-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+}
+
+.game-detail-settings-btn {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.game-detail-settings-btn:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+.game-detail-download {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.game-detail-download-bar {
+  height: 4px;
+  background: var(--surface-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.game-detail-download-fill {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.2s ease;
+}
+
+.game-detail-download-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.game-detail-download-cancel {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.game-detail-download-cancel:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
+}
+
+.game-detail-news {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.game-detail-news-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-default);
+}
+
+.game-detail-news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-detail-news-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.game-detail-news-card:hover {
+  background: var(--surface-hover);
+}
+
+.game-detail-news-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-light);
+}
+
+.game-detail-news-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-detail-news-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-detail-news-card-excerpt {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-detail-news-empty {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 1024px) {
+  .game-detail {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .game-detail-news {
+    width: 100%;
+  }
+}

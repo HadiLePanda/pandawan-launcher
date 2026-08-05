@@ -267,6 +267,7 @@ function App() {
             onUpdate={() => handleUpdateGame(selectedGame.info.id)}
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}
             onVerify={() => handleVerifyGame(selectedGame.info.id)}
+            onSettings={() => setIsSettingsOpen(true)}
             onCancel={cancelOperation}
           />
         ) : (
