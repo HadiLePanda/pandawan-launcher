@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { SunMoon, Download, Bell, User, Settings } from 'lucide-react';
+import { SunMoon, Download, Bell, User, Settings, ServerOff, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
+import { WindowControls } from './WindowControls';
 
-interface AppTopBarProps {
+interface AppHeaderProps {
   activeView: 'games' | 'news' | 'store' | 'downloads';
   onGamesClick: () => void;
   onNewsClick: () => void;
@@ -13,6 +14,11 @@ interface AppTopBarProps {
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
   onDoubleClick?: () => void;
+  downloadsBadge?: number;
+  notificationsBadge?: number;
+  catalogUnreachable: boolean;
+  catalogSource: 'remote' | 'local' | 'embedded' | null;
+  onRetry: () => void;
 }
 
 function TopBarButton({
@@ -42,7 +48,27 @@ function TopBarButton({
   );
 }
 
-export function AppTopBar({
+function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="banner no-drag">
+      <ServerOff className="w-4 h-4 shrink-0" />
+      <span className="truncate">{t('app.connectionBanner')}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="btn btn-sm btn-ghost banner-retry"
+        aria-label={t('common.retry')}
+        title={t('common.retry')}
+      >
+        <RefreshCw className="w-4 h-4" />
+        <span className="hidden sm:inline">{t('common.retry')}</span>
+      </button>
+    </div>
+  );
+}
+
+export function AppHeader({
   activeView,
   onGamesClick,
   onNewsClick,
@@ -53,7 +79,10 @@ export function AppTopBar({
   onDoubleClick,
   downloadsBadge,
   notificationsBadge,
-}: AppTopBarProps & { downloadsBadge?: number; notificationsBadge?: number }) {
+  catalogUnreachable,
+  catalogSource,
+  onRetry,
+}: AppHeaderProps) {
   const { t } = useTranslation();
   const { settings, setSettings } = useLauncherStore();
   const currentTheme = settings?.theme || 'adaptive';
@@ -98,12 +127,25 @@ export function AppTopBar({
     { id: 'store' as const, label: t('topBar.store'), onClick: onStoreClick },
   ];
 
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, a, input, .no-drag')) {
+      return;
+    }
+    onDoubleClick?.();
+  };
+
+  const showConnectionBanner = catalogUnreachable && catalogSource !== 'remote';
+
   return (
-    <div data-tauri-drag-region onDoubleClick={onDoubleClick} className="app-topbar">
+    <div
+      data-tauri-drag-region
+      onDoubleClick={handleDoubleClick}
+      className="app-topbar"
+    >
       <div className="app-topbar-row">
-        <div className="cluster cluster-md">
+        <div className="cluster cluster-md no-drag">
           <div className="app-logo">P</div>
-          <nav className="cluster cluster-lg no-drag app-topbar-tabs">
+          <nav className="cluster cluster-lg app-topbar-tabs">
             {navItems.map((item) => (
               <button
                 type="button"
@@ -116,7 +158,12 @@ export function AppTopBar({
             ))}
           </nav>
         </div>
-        <div className="cluster cluster-sm no-drag">
+
+        <div className="flex-1 flex justify-center min-w-0">
+          {showConnectionBanner && <ConnectionBanner onRetry={onRetry} />}
+        </div>
+
+        <div className="cluster cluster-sm no-drag app-header-actions">
           <TopBarButton
             icon={<SunMoon className="w-4 h-4" />}
             label={t('topBar.themeLabel')}
@@ -156,6 +203,10 @@ export function AppTopBar({
               </div>
             )}
           </div>
+        </div>
+
+        <div className="window-controls-row no-drag">
+          <WindowControls />
         </div>
       </div>
     </div>

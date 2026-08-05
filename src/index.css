@@ -1104,23 +1104,19 @@ input[type='search']::placeholder {
   background: color-mix(in oklab, var(--surface-default) 60%, transparent);
 }
 
-/* ----- Title bar ----- */
-.titlebar {
-  height: 32px;
-  background: var(--canvas-default);
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 8px;
-}
-
 .window-controls {
   display: flex;
   align-items: center;
   height: 100%;
   gap: 0;
   padding-right: 0;
+}
+
+.window-controls-row {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex-shrink: 0;
 }
 
 .window-control {
@@ -1148,9 +1144,10 @@ input[type='search']::placeholder {
 
 /* ----- App top bar ----- */
 .app-topbar {
-  height: 48px;
-  background: var(--surface-default);
-  border-bottom: 1px solid var(--border-default);
+  height: 40px;
+  background: var(--canvas-default);
+  display: flex;
+  align-items: center;
 }
 
 .app-topbar-row {
@@ -1158,7 +1155,7 @@ input[type='search']::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .app-logo {
@@ -1176,7 +1173,7 @@ input[type='search']::placeholder {
 
 .nav-tab {
   position: relative;
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   padding: 0;
@@ -1185,22 +1182,32 @@ input[type='search']::placeholder {
   background: transparent;
   border: none;
   cursor: pointer;
+  transition: color 0.15s ease;
 }
 
 .nav-tab-active {
-  color: var(--ink-default);
+  color: var(--blue);
   font-weight: 500;
 }
 
-.nav-tab-active::after {
+.nav-tab::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: 6px;
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--selection);
-  opacity: 0.6;
+  background: var(--blue);
+  opacity: 0;
+  transform: scaleX(0.6);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.nav-tab-active::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .icon-btn {
@@ -2360,35 +2367,30 @@ input[type='search']::placeholder {
 
 /* ----- Feedback components ----- */
 .banner {
-  padding: 0.625rem 1.25rem;
-  background: var(--ember-muted);
-  border-bottom: 1px solid color-mix(in oklab, var(--ember) 20%, transparent);
-  color: var(--ember);
-  font-size: 0.875rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.light .banner {
-  background: color-mix(in oklab, var(--ember) 8%, var(--canvas-light));
-  border-color: color-mix(in oklab, var(--ember) 18%, var(--border-default));
-}
-
-.banner .btn-ghost {
+  gap: 8px;
+  padding: 0;
+  font-size: 0.75rem;
   color: var(--ember);
-}
-
-.banner .btn-ghost:hover {
-  color: var(--ember);
-  background: var(--ember-muted);
+  min-width: 0;
 }
 
 .banner-text {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.banner-retry {
+  height: 24px;
+  padding: 0 0.5rem;
+  color: var(--ember);
+}
+
+.banner-retry:hover {
+  color: var(--ember);
+  background: var(--ember-muted);
 }
 
 .toast {

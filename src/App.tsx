@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
-import { TitleBar } from '@components/TitleBar';
-import { AppTopBar } from '@components/AppTopBar';
+import { AppHeader } from '@components/AppHeader';
 import { GameSidebar } from '@components/GameSidebar';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
@@ -25,29 +23,13 @@ import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/update
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
-import { ServerOff, RefreshCw } from 'lucide-react';
+
 import { EmptyState } from '@components/EmptyState';
 
 declare global {
   interface Window {
     hideSplash?: () => void;
   }
-}
-
-function ConnectionBanner({ onRetry, className }: { onRetry: () => void; className?: string }) {
-  const { t } = useTranslation();
-  return (
-    <div className={cn('banner', className)}>
-      <div className="banner-text truncate">
-        <ServerOff className="w-4 h-4 shrink-0" />
-        <span className="truncate">{t('app.connectionBanner')}</span>
-      </div>
-      <button onClick={onRetry} className="btn btn-sm btn-ghost text-ember shrink-0">
-        <RefreshCw className="w-4 h-4" />
-        {t('common.retry')}
-      </button>
-    </div>
-  );
 }
 
 function App() {
@@ -359,34 +341,36 @@ function App() {
 
   return (
     <div className="h-screen max-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
-      <TitleBar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <AppTopBar
-          activeView={activeView}
-          onGamesClick={() => {
-            if (activeView === 'games') {
-              setSelectedGameId(null);
-            } else {
-              setActiveView('games');
-              setSelectedGameId(lastSelectedGameId);
-            }
-          }}
-          onNewsClick={() => {
-            setActiveView('news');
+      <AppHeader
+        activeView={activeView}
+        onGamesClick={() => {
+          if (activeView === 'games') {
+            setSelectedGameId(null);
+          } else {
+            setActiveView('games');
             setSelectedGameId(lastSelectedGameId);
-          }}
-          onStoreClick={() => {
-            setActiveView('store');
-            setSelectedGameId(lastSelectedGameId);
-          }}
-          onDownloadsClick={() => setActiveView('downloads')}
-          onNotificationsClick={() => setIsNotificationsOpen((v) => !v)}
-          onSettingsClick={() => setIsSettingsOpen(true)}
-          onDoubleClick={() => windowTitlebarToggleMaximize()}
-          downloadsBadge={activeDownloads.size}
-          notificationsBadge={unreadCount}
-        />
+          }
+        }}
+        onNewsClick={() => {
+          setActiveView('news');
+          setSelectedGameId(lastSelectedGameId);
+        }}
+        onStoreClick={() => {
+          setActiveView('store');
+          setSelectedGameId(lastSelectedGameId);
+        }}
+        onDownloadsClick={() => setActiveView('downloads')}
+        onNotificationsClick={() => setIsNotificationsOpen((v) => !v)}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        onDoubleClick={() => windowTitlebarToggleMaximize()}
+        downloadsBadge={activeDownloads.size}
+        notificationsBadge={unreadCount}
+        catalogUnreachable={catalogUnreachable}
+        catalogSource={catalogSource}
+        onRetry={() => loadCatalog()}
+      />
 
+      <div className="flex-1 flex flex-col overflow-hidden">
         {isNotificationsOpen && (
           <NotificationsPanel
             notifications={notifications}
@@ -394,10 +378,6 @@ function App() {
             onClear={clearNotifications}
             onClose={() => setIsNotificationsOpen(false)}
           />
-        )}
-
-        {catalogUnreachable && catalogSource !== 'remote' && (
-          <ConnectionBanner onRetry={() => loadCatalog()} className="shrink-0" />
         )}
 
         <UpdateBanner />
