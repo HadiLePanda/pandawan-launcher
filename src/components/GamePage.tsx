@@ -37,16 +37,16 @@ interface GamePageProps {
   onCancel?: () => void;
 }
 
-function channelLabel(channel: string): string {
+function channelLabel(t: (key: string) => string, channel: string): string {
   const normalized = channel.toLowerCase();
   if (normalized === 'stable') return '';
-  if (normalized === 'beta') return 'BETA';
-  if (normalized === 'alpha') return 'ALPHA';
+  if (normalized === 'beta') return t('gamePage.channel.beta');
+  if (normalized === 'alpha') return t('gamePage.channel.alpha');
   return channel.charAt(0).toUpperCase() + channel.slice(1);
 }
 
-function versionText(channel: string, version: string): string {
-  const label = channelLabel(channel);
+function versionText(t: (key: string) => string, channel: string, version: string): string {
+  const label = channelLabel(t, channel);
   return label ? `${label} v${version}` : `v${version}`;
 }
 
@@ -233,7 +233,7 @@ export function GamePage({
             <div className="game-detail-meta-item">
               <span className="game-detail-meta-label">{t('gamePage.version')}</span>
               <span className="game-detail-meta-value">
-                {versionText(game.info.channel, game.info.version)}
+                {versionText(t, game.info.channel, game.info.version)}
               </span>
             </div>
           </div>
@@ -389,7 +389,7 @@ export function GameDetailsModal({
               <div className="game-info-grid">
                 <InfoRow
                   label={t('gamePage.version')}
-                  value={versionText(game.info.channel, game.info.version)}
+                  value={versionText(t, game.info.channel, game.info.version)}
                 />
                 <InfoRow label={t('gamePage.size')} value={formatBytes(game.info.sizeBytes)} />
                 <InfoRow label={t('gamePage.developer')} value={game.info.developer} />

@@ -2,6 +2,7 @@ import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/ty
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
+import i18n from './i18n';
 import { logger } from './logger';
 
 /** Remote catalog endpoint. Lists game IDs + channels; no per-version URLs. */
@@ -87,9 +88,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     return { catalog: embedded, games, source: 'embedded', unreachable: true };
   }
 
-  throw new Error(
-    'No catalog could be loaded. Please check your connection or reinstall the launcher.'
-  );
+  throw new Error(i18n.t('errors.catalogLoadFailed'));
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {

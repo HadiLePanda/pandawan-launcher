@@ -198,8 +198,8 @@ function GeneralSettings({ settings, onChange }: TabProps) {
           onChange={(e) => onChange({ language: e.target.value })}
           className="w-full"
         >
-          <option value="en">English</option>
-          <option value="fr">Français</option>
+          <option value="en">{t('settings.general.language.en')}</option>
+          <option value="fr">{t('settings.general.language.fr')}</option>
         </select>
       </SettingItem>
 

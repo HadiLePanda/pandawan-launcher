@@ -1,3 +1,4 @@
+import i18n from './i18n';
 import type { LauncherError } from './bindings';
 
 /**
@@ -20,25 +21,29 @@ export class CommandError extends Error {
   private static messageFor(error: LauncherError): string {
     switch (error.code) {
       case 'NotInstalled':
-        return 'Game is not installed.';
+        return i18n.t('errors.notInstalled');
       case 'AlreadyRunning':
-        return 'Game is already running.';
+        return i18n.t('errors.alreadyRunning');
       case 'ExecutableNotFound':
-        return `Executable not found: ${(error.details as { path: string }).path}`;
+        return i18n.t('errors.executableNotFound', {
+          path: (error.details as { path: string }).path,
+        });
       case 'PathNotAllowed':
-        return `Path is outside the allowed install directory: ${(error.details as { path: string }).path}`;
+        return i18n.t('errors.pathNotAllowed', {
+          path: (error.details as { path: string }).path,
+        });
       case 'Network':
-        return `Network error: ${error.details as string}`;
+        return i18n.t('errors.network', { details: error.details as string });
       case 'ManifestParse':
-        return `Failed to parse manifest: ${error.details as string}`;
+        return i18n.t('errors.manifestParse', { details: error.details as string });
       case 'Validation':
-        return `Invalid settings: ${error.details as string}`;
+        return i18n.t('errors.validation', { details: error.details as string });
       case 'Io':
-        return `I/O error: ${error.details as string}`;
+        return i18n.t('errors.io', { details: error.details as string });
       case 'Other':
-        return (error.details as string) ?? 'Unknown launcher error';
+        return (error.details as string) ?? i18n.t('errors.unknown');
       default:
-        return 'Unknown launcher error';
+        return i18n.t('errors.unknown');
     }
   }
 }

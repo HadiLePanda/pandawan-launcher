@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import i18n from './i18n';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -66,7 +67,7 @@ export function formatDate(dateString: string): string {
 }
 
 export function getTimeAgo(dateString: string | null): string {
-  if (!dateString) return 'Never';
+  if (!dateString) return i18n.t('timeAgo.never');
 
   const date = new Date(dateString);
   const now = new Date();
@@ -80,13 +81,22 @@ export function getTimeAgo(dateString: string | null): string {
     return formatDate(dateString);
   }
   if (diffDays > 0) {
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) {
+      return i18n.t('timeAgo.dayAgo', { count: diffDays });
+    }
+    return i18n.t('timeAgo.daysAgo', { count: diffDays });
   }
   if (diffHours > 0) {
-    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffHours === 1) {
+      return i18n.t('timeAgo.hourAgo', { count: diffHours });
+    }
+    return i18n.t('timeAgo.hoursAgo', { count: diffHours });
   }
   if (diffMins > 0) {
-    return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffMins === 1) {
+      return i18n.t('timeAgo.minuteAgo', { count: diffMins });
+    }
+    return i18n.t('timeAgo.minutesAgo', { count: diffMins });
   }
-  return 'Just now';
+  return i18n.t('timeAgo.justNow');
 }

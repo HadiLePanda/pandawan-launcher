@@ -38,6 +38,10 @@
     "verifyFiles": "Vérifier les fichiers"
   },
   "gamePage": {
+    "channel": {
+      "alpha": "ALPHA",
+      "beta": "BETA"
+    },
     "developer": "Développeur",
     "filesProgress": "{{completed}} / {{total}} fichiers",
     "gameInfo": "Infos du jeu",
@@ -83,6 +87,18 @@
     "cancel": "Annuler",
     "empty": "Aucun téléchargement actif",
     "title": "Téléchargements"
+  },
+  "errors": {
+    "alreadyRunning": "Le jeu est déjà en cours d'exécution.",
+    "catalogLoadFailed": "Le catalogue n'a pas pu être chargé. Vérifie ta connexion ou réinstalle le launcher.",
+    "executableNotFound": "Exécutable introuvable : {{path}}",
+    "io": "Erreur d'entrée/sortie : {{details}}",
+    "manifestParse": "Échec de l'analyse du manifeste : {{details}}",
+    "network": "Erreur réseau : {{details}}",
+    "notInstalled": "Le jeu n'est pas installé.",
+    "pathNotAllowed": "Chemin en dehors du dossier d'installation autorisé : {{path}}",
+    "unknown": "Erreur du launcher inconnue",
+    "validation": "Paramètres invalides : {{details}}"
   },
   "notificationsPanel": {
     "clear": "Tout effacer",
@@ -142,6 +158,8 @@
       },
       "language": {
         "description": "Langue de l'interface",
+        "en": "English",
+        "fr": "Français",
         "title": "Langue"
       },
       "theme": {
@@ -170,6 +188,16 @@
       "notifications": "Notifications"
     },
     "title": "Paramètres"
+  },
+  "timeAgo": {
+    "dayAgo": "il y a {{count}} jour",
+    "daysAgo": "il y a {{count}} jours",
+    "hourAgo": "il y a {{count}} heure",
+    "hoursAgo": "il y a {{count}} heures",
+    "justNow": "À l'instant",
+    "minuteAgo": "il y a {{count}} minute",
+    "minutesAgo": "il y a {{count}} minutes",
+    "never": "Jamais"
   },
   "topBar": {
     "downloads": "Téléchargements",
