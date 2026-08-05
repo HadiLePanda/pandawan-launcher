@@ -351,6 +351,105 @@ body {
   margin: 8px 0;
 }
 
+/* Games bar — horizontal global library rail */
+.games-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--canvas-default);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.games-bar-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.games-bar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid transparent;
+  opacity: 0.55;
+  filter: grayscale(60%);
+  transition: opacity 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.games-bar-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.games-bar-icon.installed {
+  opacity: 1;
+  filter: none;
+}
+
+.games-bar-icon.selected {
+  border-color: var(--border-default);
+  opacity: 1;
+  filter: none;
+}
+
+.games-bar-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--ink-default);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease 0s;
+  z-index: 40;
+}
+
+.games-bar-item:hover .games-bar-tip {
+  opacity: 1;
+  transition-delay: 1s;
+}
+
+.games-bar-add {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-light);
+  color: var(--ink-muted);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.games-bar-add:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
 /* Filter panel inside the game sidebar */
 .filter-panel {
   display: flex;

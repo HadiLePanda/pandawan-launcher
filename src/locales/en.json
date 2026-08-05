@@ -19,6 +19,9 @@
     "dismiss": "Dismiss",
     "retry": "Retry"
   },
+  "gamesBar": {
+    "addGame": "Add a game"
+  },
   "gamesMenu": {
     "downloads": "Downloads",
     "home": "Home"

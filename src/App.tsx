@@ -4,6 +4,7 @@ import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
 import { AppHeader } from '@components/AppHeader';
 import { GameSidebar } from '@components/GameSidebar';
+import { GamesBar } from '@components/GamesBar';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
@@ -386,6 +387,17 @@ function App() {
         catalogSource={catalogSource}
         onRetry={() => loadCatalog()}
       />
+
+      {activeView === 'games' && (
+        <GamesBar
+          games={games.map((g) => g.info)}
+          installedIds={installedIds}
+          selectedGameId={selectedGameId}
+          onSelect={handleSelectGameIcon}
+          onContextMenu={handleContextMenu}
+          onAddGame={() => setIsAddGameOpen(true)}
+        />
+      )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {isNotificationsOpen && (

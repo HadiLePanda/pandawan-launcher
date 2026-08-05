@@ -19,6 +19,9 @@
     "dismiss": "Ignorer",
     "retry": "Réessayer"
   },
+  "gamesBar": {
+    "addGame": "Ajouter un jeu"
+  },
   "gamesMenu": {
     "downloads": "Téléchargements",
     "home": "Accueil"
