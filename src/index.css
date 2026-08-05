@@ -301,54 +301,10 @@ body {
   scrollbar-width: none;
 }
 
-/* Game sidebar — vertical left icon rail */
-.game-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-right: 1px solid var(--border-default);
-  background: var(--canvas-default);
-}
-
-.game-sidebar-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.game-sidebar-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  object-fit: cover;
-  opacity: 0.55;
-  filter: grayscale(60%);
-  transition:
-    opacity 0.15s ease,
-    filter 0.15s ease,
-    border-color 0.15s ease;
-  cursor: pointer;
-}
-
-.game-sidebar-icon.installed {
-  opacity: 1;
-  filter: none;
-}
-
-.game-sidebar-icon.selected {
-  border-color: var(--border-default);
-  opacity: 1;
-  filter: none;
-}
-
 .sidebar-separator {
   height: 1px;
   background: var(--border-default);
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 /* Games bar — horizontal global library rail */
@@ -450,24 +406,29 @@ body {
   color: var(--ink-default);
 }
 
-/* Filter panel inside the game sidebar */
-.filter-panel {
+/* Filters panel — left sidebar on games overview */
+.filters-panel {
+  width: 200px;
+  padding: 16px 12px;
+  background: var(--canvas-default);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .filter-search-row {
   display: flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
 }
 
 .filter-search {
   flex: 1;
-  height: 28px;
+  min-width: 0;
+  height: 30px;
   padding: 0 8px;
-  font-size: 0.75rem;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
   border-radius: 4px;
@@ -484,17 +445,16 @@ body {
 }
 
 .filter-reset {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  color: var(--ink-muted);
   background: transparent;
   border: none;
-  cursor: pointer;
-  opacity: 0.35;
+  color: var(--ink-dim);
+  opacity: 0.5;
   pointer-events: none;
   transition:
     opacity 0.15s ease,
@@ -502,56 +462,43 @@ body {
 }
 
 .filter-reset.active {
+  color: var(--ember);
   opacity: 1;
   pointer-events: auto;
 }
 
 .filter-reset.active:hover {
-  color: var(--ink-default);
   background: var(--surface-hover);
 }
 
-.filter-category {
+.filter-options {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
-.filter-category-title {
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-dim);
-}
-
-.filter-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.filter-pill {
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
+.filter-option {
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 0.8125rem;
   color: var(--ink-muted);
+  background: transparent;
+  border: none;
   border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
     color 0.15s ease,
     background 0.15s ease;
 }
 
-.filter-pill.selected {
+.filter-option:hover {
   color: var(--ink-default);
-  border-color: var(--ink-muted);
-  background: var(--surface-hover);
 }
 
-.filter-pill:hover {
-  border-color: var(--ink-muted);
+.filter-option.selected {
+  background: var(--surface-hover);
+  color: var(--ink-default);
 }
 
 

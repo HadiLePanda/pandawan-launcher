@@ -28,12 +28,9 @@
   },
   "filters": {
     "all": "All",
-    "genres": "Genres",
     "installed": "Installed",
-    "platforms": "Platforms",
     "reset": "Reset filters",
-    "searchPlaceholder": "Search games…",
-    "status": "Status"
+    "searchPlaceholder": "Search games…"
   },
   "contextMenu": {
     "gameInfo": "Game info",

@@ -8,19 +8,17 @@ export interface GameInfoLike {
 export interface GameFilters {
   status: 'all' | 'installed';
   platform: string | null;
-  genres: string[];
   search: string;
 }
 
 export const emptyFilters: GameFilters = {
   status: 'all',
   platform: null,
-  genres: [],
   search: '',
 };
 
 export function isDefaultFilters(f: GameFilters): boolean {
-  return f.status === 'all' && f.platform === null && f.genres.length === 0 && f.search === '';
+  return f.status === 'all' && f.platform === null && f.search === '';
 }
 
 export function filterGames(
@@ -32,7 +30,6 @@ export function filterGames(
   return games.filter((g) => {
     if (f.status === 'installed' && !installedIds.has(g.id)) return false;
     if (f.platform && !g.supportedPlatforms?.includes(f.platform)) return false;
-    if (f.genres.length > 0 && !f.genres.some((genre) => g.genre.includes(genre))) return false;
     if (q && !g.name.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -44,8 +41,19 @@ export function collectPlatforms(games: GameInfoLike[]): string[] {
   return Array.from(set).sort();
 }
 
-export function collectGenres(games: GameInfoLike[]): string[] {
-  const set = new Set<string>();
-  games.forEach((g) => g.genre.forEach((genre) => set.add(genre)));
-  return Array.from(set).sort();
+export const PLATFORM_LABELS: Record<string, string> = {
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+};
+
+export function platformLabel(platform: string): string {
+  return PLATFORM_LABELS[platform] ?? platform.charAt(0).toUpperCase() + platform.slice(1);
 }
+
+/**
+ * Extensibility contract for adding a new filter:
+ * 1. Add the field to `GameFilters` and `emptyFilters`/`isDefaultFilters`.
+ * 2. Add the matching predicate inside `filterGames`.
+ * 3. Add a new section to the declarative `sections` array in `FiltersPanel`.
+ */

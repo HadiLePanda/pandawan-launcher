@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
 import { AppHeader } from '@components/AppHeader';
-import { GameSidebar } from '@components/GameSidebar';
+import { FiltersPanel } from '@components/FiltersPanel';
 import { GamesBar } from '@components/GamesBar';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
@@ -421,13 +421,9 @@ function App() {
         <UpdateBanner />
 
         <div className="app-body flex flex-row flex-1 overflow-hidden">
-          {activeView === 'games' && (
-            <GameSidebar
+          {activeView === 'games' && !selectedGameId && (
+            <FiltersPanel
               games={games.map((g) => g.info)}
-              installedIds={installedIds}
-              selectedGameId={selectedGameId}
-              onSelect={handleSelectGameIcon}
-              onContextMenu={handleContextMenu}
               filters={gameFilters}
               onFilterChange={setGameFilters}
             />

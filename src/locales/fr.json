@@ -28,12 +28,9 @@
   },
   "filters": {
     "all": "Tous",
-    "genres": "Genres",
     "installed": "Installés",
-    "platforms": "Plateformes",
     "reset": "Réinitialiser les filtres",
-    "searchPlaceholder": "Rechercher des jeux…",
-    "status": "Statut"
+    "searchPlaceholder": "Rechercher des jeux…"
   },
   "contextMenu": {
     "gameInfo": "Infos du jeu",

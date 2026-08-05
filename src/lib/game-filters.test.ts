@@ -4,7 +4,6 @@ import {
   emptyFilters,
   isDefaultFilters,
   collectPlatforms,
-  collectGenres,
   type GameFilters,
   type GameInfoLike,
 } from './game-filters';
@@ -55,14 +54,8 @@ describe('game-filters', () => {
     expect(result.map((g) => g.id)).toEqual(['astro-odyssey', 'pixel-racer']);
   });
 
-  it('genres multi-select: game matches if it has ANY selected genre', () => {
-    const filters: GameFilters = { ...emptyFilters, genres: ['RPG', 'Card'] };
-    const result = filterGames(games, installedIds, filters);
-    expect(result.map((g) => g.id)).toEqual(['astro-odyssey', 'dungeon-crawl', 'void-solitaire']);
-  });
-
   it('search narrows by name case-insensitively within already-filtered set', () => {
-    const filters: GameFilters = { ...emptyFilters, genres: ['RPG'], search: 'dungeon' };
+    const filters: GameFilters = { ...emptyFilters, search: 'dungeon' };
     const result = filterGames(games, installedIds, filters);
     expect(result.map((g) => g.id)).toEqual(['dungeon-crawl']);
   });
@@ -71,16 +64,11 @@ describe('game-filters', () => {
     expect(isDefaultFilters(emptyFilters)).toBe(true);
     expect(isDefaultFilters({ ...emptyFilters, status: 'installed' })).toBe(false);
     expect(isDefaultFilters({ ...emptyFilters, platform: 'windows' })).toBe(false);
-    expect(isDefaultFilters({ ...emptyFilters, genres: ['RPG'] })).toBe(false);
     expect(isDefaultFilters({ ...emptyFilters, search: 'astro' })).toBe(false);
   });
 
   it('collectPlatforms returns sorted unique values', () => {
     expect(collectPlatforms(games)).toEqual(['linux', 'macos', 'windows']);
-  });
-
-  it('collectGenres returns sorted unique values', () => {
-    expect(collectGenres(games)).toEqual(['Action', 'Adventure', 'Card', 'RPG', 'Racing']);
   });
 
   it('handles games without supportedPlatforms gracefully', () => {
