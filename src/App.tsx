@@ -15,7 +15,7 @@ import { PlayerProfile } from '@components/PlayerProfile';
 import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
 import * as gameService from '@/lib/game-service';
-import { checkForUpdates as checkForLauncherUpdate } from '@/lib/updater-service';
+import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/updater-service';
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
@@ -101,15 +101,18 @@ function App() {
 
     init();
 
-    // Silent launcher update check; runs in parallel with startup loading.
-    // The service logs and swallows failures so startup is never blocked.
-    void checkForLauncherUpdate();
-
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Silent launcher update check, fired once settings are loaded and only
+  // when the autoUpdateLauncher toggle is on. Manual checks in Settings are
+  // unaffected. The service logs and swallows failures, so the UI never blocks.
+  useEffect(() => {
+    void checkForLauncherUpdate(settings?.autoUpdateLauncher);
+  }, [settings?.autoUpdateLauncher]);
 
   useEffect(() => {
     void applyLanguage(settings?.language);

@@ -61,6 +61,11 @@
     "emptyDescription": "Schau später wieder vorbei.",
     "emptyTitle": "Noch keine Neuigkeiten"
   },
+  "notifications": {
+    "installComplete": "Installation abgeschlossen",
+    "updateAvailable": "Update verfügbar",
+    "updateComplete": "Update abgeschlossen"
+  },
   "playerProfile": {
     "comingSoonDescription": "Kontofunktionen kommen bald. Hier verwaltest du dein Pandawan-Konto, deine Freundesliste und deine Käufe.",
     "playerName": "Spieler",
@@ -111,10 +116,6 @@
       }
     },
     "general": {
-      "closeToTray": {
-        "description": "Beim Schließen in den Infobereich minimieren",
-        "title": "In den Infobereich schließen"
-      },
       "installLocation": {
         "browse": "Durchsuchen",
         "defaultPath": "Standard (PandawanGames)",
@@ -124,10 +125,6 @@
       "language": {
         "description": "Sprache der Benutzeroberfläche",
         "title": "Sprache"
-      },
-      "minimizeToTray": {
-        "description": "Launcher beim Minimieren im Infobereich weiterlaufen lassen",
-        "title": "Im Infobereich minimieren"
       },
       "theme": {
         "adaptive": "Automatisch (System)",
@@ -142,17 +139,9 @@
         "description": "Benachrichtigen, wenn Downloads abgeschlossen sind",
         "title": "Download abgeschlossen"
       },
-      "friendActivity": {
-        "description": "Über Spielaktivität von Freunden benachrichtigen",
-        "title": "Freundesaktivität"
-      },
       "gameUpdates": {
         "description": "Benachrichtigen, wenn Spiel-Updates verfügbar sind",
         "title": "Spiel-Updates verfügbar"
-      },
-      "newsEvents": {
-        "description": "Neuigkeiten zu Spielen und Events erhalten",
-        "title": "Neuigkeiten und Events"
       }
     },
     "saveChanges": "Änderungen speichern",

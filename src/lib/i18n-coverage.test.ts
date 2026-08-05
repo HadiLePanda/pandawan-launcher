@@ -19,17 +19,16 @@ function flattenKeys(messages: LocaleMessages, prefix = ''): string[] {
 }
 
 /**
- * Collects every `t('...')` call with a string-literal key from src/**.tsx
- * component sources. Only single/double-quoted literal keys are captured;
+ * Collects every `t('...')` call with a string-literal key from src/**.{ts,tsx}
+ * sources. Only single/double-quoted literal keys are captured;
  * template literals (dynamic keys like t(`prefix.${id}`)) are not matchable
  * by this regex and are intentionally out of scope — none exist today.
  * Test files are excluded: i18n.test.ts deliberately resolves unknown keys.
  *
  * Known blind spots to address when they first occur:
- * (a) only .tsx files are scanned — t() calls in .ts modules are invisible;
- * (b) i18next plural forms (key_one/key_other) will need special handling
+ * (a) i18next plural forms (key_one/key_other) will need special handling
  *     once the first plural key arrives;
- * (c) the regex can false-positive on a local variable named `t` that is
+ * (b) the regex can false-positive on a local variable named `t` that is
  *     not the translation function.
  */
 function collectReferencedKeys(rootDir: string): Map<string, string[]> {
@@ -43,7 +42,11 @@ function collectReferencedKeys(rootDir: string): Map<string, string[]> {
       const fullPath = join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);
-      } else if (entry.name.endsWith('.tsx') && !entry.name.endsWith('.test.tsx')) {
+      } else if (
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
+        !entry.name.endsWith('.test.ts') &&
+        !entry.name.endsWith('.test.tsx')
+      ) {
         const source = readFileSync(fullPath, 'utf-8');
         for (const match of source.matchAll(tCall)) {
           const key = match[2];

@@ -61,6 +61,11 @@
     "emptyDescription": "Vuelve más tarde para ver las novedades.",
     "emptyTitle": "Aún no hay noticias"
   },
+  "notifications": {
+    "installComplete": "Instalación completada",
+    "updateAvailable": "Actualización disponible",
+    "updateComplete": "Actualización completada"
+  },
   "playerProfile": {
     "comingSoonDescription": "Las funciones de la cuenta llegarán pronto. Aquí podrás gestionar tu cuenta de Pandawan, tu lista de amigos y tus compras.",
     "playerName": "Jugador",
@@ -111,10 +116,6 @@
       }
     },
     "general": {
-      "closeToTray": {
-        "description": "Minimizar a la bandeja en lugar de cerrar",
-        "title": "Cerrar a la bandeja"
-      },
       "installLocation": {
         "browse": "Examinar",
         "defaultPath": "Predeterminada (PandawanGames)",
@@ -124,10 +125,6 @@
       "language": {
         "description": "Idioma de la interfaz",
         "title": "Idioma"
-      },
-      "minimizeToTray": {
-        "description": "Mantener el launcher en ejecución en la bandeja del sistema al minimizar",
-        "title": "Minimizar a la bandeja"
       },
       "theme": {
         "adaptive": "Automático (sistema)",
@@ -142,17 +139,9 @@
         "description": "Notificar cuando finalicen las descargas",
         "title": "Descarga completada"
       },
-      "friendActivity": {
-        "description": "Notificar la actividad de juego de los amigos",
-        "title": "Actividad de amigos"
-      },
       "gameUpdates": {
         "description": "Notificar cuando haya actualizaciones de juegos disponibles",
         "title": "Actualizaciones de juegos disponibles"
-      },
-      "newsEvents": {
-        "description": "Recibir noticias sobre juegos y eventos",
-        "title": "Noticias y eventos"
       }
     },
     "saveChanges": "Guardar cambios",

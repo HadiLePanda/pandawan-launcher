@@ -220,21 +220,6 @@ function GeneralSettings({ settings, onChange }: TabProps) {
           <option value="light">{t('settings.general.theme.light')}</option>
         </select>
       </SettingItem>
-
-      <hr className="border-border" />
-
-      <ToggleSetting
-        title={t('settings.general.minimizeToTray.title')}
-        description={t('settings.general.minimizeToTray.description')}
-        checked={settings.minimizeToTray}
-        onChange={(checked) => onChange({ minimizeToTray: checked })}
-      />
-      <ToggleSetting
-        title={t('settings.general.closeToTray.title')}
-        description={t('settings.general.closeToTray.description')}
-        checked={settings.closeToTray}
-        onChange={(checked) => onChange({ closeToTray: checked })}
-      />
     </div>
   );
 }
@@ -323,6 +308,8 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 
 function NotificationSettings({ settings, onChange }: TabProps) {
   const { t } = useTranslation();
+  // notifyFriendActivity and notifyNewsEvents have no behavior behind them
+  // yet; the LauncherSettings fields are kept for a future implementation.
   return (
     <div className="setting-group">
       <ToggleSetting
@@ -336,18 +323,6 @@ function NotificationSettings({ settings, onChange }: TabProps) {
         description={t('settings.notifications.downloadComplete.description')}
         checked={settings.notifyDownloadComplete}
         onChange={(checked) => onChange({ notifyDownloadComplete: checked })}
-      />
-      <ToggleSetting
-        title={t('settings.notifications.friendActivity.title')}
-        description={t('settings.notifications.friendActivity.description')}
-        checked={settings.notifyFriendActivity}
-        onChange={(checked) => onChange({ notifyFriendActivity: checked })}
-      />
-      <ToggleSetting
-        title={t('settings.notifications.newsEvents.title')}
-        description={t('settings.notifications.newsEvents.description')}
-        checked={settings.notifyNewsEvents}
-        onChange={(checked) => onChange({ notifyNewsEvents: checked })}
       />
     </div>
   );

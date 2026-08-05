@@ -166,7 +166,11 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       const installations = await gameService.loadInstalledGames();
       set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
-      await get().refreshUpdateStatus();
+      // Missing settings (not loaded yet) are treated as enabled, matching the
+      // DEFAULT_SETTINGS in Settings.tsx where autoUpdateGames defaults to true.
+      if (get().settings?.autoUpdateGames ?? true) {
+        await get().refreshUpdateStatus();
+      }
     } catch (err) {
       handleStoreError(err, set, 'loadGames');
       set({ isLoading: false });

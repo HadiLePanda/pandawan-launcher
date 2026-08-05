@@ -81,6 +81,17 @@ export async function checkForUpdates(options?: CheckForUpdatesOptions): Promise
   }
 }
 
+// Silent startup update check, gated on the autoUpdateLauncher setting.
+// `undefined` means settings have not loaded yet: skip rather than guess.
+// Manual checks (Settings -> About) call checkForUpdates directly and are
+// unaffected by the toggle.
+export async function checkForUpdatesOnStartup(
+  autoUpdateEnabled: boolean | undefined
+): Promise<void> {
+  if (!autoUpdateEnabled) return;
+  await checkForUpdates();
+}
+
 export async function downloadAndInstall(): Promise<void> {
   const update = pendingUpdate;
   if (!update || useUpdaterStore.getState().status === 'downloading') {

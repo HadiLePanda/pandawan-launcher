@@ -227,6 +227,30 @@ describe('updater-service', () => {
     });
   });
 
+  describe('checkForUpdatesOnStartup', () => {
+    it('checks for updates when the autoUpdateLauncher toggle is on', async () => {
+      (check as Mock).mockResolvedValue(null);
+
+      await service.checkForUpdatesOnStartup(true);
+
+      expect(check).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips the check when the autoUpdateLauncher toggle is off', async () => {
+      await service.checkForUpdatesOnStartup(false);
+
+      expect(check).not.toHaveBeenCalled();
+      expect(service.useUpdaterStore.getState().status).toBe('idle');
+    });
+
+    it('skips the check while settings are not loaded yet', async () => {
+      await service.checkForUpdatesOnStartup(undefined);
+
+      expect(check).not.toHaveBeenCalled();
+      expect(service.useUpdaterStore.getState().status).toBe('idle');
+    });
+  });
+
   describe('dismissBanner', () => {
     it('hides the banner for the session', () => {
       service.useUpdaterStore.setState({ status: 'available', version: '0.2.0' });

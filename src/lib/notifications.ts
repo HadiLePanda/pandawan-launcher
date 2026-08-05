@@ -3,6 +3,7 @@ import {
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
+import i18n from './i18n';
 import { logger } from './logger';
 
 // `enabled` is the resolved settings toggle for this notification type,
@@ -31,13 +32,13 @@ async function notify(title: string, body: string, enabled: boolean): Promise<vo
 }
 
 export function notifyInstallComplete(gameName: string, enabled: boolean): Promise<void> {
-  return notify(gameName, 'Installation complete', enabled);
+  return notify(gameName, i18n.t('notifications.installComplete'), enabled);
 }
 
 export function notifyUpdateComplete(gameName: string, enabled: boolean): Promise<void> {
-  return notify(gameName, 'Update complete', enabled);
+  return notify(gameName, i18n.t('notifications.updateComplete'), enabled);
 }
 
 export function notifyUpdateAvailable(gameName: string, enabled: boolean): Promise<void> {
-  return notify(gameName, 'Update available', enabled);
+  return notify(gameName, i18n.t('notifications.updateAvailable'), enabled);
 }

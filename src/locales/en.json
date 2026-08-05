@@ -61,6 +61,11 @@
     "emptyDescription": "Check back later for updates.",
     "emptyTitle": "No News Yet"
   },
+  "notifications": {
+    "installComplete": "Installation complete",
+    "updateAvailable": "Update available",
+    "updateComplete": "Update complete"
+  },
   "playerProfile": {
     "comingSoonDescription": "Account features are coming soon. Here you'll manage your Pandawan account, friends list, and purchases.",
     "playerName": "Player",
@@ -111,10 +116,6 @@
       }
     },
     "general": {
-      "closeToTray": {
-        "description": "Minimize to tray instead of closing",
-        "title": "Close to tray"
-      },
       "installLocation": {
         "browse": "Browse",
         "defaultPath": "Default (PandawanGames)",
@@ -124,10 +125,6 @@
       "language": {
         "description": "Interface language",
         "title": "Language"
-      },
-      "minimizeToTray": {
-        "description": "Keep launcher running in system tray when minimized",
-        "title": "Minimize to tray"
       },
       "theme": {
         "adaptive": "Adaptive (System)",
@@ -142,17 +139,9 @@
         "description": "Notify when downloads finish",
         "title": "Download complete"
       },
-      "friendActivity": {
-        "description": "Notify about friends' game activity",
-        "title": "Friend activity"
-      },
       "gameUpdates": {
         "description": "Notify when game updates are available",
         "title": "Game updates available"
-      },
-      "newsEvents": {
-        "description": "Receive news about games and events",
-        "title": "News and events"
       }
     },
     "saveChanges": "Save Changes",

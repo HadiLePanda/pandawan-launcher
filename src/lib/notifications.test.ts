@@ -4,6 +4,7 @@ import {
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
+import i18n from './i18n';
 import {
   notifyInstallComplete,
   notifyUpdateAvailable,
@@ -17,12 +18,14 @@ vi.mock('@tauri-apps/plugin-notification', () => ({
 }));
 
 describe('notifications', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // resetAllMocks also clears implementations, so defaults are
     // re-established here for every test.
     vi.resetAllMocks();
     (isPermissionGranted as Mock).mockResolvedValue(true);
     (requestPermission as Mock).mockResolvedValue('granted');
+    // Bodies resolve through the shared i18next instance; pin it to English.
+    await i18n.changeLanguage('en');
   });
 
   describe('notifyInstallComplete', () => {
@@ -76,6 +79,30 @@ describe('notifications', () => {
       await notifyUpdateAvailable('Quirheim Online', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('localization', () => {
+    it('resolves the body in the active language', async () => {
+      await i18n.changeLanguage('fr');
+
+      await notifyInstallComplete('Quirheim Online', true);
+
+      expect(sendNotification).toHaveBeenCalledWith({
+        title: 'Quirheim Online',
+        body: 'Installation terminée',
+      });
+    });
+
+    it('keeps the game name as the title regardless of language', async () => {
+      await i18n.changeLanguage('de');
+
+      await notifyUpdateAvailable('Quirheim Online', true);
+
+      expect(sendNotification).toHaveBeenCalledWith({
+        title: 'Quirheim Online',
+        body: 'Update verfügbar',
+      });
     });
   });
 

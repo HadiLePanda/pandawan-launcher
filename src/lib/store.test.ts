@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import {
   checkForUpdates as serviceCheckForUpdates,
   loadInstallation,
+  loadInstalledGames,
   patchGame,
 } from './game-service';
 import {
@@ -14,6 +15,7 @@ import type { Game, GameInfo, GameInstallation, LauncherSettings } from '@/types
 vi.mock('./game-service', () => ({
   checkForUpdates: vi.fn(),
   loadInstallation: vi.fn(),
+  loadInstalledGames: vi.fn(),
   patchGame: vi.fn(),
 }));
 
@@ -216,5 +218,48 @@ describe('store refreshInstallation', () => {
     await store.useLauncherStore.getState().refreshInstallation('game-1');
 
     expect(store.useLauncherStore.getState().games[0].installation).toEqual(makeInstallation());
+  });
+});
+
+// Focused coverage for the autoUpdateGames toggle: loadGames triggers an
+// automatic update-status refresh only when the setting allows it. Manual
+// per-game checks (checkForUpdates) are covered above and stay ungated.
+describe('store loadGames autoUpdateGames gating', () => {
+  let store: typeof import('./store');
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    (loadInstalledGames as Mock).mockResolvedValue([makeInstallation()]);
+    (serviceCheckForUpdates as Mock).mockResolvedValue(false);
+    store = await import('./store');
+    store.useLauncherStore.setState({
+      games: [makeGame()],
+      settings: makeSettings(),
+    });
+  });
+
+  it('refreshes update status when autoUpdateGames is enabled', async () => {
+    await store.useLauncherStore.getState().loadGames();
+
+    expect(serviceCheckForUpdates).toHaveBeenCalledTimes(1);
+    expect(serviceCheckForUpdates).toHaveBeenCalledWith('game-1', 'stable');
+  });
+
+  it('skips the update-status refresh when autoUpdateGames is disabled', async () => {
+    store.useLauncherStore.setState({ settings: makeSettings({ autoUpdateGames: false }) });
+
+    await store.useLauncherStore.getState().loadGames();
+
+    expect(loadInstalledGames).toHaveBeenCalledTimes(1);
+    expect(serviceCheckForUpdates).not.toHaveBeenCalled();
+  });
+
+  it('treats missing settings as enabled, matching DEFAULT_SETTINGS', async () => {
+    store.useLauncherStore.setState({ settings: null });
+
+    await store.useLauncherStore.getState().loadGames();
+
+    expect(serviceCheckForUpdates).toHaveBeenCalledTimes(1);
   });
 });
