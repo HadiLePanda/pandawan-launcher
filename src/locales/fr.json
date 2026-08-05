@@ -19,6 +19,15 @@
     "dismiss": "Ignorer",
     "retry": "Réessayer"
   },
+  "filters": {
+    "all": "Tous",
+    "genres": "Genres",
+    "installed": "Installés",
+    "platforms": "Plateformes",
+    "reset": "Réinitialiser les filtres",
+    "searchPlaceholder": "Rechercher des jeux…",
+    "status": "Statut"
+  },
   "gamePage": {
     "developer": "Développeur",
     "filesProgress": "{{completed}} / {{total}} fichiers",

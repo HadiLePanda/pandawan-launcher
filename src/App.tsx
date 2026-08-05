@@ -77,6 +77,8 @@ function App() {
     settings,
     catalogSource,
     catalogUnreachable,
+    gameFilters,
+    setGameFilters,
   } = useLauncherStore();
 
   const installedIds = useMemo(
@@ -308,6 +310,8 @@ function App() {
               selectedGameId={selectedGameId}
               onSelect={handleSelectGameIcon}
               onContextMenu={handleContextMenu}
+              filters={gameFilters}
+              onFilterChange={setGameFilters}
             />
           )}
           <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>
@@ -343,7 +347,6 @@ function App() {
           setVerifyError(null);
         }}
       />
-
     </div>
   );
 }

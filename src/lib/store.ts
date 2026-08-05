@@ -11,6 +11,7 @@ import {
 } from './notifications';
 import type { DownloadProgressSnapshot } from './download-channel';
 import { CommandError } from './errors';
+import { emptyFilters, type GameFilters } from './game-filters';
 
 type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
 
@@ -26,6 +27,7 @@ interface LauncherState {
   settings: LauncherSettings | null;
   catalogSource: 'remote' | 'local' | 'embedded' | null;
   catalogUnreachable: boolean;
+  gameFilters: GameFilters;
 
   // Actions
   setGames: (games: Game[]) => void;
@@ -42,6 +44,7 @@ interface LauncherState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  setGameFilters: (partial: Partial<GameFilters>) => void;
 
   // Async actions
   loadCatalog: () => Promise<void>;
@@ -68,6 +71,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   settings: null,
   catalogSource: null,
   catalogUnreachable: false,
+  gameFilters: emptyFilters,
 
   setGames: (games) => set({ games }),
   selectGame: (gameId) => set({ selectedGameId: gameId }),
@@ -109,6 +113,8 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
+  setGameFilters: (partial) =>
+    set((state) => ({ gameFilters: { ...state.gameFilters, ...partial } })),
 
   setSettings: async (settings) => {
     try {

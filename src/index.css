@@ -327,7 +327,10 @@ body {
   object-fit: cover;
   opacity: 0.55;
   filter: grayscale(60%);
-  transition: opacity 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease,
+    border-color 0.15s ease;
   cursor: pointer;
 }
 
@@ -346,6 +349,110 @@ body {
   height: 1px;
   background: var(--border-default);
   margin: 8px 0;
+}
+
+/* Filter panel inside the game sidebar */
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-search {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--ink-default);
+  outline: none;
+}
+
+.filter-search::placeholder {
+  color: var(--ink-dim);
+}
+
+.filter-search:focus {
+  border-color: var(--ink-muted);
+}
+
+.filter-reset {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.35;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+
+.filter-reset.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.filter-reset.active:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
+}
+
+.filter-category {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-category-title {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-pill {
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  color: var(--ink-muted);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.filter-pill.selected {
+  color: var(--ink-default);
+  border-color: var(--ink-muted);
+  background: var(--surface-hover);
+}
+
+.filter-pill:hover {
+  border-color: var(--ink-muted);
 }
 
 /* Game card hover effect */
@@ -1147,7 +1254,9 @@ input[type='search']::placeholder {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .topbar-btn:hover {
