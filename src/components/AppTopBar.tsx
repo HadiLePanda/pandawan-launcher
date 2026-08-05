@@ -10,6 +10,7 @@ interface AppTopBarProps {
   onNewsClick: () => void;
   onStoreClick: () => void;
   onDownloadsClick: () => void;
+  onNotificationsClick: () => void;
   onSettingsClick: () => void;
   onDoubleClick?: () => void;
 }
@@ -47,6 +48,7 @@ export function AppTopBar({
   onNewsClick,
   onStoreClick,
   onDownloadsClick,
+  onNotificationsClick,
   onSettingsClick,
   onDoubleClick,
   downloadsBadge,
@@ -130,6 +132,7 @@ export function AppTopBar({
             icon={<Bell className="w-4 h-4" />}
             label={t('topBar.notifications')}
             badge={notificationsBadge}
+            onClick={onNotificationsClick}
           />
           <div className="relative" ref={profileMenuRef}>
             <TopBarButton

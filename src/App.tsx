@@ -11,6 +11,7 @@ import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
 import { NewsArticleView } from '@components/NewsArticleView';
 import { DownloadsPage } from '@components/DownloadsPage';
+import { NotificationsPanel } from '@components/NotificationsPanel';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
@@ -52,6 +53,7 @@ function ConnectionBanner({ onRetry, className }: { onRetry: () => void; classNa
 function App() {
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
@@ -91,11 +93,19 @@ function App() {
     catalogUnreachable,
     gameFilters,
     setGameFilters,
+    notifications,
+    markAllNotificationsRead,
+    clearNotifications,
   } = useLauncherStore();
 
   const installedIds = useMemo(
     () => new Set(games.filter((g) => g.status !== 'not_installed').map((g) => g.info.id)),
     [games]
+  );
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
   );
 
   const filteredGameIds = useMemo(() => {
@@ -370,11 +380,21 @@ function App() {
             setSelectedGameId(lastSelectedGameId);
           }}
           onDownloadsClick={() => setActiveView('downloads')}
+          onNotificationsClick={() => setIsNotificationsOpen((v) => !v)}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onDoubleClick={() => windowTitlebarToggleMaximize()}
           downloadsBadge={activeDownloads.size}
-          notificationsBadge={0}
+          notificationsBadge={unreadCount}
         />
+
+        {isNotificationsOpen && (
+          <NotificationsPanel
+            notifications={notifications}
+            onMarkAllRead={markAllNotificationsRead}
+            onClear={clearNotifications}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
+        )}
 
         {catalogUnreachable && catalogSource !== 'remote' && (
           <ConnectionBanner onRetry={() => loadCatalog()} className="shrink-0" />

@@ -84,6 +84,12 @@
     "empty": "Aucun téléchargement actif",
     "title": "Téléchargements"
   },
+  "notificationsPanel": {
+    "clear": "Tout effacer",
+    "empty": "Aucune notification",
+    "markAllRead": "Tout marquer comme lu",
+    "title": "Notifications"
+  },
   "settings": {
     "about": {
       "developer": "Développeur",

@@ -84,6 +84,12 @@
     "empty": "No active downloads",
     "title": "Downloads"
   },
+  "notificationsPanel": {
+    "clear": "Clear all",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "title": "Notifications"
+  },
   "settings": {
     "about": {
       "developer": "Developer",

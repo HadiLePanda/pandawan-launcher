@@ -4,6 +4,7 @@ import * as catalogService from './catalog-service';
 import * as newsService from './news-service';
 import * as gameService from './game-service';
 import { logger } from './logger';
+import i18n from './i18n';
 import {
   notifyInstallComplete,
   notifyUpdateAvailable,
@@ -12,6 +13,14 @@ import {
 import type { DownloadProgressSnapshot } from './download-channel';
 import { CommandError } from './errors';
 import { emptyFilters, type GameFilters } from './game-filters';
+
+export interface LauncherNotification {
+  id: string;
+  title: string;
+  body: string;
+  date: string;
+  read: boolean;
+}
 
 type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
 
@@ -28,9 +37,13 @@ interface LauncherState {
   catalogSource: 'remote' | 'local' | 'embedded' | null;
   catalogUnreachable: boolean;
   gameFilters: GameFilters;
+  notifications: LauncherNotification[];
 
   // Actions
   setGames: (games: Game[]) => void;
+  pushNotification: (notification: Omit<LauncherNotification, 'id' | 'date' | 'read'>) => void;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
   selectGame: (gameId: string | null) => void;
   addGame: (gameInfo: GameInfo) => void;
   updateGameStatus: (
@@ -72,8 +85,24 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   catalogSource: null,
   catalogUnreachable: false,
   gameFilters: emptyFilters,
+  notifications: [],
 
   setGames: (games) => set({ games }),
+
+  pushNotification: (notification) =>
+    set((state) => ({
+      notifications: [
+        { ...notification, id: crypto.randomUUID(), date: new Date().toISOString(), read: false },
+        ...state.notifications,
+      ],
+    })),
+
+  markAllNotificationsRead: () =>
+    set((state) => ({
+      notifications: state.notifications.map((n) => (n.read ? n : { ...n, read: true })),
+    })),
+
+  clearNotifications: () => set({ notifications: [] }),
   selectGame: (gameId) => set({ selectedGameId: gameId }),
 
   addGame: (gameInfo) => {
@@ -346,8 +375,16 @@ async function runPatchFlow(
     const downloadNotify = get().settings?.notifyDownloadComplete ?? true;
     if (activeStatus === 'updating') {
       void notifyUpdateComplete(gameName, downloadNotify);
+      get().pushNotification({
+        title: gameName,
+        body: i18n.t('notifications.updateComplete'),
+      });
     } else {
       void notifyInstallComplete(gameName, downloadNotify);
+      get().pushNotification({
+        title: gameName,
+        body: i18n.t('notifications.installComplete'),
+      });
     }
   } catch (err) {
     const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
@@ -366,5 +403,9 @@ function setGameHasUpdate(get: GetState, set: SetState, gameId: string, hasUpdat
   if (hasUpdate && previous && !previous.hasUpdate) {
     const enabled = get().settings?.notifyGameUpdates ?? true;
     void notifyUpdateAvailable(previous.info.name, enabled);
+    get().pushNotification({
+      title: previous.info.name,
+      body: i18n.t('notifications.updateAvailable'),
+    });
   }
 }
