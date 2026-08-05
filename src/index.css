@@ -91,19 +91,6 @@
   }
 }
 
-/* Splash logo breathing animation — wired up by the splash screen task (Task 2) */
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.75;
-  }
-}
-
 :root {
   font-family: 'Geist', system-ui, sans-serif;
   line-height: 1.5;

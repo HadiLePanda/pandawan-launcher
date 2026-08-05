@@ -22,6 +22,12 @@ import type { Game, VerificationResult } from '@/types';
 import { ServerOff, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 
+declare global {
+  interface Window {
+    hideSplash?: () => void;
+  }
+}
+
 function ConnectionBanner({ onRetry, className }: { onRetry: () => void; className?: string }) {
   const { t } = useTranslation();
   return (
@@ -78,6 +84,10 @@ function App() {
     let cancelled = false;
 
     const removeSplash = () => {
+      if (typeof window.hideSplash === 'function') {
+        window.hideSplash();
+        return;
+      }
       const splash = document.getElementById('splash');
       if (splash) splash.remove();
     };
