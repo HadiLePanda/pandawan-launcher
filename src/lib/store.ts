@@ -13,6 +13,8 @@ import {
 import type { DownloadProgressSnapshot } from './download-channel';
 import { CommandError } from './errors';
 import { emptyFilters, type GameFilters } from './game-filters';
+import { loadAvatarId, saveAvatarId } from './avatars';
+import { loadUnpinnedGameIds, saveUnpinnedGameIds } from './pins';
 
 export interface LauncherNotification {
   id: string;
@@ -38,9 +40,13 @@ interface LauncherState {
   catalogUnreachable: boolean;
   gameFilters: GameFilters;
   notifications: LauncherNotification[];
+  avatarId: string;
+  unpinnedGameIds: string[];
 
   // Actions
   setGames: (games: Game[]) => void;
+  setAvatarId: (avatarId: string) => void;
+  toggleGamePinned: (gameId: string) => void;
   pushNotification: (notification: Omit<LauncherNotification, 'id' | 'date' | 'read'>) => void;
   markAllNotificationsRead: () => void;
   clearNotifications: () => void;
@@ -86,8 +92,24 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   catalogUnreachable: false,
   gameFilters: emptyFilters,
   notifications: [],
+  avatarId: loadAvatarId(),
+  unpinnedGameIds: loadUnpinnedGameIds(),
 
   setGames: (games) => set({ games }),
+
+  setAvatarId: (avatarId) => {
+    saveAvatarId(avatarId);
+    set({ avatarId });
+  },
+
+  toggleGamePinned: (gameId) =>
+    set((state) => {
+      const unpinned = state.unpinnedGameIds.includes(gameId)
+        ? state.unpinnedGameIds.filter((id) => id !== gameId)
+        : [...state.unpinnedGameIds, gameId];
+      saveUnpinnedGameIds(unpinned);
+      return { unpinnedGameIds: unpinned };
+    }),
 
   pushNotification: (notification) =>
     set((state) => ({

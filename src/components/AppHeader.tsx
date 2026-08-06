@@ -23,6 +23,7 @@ interface MainNavProps {
   onSettingsClick: () => void;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
+  avatarUrl?: string;
 }
 
 function TopBarButton({
@@ -32,6 +33,7 @@ function TopBarButton({
   active,
   trigger,
   wide,
+  variant,
   onClick,
   children,
 }: {
@@ -41,6 +43,7 @@ function TopBarButton({
   active?: boolean;
   trigger?: string;
   wide?: boolean;
+  variant?: 'notifications';
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
@@ -48,14 +51,24 @@ function TopBarButton({
     <button
       type="button"
       onClick={onClick}
-      className={cn('topbar-btn', active && 'topbar-btn-active', wide && 'topbar-btn-wide')}
+      className={cn(
+        'topbar-btn',
+        variant === 'notifications' && 'topbar-btn-notif',
+        variant === 'notifications' && active && 'topbar-btn-notif-active',
+        active && variant !== 'notifications' && 'topbar-btn-active',
+        wide && 'topbar-btn-wide'
+      )}
       data-panel-trigger={trigger}
       aria-label={label}
       title={label}
     >
       <span className="relative">
         {icon}
-        {badge != null && badge > 0 && <span className="topbar-badge">{badge}</span>}
+        {badge != null && badge > 0 && (
+          <span className={cn('topbar-badge', variant === 'notifications' && 'topbar-badge-alert')}>
+            {badge}
+          </span>
+        )}
       </span>
       {children}
     </button>
@@ -96,11 +109,11 @@ export function TitleBar({
             <button
               type="button"
               onClick={onRetry}
-              className="topbar-btn no-drag"
+              className="titlebar-refresh-btn no-drag"
               aria-label={t('common.retry')}
               title={t('common.retry')}
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className="titlebar-refresh-icon w-3.5 h-3.5" />
             </button>
           </>
         )}
@@ -124,6 +137,7 @@ export function MainNav({
   onSettingsClick,
   activeDownloads,
   notificationsBadge,
+  avatarUrl,
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -296,6 +310,7 @@ export function MainNav({
           badge={notificationsBadge}
           active={(notificationsBadge ?? 0) > 0}
           trigger="notifications"
+          variant="notifications"
           wide
           onClick={onNotificationsClick}
         />
@@ -315,7 +330,11 @@ export function MainNav({
             onClick={() => setIsProfileMenuOpen((open) => !open)}
           >
             <span className="topbar-avatar">
-              <User className="w-3.5 h-3.5" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="topbar-avatar-image" />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
             </span>
           </button>
           {isProfileMenuOpen && (

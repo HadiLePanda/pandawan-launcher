@@ -5,7 +5,6 @@ import { events } from '@/lib/bindings';
 import { TitleBar, MainNav } from '@components/AppHeader';
 import { FiltersPanel } from '@components/FiltersPanel';
 import { GamesBar } from '@components/GamesBar';
-import { GameRail } from '@components/GameRail';
 import { GamePage, GameDetailsModal } from '@components/GamePage';
 import { GamesPage } from '@components/GamesPage';
 import { GameContextMenu } from '@components/GameContextMenu';
@@ -16,11 +15,13 @@ import { DownloadsPopup } from '@components/DownloadsPopup';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
-import { AddGameModal } from '@components/AddGameModal';
+import { PinManagerModal } from '@components/PinManagerModal';
 import { News } from '@components/News';
 import { UpdateBanner } from '@components/UpdateBanner';
 import { VerifyGameModal } from '@components/VerifyGameModal';
 import { useLauncherStore } from '@/lib/store';
+import { avatarUrl } from '@/lib/avatars';
+import { isGamePinned } from '@/lib/pins';
 import * as gameService from '@/lib/game-service';
 import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/updater-service';
 import { applyLanguage } from '@/lib/i18n';
@@ -40,7 +41,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
-  const [isAddGameOpen, setIsAddGameOpen] = useState(false);
+  const [isPinsOpen, setIsPinsOpen] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -83,6 +84,9 @@ function App() {
     notifications,
     markAllNotificationsRead,
     clearNotifications,
+    avatarId,
+    unpinnedGameIds,
+    toggleGamePinned,
   } = useLauncherStore();
 
   const installedIds = useMemo(
@@ -235,7 +239,6 @@ function App() {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
     await installGame(gameId, game.info.channel);
-    setIsAddGameOpen(false);
   };
 
   const handleUpdateGame = async (gameId: string) => {
@@ -265,7 +268,10 @@ function App() {
     }
   };
 
-  const uninstalledGames = games.filter((g) => g.status === 'not_installed').map((g) => g.info);
+  const pinnedGames = useMemo(
+    () => games.filter((g) => isGamePinned(g.info.id, unpinnedGameIds)).map((g) => g.info),
+    [games, unpinnedGameIds]
+  );
 
   const renderContent = () => {
     if (newsArticle) {
@@ -389,16 +395,18 @@ function App() {
         }}
         activeDownloads={activeDownloads}
         notificationsBadge={unreadCount}
+        avatarUrl={avatarUrl(avatarId)}
       />
 
       {activeView === 'games' && (
         <GamesBar
-          games={games.map((g) => g.info)}
+          games={pinnedGames}
           installedIds={installedIds}
+          unpinnedGameIds={unpinnedGameIds}
           selectedGameId={selectedGameId}
           onSelect={handleSelectGameIcon}
           onContextMenu={handleContextMenu}
-          onAddGame={() => setIsAddGameOpen(true)}
+          onOpenPins={() => setIsPinsOpen(true)}
         />
       )}
 
@@ -429,15 +437,6 @@ function App() {
               games={games.map((g) => g.info)}
               filters={gameFilters}
               onFilterChange={setGameFilters}
-            />
-          )}
-          {activeView === 'games' && selectedGameId && (
-            <GameRail
-              games={games.map((g) => g.info)}
-              installedIds={installedIds}
-              selectedGameId={selectedGameId}
-              onSelect={handleSelectGameIcon}
-              onContextMenu={handleContextMenu}
             />
           )}
           <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>
@@ -474,11 +473,12 @@ function App() {
         </div>
       )}
 
-      <AddGameModal
-        isOpen={isAddGameOpen}
-        onClose={() => setIsAddGameOpen(false)}
-        onInstall={handleInstallGame}
-        availableGames={uninstalledGames}
+      <PinManagerModal
+        isOpen={isPinsOpen}
+        onClose={() => setIsPinsOpen(false)}
+        games={games.map((g) => g.info)}
+        unpinnedGameIds={unpinnedGameIds}
+        onTogglePin={toggleGamePinned}
       />
 
       <VerifyGameModal

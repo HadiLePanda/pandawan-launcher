@@ -1,11 +1,10 @@
 {
-  "addGameModal": {
+  "pinModal": {
     "emptyDescription": "Try a different search term",
     "emptyTitle": "No games found",
-    "install": "Install",
     "searchPlaceholder": "Search games…",
-    "subtitle": "Select a game to install from your library",
-    "title": "Install a Game"
+    "subtitle": "Toggle games to show or hide them in the games bar",
+    "title": "Pinned Games"
   },
   "app": {
     "confirmUninstall": "Are you sure you want to uninstall this game?",
@@ -22,7 +21,7 @@
     "retry": "Retry"
   },
   "gamesBar": {
-    "addGame": "Add a game"
+    "managePins": "Manage pinned games"
   },
   "gamesMenu": {
     "downloads": "Downloads",
@@ -152,6 +151,13 @@
         "unlimited": "Unlimited"
       }
     },
+    "account": {
+      "avatar": {
+        "description": "Choose how you appear in the launcher",
+        "title": "Profile picture"
+      },
+      "comingSoon": "Full account features are coming soon."
+    },
     "general": {
       "installLocation": {
         "browse": "Browse",
@@ -160,7 +166,6 @@
         "title": "Game Install Location"
       },
       "language": {
-        "description": "Interface language",
         "en": "English",
         "fr": "Français",
         "title": "Language"
@@ -168,7 +173,6 @@
       "theme": {
         "adaptive": "Adaptive (System)",
         "dark": "Dark",
-        "description": "Launcher appearance theme",
         "light": "Light",
         "title": "Theme"
       }
@@ -186,6 +190,7 @@
     "saveChanges": "Save Changes",
     "tabs": {
       "about": "About",
+      "account": "Account",
       "downloads": "Downloads",
       "general": "General",
       "notifications": "Notifications"

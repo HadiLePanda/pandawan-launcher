@@ -10,6 +10,7 @@ import {
   Info,
   SunMoon,
   RefreshCw,
+  User,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import { appLogDir } from '@tauri-apps/api/path';
@@ -17,6 +18,7 @@ import { open } from '@tauri-apps/plugin-shell';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
+import { AVATAR_IDS, avatarUrl } from '@/lib/avatars';
 import * as gameService from '@/lib/game-service';
 import { logger } from '@/lib/logger';
 import { useUpdaterStore, checkForUpdates } from '@/lib/updater-service';
@@ -27,12 +29,13 @@ interface SettingsProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'general' | 'downloads' | 'notifications' | 'about';
+type SettingsTab = 'general' | 'downloads' | 'notifications' | 'account' | 'about';
 
 const tabs = [
   { id: 'general' as SettingsTab, icon: HardDrive },
   { id: 'downloads' as SettingsTab, icon: Download },
   { id: 'notifications' as SettingsTab, icon: Bell },
+  { id: 'account' as SettingsTab, icon: User },
   { id: 'about' as SettingsTab, icon: Info },
 ];
 
@@ -63,6 +66,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     general: t('settings.tabs.general'),
     downloads: t('settings.tabs.downloads'),
     notifications: t('settings.tabs.notifications'),
+    account: t('settings.tabs.account'),
     about: t('settings.tabs.about'),
   };
 
@@ -136,6 +140,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
             {activeTab === 'notifications' && (
               <NotificationSettings settings={editedSettings} onChange={handleUpdate} />
             )}
+            {activeTab === 'account' && <AccountSettings />}
             {activeTab === 'about' && <AboutSettings />}
           </div>
 
@@ -188,11 +193,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         </div>
       </SettingItem>
 
-      <SettingItem
-        icon={Globe}
-        title={t('settings.general.language.title')}
-        description={t('settings.general.language.description')}
-      >
+      <SettingItem icon={Globe} title={t('settings.general.language.title')}>
         <select
           value={settings.language}
           onChange={(e) => onChange({ language: e.target.value })}
@@ -203,11 +204,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         </select>
       </SettingItem>
 
-      <SettingItem
-        icon={SunMoon}
-        title={t('settings.general.theme.title')}
-        description={t('settings.general.theme.description')}
-      >
+      <SettingItem icon={SunMoon} title={t('settings.general.theme.title')}>
         <select
           value={settings.theme}
           onChange={(e) => onChange({ theme: e.target.value })}
@@ -320,6 +317,37 @@ function NotificationSettings({ settings, onChange }: TabProps) {
         checked={settings.notifyDownloadComplete}
         onChange={(checked) => onChange({ notifyDownloadComplete: checked })}
       />
+    </div>
+  );
+}
+
+function AccountSettings() {
+  const { t } = useTranslation();
+  const avatarId = useLauncherStore((s) => s.avatarId);
+  const setAvatarId = useLauncherStore((s) => s.setAvatarId);
+  return (
+    <div className="setting-group">
+      <SettingItem
+        icon={User}
+        title={t('settings.account.avatar.title')}
+        description={t('settings.account.avatar.description')}
+      >
+        <div className="avatar-picker">
+          {AVATAR_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAvatarId(id)}
+              className={cn('avatar-option', avatarId === id && 'avatar-option-selected')}
+              aria-label={id}
+              title={id}
+            >
+              <img src={avatarUrl(id)} alt={id} className="avatar-image" />
+            </button>
+          ))}
+        </div>
+      </SettingItem>
+      <p className="caption">{t('settings.account.comingSoon')}</p>
     </div>
   );
 }
@@ -441,7 +469,7 @@ function AboutSettings() {
 interface SettingItemProps {
   icon: typeof Folder;
   title: string;
-  description: string;
+  description?: string;
   children: React.ReactNode;
   controlClassName?: string;
 }
@@ -461,7 +489,7 @@ function SettingItem({
         </div>
         <div>
           <h4 className="setting-title">{title}</h4>
-          <p className="setting-desc">{description}</p>
+          {description && <p className="setting-desc">{description}</p>}
         </div>
       </div>
       <div className={controlClassName}>{children}</div>

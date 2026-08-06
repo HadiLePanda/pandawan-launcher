@@ -1,29 +1,34 @@
 import { useTranslation } from 'react-i18next';
 import { Gamepad2, Plus } from 'lucide-react';
+import { isGamePinned } from '@/lib/pins';
 import type { GameInfo } from '@/types';
 
 export interface GamesBarProps {
   games: GameInfo[];
   installedIds: Set<string>;
+  unpinnedGameIds: string[];
   selectedGameId: string | null;
   onSelect: (gameId: string) => void;
   onContextMenu: (e: React.MouseEvent, gameId: string) => void;
-  onAddGame: () => void;
+  onOpenPins: () => void;
 }
 
 export function GamesBar({
   games,
   installedIds,
+  unpinnedGameIds,
   selectedGameId,
   onSelect,
   onContextMenu,
-  onAddGame,
+  onOpenPins,
 }: GamesBarProps) {
   const { t } = useTranslation();
 
+  const visibleGames = games.filter((g) => isGamePinned(g.id, unpinnedGameIds));
+
   return (
     <div className="games-bar no-scrollbar" data-testid="games-bar">
-      {games.map((game) => (
+      {visibleGames.map((game) => (
         <div key={game.id} className="games-bar-item">
           <button
             type="button"
@@ -48,9 +53,9 @@ export function GamesBar({
       <button
         type="button"
         className="games-bar-add"
-        aria-label={t('gamesBar.addGame')}
-        title={t('gamesBar.addGame')}
-        onClick={onAddGame}
+        aria-label={t('gamesBar.managePins')}
+        title={t('gamesBar.managePins')}
+        onClick={onOpenPins}
       >
         <Plus size={16} />
       </button>

@@ -1,11 +1,10 @@
 {
-  "addGameModal": {
+  "pinModal": {
     "emptyDescription": "Essaie un autre terme de recherche",
     "emptyTitle": "Aucun jeu trouvé",
-    "install": "Installer",
     "searchPlaceholder": "Rechercher des jeux…",
-    "subtitle": "Sélectionne un jeu à installer depuis ta bibliothèque",
-    "title": "Installer un jeu"
+    "subtitle": "Affiche ou masque les jeux dans la barre de jeux en les épinglant",
+    "title": "Jeux épinglés"
   },
   "app": {
     "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
@@ -22,7 +21,7 @@
     "retry": "Réessayer"
   },
   "gamesBar": {
-    "addGame": "Ajouter un jeu"
+    "managePins": "Gérer les jeux épinglés"
   },
   "gamesMenu": {
     "downloads": "Téléchargements",
@@ -152,6 +151,13 @@
         "unlimited": "Illimitée"
       }
     },
+    "account": {
+      "avatar": {
+        "description": "Choisis ton apparence dans le launcher",
+        "title": "Photo de profil"
+      },
+      "comingSoon": "Les fonctionnalités de compte arrivent bientôt."
+    },
     "general": {
       "installLocation": {
         "browse": "Parcourir",
@@ -160,7 +166,6 @@
         "title": "Emplacement d'installation des jeux"
       },
       "language": {
-        "description": "Langue de l'interface",
         "en": "English",
         "fr": "Français",
         "title": "Langue"
@@ -168,7 +173,6 @@
       "theme": {
         "adaptive": "Automatique (système)",
         "dark": "Sombre",
-        "description": "Thème d'apparence du launcher",
         "light": "Clair",
         "title": "Thème"
       }
@@ -186,6 +190,7 @@
     "saveChanges": "Enregistrer les modifications",
     "tabs": {
       "about": "À propos",
+      "account": "Compte",
       "downloads": "Téléchargements",
       "general": "Général",
       "notifications": "Notifications"
