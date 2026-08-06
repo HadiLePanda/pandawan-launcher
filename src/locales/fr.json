@@ -113,21 +113,17 @@
       "developer": "Développeur",
       "license": "Licence",
       "logs": {
-        "description": "Journaux de diagnostic écrits par le launcher",
         "openButton": "Ouvrir le dossier des journaux",
-        "openError": "Impossible d'ouvrir le dossier des journaux : {{error}}",
-        "title": "Journaux"
+        "openError": "Impossible d'ouvrir le dossier des journaux : {{error}}"
       },
       "tauriVersion": "Version de Tauri",
       "updates": {
         "available": "Mise à jour v{{version}} disponible",
         "checkButton": "Rechercher des mises à jour",
         "checking": "Vérification…",
-        "description": "Vérifier si une nouvelle version du launcher est disponible",
         "downloading": "Téléchargement de la mise à jour…",
         "error": "Échec de la vérification des mises à jour : {{error}}",
         "ready": "Redémarre le launcher pour appliquer la mise à jour.",
-        "title": "Mises à jour du launcher",
         "upToDate": "Le launcher est à jour{{suffix}}"
       },
       "version": "Version {{version}}"
@@ -142,11 +138,9 @@
         "title": "Mise à jour automatique du launcher"
       },
       "concurrent": {
-        "description": "Nombre de fichiers à télécharger simultanément",
         "title": "Téléchargements simultanés"
       },
       "speedLimit": {
-        "description": "Vitesse de téléchargement maximale",
         "title": "Limite de vitesse de téléchargement",
         "unlimited": "Illimitée"
       }

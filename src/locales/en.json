@@ -113,21 +113,17 @@
       "developer": "Developer",
       "license": "License",
       "logs": {
-        "description": "Diagnostic logs written by the launcher",
         "openButton": "Open logs folder",
-        "openError": "Failed to open logs folder: {{error}}",
-        "title": "Logs"
+        "openError": "Failed to open logs folder: {{error}}"
       },
       "tauriVersion": "Tauri Version",
       "updates": {
         "available": "Update v{{version}} available",
         "checkButton": "Check for updates",
         "checking": "Checking…",
-        "description": "Check for a new version of the launcher",
         "downloading": "Downloading update…",
         "error": "Update check failed: {{error}}",
         "ready": "Restart the launcher to apply the update.",
-        "title": "Launcher Updates",
         "upToDate": "You're up to date{{suffix}}"
       },
       "version": "Version {{version}}"
@@ -142,11 +138,9 @@
         "title": "Auto-update launcher"
       },
       "concurrent": {
-        "description": "Number of files to download simultaneously",
         "title": "Concurrent Downloads"
       },
       "speedLimit": {
-        "description": "Maximum download speed limit",
         "title": "Download Speed Limit",
         "unlimited": "Unlimited"
       }

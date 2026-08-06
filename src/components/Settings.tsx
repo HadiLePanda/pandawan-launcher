@@ -244,11 +244,7 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 
   return (
     <div className="setting-group">
-      <SettingItem
-        icon={Download}
-        title={t('settings.downloads.speedLimit.title')}
-        description={t('settings.downloads.speedLimit.description')}
-      >
+      <SettingItem icon={Download} title={t('settings.downloads.speedLimit.title')}>
         <select
           value={currentSpeedValue}
           onChange={(e) => handleSpeedChange(e.target.value)}
@@ -262,25 +258,18 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         </select>
       </SettingItem>
 
-      <SettingItem
-        icon={HardDrive}
-        title={t('settings.downloads.concurrent.title')}
-        description={t('settings.downloads.concurrent.description')}
-      >
-        <div className="cluster cluster-md">
+      <SettingItem icon={HardDrive} title={t('settings.downloads.concurrent.title')}>
+        <select
+          value={String(settings.maxConcurrentDownloads)}
+          onChange={(e) => onChange({ maxConcurrentDownloads: Number(e.target.value) })}
+          className="w-full"
+        >
           {[1, 2, 4, 6, 8].map((n) => (
-            <button
-              key={n}
-              onClick={() => onChange({ maxConcurrentDownloads: n })}
-              className={cn(
-                'w-10 h-10 rounded-lg text-sm font-medium transition-colors',
-                settings.maxConcurrentDownloads === n ? 'selectable-chip-active' : 'selectable-chip'
-              )}
-            >
+            <option key={n} value={n}>
               {n}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </SettingItem>
 
       <ToggleSetting
@@ -402,11 +391,11 @@ function AboutSettings() {
 
   return (
     <div className="setting-group">
-      <div className="cluster cluster-md p-5 rounded-xl">
-        <div className="w-16 h-16 rounded-xl bg-action flex items-center justify-center">
-          <span className="text-2xl font-bold text-white">P</span>
+      <div className="cluster cluster-md p-4 rounded-xl">
+        <div className="w-14 h-14 rounded-xl bg-action flex items-center justify-center">
+          <span className="text-xl font-bold text-white">P</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <h4 className="title-3">Pandawan Launcher</h4>
           <p className="caption">
             {t('settings.about.version', { version: currentVersion || '—' })}
@@ -414,13 +403,14 @@ function AboutSettings() {
         </div>
       </div>
 
-      <SettingItem
-        icon={RefreshCw}
-        title={t('settings.about.updates.title')}
-        description={t('settings.about.updates.description')}
-      >
-        <div className="cluster cluster-md">
+      <div className="setting-item">
+        <div className="setting-header">
+          <div className="setting-icon">
+            <RefreshCw className="w-4 h-4" />
+          </div>
           {statusText && <span className="caption">{statusText}</span>}
+        </div>
+        <div className="setting-control">
           <button
             onClick={() => void checkForUpdates({ manual: true })}
             disabled={busy}
@@ -429,15 +419,16 @@ function AboutSettings() {
             {t('settings.about.updates.checkButton')}
           </button>
         </div>
-      </SettingItem>
+      </div>
 
-      <SettingItem
-        icon={FileText}
-        title={t('settings.about.logs.title')}
-        description={t('settings.about.logs.description')}
-      >
-        <div className="cluster cluster-md">
+      <div className="setting-item">
+        <div className="setting-header">
+          <div className="setting-icon">
+            <FileText className="w-4 h-4" />
+          </div>
           {logsError && <span className="caption">{logsError}</span>}
+        </div>
+        <div className="setting-control">
           <button
             onClick={() => void handleOpenLogs()}
             disabled={openingLogs}
@@ -446,7 +437,7 @@ function AboutSettings() {
             {t('settings.about.logs.openButton')}
           </button>
         </div>
-      </SettingItem>
+      </div>
 
       <div className="stack-md">
         <div className="flex justify-between py-3">
