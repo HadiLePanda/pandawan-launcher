@@ -1661,6 +1661,23 @@ input[type='search']::placeholder {
   min-width: 0;
 }
 
+.settings-error-toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 5rem;
+  z-index: 10;
+  max-width: 34rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--ember-muted) 60%, var(--canvas-elevated));
+  border: 1px solid color-mix(in oklab, var(--ember) 40%, var(--border-strong));
+  color: var(--ink-default);
+  font-size: 0.875rem;
+  text-align: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
 /* ----- Settings ----- */
 .setting-control {
   flex: 1;

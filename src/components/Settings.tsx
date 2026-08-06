@@ -57,7 +57,7 @@ const DEFAULT_SETTINGS: LauncherSettings = {
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
   const { t } = useTranslation();
-  const { settings, setSettings, error } = useLauncherStore();
+  const { settings, setSettings } = useLauncherStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -126,11 +126,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
           </div>
 
           <div className="modal-body">
-            {(error || saveError) && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                {error || saveError}
-              </div>
-            )}
+            {saveError && <div className="settings-error-toast">{saveError}</div>}
             {activeTab === 'general' && (
               <GeneralSettings settings={editedSettings} onChange={handleUpdate} />
             )}
