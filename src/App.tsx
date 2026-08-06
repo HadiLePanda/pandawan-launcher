@@ -273,6 +273,18 @@ function App() {
     [games, unpinnedGameIds]
   );
 
+  const handleNavigate = (dir: -1 | 1) => {
+    const ids = pinnedGames.map((g) => g.id);
+    if (ids.length === 0) return;
+    if (!selectedGameId) {
+      setSelectedGameId(ids[0]);
+      return;
+    }
+    const idx = ids.indexOf(selectedGameId);
+    const base = idx === -1 ? 0 : idx;
+    setSelectedGameId(ids[(base + dir + ids.length) % ids.length]);
+  };
+
   const renderContent = () => {
     if (newsArticle) {
       const article = news.find((n) => n.id === newsArticle.articleId);
@@ -396,6 +408,8 @@ function App() {
         activeDownloads={activeDownloads}
         notificationsBadge={unreadCount}
         avatarUrl={avatarUrl(avatarId)}
+        onNavigatePrev={() => handleNavigate(-1)}
+        onNavigateNext={() => handleNavigate(1)}
       />
 
       {activeView === 'games' && (

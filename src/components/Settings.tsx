@@ -377,7 +377,7 @@ function AboutSettings() {
       ? t('settings.about.updates.checking')
       : updaterStatus === 'up-to-date'
         ? t('settings.about.updates.upToDate', {
-            suffix: currentVersion ? ` (v${currentVersion})` : '',
+            suffix: currentVersion ? ` (${currentVersion})` : '',
           })
         : updaterStatus === 'available'
           ? t('settings.about.updates.available', { version: updateVersion })

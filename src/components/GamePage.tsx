@@ -1,15 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Play,
-  Download,
-  RefreshCw,
-  HardDrive,
-  X,
-  MoreVertical,
-  Settings,
-  Clock,
-} from 'lucide-react';
+import { Play, Download, RefreshCw, X, MoreVertical, Settings, Clock } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
 import { GameContextMenu } from '@components/GameContextMenu';
@@ -47,7 +38,7 @@ function channelLabel(t: (key: string) => string, channel: string): string {
 
 function versionText(t: (key: string) => string, channel: string, version: string): string {
   const label = channelLabel(t, channel);
-  return label ? `${label} v${version}` : `v${version}`;
+  return label ? `${label} ${version}` : version;
 }
 
 export function GamePage({
@@ -200,10 +191,7 @@ export function GamePage({
             {showSize && (
               <div className="game-detail-meta-item">
                 <span className="game-detail-meta-label">{t('gamePage.size')}</span>
-                <span className="game-detail-meta-value">
-                  <HardDrive className="w-4 h-4" />
-                  {formatBytes(game.info.sizeBytes)}
-                </span>
+                <span className="game-detail-meta-value">{formatBytes(game.info.sizeBytes)}</span>
               </div>
             )}
             {game.status !== 'not_installed' && game.installation && (
@@ -401,7 +389,7 @@ export function GameDetailsModal({
               {game.info.patchNotes && game.info.patchNotes.length > 0 ? (
                 game.info.patchNotes.map((note) => (
                   <article key={note.version} className="patch-note-entry">
-                    <div className="patch-note-version">v{note.version}</div>
+                    <div className="patch-note-version">{note.version}</div>
                     <div className="patch-note-date">
                       {new Date(note.date).toLocaleDateString()}
                     </div>

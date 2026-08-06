@@ -1239,16 +1239,49 @@ input[type='search']::placeholder {
 }
 
 .app-logo {
-  width: 22px;
-  height: 22px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 1.5px solid var(--ink-default);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink-default);
+  flex-shrink: 0;
+}
+
+.nav-arrows {
+  display: flex;
+  gap: 2px;
+  margin-left: 10px;
+}
+
+.nav-arrow {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.nav-arrow:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+.nav-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .nav-tab {
@@ -1343,6 +1376,13 @@ input[type='search']::placeholder {
 
 .topbar-btn-active {
   color: var(--blue);
+}
+
+/* Profile avatar button — no background wash on hover */
+.topbar-btn-avatar,
+.topbar-btn-avatar:hover {
+  background: transparent;
+  color: var(--ink-default);
 }
 
 /* Notifications button — visible background, state-driven (grey idle / green unread) */

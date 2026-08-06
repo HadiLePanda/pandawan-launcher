@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, Bell, User, Settings, ServerOff, RefreshCw } from 'lucide-react';
+import {
+  Download,
+  Bell,
+  User,
+  Settings,
+  ServerOff,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { WindowControls } from './WindowControls';
@@ -21,6 +30,8 @@ interface MainNavProps {
   onDownloadsNavigate: () => void;
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
+  onNavigatePrev: () => void;
+  onNavigateNext: () => void;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
   avatarUrl?: string;
@@ -135,6 +146,8 @@ export function MainNav({
   onDownloadsNavigate,
   onNotificationsClick,
   onSettingsClick,
+  onNavigatePrev,
+  onNavigateNext,
   activeDownloads,
   notificationsBadge,
   avatarUrl,
@@ -237,6 +250,28 @@ export function MainNav({
     <div className="main-nav">
       <div className="cluster cluster-md no-drag">
         <div className="app-logo">P</div>
+        <div className="nav-arrows">
+          <button
+            type="button"
+            className="nav-arrow"
+            onClick={onNavigatePrev}
+            disabled={activeView !== 'games'}
+            aria-label={t('topBar.previous')}
+            title={t('topBar.previous')}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            className="nav-arrow"
+            onClick={onNavigateNext}
+            disabled={activeView !== 'games'}
+            aria-label={t('topBar.next')}
+            title={t('topBar.next')}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
         <nav className="cluster cluster-lg">
           <div
             className="games-menu"
@@ -323,7 +358,7 @@ export function MainNav({
         <div className="relative" ref={profileMenuRef}>
           <button
             type="button"
-            className="topbar-btn"
+            className="topbar-btn topbar-btn-avatar"
             data-panel-trigger="profile"
             aria-label={t('topBar.playerProfile')}
             title={t('topBar.playerProfile')}
