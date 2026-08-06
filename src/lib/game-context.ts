@@ -1,13 +1,7 @@
 import type { Game } from '@/types';
 
 export type GameContextAction =
-  | 'play'
-  | 'install'
-  | 'verify'
-  | 'patchNotes'
-  | 'gameNews'
-  | 'gameInfo'
-  | 'uninstall';
+  'play' | 'install' | 'verify' | 'patchNotes' | 'gameNews' | 'gameInfo' | 'uninstall';
 
 export interface GameContextMenuItem {
   id: GameContextAction;

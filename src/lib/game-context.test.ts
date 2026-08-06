@@ -39,12 +39,7 @@ describe('deriveMenuItems', () => {
 
   it('not installed game shows install, patch notes, news, info', () => {
     const game = makeGame('not_installed');
-    expect(ids(deriveMenuItems(game))).toEqual([
-      'install',
-      'patchNotes',
-      'gameNews',
-      'gameInfo',
-    ]);
+    expect(ids(deriveMenuItems(game))).toEqual(['install', 'patchNotes', 'gameNews', 'gameInfo']);
   });
 
   it('downloading game only shows game info', () => {

@@ -20,16 +20,17 @@ describe('i18n', () => {
     expect(i18n.t('windowControls.close')).toBe('Close');
   });
 
-  it.each([
-    ['fr', 'Jeux', 'Fermer', 'Aucun jeu pour le moment', 'Réessayer'],
-  ])('resolves the core chrome keys in %s', async (language, games, close, emptyTitle, retry) => {
-    await i18n.changeLanguage(language);
+  it.each([['fr', 'Jeux', 'Fermer', 'Aucun jeu pour le moment', 'Réessayer']])(
+    'resolves the core chrome keys in %s',
+    async (language, games, close, emptyTitle, retry) => {
+      await i18n.changeLanguage(language);
 
-    expect(i18n.t('topBar.games')).toBe(games);
-    expect(i18n.t('windowControls.close')).toBe(close);
-    expect(i18n.t('gamesPage.emptyTitle')).toBe(emptyTitle);
-    expect(i18n.t('common.retry')).toBe(retry);
-  });
+      expect(i18n.t('topBar.games')).toBe(games);
+      expect(i18n.t('windowControls.close')).toBe(close);
+      expect(i18n.t('gamesPage.emptyTitle')).toBe(emptyTitle);
+      expect(i18n.t('common.retry')).toBe(retry);
+    }
+  );
 
   it('interpolates values into translated strings', () => {
     expect(i18n.t('gamePage.filesProgress', { completed: 1, total: 3 })).toBe('1 / 3 files');

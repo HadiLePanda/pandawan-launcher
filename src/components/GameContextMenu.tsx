@@ -3,20 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { deriveMenuItems, type GameContextAction } from '@/lib/game-context';
 import type { Game } from '@/types';
-import {
-  Play,
-  Download,
-  ShieldCheck,
-  FileText,
-  Newspaper,
-  Info,
-  Trash2,
-} from 'lucide-react';
+import { Play, Download, ShieldCheck, FileText, Newspaper, Info, Trash2 } from 'lucide-react';
 
-const iconByAction: Record<
-  GameContextAction,
-  React.ComponentType<{ className?: string }>
-> = {
+const iconByAction: Record<GameContextAction, React.ComponentType<{ className?: string }>> = {
   play: Play,
   install: Download,
   verify: ShieldCheck,

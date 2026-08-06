@@ -100,11 +100,12 @@ describe('i18n key coverage', () => {
   it.each([['fr', fr as LocaleMessages]])(
     '%s.json has exactly the same key set as en.json',
     (_language, messages) => {
-    const keys = flattenKeys(messages);
+      const keys = flattenKeys(messages);
 
-    expect(keys.length).toBe(enKeys.size);
-    expect(keys.sort()).toEqual([...enKeys].sort());
-  });
+      expect(keys.length).toBe(enKeys.size);
+      expect(keys.sort()).toEqual([...enKeys].sort());
+    }
+  );
 
   it('translations keep the same {{placeholders}} as the English source', () => {
     const mismatches: string[] = [];
