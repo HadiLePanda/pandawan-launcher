@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
-import { AppHeader } from '@components/AppHeader';
+import { TitleBar, MainNav } from '@components/AppHeader';
 import { FiltersPanel } from '@components/FiltersPanel';
 import { GamesBar } from '@components/GamesBar';
 import { GameRail } from '@components/GameRail';
@@ -346,7 +346,13 @@ function App() {
 
   return (
     <div className="h-screen max-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
-      <AppHeader
+      <TitleBar
+        catalogUnreachable={catalogUnreachable}
+        catalogSource={catalogSource}
+        onRetry={() => loadCatalog()}
+        onDoubleClick={() => windowTitlebarToggleMaximize()}
+      />
+      <MainNav
         activeView={activeView}
         onGamesClick={() => {
           if (activeView === 'games') {
@@ -381,12 +387,8 @@ function App() {
           setIsNotificationsOpen(false);
           setIsSettingsOpen(true);
         }}
-        onDoubleClick={() => windowTitlebarToggleMaximize()}
         activeDownloads={activeDownloads}
         notificationsBadge={unreadCount}
-        catalogUnreachable={catalogUnreachable}
-        catalogSource={catalogSource}
-        onRetry={() => loadCatalog()}
       />
 
       {activeView === 'games' && (

@@ -15,7 +15,7 @@ describe('i18n', () => {
   it('resolves the core chrome keys in English', () => {
     expect(i18n.t('topBar.games')).toBe('Games');
     expect(i18n.t('common.retry')).toBe('Retry');
-    expect(i18n.t('app.connectionBanner')).toContain('unreachable');
+    expect(i18n.t('titleBar.serverUnreachable')).toContain('unreachable');
     expect(i18n.t('gamesPage.emptyTitle')).toBe('No Games Yet');
     expect(i18n.t('windowControls.close')).toBe('Close');
   });

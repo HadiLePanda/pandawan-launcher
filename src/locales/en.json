@@ -9,9 +9,11 @@
   },
   "app": {
     "confirmUninstall": "Are you sure you want to uninstall this game?",
-    "connectionBanner": "Catalog server is unreachable. Showing bundled games; install and launch require a live server.",
     "storeComingSoonDescription": "Browse and install new Pandawan games here.",
     "storeComingSoonTitle": "Store Coming Soon"
+  },
+  "titleBar": {
+    "serverUnreachable": "Server unreachable"
   },
   "common": {
     "cancel": "Cancel",
@@ -24,7 +26,7 @@
   },
   "gamesMenu": {
     "downloads": "Downloads",
-    "home": "Home"
+    "library": "Library"
   },
   "filters": {
     "all": "All",

@@ -5,7 +5,14 @@ import { cn } from '@/lib/utils';
 import { WindowControls } from './WindowControls';
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 
-interface AppHeaderProps {
+interface TitleBarProps {
+  catalogUnreachable: boolean;
+  catalogSource: 'remote' | 'local' | 'embedded' | null;
+  onRetry: () => void;
+  onDoubleClick?: () => void;
+}
+
+interface MainNavProps {
   activeView: 'games' | 'news' | 'store' | 'downloads';
   onGamesClick: () => void;
   onNewsClick: () => void;
@@ -14,12 +21,8 @@ interface AppHeaderProps {
   onDownloadsNavigate: () => void;
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
-  onDoubleClick?: () => void;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
-  catalogUnreachable: boolean;
-  catalogSource: 'remote' | 'local' | 'embedded' | null;
-  onRetry: () => void;
 }
 
 function TopBarButton({
@@ -28,6 +31,7 @@ function TopBarButton({
   badge,
   active,
   trigger,
+  wide,
   onClick,
   children,
 }: {
@@ -36,6 +40,7 @@ function TopBarButton({
   badge?: number | null;
   active?: boolean;
   trigger?: string;
+  wide?: boolean;
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
@@ -43,7 +48,7 @@ function TopBarButton({
     <button
       type="button"
       onClick={onClick}
-      className={cn('topbar-btn', active && 'topbar-btn-active')}
+      className={cn('topbar-btn', active && 'topbar-btn-active', wide && 'topbar-btn-wide')}
       data-panel-trigger={trigger}
       aria-label={label}
       title={label}
@@ -57,27 +62,58 @@ function TopBarButton({
   );
 }
 
-function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
+export function TitleBar({
+  catalogUnreachable,
+  catalogSource,
+  onRetry,
+  onDoubleClick,
+}: TitleBarProps) {
   const { t } = useTranslation();
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, a, input, .no-drag')) {
+      return;
+    }
+    onDoubleClick?.();
+  };
+
+  const showStatus = catalogUnreachable && catalogSource !== 'remote';
+
   return (
-    <div className="banner-inline no-drag">
-      <ServerOff className="w-4 h-4 shrink-0" />
-      <span className="truncate">{t('app.connectionBanner')}</span>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="btn btn-sm btn-ghost banner-retry"
-        aria-label={t('common.retry')}
-        title={t('common.retry')}
-      >
-        <RefreshCw className="w-4 h-4" />
-        <span className="hidden sm:inline">{t('common.retry')}</span>
-      </button>
+    <div
+      data-tauri-drag-region
+      onDoubleClick={handleDoubleClick}
+      className={cn(
+        'title-bar',
+        showStatus ? 'title-bar-status-line status-error' : 'title-bar-status-line status-ok'
+      )}
+    >
+      <div className="title-bar-status">
+        {showStatus && (
+          <>
+            <ServerOff className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--ember)' }} />
+            <span className="title-bar-status-text">{t('titleBar.serverUnreachable')}</span>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="topbar-btn no-drag"
+              aria-label={t('common.retry')}
+              title={t('common.retry')}
+            >
+              <RefreshCw className="w-3 h-3" />
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="main-nav-right no-drag">
+        <WindowControls />
+      </div>
     </div>
   );
 }
 
-export function AppHeader({
+export function MainNav({
   activeView,
   onGamesClick,
   onNewsClick,
@@ -86,13 +122,9 @@ export function AppHeader({
   onDownloadsNavigate,
   onNotificationsClick,
   onSettingsClick,
-  onDoubleClick,
   activeDownloads,
   notificationsBadge,
-  catalogUnreachable,
-  catalogSource,
-  onRetry,
-}: AppHeaderProps) {
+}: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isGamesMenuOpen, setIsGamesMenuOpen] = useState(false);
@@ -161,7 +193,7 @@ export function AppHeader({
     clearGamesMenuTimers();
     openTimerRef.current = setTimeout(() => {
       setIsGamesMenuOpen(true);
-    }, 400);
+    }, 120);
   };
 
   const handleGamesTabLeave = () => {
@@ -187,137 +219,120 @@ export function AppHeader({
     return sum / activeDownloads.size;
   }, [activeDownloads]);
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button, a, input, .no-drag')) {
-      return;
-    }
-    onDoubleClick?.();
-  };
-
-  const showConnectionBanner = catalogUnreachable && catalogSource !== 'remote';
-
   return (
-    <div data-tauri-drag-region onDoubleClick={handleDoubleClick} className="app-topbar">
-      <div className="app-topbar-row">
-        <div className="cluster cluster-md no-drag">
-          <div className="app-logo">P</div>
-          <nav className="cluster cluster-lg">
-            <div
-              className="games-menu"
-              onMouseEnter={clearGamesMenuTimers}
-              onMouseLeave={handleGamesTabLeave}
-            >
-              <button
-                type="button"
-                onClick={onGamesClick}
-                onMouseEnter={handleGamesTabEnter}
-                className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
-                data-panel-trigger="games-menu"
-              >
-                {t('topBar.games')}
-              </button>
-              {isGamesMenuOpen && (
-                <div className="games-menu-dropdown">
-                  <button
-                    type="button"
-                    className="games-menu-item"
-                    onClick={() => handleGamesMenuItem(onGamesClick)}
-                  >
-                    {t('gamesMenu.home')}
-                  </button>
-                  <button
-                    type="button"
-                    className="games-menu-item"
-                    onClick={() => handleGamesMenuItem(onDownloadsNavigate)}
-                  >
-                    {t('gamesMenu.downloads')}
-                  </button>
-                </div>
-              )}
-            </div>
+    <div className="main-nav">
+      <div className="cluster cluster-md no-drag">
+        <div className="app-logo">P</div>
+        <nav className="cluster cluster-lg">
+          <div
+            className="games-menu"
+            onMouseEnter={clearGamesMenuTimers}
+            onMouseLeave={handleGamesTabLeave}
+          >
             <button
               type="button"
-              onClick={onNewsClick}
-              className={cn('nav-tab', activeView === 'news' && 'nav-tab-active')}
+              onClick={onGamesClick}
+              onMouseEnter={handleGamesTabEnter}
+              className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
+              data-panel-trigger="games-menu"
             >
-              {t('topBar.news')}
+              {t('topBar.games')}
             </button>
-            <button
-              type="button"
-              onClick={onStoreClick}
-              className={cn('nav-tab', activeView === 'store' && 'nav-tab-active')}
-            >
-              {t('topBar.store')}
-            </button>
-          </nav>
-        </div>
-
-        <div className="flex-1 flex justify-center min-w-0">
-          {showConnectionBanner && <ConnectionBanner onRetry={onRetry} />}
-        </div>
-
-        <div className="cluster cluster-sm no-drag">
-          {downloadsBadge > 0 && (
-            <TopBarButton
-              icon={<Download className="w-4 h-4" />}
-              label={t('topBar.downloads')}
-              badge={downloadsBadge}
-              active
-              trigger="downloads"
-              onClick={onDownloadsClick}
-            >
-              <span className="topbar-progress" aria-hidden="true">
-                <span className="topbar-progress-fill" style={{ width: `${averageProgress}%` }} />
-              </span>
-            </TopBarButton>
-          )}
-          <TopBarButton
-            icon={<Bell className="w-4 h-4" />}
-            label={t('topBar.notifications')}
-            badge={notificationsBadge}
-            active={(notificationsBadge ?? 0) > 0}
-            trigger="notifications"
-            onClick={onNotificationsClick}
-          />
-          <TopBarButton
-            icon={<Settings className="w-4 h-4" />}
-            label={t('topBar.settings')}
-            trigger="settings"
-            onClick={onSettingsClick}
-          />
-          <div className="relative" ref={profileMenuRef}>
-            <button
-              type="button"
-              className="topbar-btn"
-              data-panel-trigger="profile"
-              aria-label={t('topBar.playerProfile')}
-              title={t('topBar.playerProfile')}
-              onClick={() => setIsProfileMenuOpen((open) => !open)}
-            >
-              <span className="topbar-avatar">
-                <User className="w-3.5 h-3.5" />
-              </span>
-            </button>
-            {isProfileMenuOpen && (
-              <div className="profile-menu">
+            {isGamesMenuOpen && (
+              <div className="games-menu-dropdown">
                 <button
                   type="button"
-                  className="profile-menu-item"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    onSettingsClick();
-                  }}
+                  className="games-menu-item"
+                  onClick={() => handleGamesMenuItem(onGamesClick)}
                 >
-                  <Settings className="w-4 h-4" />
-                  <span>{t('topBar.profileSettings')}</span>
+                  {t('gamesMenu.library')}
+                </button>
+                <button
+                  type="button"
+                  className="games-menu-item"
+                  onClick={() => handleGamesMenuItem(onDownloadsNavigate)}
+                >
+                  {t('gamesMenu.downloads')}
                 </button>
               </div>
             )}
           </div>
-        </div>
+          <button
+            type="button"
+            onClick={onNewsClick}
+            className={cn('nav-tab', activeView === 'news' && 'nav-tab-active')}
+          >
+            {t('topBar.news')}
+          </button>
+          <button
+            type="button"
+            onClick={onStoreClick}
+            className={cn('nav-tab', activeView === 'store' && 'nav-tab-active')}
+          >
+            {t('topBar.store')}
+          </button>
+        </nav>
+      </div>
 
-        <div className="window-controls-row no-drag">
-          <WindowControls />
+      <div className="main-nav-right no-drag">
+        {downloadsBadge > 0 && (
+          <TopBarButton
+            icon={<Download className="w-4 h-4" />}
+            label={t('topBar.downloads')}
+            badge={downloadsBadge}
+            active
+            trigger="downloads"
+            wide
+            onClick={onDownloadsClick}
+          >
+            <span className="topbar-progress" aria-hidden="true">
+              <span className="topbar-progress-fill" style={{ width: `${averageProgress}%` }} />
+            </span>
+          </TopBarButton>
+        )}
+        <TopBarButton
+          icon={<Bell className="w-4 h-4" />}
+          label={t('topBar.notifications')}
+          badge={notificationsBadge}
+          active={(notificationsBadge ?? 0) > 0}
+          trigger="notifications"
+          wide
+          onClick={onNotificationsClick}
+        />
+        <TopBarButton
+          icon={<Settings className="w-4 h-4" />}
+          label={t('topBar.settings')}
+          trigger="settings"
+          onClick={onSettingsClick}
+        />
+        <div className="relative" ref={profileMenuRef}>
+          <button
+            type="button"
+            className="topbar-btn"
+            data-panel-trigger="profile"
+            aria-label={t('topBar.playerProfile')}
+            title={t('topBar.playerProfile')}
+            onClick={() => setIsProfileMenuOpen((open) => !open)}
+          >
+            <span className="topbar-avatar">
+              <User className="w-3.5 h-3.5" />
+            </span>
+          </button>
+          {isProfileMenuOpen && (
+            <div className="profile-menu">
+              <button
+                type="button"
+                className="profile-menu-item"
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  onSettingsClick();
+                }}
+              >
+                <Settings className="w-4 h-4" />
+                <span>{t('topBar.profileSettings')}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

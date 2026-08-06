@@ -9,9 +9,11 @@
   },
   "app": {
     "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
-    "connectionBanner": "Le serveur du catalogue est injoignable. Affichage des jeux intégrés ; l'installation et le lancement nécessitent un serveur actif.",
     "storeComingSoonDescription": "Parcours et installe de nouveaux jeux Pandawan ici.",
     "storeComingSoonTitle": "Boutique bientôt disponible"
+  },
+  "titleBar": {
+    "serverUnreachable": "Serveur injoignable"
   },
   "common": {
     "cancel": "Annuler",
@@ -24,7 +26,7 @@
   },
   "gamesMenu": {
     "downloads": "Téléchargements",
-    "home": "Accueil"
+    "library": "Bibliothèque"
   },
   "filters": {
     "all": "Tous",
