@@ -102,15 +102,12 @@ function PinCard({ game, pinned, onToggle }: PinCardProps) {
         {game.iconUrl ? (
           <img src={game.iconUrl} alt="" />
         ) : (
-          <span className="pin-card-icon-fallback">
-            {game.name.charAt(0).toUpperCase()}
-          </span>
+          <span className="pin-card-icon-fallback">{game.name.charAt(0).toUpperCase()}</span>
         )}
       </div>
 
       <div className="pin-card-info">
         <span className="pin-card-title">{game.name}</span>
-        <span className="pin-card-subtitle">{game.developer}</span>
       </div>
 
       <span className="pin-card-toggle" aria-hidden="true">
