@@ -1577,6 +1577,14 @@ input[type='search']::placeholder {
   border-top: 1px solid var(--border-default);
 }
 
+.settings-modal .modal-header {
+  border-bottom: none;
+}
+
+.settings-modal .modal-footer {
+  border-top: none;
+}
+
 /* ----- Settings ----- */
 .setting-control {
   width: 100%;

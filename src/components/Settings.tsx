@@ -93,7 +93,7 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="modal animate-slide-up">
+      <div className="modal settings-modal animate-slide-up">
         <div className="modal-sidebar">
           <h2 className="modal-title">{t('settings.title')}</h2>
           <nav className="stack-sm">
@@ -285,8 +285,6 @@ function DownloadSettings({ settings, onChange }: TabProps) {
           ))}
         </div>
       </SettingItem>
-
-      <hr className="border-border" />
 
       <ToggleSetting
         title={t('settings.downloads.autoUpdateGames.title')}
