@@ -1797,147 +1797,6 @@ input[type='search']::placeholder {
   padding: 0.25rem 1.25rem;
 }
 
-.game-page-layout {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  overflow: hidden;
-}
-
-@media (min-width: 1024px) {
-  .game-page-layout {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.game-page-info {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.375rem;
-  overflow: hidden;
-}
-
-.game-page-info-body {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.game-page-actions {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-top: 0.5rem;
-}
-
-.download-progress {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 0.75rem;
-}
-
-.download-progress-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.download-progress-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-default);
-}
-
-.download-progress-stats {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.download-progress-percent {
-  font-size: 1rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-default);
-}
-
-.download-progress-bar {
-  width: 100%;
-  height: 0.375rem;
-  border-radius: 9999px;
-  background: var(--surface-light);
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-.download-progress-fill {
-  height: 100%;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, var(--action), var(--action-hover));
-  box-shadow: 0 0 10px var(--action-glow);
-  transition: width 0.2s ease;
-}
-
-.download-progress-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.8125rem;
-  color: var(--ink-muted);
-}
-
-.download-progress-meta span {
-  font-variant-numeric: tabular-nums;
-}
-
-.game-page-side {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.375rem;
-  overflow: hidden;
-}
-
-.game-page-media {
-  flex: 0 0 auto;
-  aspect-ratio: 16 / 9;
-  height: auto;
-  max-height: 320px;
-  overflow: hidden;
-  display: flex;
-  border-radius: 0.5rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.game-page-news {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-}
-
 .patch-notes {
   height: 100%;
   display: flex;
@@ -2240,10 +2099,6 @@ input[type='search']::placeholder {
   color: var(--ink-default);
 }
 
-.game-page-news:empty {
-  display: none;
-}
-
 .game-page-header {
   display: flex;
   align-items: center;
@@ -2308,45 +2163,6 @@ input[type='search']::placeholder {
   background: var(--surface-elevated);
   border: 1px solid var(--border-default);
   font-size: 0.875rem;
-  color: var(--ink-muted);
-}
-
-.game-page-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding-top: 1rem;
-}
-
-.game-page-meta {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: var(--ink-muted);
-}
-
-.game-page-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.game-page-banner {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.game-page-banner-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-elevated);
-  font-size: 4rem;
-  font-weight: 700;
   color: var(--ink-muted);
 }
 

@@ -6,9 +6,9 @@ This is a Tauri-based game launcher for Pandawan Corp games, built with React an
 
 ### Architecture
 
-- **Frontend**: React 18 + TypeScript + Tailwind CSS + Zustand
+- **Frontend**: React 19 + TypeScript + Tailwind CSS + Zustand
 - **Backend**: Rust + Tauri
-- **Design**: Battle.net-inspired dark theme with glass morphism
+- **Design**: Steam-minimal neutral theme with Battle.net-style sidebar layout
 
 ## Key Technologies
 
@@ -102,19 +102,20 @@ src-tauri/                    # Rust backend
 ### Internationalization
 
 - All UI strings go through `t()` (i18next + react-i18next, configured in `src/lib/i18n.ts`); no hardcoded user-facing text in components.
-- Locales live in `src/locales/{en,fr,de,es}.json`; English is the source of truth and fallback.
-- Any new key must be added to all four locale files in the same PR — `src/lib/i18n-coverage.test.ts` enforces key parity across locales, rejects unused/stale keys in `en.json`, and checks that translations keep the same `{{placeholders}}` as English.
-- Register conventions: FR/DE/ES use the informal register (tu/du/tú); French uses a non-breaking space before `?`, `!`, `;`, and `:`.
+- Locales live in `src/locales/{en,fr}.json`; English is the source of truth and fallback.
+- Any new key must be added to both locale files in the same PR — `src/lib/i18n-coverage.test.ts` enforces key parity across locales, rejects unused/stale keys in `en.json`, and checks that translations keep the same `{{placeholders}}` as English.
+- Register conventions: FR uses the informal register (tu); French uses a non-breaking space before `?`, `!`, `;`, and `:`.
 
 ## Design System
 
 ### Colors
 
-- Canvas: `#0a0a0b` (main background)
-- Surface: `#1a1a1c` (cards/elevated)
-- Accent: `#e85d3f` (orange-red, primary actions)
-- Ink: `#fafafa` (primary text)
-- Ink Muted: `#a1a1a3` (secondary text)
+- Canvas: `#0e1013` (main background)
+- Surface: `#16191d` (cards/elevated)
+- Action (primary): `#22c55e` (green, primary actions)
+- Secondary: `#3b82f6` (blue)
+- Ink: `#f4f4f5` (primary text)
+- Ink Muted: `#9ca3af` (secondary text)
 
 ### Typography
 
@@ -159,7 +160,7 @@ All commands are wrapped by Tauri Specta in a discriminated result union on the 
 
 ## Important Notes
 
-- Window is frameless with custom title bar (Header component)
+- Window is frameless with custom title bar (`AppHeader` component)
 - Downloads support resume via HTTP Range requests
 - Patching uses SHA256 hash comparison
 - Settings persist to JSON in app data directory
