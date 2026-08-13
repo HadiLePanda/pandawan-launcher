@@ -1,55 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="faceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#e4e4e7"/>
-    </linearGradient>
-    <linearGradient id="patchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#18181b"/>
-      <stop offset="100%" stop-color="#27272a"/>
-    </linearGradient>
-    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22c55e"/>
-      <stop offset="100%" stop-color="#16a34a"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Background -->
-  <rect width="512" height="512" rx="96" fill="#0e1013"/>
-
-  <!-- Outer capsule ring -->
-  <circle cx="256" cy="256" r="220" fill="none" stroke="#d4af37" stroke-width="10" opacity="0.9"/>
-
-  <!-- Panda head -->
-  <g transform="translate(256,260)">
-    <!-- Ears -->
-    <circle cx="-92" cy="-88" r="42" fill="url(#patchGrad)"/>
-    <circle cx="92" cy="-88" r="42" fill="url(#patchGrad)"/>
-    <!-- Inner ear highlight -->
-    <circle cx="-92" cy="-88" r="24" fill="#3f3f46"/>
-    <circle cx="92" cy="-88" r="24" fill="#3f3f46"/>
-
-    <!-- Face -->
-    <ellipse cx="0" cy="0" rx="128" ry="112" fill="url(#faceGrad)"/>
-
-    <!-- Eye patches -->
-    <ellipse cx="-48" cy="-20" rx="32" ry="40" fill="url(#patchGrad)" transform="rotate(-12 -48 -20)"/>
-    <ellipse cx="48" cy="-20" rx="32" ry="40" fill="url(#patchGrad)" transform="rotate(12 48 -20)"/>
-
-    <!-- Eyes -->
-    <circle cx="-44" cy="-24" r="10" fill="#ffffff"/>
-    <circle cx="44" cy="-24" r="10" fill="#ffffff"/>
-    <circle cx="-42" cy="-22" r="5" fill="#18181b"/>
-    <circle cx="46" cy="-22" r="5" fill="#18181b"/>
-
-    <!-- Nose -->
-    <ellipse cx="0" cy="28" rx="14" ry="10" fill="#18181b"/>
-
-    <!-- Mouth -->
-    <path d="M -16 44 Q 0 56 16 44" stroke="#18181b" stroke-width="5" stroke-linecap="round" fill="none"/>
-  </g>
-
-  <!-- Bamboo leaf accent -->
-  <path d="M 340 340 Q 380 300 400 260 Q 380 290 340 310 Z" fill="url(#leafGrad)"/>
-  <path d="M 360 360 Q 390 330 410 300 Q 390 325 360 340 Z" fill="#22c55e" opacity="0.7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <circle cx="32" cy="32" r="32" fill="#f59e0b"/>
+  <circle cx="32" cy="32" r="29" fill="#d97706" opacity="0.4"/>
+  <circle cx="17" cy="19" r="8" fill="#111827"/>
+  <circle cx="47" cy="19" r="8" fill="#111827"/>
+  <circle cx="18" cy="20" r="3" fill="#374151"/>
+  <circle cx="46" cy="20" r="3" fill="#374151"/>
+  <ellipse cx="32" cy="35" rx="18" ry="16" fill="#ffffff"/>
+  <ellipse cx="24" cy="31" rx="6" ry="8" fill="#111827"/>
+  <ellipse cx="40" cy="31" rx="6" ry="8" fill="#111827"/>
+  <circle cx="24" cy="30" r="2.2" fill="#ffffff"/>
+  <circle cx="40" cy="30" r="2.2" fill="#ffffff"/>
+  <ellipse cx="32" cy="37" rx="2.8" ry="1.9" fill="#111827"/>
+  <path d="M29.5 39.5 Q32 42 34.5 39.5" stroke="#111827" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <path d="M13 46 Q32 54 51 46 L50.5 51 Q32 58 13.5 51 Z" fill="#ffffff" opacity="0.95"/>
+  <path d="M40 49 Q42 55 46 57 L49 54 Q46 51 44 48 Z" fill="#fde68a"/>
 </svg>

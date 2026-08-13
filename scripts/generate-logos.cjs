@@ -128,22 +128,6 @@ async function main() {
   const pandaPng = path.join(AVATARS_DIR, 'panda-mascot.png');
   await svgToPng(pandaSvg, pandaPng, 512);
 
-  // Avatar variants
-  const pandaContent = fs.readFileSync(pandaSvg, 'utf-8');
-  const variants = [
-    ['panda', '#22c55e'],
-    ['panda-gold', '#d4af37'],
-    ['panda-mint', '#2dd4bf'],
-    ['panda-coral', '#fb7185'],
-    ['panda-blue', '#3b82f6'],
-  ];
-  for (const [name, color] of variants) {
-    const variant = pandaContent.replace(/stroke="#22c55e"/g, `stroke="${color}"`);
-    const out = path.join(AVATARS_DIR, `${name}.svg`);
-    fs.writeFileSync(out, variant);
-    console.log(`  ${path.relative(ROOT, out)}`);
-  }
-
   console.log('\nDone.');
 }
 

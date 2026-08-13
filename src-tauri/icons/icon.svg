@@ -22,8 +22,7 @@
     </filter>
   </defs>
 
-  <!-- Background -->
-  <rect width="512" height="512" rx="96" fill="#0e1013"/>
+  <!-- Transparent background -->
 
   <!-- Outer capsule ring -->
   <circle cx="256" cy="256" r="220" fill="none" stroke="url(#ringOuter)" stroke-width="12" filter="url(#glow)"/>
@@ -31,14 +30,12 @@
   <!-- Inner tech ring with gap (capsule detail) -->
   <circle cx="256" cy="256" r="184" fill="none" stroke="url(#ringInner)" stroke-width="6" stroke-dasharray="1156 40" stroke-linecap="round"/>
 
-  <!-- Stylized P -->
+  <!-- Stylized P centered at 256,256 -->
   <g transform="translate(256,256)">
     <!-- P stem -->
-    <rect x="-52" y="-88" width="36" height="176" rx="8" fill="url(#letterGrad)"/>
-    <!-- P bowl -->
-    <path d="M -16 -88 L 48 -88 C 96 -88 128 -56 128 -16 C 128 24 96 56 48 56 L -16 56 L -16 20 L 44 20 C 68 20 88 4 88 -16 C 88 -36 68 -52 44 -52 L -16 -52 Z" fill="url(#letterGrad)"/>
-    <!-- Negative space accent -->
-    <circle cx="44" cy="-16" r="14" fill="#0e1013"/>
+    <rect x="-68" y="-88" width="36" height="176" rx="8" fill="url(#letterGrad)"/>
+    <!-- P bowl outer -->
+    <path d="M -32 -88 L 28 -88 C 72 -88 104 -56 104 -16 C 104 24 72 56 28 56 L -32 56 L -32 24 L 24 24 C 46 24 66 8 66 -16 C 66 -40 46 -56 24 -56 L -32 -56 Z" fill="url(#letterGrad)"/>
   </g>
 
   <!-- Gold capsule dot -->
