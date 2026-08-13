@@ -19,6 +19,7 @@ order 1 → 5; later batches assume earlier ones are committed.
 every key add/remove listed below is mandatory.
 
 **Reference screenshots (already analyzed, do not re-request):**
+
 - `170134.png` (old iteration): games bar = full-width row with its own surface background;
   icons are ~40px rounded-square tiles with a surface tile background; selected tile has a
   colored (green) outline; the "+" tile is a dashed-border square.
@@ -45,16 +46,18 @@ every key add/remove listed below is mandatory.
 ## i18n key changes (en.json + fr.json, BOTH files)
 
 Add:
-| key | en | fr |
-|---|---|---|
-| `titleBar.serverUnreachable` | `Server unreachable` | `Serveur injoignable` |
-| `gamesMenu.library` | `Library` | `Bibliothèque` |
-| `gamesBar.overview` | `Overview` | `Vue d'ensemble` |
-| `addGameModal.manageTitle` | `Manage games` | `Gérer les jeux` |
-| `addGameModal.togglePin` | `Show in games bar` | `Afficher dans la barre de jeux` |
-| `common.done` | `Done` | `Terminé` |
+
+| key                          | en                   | fr                               |
+| ---------------------------- | -------------------- | -------------------------------- |
+| `titleBar.serverUnreachable` | `Server unreachable` | `Serveur injoignable`            |
+| `gamesMenu.library`          | `Library`            | `Bibliothèque`                   |
+| `gamesBar.overview`          | `Overview`           | `Vue d'ensemble`                 |
+| `addGameModal.manageTitle`   | `Manage games`       | `Gérer les jeux`                 |
+| `addGameModal.togglePin`     | `Show in games bar`  | `Afficher dans la barre de jeux` |
+| `common.done`                | `Done`               | `Terminé`                        |
 
 Remove (must be gone from both files or the coverage test fails):
+
 - `app.connectionBanner` (replaced by the concise title-bar status)
 - `gamesMenu.home`
 - `filters.searchPlaceholder`
@@ -78,12 +81,13 @@ or keep — pick ONE and be consistent between the two files.
 `src/locales/fr.json`.
 
 **Design (locked):**
+
 - **TitleBar** (top, 32px, `data-tauri-drag-region`, `bg: var(--canvas-default)`):
   - Left: status zone. A 2px line across the very top of the bar
     (`box-shadow: inset 0 2px 0 0 transparent` default; `var(--ember)` when the catalog is
     unreachable). Next to it, only when unreachable: `ServerOff` icon 14px `var(--ember)` +
     concise text `t('titleBar.serverUnreachable')` (`font-size: .75rem`, `color:
-    var(--ember)`) + a small ghost retry button (icon only, `RefreshCw` 12px). Nothing else
+var(--ember)`) + a small ghost retry button (icon only, `RefreshCw` 12px). Nothing else
     on the left — the bar stays empty otherwise.
   - Right: `<WindowControls />` hard-anchored to the right edge
     (`margin-left: auto`, `height: 32px`).
@@ -104,17 +108,18 @@ or keep — pick ONE and be consistent between the two files.
   `data-panel-trigger` pattern, badges, avatar) carries over unchanged into MainNav.
 
 **Orders:**
+
 1. Rewrite `AppHeader.tsx` to export two components: `TitleBar` (props:
    `catalogUnreachable`, `catalogSource`, `onRetry`, `onDoubleClick`) and `MainNav` (all the
    current nav props). Keep them in the same file.
 2. `App.tsx`: render `<TitleBar ... />` then `<MainNav ... />` as the first two children;
    pass `onDoubleClick={() => windowTitlebarToggleMaximize()}` to TitleBar only.
 3. CSS: replace `.app-topbar`/`.app-topbar-row` with `.title-bar` (32px, flex, `width:
-   100%`, status line via `box-shadow`) and `.main-nav` (48px, flex, `width: 100%`,
+100%`, status line via `box-shadow`) and `.main-nav` (48px, flex, `width: 100%`,
    `padding: 0 12px`); add `.title-bar-status` (flex, align center, gap 6px, padding-left
    12px, min-width 0), `.title-bar-status-line` modifier classes `.status-ok` /
    `.status-error` toggling the `box-shadow` color; `.main-nav-right { margin-left: auto;
-   display: flex; gap: 4px; }`; `.topbar-btn-wide { min-width: 48px; }`. Delete
+display: flex; gap: 4px; }`; `.topbar-btn-wide { min-width: 48px; }`. Delete
    `.banner-inline` and `.window-controls-row` (fold into `.title-bar`).
 4. Update `.notifications-panel` and `.downloads-popup` `top:` from `40px` to `80px`
    (32px title bar + 48px nav).
@@ -133,8 +138,9 @@ Notifications panel visuals stay pixel-identical.
 `src/App.tsx`, `src/index.css`, `src/locales/en.json`, `src/locales/fr.json`.
 
 **Design (locked):**
+
 - Games bar gets its own panel background like the reference: `background:
-  var(--surface-default)`, height 64px, `padding: 0 16px`, `gap: 10px`. Icons become tiles:
+var(--surface-default)`, height 64px, `padding: 0 16px`, `gap: 10px`. Icons become tiles:
   44px rounded-square (`border-radius: 8px`) with a tile background `var(--surface-light)`
   behind the image (image covers the tile). Selected tile: 2px outline `var(--action)`
   (green, as in the reference) via `box-shadow: 0 0 0 2px var(--action)`. Uninstalled:
@@ -161,6 +167,7 @@ Notifications panel visuals stay pixel-identical.
 - `App.tsx`: pass `games.filter((g) => pinnedIds.includes(g.info.id))` to `GamesBar`.
 
 **Orders:**
+
 1. Create `src/lib/pinned-games.ts` as specced; add a colocated `pinned-games.test.ts`
    (load/save round-trip, null when unset, corrupt JSON → null; mock localStorage with a
    simple in-memory stub — check how other tests mock browser APIs first and match that
@@ -193,9 +200,10 @@ catalog games (installed or not) with a pin toggle per row. No install action, n
 separator, no version, no developer name, no subtitle.
 
 **Orders:**
+
 1. Rewrite `AddGameModal.tsx`:
    - Props: `{ isOpen, onClose, games: GameInfo[], pinnedIds: string[], onTogglePin:
-     (id: string) => void }`.
+(id: string) => void }`.
    - Title `t('addGameModal.manageTitle')`, close X. NO subtitle paragraph.
    - Search row: proper padding — container `padding: 16px 24px 0`; input with
      `padding-left: 38px` and a `Search` icon 16px absolutely positioned at `left: 12px`
@@ -208,7 +216,7 @@ separator, no version, no developer name, no subtitle.
      `aria-label={t('addGameModal.togglePin')}`.
    - Footer: only a right-aligned `common.done` primary-ghost button closing the modal. Add
      class `pin-modal` on the modal root and CSS `.pin-modal .modal-footer { border-top:
-     none; }` (scoped, like `settings-modal`; do NOT change the global rule).
+none; }` (scoped, like `settings-modal`; do NOT change the global rule).
    - Empty-search state: keep existing empty-state block.
 2. `App.tsx`: pass ALL `games.map(g => g.info)`, `pinnedIds`, and
    `onTogglePin={togglePinnedId}`; delete the old `availableGames`/`onInstall` wiring for
@@ -231,15 +239,13 @@ GamesBar visuals or filters.
 `src/locales/fr.json`.
 
 **Design (locked, per Battle.net reference):**
+
 - **Single-select filter model.** `GameFilters` becomes
   `{ selection: 'all' | 'installed' | \`platform:${string}\`, search: string }`.
-  Exactly one option is active at a time across the whole list. `emptyFilters =
-  { selection: 'all', search: '' }`. `filterGames` predicates: `installed` → installedIds;
-  `platform:x` → `supportedPlatforms` includes x; `search` narrows by name as today.
-  `collectPlatforms` and `platformLabel` stay. Delete the `FilterOption`/`sections`
-  discriminated-union complexity in `FiltersPanel.tsx` — a flat ordered list is enough.
+Exactly one option is active at a time across the whole list. `emptyFilters =
+  { selection: 'all', search: '' }`. `filterGames`predicates:`installed`→ installedIds;`platform:x`→`supportedPlatforms`includes x;`search`narrows by name as today.`collectPlatforms`and`platformLabel`stay. Delete the`FilterOption`/`sections`discriminated-union complexity in`FiltersPanel.tsx` — a flat ordered list is enough.
   Keep the extensibility comment updated (adding a filter = new selection value + predicate
-  + list entry).
+  - list entry).
 - **Panel layout:** width 240px (Battle.net-like), `padding: 12px`. Search input: loupe
   `Search` icon 14px INSIDE on the left (`padding-left: 30px`), NO placeholder text
   (`placeholder` attribute removed entirely). Keep the adaptive `Filter`/`FilterX` reset
@@ -268,10 +274,11 @@ GamesBar visuals or filters.
   NOTHING (details content starts at the left edge).
 
 **Orders:**
+
 1. Rewrite `src/lib/game-filters.ts` per the model above; update
    `src/lib/game-filters.test.ts` (single-select semantics: selecting a platform deselects
    `all`; counts helper if exported — export a `countForSelection(games, installedIds,
-   selection)` helper and test it).
+selection)` helper and test it).
 2. Rewrite `src/components/FiltersPanel.tsx` per the layout above, including counts and the
    exported selected-label resolution (share it with App via a small exported helper
    `selectionLabel(selection, t)` in `game-filters.ts` — note: `platformLabel` is not
@@ -295,6 +302,7 @@ filters; search text still applies WITHIN the selected filter.
 **Files:** whatever the sweep finds, plus `AGENTS.md`.
 
 **Orders:**
+
 1. Run `npm test`, `npx eslint src --ext .ts,.tsx`, `npm run build`,
    `npm test -- i18n-coverage`, `npm run lint`, and
    `npx prettier --check "src/**/*.{ts,tsx,css}" "src/locales/*.json" AGENTS.md`. Fix every

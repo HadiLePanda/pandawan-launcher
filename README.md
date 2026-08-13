@@ -14,8 +14,8 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 - ⬆️ **Launcher Self-Updates** - The launcher checks for, downloads, and installs its own updates
 - ⏱️ **Playtime Tracking** - Track total playtime and last-played date for every game
 - 🔔 **OS Notifications** - Get notified when installs finish or launcher updates are available
-- 🌐 **Multi-Language** - Available in English, French, German, and Spanish
-- 🎨 **Modern UI** - Dark theme with glass morphism inspired by Battle.net
+- 🌐 **Multi-Language** - Available in English and French
+- 🎨 **Modern UI** - Neutral dark theme inspired by Steam and Battle.net
 - 🔧 **Configurable** - Customizable install paths, bandwidth limits, and behavior settings
 - 🖥️ **Cross-Platform** - Built with Tauri for Windows, macOS, and Linux support
 
@@ -23,7 +23,7 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 
 | Layer       | Technology                           |
 | ----------- | ------------------------------------ |
-| Frontend    | React 18 + TypeScript + Tailwind CSS |
+| Frontend    | React 19 + TypeScript + Tailwind CSS |
 | Backend     | Rust + Tauri                         |
 | State       | Zustand                              |
 | HTTP Client | reqwest (Rust)                       |
@@ -35,15 +35,21 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 pandawan-launcher/
 ├── src/                          # React frontend
 │   ├── components/               # UI components
-│   │   ├── TitleBar.tsx         # Frameless window title bar
-│   │   ├── AppTopBar.tsx        # Navigation tabs + game icons
+│   │   ├── AppHeader.tsx        # TitleBar status bar + MainNav
+│   │   ├── GamesBar.tsx         # Pinned games shortcuts bar
+│   │   ├── FiltersPanel.tsx     # Game-grid filters on the overview
 │   │   ├── GamesPage.tsx        # Game library layout
 │   │   ├── GamesHome.tsx        # Default game grid view
 │   │   ├── GamePage.tsx         # Selected game detail view
 │   │   ├── News.tsx             # News feed view
-│   │   ├── Settings.tsx         # Settings page
+│   │   ├── NewsArticleView.tsx  # Full news article view
+│   │   ├── Settings.tsx         # Settings modal
+│   │   ├── DownloadsPage.tsx    # Active downloads view
+│   │   ├── DownloadsPopup.tsx   # Downloads popover
+│   │   ├── NotificationsPanel.tsx # Notifications dropdown
+│   │   ├── PinManagerModal.tsx  # Manage pinned games
 │   │   ├── UpdateBanner.tsx     # Launcher self-update banner
-│   │   └── AddGameModal.tsx     # Manual game install modal
+│   │   └── VerifyGameModal.tsx  # File-integrity verification
 │   ├── lib/                      # Utilities, services, and state
 │   │   ├── store.ts             # Zustand state management
 │   │   ├── catalog-service.ts   # Remote/local/embedded catalog loading
@@ -58,7 +64,7 @@ pandawan-launcher/
 │   │   ├── utils.ts             # Shared helpers (e.g. playtime formatting)
 │   │   ├── logger.ts            # Structured logging (+ launcher.log in app log dir)
 │   │   └── window.ts            # Custom title-bar window controls
-│   ├── locales/                 # i18next resources (en/fr/de/es.json)
+│   ├── locales/                 # i18next resources (en/fr.json)
 │   ├── types/
 │   │   └── index.ts             # TypeScript type definitions
 │   ├── App.tsx                  # Main app component
@@ -107,6 +113,17 @@ npm run tauri:dev
 ```bash
 npm run tauri:build
 ```
+
+### Testing
+
+```bash
+npm test          # Frontend unit tests (Vitest)
+npm run lint      # ESLint
+npm run build     # TypeScript + Vite production build
+```
+
+Rust tests (`cargo test` in `src-tauri/`) require a Tauri-capable environment and are
+validated in CI; they may fail on local Windows hosts with dynamic-link errors.
 
 ## CDN Setup
 

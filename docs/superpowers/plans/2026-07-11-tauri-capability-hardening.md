@@ -12,8 +12,8 @@
 
 ## File map
 
-| File | Responsibility |
-|------|---------------|
+| File                                  | Responsibility           |
+| ------------------------------------- | ------------------------ |
 | `src-tauri/capabilities/default.json` | Scoped Tauri permissions |
 
 ---
@@ -21,6 +21,7 @@
 ## Task 1: Audit current plugin usage
 
 **Files:**
+
 - Read: `src-tauri/capabilities/default.json`
 - Read: `src-tauri/src/lib.rs` plugin init section
 - Search: `src/**` for `@tauri-apps/plugin-fs`, `@tauri-apps/plugin-shell`, `@tauri-apps/plugin-process`, `@tauri-apps/plugin-notification`
@@ -38,6 +39,7 @@ Expected: `tauri_plugin_dialog` is used for folder picker; `tauri_plugin_fs`, `t
 ## Task 2: Harden the capability file
 
 **Files:**
+
 - Modify: `src-tauri/capabilities/default.json`
 
 - [ ] **Step 1: Remove `fs:default` and `shell:default`**
@@ -86,10 +88,12 @@ Expected: no output / no error.
 - [ ] **Step 1: Rust checks**
 
 Run:
+
 ```bash
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
+
 Expected: no errors.
 
 - [ ] **Step 2: Frontend build**
@@ -100,10 +104,12 @@ Expected: succeeds.
 - [ ] **Step 3: Tests**
 
 Run:
+
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml --no-run
 npm test
 ```
+
 Expected: compile/link pass; frontend tests pass.
 
 ---

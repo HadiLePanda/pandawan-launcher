@@ -34,6 +34,7 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 ## Capabilities and Constraints
 
 **Current capabilities**
+
 - Browse a remote catalog of Pandawan Corp games with icons, banners, descriptions, genres, and screenshots.
 - Install, update, launch, uninstall, and verify installed games.
 - Hash-based patching and integrity verification (SHA256).
@@ -48,6 +49,7 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 - “Open logs folder” from Settings → About; logs written as rotating JSON lines in the app log dir.
 
 **Known constraints**
+
 - The in-app **Store** and **Player Profile** are UI placeholders with no backend or purchase/account behavior.
 - `notifyFriendActivity` and `notifyNewsEvents` settings exist in the schema but are not wired to behavior.
 - Games must be configured and uploaded by Pandawan Corp; there is no end-user or third-party publishing path.

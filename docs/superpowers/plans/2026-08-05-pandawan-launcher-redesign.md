@@ -13,6 +13,7 @@
 ## File Structure
 
 **Create**
+
 - `src/components/GameSidebar.tsx` — left sidebar with game icon list and filter/search panel.
 - `src/components/GameContextMenu.tsx` — reusable context menu for game actions.
 - `src/components/DownloadsPage.tsx` — downloads view with active/pending download rows.
@@ -22,6 +23,7 @@
 - `src/lib/game-context.ts` — pure logic for building context-menu items from a game.
 
 **Modify**
+
 - `index.html` — splash screen rewrite.
 - `src/index.css` — token updates, remove gradient/glass utilities, adjust radius/animation.
 - `src/App.tsx` — layout routing, sidebar visibility, downloads/notifications state.
@@ -33,6 +35,7 @@
 - `src/locales/en.json`, `fr.json`, `de.json`, `es.json` — new labels.
 
 **Remove / deprecate**
+
 - `src/components/GameIconsBar.tsx` — superseded by `GameSidebar.tsx` (can be removed after migration).
 
 ---
@@ -40,6 +43,7 @@
 ### Task 1: Design Tokens & Global CSS Cleanup
 
 **Files:**
+
 - Modify: `src/index.css`
 
 - [ ] **Step 1: Update theme tokens**
@@ -168,8 +172,15 @@ Update component radius to `4px` (buttons), `6px` (cards/icons), `8px` (banners/
 
 ```css
 @keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.75; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.75;
+  }
 }
 ```
 
@@ -190,6 +201,7 @@ git commit -m "refactor(css): simplify design tokens and remove gradient/glass u
 ### Task 2: Splash Screen Rewrite
 
 **Files:**
+
 - Modify: `index.html`
 
 - [ ] **Step 1: Replace splash markup and styles**
@@ -238,8 +250,22 @@ git commit -m "refactor(css): simplify design tokens and remove gradient/glass u
       font-size: 32px;
       animation: breathe 2.5s ease-in-out infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.75; } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @keyframes breathe {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.75;
+      }
+    }
   </style>
   <div class="splash-mark">
     <div class="splash-ring"></div>
@@ -258,7 +284,9 @@ Keep the existing 12s failsafe and add a fade-out before removal.
   function hideSplash() {
     if (!splash) return;
     splash.style.opacity = '0';
-    setTimeout(function () { splash.remove(); }, 300);
+    setTimeout(function () {
+      splash.remove();
+    }, 300);
   }
   window.hideSplash = hideSplash;
   setTimeout(hideSplash, 12000);
@@ -282,6 +310,7 @@ git commit -m "feat(splash): minimalist circle-P mark with breathing and spinner
 ### Task 3: Top Bar & Title Bar Reskin
 
 **Files:**
+
 - Modify: `src/components/TitleBar.tsx`
 - Modify: `src/components/AppTopBar.tsx`
 - Modify: `src/components/WindowControls.tsx` (if needed for hover styles)
@@ -355,8 +384,16 @@ export function AppTopBar({
         </div>
         <div className="cluster cluster-sm no-drag">
           <TopBarButton icon={<SunMoon className="w-4 h-4" />} label={t('topBar.themeLabel')} />
-          <TopBarButton icon={<Download className="w-4 h-4" />} label={t('topBar.downloads')} badge={downloadsBadge} />
-          <TopBarButton icon={<Bell className="w-4 h-4" />} label={t('topBar.notifications')} badge={notificationsBadge} />
+          <TopBarButton
+            icon={<Download className="w-4 h-4" />}
+            label={t('topBar.downloads')}
+            badge={downloadsBadge}
+          />
+          <TopBarButton
+            icon={<Bell className="w-4 h-4" />}
+            label={t('topBar.notifications')}
+            badge={notificationsBadge}
+          />
           <TopBarButton icon={<User className="w-4 h-4" />} label={t('topBar.playerProfile')} />
         </div>
       </div>
@@ -368,7 +405,17 @@ export function AppTopBar({
 Add a reusable `TopBarButton` component in the same file or a new file:
 
 ```tsx
-function TopBarButton({ icon, label, badge, onClick }: { icon: React.ReactNode; label: string; badge?: number | null; onClick?: () => void }) {
+function TopBarButton({
+  icon,
+  label,
+  badge,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: number | null;
+  onClick?: () => void;
+}) {
   return (
     <button onClick={onClick} className="topbar-btn" aria-label={label} title={label}>
       <span className="relative">
@@ -444,7 +491,9 @@ function TopBarButton({ icon, label, badge, onClick }: { icon: React.ReactNode; 
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 .topbar-btn:hover {
   background: var(--surface-hover);
@@ -480,6 +529,7 @@ git commit -m "feat(topbar): Steam-like top bar with tabs and rectangular action
 ## Task 4: GameSidebar + App.tsx wiring
 
 **Files:**
+
 - Create: `src/components/GameSidebar.tsx`
 - Modify: `src/App.tsx`
 - Modify: `src/index.css`
@@ -521,6 +571,7 @@ Run: `npm run build`. Expected: success, no GameIconsBar references.
 ## Task 5: Filter state + filter panel
 
 **Files:**
+
 - Create: `src/lib/game-filters.ts`
 - Create: `src/lib/game-filters.test.ts`
 - Modify: `src/lib/store.ts`
@@ -574,6 +625,7 @@ Search input on top; reset ↺ icon button beside it — `.filter-reset` is `opa
 ## Task 6: GamesHome overview cards
 
 **Files:**
+
 - Modify: `src/components/GamesHome.tsx`
 - Modify: `src/index.css`
 
@@ -594,6 +646,7 @@ onContextMenu → GameContextMenu (wired in Task 9; stub prop until then).
 ## Task 7: `formatPlaytimeDecimal` + `formatNewsDate` utils
 
 **Files:**
+
 - Modify: `src/lib/utils.ts`
 - Modify: `src/lib/utils.test.ts` (create if missing)
 
@@ -619,6 +672,7 @@ Run: `npm run test -- utils` — FAIL → implement → PASS.
 ## Task 8: GamePage detail redesign
 
 **Files:**
+
 - Modify: `src/components/GamePage.tsx`
 - Modify: `src/index.css`
 
@@ -647,6 +701,7 @@ Delete game description block and bottom news section + their CSS. Remove any pu
 ## Task 9: GameContextMenu
 
 **Files:**
+
 - Create: `src/lib/game-context.ts`
 - Create: `src/lib/game-context.test.ts`
 - Create: `src/components/GameContextMenu.tsx`
@@ -681,6 +736,7 @@ Fixed-position menu at cursor, closes on outside click / Escape / item click. `.
 ## Task 10: NewsArticleView
 
 **Files:**
+
 - Create: `src/components/NewsArticleView.tsx`
 - Modify: `src/App.tsx`, `src/index.css`
 
@@ -701,6 +757,7 @@ News rows in GamePage right column and News page click → open NewsArticleView.
 ## Task 11: DownloadsPage + topbar badge
 
 **Files:**
+
 - Create: `src/components/DownloadsPage.tsx`
 - Modify: `src/App.tsx`, `src/components/AppTopBar.tsx`, `src/index.css`
 
@@ -731,6 +788,7 @@ const notificationsBadge = useLauncherStore((s) => s.unreadNotifications); // Ta
 ## Task 12: NotificationsPanel + unread state
 
 **Files:**
+
 - Create: `src/components/NotificationsPanel.tsx`
 - Modify: `src/lib/store.ts`, `src/components/AppTopBar.tsx`, `src/index.css`
 
@@ -751,6 +809,7 @@ Dropdown anchored under notifications button, 320px wide, `position: absolute; t
 ## Task 13: Settings reskin
 
 **Files:**
+
 - Modify: `src/components/Settings.tsx`, `src/index.css`
 
 - [ ] **Step 1: Reskin only**
@@ -766,6 +825,7 @@ Replace glass/gradient/purple classes with token palette: sections on `var(--sur
 ## Task 14: Locale keys (en/fr/de/es)
 
 **Files:**
+
 - Modify: `src/locales/en.json`, `fr.json`, `de.json`, `es.json`
 
 - [ ] **Step 1: Add keys**

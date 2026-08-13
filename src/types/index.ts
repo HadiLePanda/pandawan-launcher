@@ -118,8 +118,6 @@ export interface LauncherSettings {
   theme: string;
   notifyGameUpdates: boolean;
   notifyDownloadComplete: boolean;
-  notifyFriendActivity: boolean;
-  notifyNewsEvents: boolean;
 }
 
 export interface PatchNote {

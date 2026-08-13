@@ -7,9 +7,26 @@
     "title": "Jeux épinglés"
   },
   "app": {
-    "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?",
-    "storeComingSoonDescription": "Parcours et installe de nouveaux jeux Pandawan ici.",
-    "storeComingSoonTitle": "Boutique bientôt disponible"
+    "confirmUninstall": "Veux-tu vraiment désinstaller ce jeu ?"
+  },
+  "store": {
+    "title": "Boutique Pandawan",
+    "subtitle": "La boutique n'est pas encore ouverte. Voici les articles prévus — cliquer dessus t'emmènera sur notre site web quand elle sera lancée.",
+    "card": {
+      "currency": {
+        "name": "Monnaie de jeu",
+        "description": "Recharge ton portefeuille en jeu pour des cosmétiques et des bonus."
+      },
+      "game": {
+        "name": "Jeux",
+        "description": "Achète de nouveaux jeux et extensions pour ta bibliothèque."
+      },
+      "bundle": {
+        "name": "Packs & Bundles",
+        "description": "Offres spéciales, season passes et packs collector."
+      }
+    },
+    "visitButton": "Visiter la boutique"
   },
   "titleBar": {
     "serverUnreachable": "Serveur injoignable"

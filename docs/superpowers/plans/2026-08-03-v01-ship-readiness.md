@@ -118,8 +118,10 @@ This is the "no rewrite later" foundation: every user-visible string goes throug
 - [ ] Manual (with user): signed local build, tag `v0.1.0`, verify release workflow drafts release + `latest.json`, upload to CDN endpoint, confirm Task 2's updater detects it
 
 ## Out of scope for v0.1
+
 Binary (bsdiff) delta patching, cloud saves, friends/achievements, Discord Rich Presence, mod support, store/account wiring.
 
 ## Verification (gate before done)
+
 - `cargo test` (src-tauri), `npm run test`, `npm run lint`, `npm run build` all green
 - Manual smoke: install → launch → exit (playtime increments and survives an update); updater banner appears when endpoint serves newer version; notification fires on install complete; switching language re-renders UI live

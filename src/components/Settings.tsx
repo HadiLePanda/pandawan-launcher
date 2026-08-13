@@ -51,8 +51,6 @@ const DEFAULT_SETTINGS: LauncherSettings = {
   theme: 'adaptive',
   notifyGameUpdates: true,
   notifyDownloadComplete: true,
-  notifyFriendActivity: false,
-  notifyNewsEvents: true,
 };
 
 export function Settings({ isOpen, onClose }: SettingsProps) {
@@ -286,8 +284,6 @@ function DownloadSettings({ settings, onChange }: TabProps) {
 
 function NotificationSettings({ settings, onChange }: TabProps) {
   const { t } = useTranslation();
-  // notifyFriendActivity and notifyNewsEvents have no behavior behind them
-  // yet; the LauncherSettings fields are kept for a future implementation.
   return (
     <div className="setting-group">
       <ToggleSetting

@@ -19,6 +19,7 @@ import { PinManagerModal } from '@components/PinManagerModal';
 import { News } from '@components/News';
 import { UpdateBanner } from '@components/UpdateBanner';
 import { VerifyGameModal } from '@components/VerifyGameModal';
+import { StorePlaceholder } from '@components/StorePlaceholder';
 import { useLauncherStore } from '@/lib/store';
 import { avatarUrl } from '@/lib/avatars';
 import { isGamePinned } from '@/lib/pins';
@@ -27,8 +28,6 @@ import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/update
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
-
-import { EmptyState } from '@components/EmptyState';
 
 declare global {
   interface Window {
@@ -323,14 +322,7 @@ function App() {
       );
     }
     if (activeView === 'store') {
-      return (
-        <div className="flex-1 flex flex-col justify-center">
-          <EmptyState
-            title={t('app.storeComingSoonTitle')}
-            description={t('app.storeComingSoonDescription')}
-          />
-        </div>
-      );
+      return <StorePlaceholder />;
     }
 
     return (

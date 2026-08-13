@@ -88,8 +88,6 @@ function makeSettings(overrides?: Partial<LauncherSettings>): LauncherSettings {
     theme: 'adaptive',
     notifyGameUpdates: true,
     notifyDownloadComplete: true,
-    notifyFriendActivity: false,
-    notifyNewsEvents: true,
     ...overrides,
   };
 }

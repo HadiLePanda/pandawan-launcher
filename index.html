@@ -57,8 +57,22 @@
           font-size: 32px;
           animation: breathe 2.5s ease-in-out infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.75; } }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @keyframes breathe {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.05);
+            opacity: 0.75;
+          }
+        }
       </style>
       <div class="splash-mark">
         <div class="splash-ring"></div>
@@ -72,7 +86,9 @@
         function hideSplash() {
           if (!splash) return;
           splash.style.opacity = '0';
-          setTimeout(function () { splash.remove(); }, 300);
+          setTimeout(function () {
+            splash.remove();
+          }, 300);
         }
         window.hideSplash = hideSplash;
         setTimeout(hideSplash, 12000);

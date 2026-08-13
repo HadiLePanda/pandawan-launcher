@@ -22,22 +22,23 @@
 
 Dark mode is the default; light mode mirrors the same structure with inverted values.
 
-| Role | Dark | Light | Usage |
-|------|------|-------|-------|
-| Canvas | `#0e1013` | `#f7f5f0` | App background |
-| Surface | `#16191d` | `#ffffff` | Cards, panels, sidebars, inputs |
-| Surface hover | `#1e2125` | `#f3f1ec` | Hover backgrounds |
-| Border | `rgba(255,255,255,0.08)` | `rgba(28,27,25,0.08)` | 1px hairlines |
-| Border strong | `rgba(255,255,255,0.12)` | `rgba(28,27,25,0.14)` | Active/focused cards |
-| Ink | `#f4f4f5` | `#1c1917` | Primary text |
-| Ink muted | `#9ca3af` | `#78716c` | Secondary text |
-| Ink dim | `#6b7280` | `#a8a29e` | Placeholders, disabled |
-| Action green | `#22c55e` | `#16a34a` | Play / Launch / Confirm / installed status |
-| Action blue | `#3b82f6` | `#2563eb` | Install / Update / Download actions (user-pinned exception) |
-| Selection white | `#f4f4f5` | `#1c1917` | Active tab underline, selected icon border |
-| Error red | `#ef4444` | `#dc2626` | Errors, destructive actions |
+| Role            | Dark                     | Light                 | Usage                                                       |
+| --------------- | ------------------------ | --------------------- | ----------------------------------------------------------- |
+| Canvas          | `#0e1013`                | `#f7f5f0`             | App background                                              |
+| Surface         | `#16191d`                | `#ffffff`             | Cards, panels, sidebars, inputs                             |
+| Surface hover   | `#1e2125`                | `#f3f1ec`             | Hover backgrounds                                           |
+| Border          | `rgba(255,255,255,0.08)` | `rgba(28,27,25,0.08)` | 1px hairlines                                               |
+| Border strong   | `rgba(255,255,255,0.12)` | `rgba(28,27,25,0.14)` | Active/focused cards                                        |
+| Ink             | `#f4f4f5`                | `#1c1917`             | Primary text                                                |
+| Ink muted       | `#9ca3af`                | `#78716c`             | Secondary text                                              |
+| Ink dim         | `#6b7280`                | `#a8a29e`             | Placeholders, disabled                                      |
+| Action green    | `#22c55e`                | `#16a34a`             | Play / Launch / Confirm / installed status                  |
+| Action blue     | `#3b82f6`                | `#2563eb`             | Install / Update / Download actions (user-pinned exception) |
+| Selection white | `#f4f4f5`                | `#1c1917`             | Active tab underline, selected icon border                  |
+| Error red       | `#ef4444`                | `#dc2626`             | Errors, destructive actions                                 |
 
 **Rules**
+
 - No gradient backgrounds, no glass blur, no glow shadows.
 - Selection states use white/ink, not yellow.
 - Blue is reserved for the Install/Update/Download action family.
@@ -313,6 +314,7 @@ Dark mode is the default; light mode mirrors the same structure with inverted va
 ## 16. Implementation Scope Notes
 
 This redesign touches the following areas:
+
 - `index.html` splash screen rewrite.
 - `src/index.css` token simplification and removal of gradients/glass utilities.
 - `src/components/TitleBar.tsx`, `AppTopBar.tsx`, `GameIconsBar.tsx` layout and style changes (vertical sidebar + icon list).

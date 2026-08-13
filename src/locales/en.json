@@ -7,9 +7,26 @@
     "title": "Pinned Games"
   },
   "app": {
-    "confirmUninstall": "Are you sure you want to uninstall this game?",
-    "storeComingSoonDescription": "Browse and install new Pandawan games here.",
-    "storeComingSoonTitle": "Store Coming Soon"
+    "confirmUninstall": "Are you sure you want to uninstall this game?"
+  },
+  "store": {
+    "title": "Pandawan Store",
+    "subtitle": "The store is not live yet. These are planned items — clicking them will take you to our website when it launches.",
+    "card": {
+      "currency": {
+        "name": "Game Currency",
+        "description": "Top up your in-game wallet for cosmetics and boosts."
+      },
+      "game": {
+        "name": "Game Licenses",
+        "description": "Purchase new games and expansions for your library."
+      },
+      "bundle": {
+        "name": "Bundles & Packs",
+        "description": "Special offers, season passes, and collector packs."
+      }
+    },
+    "visitButton": "Visit Store"
   },
   "titleBar": {
     "serverUnreachable": "Server unreachable"

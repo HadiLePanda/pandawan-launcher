@@ -153,8 +153,6 @@ export type LauncherSettings = {
   theme: string;
   notifyGameUpdates: boolean;
   notifyDownloadComplete: boolean;
-  notifyFriendActivity: boolean;
-  notifyNewsEvents: boolean;
 };
 
 export type LaunchResult = {

@@ -33,12 +33,10 @@ This is a Tauri-based game launcher for Pandawan Corp games, built with React an
 ```
 src/                          # React frontend
 ├── components/               # React components
-│   ├── AppHeader.tsx         # Single merged 40px drag-region header
-│   ├── GamesBar.tsx          # Library / store tab switcher
+│   ├── AppHeader.tsx         # TitleBar status bar + MainNav
+│   ├── GamesBar.tsx          # Pinned games shortcuts bar
 │   ├── FiltersPanel.tsx      # Game-grid filters on the overview
-│   ├── GameRail.tsx          # Game details sidebar on the details view
 │   ├── DownloadsPopup.tsx    # Active downloads popover
-│   ├── AddGameModal.tsx
 │   ├── DownloadsPage.tsx
 │   ├── EmptyState.tsx
 │   ├── GameContextMenu.tsx
@@ -48,12 +46,14 @@ src/                          # React frontend
 │   ├── News.tsx
 │   ├── NewsArticleView.tsx
 │   ├── NotificationsPanel.tsx
+│   ├── PinManagerModal.tsx   # Manage pinned games
 │   ├── Settings.tsx
+│   ├── StorePlaceholder.tsx  # Store tab placeholder cards
 │   ├── UpdateBanner.tsx
 │   ├── VerifyGameModal.tsx
 │   └── WindowControls.tsx
-# Note: the top bar is a single merged 40px drag-region header; filters are
-# FiltersPanel (overview) vs GameRail (details).
+# Note: the header is two bars (TitleBar status + MainNav); filters are
+# FiltersPanel (overview) only — GameRail was removed.
 ├── lib/                      # Utilities, services, and store
 │   ├── store.ts              # Zustand state management
 │   ├── catalog-service.ts    # Remote/local/embedded catalog loading
