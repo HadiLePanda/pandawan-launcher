@@ -249,7 +249,9 @@ export function MainNav({
   return (
     <div className="main-nav">
       <div className="cluster cluster-md no-drag">
-        <div className="app-logo">P</div>
+        <div className="app-logo">
+          <img src="/logo-circle-p.png" alt="Pandawan Launcher" className="app-logo-image" />
+        </div>
         <div className="nav-arrows">
           <button
             type="button"
