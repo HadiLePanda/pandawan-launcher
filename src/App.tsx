@@ -410,6 +410,7 @@ function App() {
           installedIds={installedIds}
           unpinnedGameIds={unpinnedGameIds}
           selectedGameId={selectedGameId}
+          isOverviewSelected={selectedGameId === null}
           onSelect={handleSelectGameIcon}
           onContextMenu={handleContextMenu}
           onOpenPins={() => setIsPinsOpen(true)}

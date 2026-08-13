@@ -44,7 +44,7 @@ instead of only via the MainNav "Games" button.
   - Widen the `onSelect` prop type from `(gameId: string) => void` to
     `(gameId: string | null) => void` so the slot can deselect.
   - Render the slot as a `.games-bar-item` containing a `button.games-bar-icon
-    installed` (+ `.selected` when `isOverviewSelected`) with a `LayoutGrid`
+installed` (+ `.selected` when `isOverviewSelected`) with a `LayoutGrid`
     lucide icon (size 20), `aria-label` from i18n, and the `.games-bar-tip`
     tooltip span.
   - Click handler: `onSelect(null)` — no new callback prop needed.
@@ -53,7 +53,7 @@ instead of only via the MainNav "Games" button.
   - Pass `isOverviewSelected={selectedGameId === null}` to `GamesBar`.
 - `src/index.css`
   - New rule `.games-bar-divider` (1px wide, 24px tall, `background:
-    var(--border-default)`, `flex-shrink: 0`). All other styling reuses
+var(--border-default)`, `flex-shrink: 0`). All other styling reuses
     `.games-bar-icon`, `.installed`, `.selected`, `.games-bar-tip`.
 - `src/locales/en.json` + `src/locales/fr.json`
   - New key `gamesBar.allGames`: "All Games" / "Tous les jeux".

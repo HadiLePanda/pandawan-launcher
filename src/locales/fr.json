@@ -38,7 +38,8 @@
     "retry": "Réessayer"
   },
   "gamesBar": {
-    "managePins": "Gérer les jeux épinglés"
+    "managePins": "Gérer les jeux épinglés",
+    "allGames": "Tous les jeux"
   },
   "gamesMenu": {
     "downloads": "Téléchargements",

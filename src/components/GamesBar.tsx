@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Gamepad2, Plus } from 'lucide-react';
+import { Gamepad2, LayoutGrid, Plus } from 'lucide-react';
 import { isGamePinned } from '@/lib/pins';
 import type { GameInfo } from '@/types';
 
@@ -8,7 +8,8 @@ export interface GamesBarProps {
   installedIds: Set<string>;
   unpinnedGameIds: string[];
   selectedGameId: string | null;
-  onSelect: (gameId: string) => void;
+  isOverviewSelected: boolean;
+  onSelect: (gameId: string | null) => void;
   onContextMenu: (e: React.MouseEvent, gameId: string) => void;
   onOpenPins: () => void;
 }
@@ -18,6 +19,7 @@ export function GamesBar({
   installedIds,
   unpinnedGameIds,
   selectedGameId,
+  isOverviewSelected,
   onSelect,
   onContextMenu,
   onOpenPins,
@@ -28,6 +30,20 @@ export function GamesBar({
 
   return (
     <div className="games-bar no-scrollbar" data-testid="games-bar">
+      <div className="games-bar-item">
+        <button
+          type="button"
+          className={['games-bar-icon', 'installed', isOverviewSelected ? 'selected' : ''].join(
+            ' '
+          )}
+          aria-label={t('gamesBar.allGames')}
+          onClick={() => onSelect(null)}
+        >
+          <LayoutGrid size={20} />
+        </button>
+        <span className="games-bar-tip">{t('gamesBar.allGames')}</span>
+      </div>
+      {visibleGames.length > 0 && <div className="games-bar-divider" aria-hidden="true" />}
       {visibleGames.map((game) => (
         <div key={game.id} className="games-bar-item">
           <button

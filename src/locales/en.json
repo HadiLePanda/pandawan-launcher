@@ -38,7 +38,8 @@
     "retry": "Retry"
   },
   "gamesBar": {
-    "managePins": "Manage pinned games"
+    "managePins": "Manage pinned games",
+    "allGames": "All Games"
   },
   "gamesMenu": {
     "downloads": "Downloads",
