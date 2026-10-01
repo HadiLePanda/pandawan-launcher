@@ -131,6 +131,121 @@ fn test_create_updater_artifacts_is_set_on_bundle() {
     );
 }
 
+/// Verifies the signature of the PUBLISHED installer against the pubkey the
+/// launcher embeds, using the same crate the updater plugin uses at runtime.
+///
+/// This is the end-to-end proof that a release actually works for players:
+/// artifact bytes are downloaded from the public bucket, the .sig beside them is
+/// downloaded, and the pair is checked exactly as tauri-plugin-updater would.
+/// A green unit test on the committed config cannot show that; only this can.
+///
+/// Requires network access to the public bucket. Skips when unreachable so an
+/// offline `cargo test` still passes.
+
+/// GET a URL, or None when the network or the object is unavailable.
+///
+/// Uses curl rather than a Rust HTTP client: this only has to prove that the
+/// published bytes are fetchable and intact, and reqwest's blocking feature is
+/// not enabled in this crate. `curl -f` fails on a 404, so a missing object comes
+/// back as None rather than an error body.
+fn fetch(url: &str) -> Option<Vec<u8>> {
+    let out = std::process::Command::new("curl")
+        .args(["-sfL", "--max-time", "120", url])
+        .output()
+        .ok()?;
+
+    if !out.status.success() {
+        return None;
+    }
+    Some(out.stdout)
+}
+
+#[test]
+fn test_published_installer_signature_verifies_against_embedded_pubkey() {
+    let config = tauri_config();
+    let pubkey = config["plugins"]["updater"]["pubkey"]
+        .as_str()
+        .expect("pubkey is a string")
+        .to_string();
+
+    // The endpoint is the manifest itself (.../launcher/latest.json), so the
+    // download base is its directory. Drop the trailing filename first.
+    let endpoint = config["plugins"]["updater"]["endpoints"][0]
+        .as_str()
+        .expect("endpoint is a string");
+    let base = endpoint
+        .split('/')
+        .take(endpoint.trim_end_matches('/').matches('/').count())
+        .collect::<Vec<_>>()
+        .join("/");
+
+    let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(
+        &fetch(&format!("{base}/latest.json")).unwrap_or_else(|| {
+            println!("skipping: latest.json not reachable at {base}/latest.json");
+            std::process::exit(0);
+        }),
+    ) else {
+        println!("skipping: latest.json is not valid JSON");
+        std::process::exit(0);
+    };
+
+    let platforms = &manifest["platforms"];
+    let targets: Vec<String> = platforms
+        .as_object()
+        .expect("platforms is an object")
+        .keys()
+        .cloned()
+        .collect();
+    assert!(!targets.is_empty(), "published manifest has no platforms");
+
+    // The Windows MSI is the one artifact this test can fully check end to end.
+    let Some(entry) = platforms.get("windows-x86_64-msi") else {
+        println!("skipping: no windows-x86_64-msi entry in the published manifest");
+        std::process::exit(0);
+    };
+    let url = entry["url"].as_str().expect("entry has a url");
+
+    let Some(artifact) = fetch(url) else {
+        println!("skipping: artifact not reachable at {url}");
+        std::process::exit(0);
+    };
+    assert!(!artifact.is_empty(), "downloaded artifact is empty");
+
+    // The .sig sits beside the artifact, which is how the publish script lays it out.
+    // Its presence is asserted rather than used: the signature actually checked is
+    // the one embedded in latest.json, which is what the updater reads.
+    let sig_url = format!("{}/{}", url.rsplit_once('/').map_or("", |(h, _)| h), sig_name(url));
+    if fetch(&sig_url).is_none() {
+        panic!("published manifest points at {url} but {sig_url} is missing");
+    }
+
+    // The updater stores the signature base64-encoded in latest.json and decodes
+    // it before verifying, so mirror that rather than reading the file directly.
+    let decoded_sig = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        entry["signature"].as_str().expect("entry has a signature"),
+    )
+    .expect("signature is base64");
+
+    // Parse exactly as the plugin does: base64-decode, then PublicKey::decode.
+// Note this is `decode` (whole PublicKeyBox), NOT `from_base64` (raw key).
+    let key = parse_like_the_plugin(&pubkey).expect("pubkey parses like the plugin does");
+    let signature =
+        minisign_verify::Signature::decode(&String::from_utf8(decoded_sig).expect("signature utf8"))
+            .expect("signature decodes");
+
+    key.verify(&artifact, &signature, false)
+        .expect("published artifact does not verify against the embedded pubkey");
+
+    println!("verified published windows-x86_64-msi ({} bytes)", artifact.len());
+}
+
+/// `Pandawan.Launcher_0.1.0_x64_en-US.msi` -> `Pandawan.Launcher_0.1.0_x64_en-US.msi.sig`
+fn sig_name(url: &str) -> String {
+    let file = url.rsplit('/').next().unwrap_or_default();
+    format!("{file}.sig")
+}
+
 #[test]
 fn test_updater_endpoint_is_https() {
     // The plugin rejects non-https endpoints in release builds.

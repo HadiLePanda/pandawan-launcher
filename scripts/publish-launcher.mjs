@@ -32,7 +32,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, upload } from './lib/r2.mjs';
+import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
 
 const REPO = 'HadiLePanda/pandawan-launcher';
 const PREFIX = 'launcher';
