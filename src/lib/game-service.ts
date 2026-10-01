@@ -11,7 +11,7 @@ import type {
   VerificationResult,
 } from '@/types';
 import { fetchGameManifest } from './catalog-service';
-import { resolveGameUrls } from './cdn';
+import { resolveGameUrls, resolveBaseUrl } from './cdn';
 import { detectPlatform, selectPlatformBuild } from './platform';
 import type { GameInfo } from '@/types';
 
@@ -48,17 +48,23 @@ export async function patchGame(
     );
   }
 
+  // Flat manifests published before the version-stamped layout carry no
+  // base_url, so the build resolves to an empty string. The backend turns that
+  // into "/" and rejects it as a relative URL, so the channel directory is the
+  // only place its files can live.
+  const baseUrl = build.baseUrl || resolveBaseUrl(manifest);
+
   const platformManifest: GameManifest = {
     ...manifest,
     executable: build.executable,
     files: build.files,
-    base_url: build.baseUrl,
+    base_url: baseUrl,
     platforms: undefined,
   };
 
   const downloadChannel = createDownloadChannel(gameId, callbacks);
   const installation = unwrapResult(
-    await commands.installGame(platformManifest, build.baseUrl, downloadChannel)
+    await commands.installGame(platformManifest, baseUrl, downloadChannel)
   );
   return { manifest, installation };
 }

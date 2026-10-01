@@ -66,8 +66,6 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
 
   return (
     <div className="stack-md">
-      <div className="verify-pct">{pct}%</div>
-
       <div className="verify-bar">
         <div className="verify-bar-fill" style={{ width: `${pct}%` }} />
       </div>
@@ -80,20 +78,25 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
         <Tally label={t('verifyGameModal.stats.missing')} value={missing} tone="missing" />
       </div>
 
-      <CurrentFile path={last?.path} />
+      <CurrentFile path={last?.path} scanning={t('verifyGameModal.scanning')} />
     </div>
   );
 }
 
-function CurrentFile({ path }: { path?: string }) {
+function CurrentFile({ path, scanning }: { path?: string; scanning: string }) {
   if (!path) return null;
   return (
     <div className="verify-current" key={path}>
-      <span className="verify-current-path">{path}</span>
+      <span className="verify-dot" />
+      <span className="verify-current-path">
+        {scanning} {path}
+      </span>
     </div>
   );
 }
 
+/** A zero count is not news: it drops its number and its colour, so colour only
+ * ever means something is wrong. */
 function Tally({
   label,
   value,
@@ -103,13 +106,16 @@ function Tally({
   value: number;
   tone: 'valid' | 'invalid' | 'missing';
 }) {
+  if (value === 0) {
+    return <span className="verify-tally verify-tally-zero">{label}</span>;
+  }
   return (
-    <div className={cn('verify-tally', `verify-tally-${tone}`)}>
+    <span className={cn('verify-tally', `verify-tally-${tone}`)}>
       <span className="verify-tally-value tabular-nums" key={value}>
         {value}
       </span>
-      <span className="caption">{label}</span>
-    </div>
+      {label}
+    </span>
   );
 }
 
@@ -118,15 +124,17 @@ function ResultView({ result }: { result: VerificationResult }) {
   const valid = useCountUp(result.valid_files);
 
   if (result.is_valid) {
+    // Both branches call t() with a literal: the coverage scanner only matches
+    // strings passed directly to t(), so a key chosen in a variable reads as
+    // unused and fails the parity test.
     return (
       <div className="verify-verdict verify-verdict-ok">
-        <div className="verify-verdict-head">
-          <FileCheck className="w-5 h-5 shrink-0" />
-          <span>{t('verifyGameModal.allValid')}</span>
-        </div>
-        <div className="verify-verdict-detail">
-          {t('verifyGameModal.stats.valid')}: {valid}
-        </div>
+        <FileCheck className="w-5 h-5 shrink-0" />
+        <span>
+          {result.valid_files === 1
+            ? t('verifyGameModal.verifiedOne', { count: valid })
+            : t('verifyGameModal.verifiedMany', { count: valid })}
+        </span>
       </div>
     );
   }
@@ -135,29 +143,17 @@ function ResultView({ result }: { result: VerificationResult }) {
     ...result.invalid_files.map((path) => ({ path, state: 'invalid' as const })),
     ...result.missing_files.map((path) => ({ path, state: 'missing' as const })),
   ];
-  const shown = problems.slice(0, 5);
+  const shown = problems.slice(0, 4);
 
   return (
     <div className="stack-md">
       <div className="verify-verdict verify-verdict-bad">
-        <div className="verify-verdict-head">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
-          <span>{t('verifyGameModal.needsRepair')}</span>
-        </div>
-      </div>
-
-      <div className="cluster cluster-md">
-        <Tally label={t('verifyGameModal.stats.valid')} value={result.valid_files} tone="valid" />
-        <Tally
-          label={t('verifyGameModal.stats.invalid')}
-          value={result.invalid_files.length}
-          tone="invalid"
-        />
-        <Tally
-          label={t('verifyGameModal.stats.missing')}
-          value={result.missing_files.length}
-          tone="missing"
-        />
+        <AlertTriangle className="w-5 h-5 shrink-0" />
+        <span>
+          {problems.length === 1
+            ? t('verifyGameModal.issueOne', { count: problems.length })
+            : t('verifyGameModal.issueMany', { count: problems.length })}
+        </span>
       </div>
 
       <ul className="verify-sample">

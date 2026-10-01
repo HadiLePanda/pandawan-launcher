@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectPlatform, selectPlatformBuild, isPlatform } from './platform';
+import { CDN_ORIGIN, resolveBaseUrl } from './cdn';
 import type { FileEntry, GameManifest, PlatformBuild } from '@/types';
 
 const file = (name: string, size: number): FileEntry => ({
@@ -139,3 +140,32 @@ describe('selectPlatformBuild', () => {
     expect(selectPlatformBuild(manifest, 'windows', ['windows'])?.sizeBytes).toBe(42);
   });
 });
+
+describe('install base URL for flat manifests', () => {
+  it('resolves a build with no base_url to the channel directory', () => {
+    // The launcher used to forward this empty string to the backend, which
+    // formatted it into "/" and failed with "relative URL without a base".
+    // Every pre-layout manifest has this shape, so it is the common case.
+    const manifest = {
+      game_id: 'pandawan-test-game',
+      channel: 'stable',
+      executable: 'pandawan-test-game.exe',
+      files: [{ path: 'pandawan-test-game.exe', size: 4608, hash: 'x' }],
+    } as GameManifest;
+
+    const build = selectPlatformBuild(manifest, 'windows', ['windows']);
+    expect(build?.baseUrl).toBe('');
+
+    const baseUrl = build?.baseUrl || resolveBaseUrl(manifest);
+    expect(baseUrl).toBe(`${CDN_ORIGIN}/games/pandawan-test-game/stable/`);
+    expect(reqwestUrlParses(baseUrl)).toBe(true);
+  });
+});
+
+function reqwestUrlParses(url: string): boolean {
+  try {
+    return new URL(url).protocol.startsWith('http');
+  } catch {
+    return false;
+  }
+}

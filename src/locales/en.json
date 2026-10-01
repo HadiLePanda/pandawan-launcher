@@ -255,15 +255,18 @@
     "update": "Update"
   },
   "verifyGameModal": {
-    "allValid": "All files verified",
-    "needsRepair": "Some files need repair",
-    "progress": "{{checked}} of {{total}}",
-    "title": "Verify files",
+    "progress": "{{checked}} / {{total}}",
+    "scanning": "Scanning",
     "stats": {
       "invalid": "Invalid",
       "missing": "Missing",
       "valid": "Valid"
-    }
+    },
+    "title": "Verify files",
+    "verifiedOne": "{{count}} file verified",
+    "verifiedMany": "All {{count}} files verified",
+    "issueOne": "{{count}} file needs attention",
+    "issueMany": "{{count}} files need attention"
   },
   "windowControls": {
     "close": "Close",
