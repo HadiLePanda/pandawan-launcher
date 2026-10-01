@@ -54,12 +54,18 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":1420" ^| findstr "LISTENING
 )
 
 REM ------------------------------------------------------------------- run
+REM First run compiles the whole Rust tree (a few minutes); later runs reuse it
+REM and the window opens in seconds.
 echo.
-echo Starting dev launcher...
-call npm run tauri:dev > "%LOG%" 2>&1
+echo Starting dev launcher. First run compiles the Rust tree - this takes a
+echo few minutes. Output is shown below and mirrored to dev-launch.log.
+echo.
+REM `*>&1` merges stderr into stdout so both reach the terminal and the log.
+REM `npm.cmd` not `npm`: PowerShell prefers the npm.ps1 shim, which this machine's
+REM execution policy blocks (PSSecurityException). The .cmd wrapper is not gated.
+powershell -NoProfile -Command "& { npm.cmd run tauri:dev *>&1 | Tee-Object -FilePath '%LOG%' }"
 
 REM `npm run tauri:dev` is normally long-lived. Reaching here means it stopped.
-type "%LOG%"
 echo.
 echo Dev launcher stopped. Full output: %LOG%
 goto :done
