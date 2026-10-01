@@ -59,7 +59,6 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
   const { t } = useTranslation();
   const last = rows[rows.length - 1];
   const checked = useCountUp(rows.length);
-  const valid = useCountUp(last?.valid ?? 0);
   const invalid = useCountUp(last?.invalid ?? 0);
   const missing = useCountUp(last?.missing ?? 0);
   const pct = total ? Math.round((rows.length / total) * 100) : 0;
@@ -72,11 +71,14 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
 
       <div className="verify-count">{t('verifyGameModal.progress', { checked, total })}</div>
 
-      <div className="verify-tallies">
-        <Tally label={t('verifyGameModal.stats.valid')} value={valid} tone="valid" />
-        <Tally label={t('verifyGameModal.stats.invalid')} value={invalid} tone="invalid" />
-        <Tally label={t('verifyGameModal.stats.missing')} value={missing} tone="missing" />
-      </div>
+      {/* Only deviations. A valid count would just restate the ratio above,
+          since a checked file is valid unless it is listed here. */}
+      {(invalid > 0 || missing > 0) && (
+        <div className="verify-tallies">
+          <Tally label={t('verifyGameModal.stats.invalid')} value={invalid} tone="invalid" />
+          <Tally label={t('verifyGameModal.stats.missing')} value={missing} tone="missing" />
+        </div>
+      )}
 
       <CurrentFile path={last?.path} scanning={t('verifyGameModal.scanning')} />
     </div>
@@ -105,7 +107,7 @@ function Tally({
 }: {
   label: string;
   value: number;
-  tone: 'valid' | 'invalid' | 'missing';
+  tone: 'invalid' | 'missing';
 }) {
   if (value === 0) return null;
   return (

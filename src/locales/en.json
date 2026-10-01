@@ -259,8 +259,7 @@
     "scanning": "Scanning",
     "stats": {
       "invalid": "Invalid",
-      "missing": "Missing",
-      "valid": "Valid"
+      "missing": "Missing"
     },
     "title": "Verify files",
     "verifiedOne": "{{count}} file verified",
