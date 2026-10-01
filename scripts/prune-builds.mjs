@@ -16,8 +16,16 @@
 
 import { spawnSync } from 'node:child_process';
 
-import { deletePrefix, fail, isMangledKey, listKeys, r2Config, run, S3 } from './lib/r2.mjs';
-import { planPrune, readActiveVersion } from './lib/prune-plan.mjs';
+import {
+  deletePrefix,
+  fail,
+  isMangledKey,
+  listKeysWithMeta,
+  r2Config,
+  run,
+  S3,
+} from './lib/r2.mjs';
+import { planPrune, readActiveVersion, readPinnedVersions } from './lib/prune-plan.mjs';
 
 function parseArgs(argv) {
   const args = {};
@@ -37,6 +45,7 @@ const keep = Number.parseInt(args.keep ?? '3', 10);
 const dryRun = Boolean(args['dry-run']);
 const assumeYes = Boolean(args.yes);
 const cleanFlat = Boolean(args['clean-flat']);
+const olderThanDays = args['older-than'] ? Number.parseInt(args['older-than'], 10) : null;
 
 if (!gameId) {
   fail(`--game-id is required.\n  Example: --game-id misspell --channel alpha --keep 3`);
@@ -52,9 +61,15 @@ console.log(`Game:    ${gameId}`);
 console.log(`Channel: ${channel}`);
 console.log(`Keep:    ${keep} newest build(s)\n`);
 
-const keys = listKeys(S3.s3Uri(bucket, prefix), { endpoint });
+const keys = listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
 
-const { all, flatLeftovers, doomed } = planPrune(keys, prefix, keep, activeVersion);
+const { all, flatLeftovers, doomed, skippedAsYoung } = planPrune(
+  keys,
+  prefix,
+  keep,
+  activeVersions,
+  { olderThanDays }
+);
 
 console.log(`Found ${all.length} build(s):`);
 for (const [version, info] of all) {
@@ -72,18 +87,23 @@ if (flatLeftovers.length > 0) {
   );
 }
 
-// The manifest names the build clients are currently downloading. Deleting it
-// would break every install, so planPrune protects it regardless of age.
-// Best-effort: if the manifest cannot be read we keep the newest build only.
-const activeVersion = (() => {
-  try {
-    const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
-    const manifestUrl = `${origin}/games/${gameId}/${channel}/manifest.json`;
-    const res = spawnSync('curl', ['-sf', manifestUrl], { encoding: 'utf8', shell: false });
-    return res.status === 0 ? readActiveVersion(res.stdout) : null;
-  } catch {
-    return null;
-  }
+// Every version a platform is currently pinned to. On a per-platform channel
+// these can differ — macOS may still be on an older build than Windows — and
+// deleting one of them does not remove history, it removes that platform's game.
+// Best-effort: if the index cannot be read the newest build is kept instead.
+const activeVersions = (() => {
+  const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
+  const read = (path) => {
+    const res = spawnSync('curl', ['-sf', `${origin}/games/${gameId}/${channel}/${path}`], {
+      encoding: 'utf8',
+      shell: false,
+    });
+    return res.status === 0 ? res.stdout : null;
+  };
+
+  const pinned = Object.values(readPinnedVersions(read('latest.json')) ?? {});
+  const manifestVersion = readActiveVersion(read('manifest.json'));
+  return [...new Set([...pinned, manifestVersion].filter(Boolean))];
 })();
 
 // --clean-flat removes the pre-layout leftovers one key at a time. A recursive
@@ -163,8 +183,11 @@ for (const [version, info] of doomed) {
   console.log(`  ${version}  (${info.objects} objects)`);
 }
 
-if (activeVersion) {
-  console.log(`\nActive build (from manifest): ${activeVersion} - never deleted.`);
+if (activeVersions.length > 0) {
+  console.log(`\nPinned build(s), never deleted: ${activeVersions.join(', ')}`);
+  if (olderThanDays !== null) {
+    console.log('  The age rule does not override a pin.');
+  }
 }
 
 if (dryRun) {
