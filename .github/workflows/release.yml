@@ -148,7 +148,7 @@ jobs:
           gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
             --paginate --jq '.[].name' | while read -r name; do
               case "$name" in
-                *.msi|*.msi.sig|*.app.tar.gz|*.app.tar.gz.sig|*.dmg|*.deb|*.deb.sig|latest.json) ;;
+                *.msi|*.msi.sig|*.app.tar.gz|*.app.tar.gz.sig|*.dmg|*.deb|*.deb.sig|*.rpm|*.rpm.sig|*.exe|*.exe.sig|latest.json) ;;
                 *) continue ;;
               esac
               id=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
