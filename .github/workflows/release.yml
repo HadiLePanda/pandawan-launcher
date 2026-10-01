@@ -216,9 +216,14 @@ jobs:
                 "repos/${{ github.repository }}/releases/assets/$id" > "bundles/$name"
               echo "  fetched $name"
             done
+          # Build the asset-id -> filename map that the rewrite step needs for the
+          # macOS targets. `--paginate` emits one JSON array per page, so the pages
+          # are concatenated before mapping; `jq -s` slurps them into a single
+          # array. Written into bundles/ because that is where the rewrite step
+          # looks for it.
           gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
-            --paginate > assets.json
-          cat assets.json | jq '[.[] | {id, name}]' > assets-compact.json
+            --paginate | jq -s 'add | [.[] | {id, name}]' > bundles/assets-compact.json
+          echo "asset map entries: $(jq 'length' bundles/assets-compact.json)"
           ls -la bundles
 
       - name: Point latest.json at the public bucket
