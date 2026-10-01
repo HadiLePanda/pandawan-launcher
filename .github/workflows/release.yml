@@ -37,6 +37,29 @@ jobs:
             exit 1
           fi
 
+      - name: Verify signing secret is configured
+        shell: bash
+        env:
+          SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          # Without this secret `tauri build` produces no .sig files and no
+          # latest.json, and the release silently ships with nothing for the
+          # updater to verify. Fail loudly instead.
+          if [ -z "${SIGNING_KEY:-}" ]; then
+            echo "::error::GitHub secret TAURI_SIGNING_PRIVATE_KEY is not set."
+            echo "Set it to the verbatim contents of src-tauri/.secrets/updater.key:"
+            echo "  gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/.secrets/updater.key"
+            exit 1
+          fi
+          # The CLI base64-decodes the value, so it must not be raw minisign text.
+          if [[ "$SIGNING_KEY" == "untrusted comment:"* ]]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY looks like raw minisign text."
+            echo "It must be the base64 form written by 'tauri signer generate'."
+            exit 1
+          fi
+          echo "Signing secret is configured."
+
   release:
     name: Release ${{ matrix.platform }}
     needs: check-versions
@@ -89,7 +112,13 @@ jobs:
         uses: tauri-apps/tauri-action@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Verbatim contents of src-tauri/.secrets/updater.key. `tauri signer
+          # generate` writes that file base64-encoded and the CLI base64-decodes
+          # it, so it must not be re-encoded or replaced with raw minisign text.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # Only needed when the key was generated with a password. Without it the
+          # CLI prompts interactively and this build hangs until it times out.
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Pandawan Launcher ${{ github.ref_name }}'

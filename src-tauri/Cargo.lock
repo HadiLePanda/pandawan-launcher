@@ -2698,10 +2698,12 @@ dependencies = [
 name = "pandawan-launcher"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "dirs 5.0.1",
  "futures-util",
  "hex",
+ "minisign-verify",
  "mockito",
  "reqwest 0.12.28",
  "serde",

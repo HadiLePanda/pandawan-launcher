@@ -40,6 +40,11 @@ specta-typescript = "=0.0.12"
 
 [dev-dependencies]
 mockito = "1"
+# Used by tests/updater_signing_tests.rs to parse plugins.updater.pubkey exactly
+# the way the updater plugin does, so a malformed key fails CI instead of at
+# runtime on every user's update check.
+minisign-verify = "0.2"
+base64 = "0.22"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

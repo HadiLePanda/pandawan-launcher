@@ -41,6 +41,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": ["icons/icon.icns", "icons/icon.png", "icons/icon.ico"],
     "windows": {
       "certificateThumbprint": null,
@@ -56,8 +57,7 @@
       "active": true,
       "endpoints": ["https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/latest.json"],
       "dialog": false,
-      "pubkey": "RWQvuHc8cORDVNcS0ZqpM9YYQP8mUkjSfLJSQG9MbMuqo+o6rT2dzo16",
-      "createUpdaterArtifacts": true
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2RDY4NDEzNkNCN0Y3NjcKUldSbjk3ZHNFNFRXTmtUcGcvbHVMVTBFWFJJdk5jSXpST2htUHgxbjY4aVRCMEpuN3gvVlRIWkwK"
     }
   }
 }

@@ -214,15 +214,30 @@ The launcher exposes these commands to the frontend:
 
 ## Self-Updates
 
-The launcher uses Tauri's built-in updater.
+The launcher uses Tauri's built-in updater. Signing is handled by the Tauri CLI —
+do not use the `minisign` CLI directly, as the two produce key formats that are
+not interchangeable.
 
 - **Public key** (committed): `src-tauri/updater.pub` is the single source of truth.
   - Sync it into `src-tauri/tauri.conf.json` with `npm run sync:updater-key`.
     This also runs automatically before `tauri:dev` and `tauri:build`.
+  - `tauri signer generate` writes this file as the **base64 of the whole
+    PublicKeyBox**, and `plugins.updater.pubkey` needs that same value verbatim:
+    the updater base64-decodes it and parses the result with
+    `minisign_verify::PublicKey::decode`. The inner raw key line does **not** work.
+    The sync script handles this; do not paste either form by hand.
 - **Secret key** (gitignored): `src-tauri/.secrets/updater.key` signs bundles.
   It is ignored by Git and must never be committed.
-- **CI secret**: `TAURI_SIGNING_PRIVATE_KEY` must be set in GitHub Secrets so the
-  release workflow can sign bundles.
+- **CI secrets**:
+  - `TAURI_SIGNING_PRIVATE_KEY` — the **contents of `updater.key`**. `tauri signer
+generate` already writes that file base64-encoded, so pipe it in verbatim:
+    ```bash
+    gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/.secrets/updater.key
+    ```
+    Do not base64-encode it again, and do not paste the raw minisign text; the CLI
+    base64-decodes the value itself.
+  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — only if the key was generated with a
+    password. Without it the CLI prompts interactively and a CI build hangs.
 
 ### Checking your keys
 
@@ -230,9 +245,17 @@ The launcher uses Tauri's built-in updater.
 npm run keys:check
 ```
 
-Verifies the secret key exists, that `updater.pub` really matches it, and that
-the public key is synced into `tauri.conf.json`. Run this first if the updater
-misbehaves.
+Signs a throwaway file with the Tauri CLI to prove the secret key is usable, and
+confirms `updater.pub` is synced into `tauri.conf.json`. Run this first if the
+updater misbehaves.
+
+The public-key side is additionally covered by Rust tests that parse
+`plugins.updater.pubkey` exactly the way the plugin does at runtime, so a
+malformed key fails CI rather than every user's update check:
+
+```bash
+cd src-tauri && cargo test --test updater_signing_tests
+```
 
 ```bash
 npm run keys:generate
@@ -240,14 +263,7 @@ npm run keys:generate
 
 **Only for a brand-new setup.** It refuses to run when a secret key already
 exists, because regenerating invalidates every bundle you have already signed.
-If no key exists yet, it creates one and syncs it.
-
-Install minisign first if prompted:
-
-```bash
-winget install jedisct1.minisign    # Windows
-brew install minisign               # macOS
-```
+If no key exists yet, it creates one with `tauri signer generate` and syncs it.
 
 ## Publishing a game build
 

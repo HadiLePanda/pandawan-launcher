@@ -14,7 +14,18 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 
 - `src-tauri/updater.pub` â€” minisign **public** key, committed to the repo.
 - `src-tauri/.secrets/updater.key` â€” minisign **secret** key, **never committed**.
-- GitHub Secret `TAURI_SIGNING_PRIVATE_KEY` â€” paste the contents of `updater.key` here.
+- GitHub Secrets:
+  - `TAURI_SIGNING_PRIVATE_KEY` - the **verbatim contents of `updater.key`**:
+    `gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/.secrets/updater.key`.
+    `tauri signer generate` already writes that file base64-encoded and the Tauri
+    CLI base64-decodes it, so do NOT re-encode it and do NOT paste raw minisign text.
+  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - only if the key has a password. Without
+    it the CLI prompts interactively and the CI build hangs.
+
+Never generate keys with the `minisign` CLI. The Rust `minisign` crate that Tauri
+uses rejects the empty-password key format that `minisign -G` writes, so the two
+formats are not interchangeable. Use `npm run keys:generate` (which wraps
+`tauri signer generate`).
 
 `npm run tauri:build` and the release workflow automatically sync `updater.pub` into `tauri.conf.json` for you.
 
