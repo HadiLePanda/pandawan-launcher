@@ -7,7 +7,7 @@ REM
 REM The window stays open on exit so any error is readable. Close with Ctrl+C,
 REM or press a key when it stops.
 
-setlocal
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 set LOG=%CD%\dev-launch.log
 
@@ -15,6 +15,19 @@ echo.
 echo === Pandawan Launcher - dev mode ===
 echo Log: %LOG%
 echo.
+
+REM ---------------------------------------------------------------- toolchain
+REM Resolves cargo / aws / minisign even when this window was started before
+REM those were installed. See scripts\dev-env.bat for why that is needed.
+call "%~dp0scripts\dev-env.bat"
+
+where cargo >nul 2>nul
+if errorlevel 1 (
+  echo.
+  echo ERROR: cargo not found.
+  echo        Install Rust from https://rustup.rs and reopen this window.
+  goto :fail
+)
 
 REM ---------------------------------------------------------------- preflight
 call npm run --silent keys:check
@@ -26,7 +39,7 @@ if not exist ".env" (
 
 where aws >nul 2>nul
 if errorlevel 1 (
-  echo WARNING: aws CLI not on PATH. Game publishing will fail.
+  echo WARNING: aws CLI not found. Game publishing will fail.
   echo          Install with: winget install Amazon.AWSCLI
 )
 

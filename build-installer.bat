@@ -11,7 +11,7 @@ REM This produces a self-contained installer you can share. It does NOT publish
 REM anything to R2 - that happens in CI when you tag a release. Run
 REM `npm run release` for that.
 
-setlocal
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 set LOG=%CD%\build-launch.log
 
@@ -20,6 +20,18 @@ echo === Pandawan Launcher - signed build ===
 echo Log: %LOG%
 echo This takes several minutes.
 echo.
+
+REM Resolves cargo / aws / minisign even when this window was started before
+REM those were installed. See scripts\dev-env.bat for why that is needed.
+call "%~dp0scripts\dev-env.bat"
+
+where cargo >nul 2>nul
+if errorlevel 1 (
+  echo.
+  echo ERROR: cargo not found.
+  echo        Install Rust from https://rustup.rs and reopen this window.
+  goto :preflight_failed
+)
 
 call npm run --silent keys:check
 if errorlevel 1 goto :preflight_failed
