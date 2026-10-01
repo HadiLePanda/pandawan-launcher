@@ -4,12 +4,22 @@
   --surface: #16191d;
   --surface-2: #1e2125;
   --border: rgba(255, 255, 255, 0.08);
+  /* Two greys, not one. --ink-muted carries body text (6.95:1 on surface);
+     --ink-subtle was #6b7280 at 3.65:1, which fails WCAG AA for the 11-12px
+     table headers and helper text it was used on. #8b9199 clears 4.5:1 on
+     every surface here while still reading as secondary. */
   --ink: #f4f4f5;
   --ink-muted: #9ca3af;
-  --ink-subtle: #6b7280;
+  --ink-subtle: #8b9199;
   --action: #22c55e;
+  --action-ink: #06240f;
+  --danger: #f87171;
   --warn: #fbbf24;
   --mono: ui-monospace, 'JetBrains Mono', Consolas, monospace;
+  --sans: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* One duration for every transition. These are all colour/surface swaps, so
+     a single short value reads as one system rather than a patchwork. */
+  --ease: 120ms ease;
 }
 
 * {
@@ -20,9 +30,9 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font:
-    14px/1.5 system-ui,
-    sans-serif;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .bar {
@@ -73,6 +83,8 @@ body {
   color: var(--ink-muted);
 }
 
+/* Selected state is carried by colour and a surface, not a moving underline:
+   an animated indicator on a bar that can scroll looks broken mid-transition. */
 /* Selected state is carried by colour and a surface, not a moving underline:
    an animated indicator on a bar that can scroll looks broken mid-transition. */
 .tab[aria-selected='true'] {
@@ -217,8 +229,15 @@ input {
   font-family: var(--mono);
   font-size: 13px;
 }
-input:focus {
-  outline: none;
+/* The native placeholder default is far too faint on this canvas. A placeholder
+   is a hint, never the only label, so it may sit below body contrast but must
+   stay readable. */
+input::placeholder {
+  color: var(--ink-subtle);
+  opacity: 0.75;
+}
+
+input:focus-visible {
   border-color: var(--action);
 }
 
@@ -286,6 +305,10 @@ button {
   padding: 8px 16px;
   font: inherit;
   cursor: pointer;
+  transition:
+    background var(--ease),
+    border-color var(--ease),
+    opacity var(--ease);
 }
 button:hover {
   background: #24282e;
@@ -293,8 +316,29 @@ button:hover {
 button.primary {
   background: var(--action);
   border-color: transparent;
-  color: #06240f;
+  color: var(--action-ink);
   font-weight: 600;
+}
+button.primary:hover {
+  background: #34d16b;
+}
+
+/* Every interactive element gets the same visible ring. Inputs, buttons,
+   selects and tabs each relied on their own or on :focus, which meant a
+   keyboard user got no consistent indicator. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.tab:focus-visible,
+.copy:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+/* A disabled or in-flight button must not look clickable. */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .log {
@@ -374,4 +418,40 @@ button.primary {
 .hint {
   opacity: 0.65;
   font-size: 12px;
+}
+
+/* Motion here is only a colour fade, but honouring the preference costs one
+   block and avoids a visible transition for anyone who asked for none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Narrow windows: the two-column form and the grid collapse to one so fields
+   never scroll sideways. */
+@media (max-width: 640px) {
+  .bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tabs {
+    margin-left: 0;
+    order: 3;
+    width: 100%;
+  }
+  .grid,
+  .grid.one {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+  .row {
+    flex-wrap: wrap;
+  }
+  .cmd code {
+    font-size: 12px;
+  }
 }

@@ -10,7 +10,11 @@ const $ = (id) => document.getElementById(id);
 
 function selectTab(name, { push = true } = {}) {
   for (const tab of document.querySelectorAll('.tab')) {
-    tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    const selected = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', String(selected));
+    // Roving tabindex: only the selected tab stays in the tab order, so Tab
+    // moves past the whole strip to the panel instead of through four stops.
+    tab.tabIndex = selected ? 0 : -1;
   }
   for (const panel of document.querySelectorAll('.tabpanel')) {
     panel.hidden = panel.dataset.panel !== name;
