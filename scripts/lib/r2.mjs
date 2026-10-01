@@ -136,6 +136,16 @@ export function listKeys(keyPrefix, { endpoint } = {}) {
   // fall back to a server-side delete instead of guessing at a name. This CLI
   // build rejects both --only-show-keys (ParamValidation, exit 252) and
   // --encoding, so neither is passed.
+  return listKeysWithMeta(keyPrefix, { endpoint }).map((entry) => entry.key);
+}
+
+/**
+ * The same listing as listKeys, with the date and size the CLI already printed.
+ *
+ * One parser serves both so they cannot drift: a fix to the key format lands in
+ * one place rather than needing to be mirrored.
+ */
+export function listKeysWithMeta(keyPrefix, { endpoint } = {}) {
   const args = ['s3', 'ls', keyPrefix, '--recursive', '--endpoint-url', endpoint];
   const res = spawnSync('aws', args, { shell: false });
   if (res.error) fail(`could not run aws: ${res.error.message}`);
@@ -146,10 +156,18 @@ export function listKeys(keyPrefix, { endpoint } = {}) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const match = line.match(/^\S+\s+\S+\s+\S+\s+(.*)$/);
-      return match ? match[1] : null;
+      // "<date> <time> <size> <key>". Columns are matched rather than split on
+      // whitespace because keys may contain spaces.
+      const match = line.match(/^(\S+\s+\S+)\s+(\d+)\s+(.*)$/);
+      if (!match) return null;
+      const stamped = new Date(match[1].replace(' ', 'T') + 'Z');
+      return {
+        key: match[3],
+        size: Number(match[2]),
+        lastModified: Number.isNaN(stamped.getTime()) ? null : stamped.toISOString(),
+      };
     })
-    .filter((key) => key !== null);
+    .filter((entry) => entry !== null);
 }
 
 /**

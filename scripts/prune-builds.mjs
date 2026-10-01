@@ -17,6 +17,7 @@
 import { spawnSync } from 'node:child_process';
 
 import { deletePrefix, fail, isMangledKey, listKeys, r2Config, run, S3 } from './lib/r2.mjs';
+import { planPrune, readActiveVersion } from './lib/prune-plan.mjs';
 
 function parseArgs(argv) {
   const args = {};
@@ -53,40 +54,12 @@ console.log(`Keep:    ${keep} newest build(s)\n`);
 
 const keys = listKeys(S3.s3Uri(bucket, prefix), { endpoint });
 
-const versions = new Map();
-for (const key of keys) {
-  const rest = key.slice(prefix.length + 1).split('/');
-  if (rest.length < 2) continue;
-  const version = rest[0];
-  // A real version segment starts with a digit (0.4.0, 1.2, 2026.1). Requiring
-  // that rules out the older flat layout's directories - D3D12, MonoBleedingEdge,
-  // misspell_Data - which must never be mistaken for a build to delete. "contains
-  // a digit" is not enough: D3D12 has a 3 and a 1.
-  if (!/^\d/.test(version)) continue;
-  if (!versions.has(version)) versions.set(version, { objects: 0, bytes: 0 });
-  versions.get(version).objects += 1;
-}
+const { all, flatLeftovers, doomed } = planPrune(keys, prefix, keep, activeVersion);
 
-// `aws s3 ls --only-show-keys` does not report sizes, so this is an object count
-// rather than a byte total. Good enough to show what is at stake before deleting.
-const all = Array.from(versions.entries()).sort(([a], [b]) =>
-  b.localeCompare(a, undefined, { numeric: true })
-);
 console.log(`Found ${all.length} build(s):`);
 for (const [version, info] of all) {
   console.log(`  ${version}  (${info.objects} objects)`);
 }
-
-// Files left over from the pre-version-stamped layout sit directly under the
-// channel prefix, alongside the manifest. They are dead weight - nothing points
-// at them any more - but they cannot be swept with a recursive delete, because
-// the manifest.json in the same directory is live. Listing by prefix would
-// happily take it out too and break every install.
-const flatLeftovers = keys.filter((key) => {
-  const rest = key.slice(prefix.length + 1).split('/');
-  if (rest[0] === 'manifest.json') return false;
-  return !/^\d/.test(rest[0]);
-});
 
 if (flatLeftovers.length > 0) {
   console.log(`\n${flatLeftovers.length} leftover object(s) from the old flat layout:`);
@@ -100,22 +73,18 @@ if (flatLeftovers.length > 0) {
 }
 
 // The manifest names the build clients are currently downloading. Deleting it
-// would break every install, so it is excluded from the candidates regardless of
-// age. Best-effort: if the manifest cannot be read we keep the newest build only.
-let activeVersion = null;
-try {
-  const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
-  const manifestUrl = `${origin}/games/${gameId}/${channel}/manifest.json`;
-  const res = spawnSync('curl', ['-sf', manifestUrl], { encoding: 'utf8', shell: false });
-  if (res.status === 0 && res.stdout) activeVersion = JSON.parse(res.stdout).version;
-} catch {
-  // Treated as "unknown"; the keep logic below still protects the newest build.
-}
-
-const protectedVersions = new Set(all.slice(0, keep).map(([v]) => v));
-if (activeVersion) protectedVersions.add(activeVersion);
-
-const doomed = all.filter(([v]) => !protectedVersions.has(v));
+// would break every install, so planPrune protects it regardless of age.
+// Best-effort: if the manifest cannot be read we keep the newest build only.
+const activeVersion = (() => {
+  try {
+    const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
+    const manifestUrl = `${origin}/games/${gameId}/${channel}/manifest.json`;
+    const res = spawnSync('curl', ['-sf', manifestUrl], { encoding: 'utf8', shell: false });
+    return res.status === 0 ? readActiveVersion(res.stdout) : null;
+  } catch {
+    return null;
+  }
+})();
 
 // --clean-flat removes the pre-layout leftovers one key at a time. A recursive
 // delete on the channel prefix would take the live manifest with them.
@@ -128,7 +97,7 @@ if (cleanFlat) {
   }
 
   console.log(`\nDeleting ${targets.length} prefix(es):`);
-  for (const target of doomed) console.log(`  build ${target[0]}`);
+  for (const [version] of doomed) console.log(`  build ${version}`);
   if (flatLeftovers.length > 0) console.log(`  ${flatLeftovers.length} flat-layout object(s)`);
 
   if (!dryRun && !assumeYes) {

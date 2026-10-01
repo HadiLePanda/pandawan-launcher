@@ -18,7 +18,7 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { S3, listKeys, loadDotEnv, r2Config } from './lib/r2.mjs';
+import { S3, listKeysWithMeta, loadDotEnv, r2Config } from './lib/r2.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetDir = path.join(here, 'dashboard');
@@ -46,7 +46,7 @@ const mimeTypes = {
  * the authoritative version/build per platform.
  */
 async function buildInventory() {
-  const keys = await listKeys(S3.s3Uri(bucket, 'games/'), { endpoint });
+  const keys = await listKeysWithMeta(S3.s3Uri(bucket, 'games/'), { endpoint });
   const games = new Map();
 
   const channelOf = (key) => {
@@ -62,8 +62,23 @@ async function buildInventory() {
   // A version is identified by the manifest sitting directly beneath it. Inferring
   // it from the path shape alone misreads a flat publish — a game whose files sit
   // directly in the channel directory reports its first folder as a version.
-  for (const key of keys) {
-    const loc = channelOf(key);
+  //
+  // Each version carries the newest timestamp among its objects, which is the real
+  // ship time. Reading it from the versioned manifest's HTTP header instead would
+  // report when that manifest was written, which for a backfilled build is today
+  // rather than the day it was published.
+  const stamp = (record, iso) => {
+    if (iso && (!record.lastModified || iso > record.lastModified)) {
+      record.lastModified = iso;
+    }
+  };
+
+  // A flat channel's ship time lives on the channel itself, since there is no
+  // version directory to hang it off.
+  const flatStamps = new Map();
+
+  for (const entry of keys) {
+    const loc = channelOf(entry.key);
     if (!loc) continue;
     const rest = loc.parts.slice(2);
     if (rest.length === 1 && rest[0] === 'manifest.json') {
@@ -71,24 +86,35 @@ async function buildInventory() {
       // so it must be registered here or it never appears in the inventory.
       const channels = bucketFor(loc.id);
       if (!channels.has(loc.channel)) channels.set(loc.channel, new Map());
+      const key = `${loc.id}/${loc.channel}`;
+      const current = flatStamps.get(key);
+      if (entry.lastModified && (!current || entry.lastModified > current)) {
+        flatStamps.set(key, entry.lastModified);
+      }
       continue;
     }
     if (rest.length !== 2 || rest[1] !== 'manifest.json') continue;
     const channels = bucketFor(loc.id);
     if (!channels.has(loc.channel)) channels.set(loc.channel, new Map());
-    channels.get(loc.channel).set(rest[0], { platforms: new Set(), flat: true });
+    const versions = channels.get(loc.channel);
+    if (!versions.has(rest[0])) versions.set(rest[0], { platforms: new Set(), lastModified: null });
+    continue;
   }
 
-  // Platform subdirectories only exist for per-platform publishes.
-  for (const key of keys) {
-    const loc = channelOf(key);
-    if (!loc || !PLATFORMS.includes(loc.parts[3])) continue;
+  // Everything inside a known version directory belongs to that build. This pass
+  // both records platform subdirectories and stamps the build's ship time.
+  for (const entry of keys) {
+    const loc = channelOf(entry.key);
+    if (!loc) continue;
     const channels = bucketFor(loc.id);
     const versions = channels.get(loc.channel);
-    if (!versions?.has(loc.parts[2])) continue;
-    const record = versions.get(loc.parts[2]);
-    record.platforms.add(loc.parts[3]);
-    record.flat = false;
+    const record = versions?.get(loc.parts[2]);
+    if (!record) continue;
+    if (PLATFORMS.includes(loc.parts[3])) record.platforms.add(loc.parts[3]);
+    // Manifests are excluded from the timestamp: they are metadata that can be
+    // rewritten long after the build shipped, and including them would report when
+    // the manifest was last touched rather than when the build was published.
+    if (!loc.parts.includes('manifest.json')) stamp(record, entry.lastModified);
   }
 
   const result = [];
@@ -128,11 +154,10 @@ async function buildInventory() {
         channel,
         latest,
         published,
-        // When each platform actually shipped. Taken per platform from its own
-        // immutable manifest, because latest.json's Last-Modified is when the
-        // channel was last written and would make every platform look equally
-        // recent. Version drift alone says there is a gap; these say how big.
-        updated: await platformTimestamps(id, channel, latest),
+        // When each platform actually shipped, from the bucket listing rather than
+        // an HTTP header: the versioned manifest of a backfilled build was written
+        // today, while its files carry the day it was really published.
+        updated: shipTimes(versions, flatStamps.get(`${id}/${channel}`), latest),
         // Driven by latest.json rather than by path shape, since a flat publish
         // has no platform directories to read from.
         platforms:
@@ -148,37 +173,17 @@ async function buildInventory() {
 }
 
 /**
- * Last-Modified of each platform's own versioned manifest.
+ * Ship time per platform, taken from the version each one is pinned to.
  *
- * Small immutable JSON, already required for per-platform resolution, so this
- * costs one cheap request per platform. The headers are trustworthy precisely
- * because those objects never change once written.
+ * A flat channel has no version directory, so it falls back to the channel's own
+ * timestamp. Version drift says there is a gap; these say how big.
  */
-async function platformTimestamps(id, channel, latest) {
+function shipTimes(versions, flatStamp, latest) {
   const stamps = {};
-  await Promise.all(
-    Object.entries(latest ?? {}).map(async ([platform, entry]) => {
-      const urls = [
-        `${cdnOrigin}/games/${id}/${channel}/${entry.version}/manifest.json`,
-        // A flat, pre-version-stamped channel has no version directory, so its
-        // root manifest is the only object that carries a timestamp.
-        `${cdnOrigin}/games/${id}/${channel}/manifest.json`,
-      ];
-      for (const url of urls) {
-        try {
-          const res = await fetch(url);
-          const header = res.headers.get('last-modified');
-          if (res.ok && header) {
-            stamps[platform] = new Date(header).toISOString();
-            return;
-          }
-        } catch {
-          // Try the next candidate.
-        }
-      }
-      stamps[platform] = null;
-    })
-  );
+  for (const platform of Object.keys(latest ?? {})) {
+    const record = versions.get(latest[platform].version);
+    stamps[platform] = record?.lastModified ?? flatStamp ?? null;
+  }
   return stamps;
 }
 
