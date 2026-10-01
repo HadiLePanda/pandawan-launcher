@@ -4,10 +4,29 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
+  # Manual trigger for re-running only the R2 publish step against an existing
+  # release. The bundles are already built and signed at that point, so this
+  # takes ~30 seconds instead of the ~25 minutes a full three-platform build
+  # takes. Use it to test or repair publishing without re-cutting a tag.
+  #
+  #   gh workflow run release.yml -f publish_only=true -f tag=v0.1.0
+  workflow_dispatch:
+    inputs:
+      publish_only:
+        description: 'Only re-publish to R2 from an existing release (skip building)'
+        type: boolean
+        default: false
+      tag:
+        description: 'Existing tag to re-publish from (required when publish_only is true)'
+        type: string
+        required: false
 
 jobs:
   check-versions:
     name: Check version consistency
+    # Skipped for a publish-only rerun: nothing is rebuilt, so the working tree's
+    # version numbers are irrelevant.
+    if: ${{ !inputs.publish_only }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -63,6 +82,9 @@ jobs:
   release:
     name: Release ${{ matrix.platform }}
     needs: check-versions
+    # Skipped for a publish-only rerun: the bundles already exist on the release
+    # and do not need rebuilding.
+    if: ${{ !inputs.publish_only }}
     permissions:
       contents: write
     strategy:
@@ -137,7 +159,10 @@ jobs:
   # latest.json are rewritten to the public bucket before upload.
   publish-updater:
     name: Publish updater assets to R2
+    # Normally gated on a successful build; on a publish-only rerun the release
+    # job is skipped, so the gate has to be relaxed or nothing would ever run.
     needs: release
+    if: ${{ always() && (needs.release.result == 'success' || inputs.publish_only) }}
     runs-on: ubuntu-latest
     environment: production
     # This token defaults to read-only, and a read-only token cannot see a draft
@@ -148,6 +173,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # On a tag push this is already the tag; on a manual publish-only run
+          # ref_name is the branch, so the input tag is used instead.
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -157,6 +186,7 @@ jobs:
       - name: Download signed bundles from the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           mkdir -p bundles
@@ -166,11 +196,11 @@ jobs:
           # through the API instead. The release id is looked up by tag for the
           # same reason: there is no way to resolve it by name.
           RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases" \
-            --jq ".[] | select(.tag_name == \"${{ github.ref_name }}\") | .id" \
+            --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id" \
             | head -1)
 
           if [ -z "$RELEASE_ID" ]; then
-            echo "No release found for tag ${{ github.ref_name }}."
+            echo "No release found for tag $RELEASE_TAG."
             exit 1
           fi
 
