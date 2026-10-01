@@ -258,7 +258,6 @@
     "allValid": "Tous les fichiers sont valides",
     "needsRepair": "Certains fichiers doivent être réparés",
     "progress": "{{checked}} sur {{total}}",
-    "scanning": "Analyse de",
     "title": "Vérifier les fichiers",
     "stats": {
       "invalid": "Invalides",

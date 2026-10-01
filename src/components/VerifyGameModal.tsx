@@ -30,7 +30,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
           </button>
         </div>
 
-        <div className="modal-body">
+        <div className="modal-body verify-body">
           {error && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -44,8 +44,8 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
         </div>
 
         {result && !error && (
-          <div className="modal-footer">
-            <button onClick={onClose} className="btn btn-primary w-full">
+          <div className="verify-footer">
+            <button onClick={onClose} className="btn btn-secondary">
               {t('common.close')}
             </button>
           </div>
@@ -66,19 +66,15 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
 
   return (
     <div className="stack-md">
-      <div className="verify-pct tabular-nums">{pct}%</div>
+      <div className="verify-pct">{pct}%</div>
 
       <div className="verify-bar">
         <div className="verify-bar-fill" style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="cluster cluster-between">
-        <span className="caption tabular-nums">
-          {t('verifyGameModal.progress', { checked, total })}
-        </span>
-      </div>
+      <div className="verify-count">{t('verifyGameModal.progress', { checked, total })}</div>
 
-      <div className="cluster cluster-md">
+      <div className="verify-tallies">
         <Tally label={t('verifyGameModal.stats.valid')} value={valid} tone="valid" />
         <Tally label={t('verifyGameModal.stats.invalid')} value={invalid} tone="invalid" />
         <Tally label={t('verifyGameModal.stats.missing')} value={missing} tone="missing" />
@@ -90,11 +86,9 @@ function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number })
 }
 
 function CurrentFile({ path }: { path?: string }) {
-  const { t } = useTranslation();
   if (!path) return null;
   return (
     <div className="verify-current" key={path}>
-      <span className="verify-current-label">{t('verifyGameModal.scanning')}</span>
       <span className="verify-current-path">{path}</span>
     </div>
   );
@@ -128,9 +122,9 @@ function ResultView({ result }: { result: VerificationResult }) {
       <div className="verify-verdict verify-verdict-ok">
         <div className="verify-verdict-head">
           <FileCheck className="w-5 h-5 shrink-0" />
-          <span className="body font-medium">{t('verifyGameModal.allValid')}</span>
+          <span>{t('verifyGameModal.allValid')}</span>
         </div>
-        <div className="verify-verdict-detail tabular-nums">
+        <div className="verify-verdict-detail">
           {t('verifyGameModal.stats.valid')}: {valid}
         </div>
       </div>
@@ -148,7 +142,7 @@ function ResultView({ result }: { result: VerificationResult }) {
       <div className="verify-verdict verify-verdict-bad">
         <div className="verify-verdict-head">
           <AlertTriangle className="w-5 h-5 shrink-0" />
-          <span className="body font-medium">{t('verifyGameModal.needsRepair')}</span>
+          <span>{t('verifyGameModal.needsRepair')}</span>
         </div>
       </div>
 

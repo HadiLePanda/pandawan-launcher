@@ -258,7 +258,6 @@
     "allValid": "All files verified",
     "needsRepair": "Some files need repair",
     "progress": "{{checked}} of {{total}}",
-    "scanning": "Scanning",
     "title": "Verify files",
     "stats": {
       "invalid": "Invalid",
