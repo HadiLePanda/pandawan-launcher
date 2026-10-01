@@ -130,6 +130,19 @@ export function resolveGameUrls(id: string, channel: string = 'stable'): { manif
   };
 }
 
+/** Per-platform "which version is current" pointer for a channel. */
+export function latestIndexUrl(id: string, channel: string = 'stable'): string {
+  return `${CdnUrl.gamesPath(id, channel)}/latest.json`;
+}
+
+/**
+ * Manifest for one specific version. Version-stamped paths are immutable, so a
+ * client that resolved a version once can cache its manifest indefinitely.
+ */
+export function versionedManifestUrl(id: string, channel: string, version: string): string {
+  return `${CdnUrl.gamesPath(id, channel)}/${version}/manifest.json`;
+}
+
 /**
  * Background check for catalog changes.
  *

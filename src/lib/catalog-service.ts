@@ -1,7 +1,13 @@
 import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
-import { detectPlatform } from './platform';
-import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
+import { detectPlatform, type Platform } from './platform';
+import {
+  CdnUrl,
+  latestIndexUrl,
+  resolveGameInfo,
+  resolveGameUrls,
+  versionedManifestUrl,
+} from './cdn';
 import { commands } from './commands';
 import { unwrapResult } from './errors';
 import i18n from './i18n';
@@ -154,6 +160,78 @@ export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<vo
   await writeTextFile(CATALOG_OVERRIDE_FILE_NAME, JSON.stringify(catalog, null, 2), {
     baseDir: BaseDirectory.AppData,
   });
+}
+
+/** One platform's current build on a channel. Mirrors publish-game.mjs output. */
+export interface PlatformVersion {
+  version: string;
+  build: number;
+}
+
+/** Why a manifest could not be resolved for this machine. */
+export type UnavailableReason = 'no-build-for-platform' | 'platform-unknown';
+
+export type ResolvedManifest =
+  | { status: 'ok'; manifest: GameManifest }
+  | {
+      status: 'unavailable';
+      reason: UnavailableReason;
+      /** What the channel does offer, so the UI can explain rather than just grey out. */
+      availableVersions: Record<string, PlatformVersion>;
+    };
+
+/**
+ * The channel's per-platform pointer, or null when the channel predates it.
+ *
+ * A missing index is not an error: channels published before this existed have
+ * a single flat manifest at the channel root and still work.
+ */
+async function fetchLatestIndex(
+  id: string,
+  channel: string
+): Promise<Record<string, PlatformVersion> | null> {
+  try {
+    const body = await fetchRemoteText(latestIndexUrl(id, channel));
+    const parsed = JSON.parse(body);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as Record<string, PlatformVersion>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the manifest this machine should use.
+ *
+ * Platforms ship independently, so the channel root's manifest.json only ever
+ * describes whichever platform was published last. The per-platform index names
+ * this machine's version, and the versioned manifest is fetched from there.
+ */
+export async function resolveManifestForPlatform(
+  id: string,
+  channel: string = 'stable',
+  platform: Platform | null = detectPlatform()
+): Promise<ResolvedManifest> {
+  const index = await fetchLatestIndex(id, channel);
+
+  if (!index) {
+    const { manifestUrl } = resolveGameUrls(id, channel);
+    return { status: 'ok', manifest: await fetchGameManifest(manifestUrl) };
+  }
+
+  if (!platform) {
+    return { status: 'unavailable', reason: 'platform-unknown', availableVersions: index };
+  }
+
+  const entry = index[platform];
+  if (!entry) {
+    return { status: 'unavailable', reason: 'no-build-for-platform', availableVersions: index };
+  }
+
+  return {
+    status: 'ok',
+    manifest: await fetchGameManifest(versionedManifestUrl(id, channel, entry.version)),
+  };
 }
 
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {

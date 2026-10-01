@@ -10,8 +10,8 @@ import type {
   LaunchResult,
   VerificationResult,
 } from '@/types';
-import { fetchGameManifest } from './catalog-service';
-import { resolveGameUrls, resolveBaseUrl } from './cdn';
+import { resolveManifestForPlatform } from './catalog-service';
+import { resolveBaseUrl } from './cdn';
 import { detectPlatform, selectPlatformBuild } from './platform';
 import type { GameInfo } from '@/types';
 
@@ -33,8 +33,11 @@ export async function patchGame(
   channel: string,
   callbacks: PatchCallbacks
 ): Promise<PatchResult> {
-  const { manifestUrl } = resolveGameUrls(gameId, channel);
-  const manifest = await fetchGameManifest(manifestUrl);
+  const resolved = await resolveManifestForPlatform(gameId, channel);
+  if (resolved.status === 'unavailable') {
+    throw new Error('No build of ' + gameId + ' is available for this platform.');
+  }
+  const manifest = resolved.manifest;
 
   // Narrow the manifest to this machine's build before handing it to the backend.
   // The downloader works from executable/files/base_url, so leaving the raw
@@ -105,8 +108,11 @@ export async function closeGame(gameId: string): Promise<void> {
 }
 
 export async function checkForUpdates(gameId: string, channel: string): Promise<boolean> {
-  const { manifestUrl } = resolveGameUrls(gameId, channel);
-  const manifest = await fetchGameManifest(manifestUrl);
+  const resolved = await resolveManifestForPlatform(gameId, channel);
+  if (resolved.status === 'unavailable') {
+    throw new Error('No build of ' + gameId + ' is available for this platform.');
+  }
+  const manifest = resolved.manifest;
   return unwrapResult(await commands.checkGameUpdate(gameId, manifest));
 }
 
@@ -119,8 +125,11 @@ export async function verifyGame(
   if (!installation) {
     throw new Error('Game is not installed');
   }
-  const { manifestUrl } = resolveGameUrls(gameId, channel);
-  const manifest = await fetchGameManifest(manifestUrl);
+  const resolved = await resolveManifestForPlatform(gameId, channel);
+  if (resolved.status === 'unavailable') {
+    throw new Error('No build of ' + gameId + ' is available for this platform.');
+  }
+  const manifest = resolved.manifest;
 
   const channelHandle = new Channel<VerifyProgress>();
   channelHandle.onmessage = (row) => onProgress?.(row);
