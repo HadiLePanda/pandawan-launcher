@@ -1257,10 +1257,16 @@ input[type='search']::placeholder {
   align-items: center;
 }
 
-/* The launcher mark, back in the nav to the left of the < > arrows.
-   Sized and offset to sit directly above the "All games" grid button in the
-   games bar below, so the two read as one column: the bar's own margin+padding
-   puts its first icon at 26px with a 44px box, and this matches both. */
+/* The launcher mark, left of the < > arrows and directly above the "All games"
+   grid button in the bar below.
+
+   Alignment arithmetic: the games bar's own margin (14px) plus padding (12px)
+   puts its first icon's left edge at 26px, and the item is exactly the icon's
+   width because the hover tip is absolutely positioned. This nav has 12px of
+   its own padding, so the margin that lands the mark at 26px is 26 - 12 = 14px.
+
+   Both boxes are 44px, so their edges line up rather than just their left
+   sides. */
 .app-logo {
   width: 44px;
   height: 44px;
@@ -1270,8 +1276,7 @@ input[type='search']::placeholder {
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  margin-left: 26px;
-  margin-right: 10px;
+  margin-left: 14px;
 }
 
 .app-logo-image {
@@ -1280,10 +1285,11 @@ input[type='search']::placeholder {
   object-fit: contain;
 }
 
+/* No left margin: .cluster-md's 1rem gap already separates the mark from the
+   arrows, and stacking both pushed them ~36px apart. */
 .nav-arrows {
   display: flex;
   gap: 2px;
-  margin-left: 10px;
 }
 
 .nav-arrow {
