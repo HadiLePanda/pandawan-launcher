@@ -20,7 +20,9 @@
     "publish:game": "node scripts/publish-game.mjs",
     "publish:catalog": "node scripts/publish-catalog.mjs",
     "prune:builds": "node scripts/prune-builds.mjs",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "dashboard": "node scripts/dashboard.mjs",
+    "backfill:latest": "node scripts/backfill-latest.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

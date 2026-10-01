@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pandawan Publish</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="brand">Pandawan Publish</span>
+      <span class="spacer"></span>
+      <span id="status" class="status">connecting</span>
+    </header>
+
+    <main>
+      <section id="drift" class="drift" hidden></section>
+      <section id="inventory"></section>
+
+      <section class="panel">
+        <h2>Publish a build</h2>
+        <form id="form">
+          <div class="grid">
+            <label>Game<input id="gameId" required placeholder="misspell" /></label>
+            <label>Channel<input id="channel" required placeholder="alpha" /></label>
+            <label>Version<input id="version" required placeholder="0.4.1-alpha.1" /></label>
+            <label
+              >Build number<input id="buildNumber" required type="number" placeholder="3"
+            /></label>
+            <label>Executable<input id="executable" required placeholder="misspell.exe" /></label>
+            <label
+              >Input directory<input id="inputDir" required placeholder="C:\...\builds\Windows"
+            /></label>
+          </div>
+
+          <fieldset class="platforms">
+            <legend>Platforms</legend>
+            <div class="grid">
+              <label>Windows<input id="winDir" placeholder="leave blank to skip" /></label>
+              <label>macOS<input id="macDir" placeholder="leave blank to skip" /></label>
+              <label>Linux<input id="linuxDir" placeholder="leave blank to skip" /></label>
+            </div>
+          </fieldset>
+
+          <div class="row">
+            <button type="button" id="preview">Preview command</button>
+            <button type="submit" class="primary">Publish</button>
+          </div>
+        </form>
+
+        <pre id="previewOut" class="log" hidden></pre>
+        <pre id="log" class="log" hidden></pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

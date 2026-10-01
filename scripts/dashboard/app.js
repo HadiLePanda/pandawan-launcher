@@ -1,0 +1,170 @@
+const PLATFORMS = ['windows', 'macos', 'linux'];
+const $ = (id) => document.getElementById(id);
+
+function compare(versions) {
+  const list = versions.filter(Boolean);
+  if (list.length < 2) return null;
+  const newest = list.reduce((a, b) => (a < b ? b : a));
+  return list.find((v) => v !== newest) ?? null;
+}
+
+function renderDrift(drift) {
+  const box = $('drift');
+  if (!drift.length) {
+    box.hidden = true;
+    box.textContent = '';
+    return;
+  }
+  box.hidden = false;
+  box.textContent = drift
+    .map((d) => `${d.gameId} ${d.channel}: platforms disagree on version`)
+    .join('  �  ');
+}
+
+function renderInventory(inventory) {
+  const host = $('inventory');
+  host.textContent = '';
+
+  for (const game of inventory) {
+    const card = el('section', 'card');
+    card.append(el('h2', null, game.id));
+
+    for (const channel of game.channels) {
+      const latest = channel.latest ?? {};
+      const behind = compare(Object.values(latest).map((e) => e.version));
+
+      const head = el('div', 'card-head');
+      head.append(el('span', 'tag', channel.channel));
+      if (behind) head.append(el('span', 'tag warn', 'platforms out of sync'));
+      card.append(head);
+
+      const table = el('table');
+      const headRow = el('tr');
+      headRow.append(el('th', null, 'Platform'));
+      headRow.append(el('th', null, 'Version'));
+      headRow.append(el('th', null, 'Build'));
+      table.append(headRow);
+
+      for (const platform of PLATFORMS) {
+        const entry = latest[platform];
+        const row = el('tr', entry ? null : 'muted');
+        row.append(el('td', null, platform));
+        row.append(el('td', entry ? 'mono' : 'mono', entry ? entry.version : '�'));
+        row.append(el('td', 'mono', entry ? entry.build : '�'));
+        if (entry && behind && entry.version === behind) {
+          row.classList.add('behind');
+          row.title = `behind ${Object.values(latest)[0].version}`;
+        }
+        table.append(row);
+      }
+      card.append(table);
+
+      if (channel.published.length > 1) {
+        card.append(
+          el('p', 'meta', `published: ${channel.published.map((v) => v.version).join(', ')}`)
+        );
+      }
+    }
+    host.append(card);
+  }
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function buildArgs() {
+  const args = [
+    '--game-id',
+    $('gameId').value.trim(),
+    '--channel',
+    $('channel').value.trim(),
+    '--version',
+    $('version').value.trim(),
+    '--build-number',
+    $('buildNumber').value.trim(),
+    '--executable',
+    $('executable').value.trim(),
+    '--input-dir',
+    $('inputDir').value.trim(),
+  ];
+  const dirs = {
+    windows: $('winDir').value.trim(),
+    macos: $('macDir').value.trim(),
+    linux: $('linuxDir').value.trim(),
+  };
+  for (const [platform, dir] of Object.entries(dirs)) {
+    if (dir) args.push('--platform', `${platform}=${dir}`);
+  }
+  return args;
+}
+
+async function refresh() {
+  const status = $('status');
+  try {
+    const res = await fetch('/api/inventory');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderDrift(data.drift);
+    renderInventory(data.inventory);
+    status.textContent = 'connected';
+    status.classList.add('ok');
+  } catch (err) {
+    status.textContent = String(err.message ?? err);
+    status.classList.add('bad');
+  }
+}
+
+$('preview').addEventListener('click', () => {
+  const out = $('previewOut');
+  out.hidden = false;
+  out.textContent = ['node scripts/publish-game.mjs', ...buildArgs()]
+    .map((a) => (a.includes(' ') ? `"${a}"` : a))
+    .join(' ');
+});
+
+$('form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const log = $('log');
+  log.hidden = false;
+  log.textContent = '';
+
+  const res = await fetch('/api/publish', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ args: buildArgs() }),
+  });
+
+  const stream = new EventSourceStream(res, log);
+  stream.onDone(() => refresh());
+});
+
+function EventSourceStream(res, log) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const handlers = { done: [] };
+  this.onDone = (fn) => handlers.done.push(fn);
+
+  (async () => {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let split;
+      while ((split = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, split);
+        buffer = buffer.slice(split + 2);
+        const event = /^event: (.+)$/m.exec(frame)?.[1];
+        const data = /^data: ([\s\S]*)$/m.exec(frame)?.[1] ?? '';
+        if (event === 'output') log.textContent += data;
+        if (event === 'done') handlers.done.forEach((fn) => fn());
+      }
+    }
+  })();
+}
+
+refresh();

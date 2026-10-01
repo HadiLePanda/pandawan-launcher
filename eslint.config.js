@@ -30,5 +30,20 @@ export default ts.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-explicit-any': 'off',
     },
+  },
+  {
+    // The dashboard's client is a plain browser page served by scripts/dashboard.mjs,
+    // not part of the Vite app, so it needs the browser globals the src/ tree gets
+    // from typescript-eslint's DOM defaults.
+    files: ['scripts/dashboard/**/*.js'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        fetch: 'readonly',
+        TextDecoder: 'readonly',
+        Event: 'readonly',
+      },
+    },
   }
 );
