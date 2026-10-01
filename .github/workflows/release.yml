@@ -111,6 +111,11 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     environment: production
+    # This token defaults to read-only, and a read-only token cannot see a draft
+    # release - which is the only kind of release this workflow creates, and the
+    # only kind this job downloads from. Reading drafts needs push access.
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
