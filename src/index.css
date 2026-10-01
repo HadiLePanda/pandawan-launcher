@@ -1357,6 +1357,93 @@ input[type='search']::placeholder {
   background: var(--canvas-elevated);
 }
 
+/* Launcher self-update. Blue rather than the green action colour so it reads as
+   "about the launcher", not "act on the highlighted game". */
+.topbar-btn-update {
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+.topbar-btn-update:hover {
+  background: rgba(59, 130, 246, 0.26);
+  color: #fff;
+}
+
+.topbar-btn-update-label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Downloads count and the "catalog changed" dot on the nav tab. */
+.nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-tab-count {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--action, #22c55e);
+  color: #06240f;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.nav-tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+/* Slow rotation to read as "there is something to pull", without implying work
+   is in progress. Stops on hover so it does not fight the click. */
+.animate-spin-once {
+  animation: pandawan-pulse 2.4s ease-in-out infinite;
+}
+
+.nav-tab-refresh:hover .animate-spin-once {
+  animation-play-state: paused;
+}
+
+@keyframes pandawan-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.nav-tab-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  cursor: pointer;
+}
+
+.nav-tab-refresh:hover {
+  background: rgba(59, 130, 246, 0.34);
+  color: #fff;
+}
+
 .topbar-btn {
   position: relative;
   height: 38px;

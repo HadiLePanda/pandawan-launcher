@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
@@ -25,6 +25,9 @@ import { avatarUrl } from '@/lib/avatars';
 import { isGamePinned } from '@/lib/pins';
 import * as gameService from '@/lib/game-service';
 import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/updater-service';
+import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
+import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
+import { startCatalogPoll, type CatalogPollHandle } from '@/lib/cdn';
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult } from '@/types';
@@ -41,6 +44,7 @@ function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
   const [isPinsOpen, setIsPinsOpen] = useState(false);
+  const [isCatalogStale, setIsCatalogStale] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -155,6 +159,56 @@ function App() {
   useEffect(() => {
     void applyLanguage(settings?.language);
   }, [settings?.language]);
+
+  // Watch the catalog for content published while the launcher was open. A
+  // desktop app has no push channel from the CDN, so this polls a cheap
+  // fingerprint every few minutes and only flags a change once something
+  // actually moved. Polling pauses while a download or game run is in progress.
+  const pollRef = useRef<CatalogPollHandle | null>(null);
+  useEffect(() => {
+    const handle = startCatalogPoll({
+      loadCatalog: async () => {
+        const { catalog } = await loadCatalogService();
+        return { catalog };
+      },
+      onChange: () => setIsCatalogStale(true),
+      isBusy: () => activeDownloads.size > 0 || games.some((g) => g.status === 'running'),
+    });
+    pollRef.current = handle;
+    return () => {
+      handle.stop();
+      pollRef.current = null;
+    };
+  }, [activeDownloads.size, games]);
+
+  // The flag is only meaningful until the user acts on it: either they refresh
+  // and get the new content, or they keep working. Clearing it on view change
+  // stops a stale dot from outliving the thing it pointed at.
+  useEffect(() => {
+    setIsCatalogStale(false);
+  }, [activeView]);
+
+  // Applies a flagged catalog change. Deferred a tick so the dot clears even if
+  // the reload fails, and so the click does not fight the poll that set it.
+  const handleRefreshCatalog = useCallback(async () => {
+    setIsCatalogStale(false);
+    await loadCatalog();
+  }, [loadCatalog]);
+
+  // The nav button and the banner are two views of the same updater state. The
+  // button is the primary affordance now; the banner is kept only for the
+  // download progress it shows, and hidden once the button is on screen.
+  const updaterStatus = useUpdaterStore((s) => s.status);
+  const updaterVersion = useUpdaterStore((s) => s.version);
+  const updaterDismissed = useUpdaterStore((s) => s.dismissed);
+
+  const handleLauncherUpdateClick = useCallback(() => {
+    if (updaterStatus === 'ready') {
+      void restartToApplyUpdate();
+    } else {
+      void downloadAndInstall();
+    }
+  }, [updaterStatus]);
 
   useEffect(() => {
     if (!settings) return;
@@ -402,6 +456,16 @@ function App() {
         avatarUrl={avatarUrl(avatarId)}
         onNavigatePrev={() => handleNavigate(-1)}
         onNavigateNext={() => handleNavigate(1)}
+        catalogStale={isCatalogStale}
+        onCatalogRefresh={handleRefreshCatalog}
+        launcherUpdate={
+          updaterStatus === 'available' ||
+          updaterStatus === 'downloading' ||
+          updaterStatus === 'ready'
+            ? { version: updaterVersion, ready: updaterStatus === 'ready' }
+            : null
+        }
+        onLauncherUpdateClick={handleLauncherUpdateClick}
       />
 
       {activeView === 'games' && (
@@ -436,7 +500,7 @@ function App() {
           />
         )}
 
-        <UpdateBanner />
+        <UpdateBanner hidden={!updaterDismissed} />
 
         <div className="app-body flex flex-row flex-1 overflow-hidden">
           {activeView === 'games' && !selectedGameId && (

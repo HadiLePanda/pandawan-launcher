@@ -42,7 +42,6 @@
     "allGames": "All Games"
   },
   "gamesMenu": {
-    "downloads": "Downloads",
     "library": "Library"
   },
   "filters": {
@@ -229,7 +228,12 @@
     "previous": "Previous game",
     "profileSettings": "Settings",
     "settings": "Settings",
-    "store": "Store"
+    "store": "Store",
+    "update": "Update",
+    "updateAvailable": "Version {{version}} is available",
+    "restart": "Restart",
+    "restartToUpdate": "Restart to apply the update",
+    "catalogStale": "New games or updates are available — refresh to load"
   },
   "updateBanner": {
     "available": "Update v{{version}} available",

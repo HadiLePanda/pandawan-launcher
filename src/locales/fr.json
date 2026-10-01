@@ -42,7 +42,6 @@
     "allGames": "Tous les jeux"
   },
   "gamesMenu": {
-    "downloads": "Téléchargements",
     "library": "Bibliothèque"
   },
   "filters": {
@@ -229,7 +228,12 @@
     "previous": "Jeu précédent",
     "profileSettings": "Paramètres",
     "settings": "Paramètres",
-    "store": "Boutique"
+    "store": "Boutique",
+    "update": "Mettre à jour",
+    "updateAvailable": "La version {{version}} est disponible",
+    "restart": "Redémarrer",
+    "restartToUpdate": "Redémarrer pour appliquer la mise à jour",
+    "catalogStale": "De nouveaux jeux ou mises à jour sont disponibles — actualise pour les charger"
   },
   "updateBanner": {
     "available": "Mise à jour v{{version}} disponible",

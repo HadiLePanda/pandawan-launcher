@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,12 @@ interface MainNavProps {
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
   avatarUrl?: string;
+  /** Launcher self-update: an available version, and whether it is downloaded. */
+  launcherUpdate?: { version: string | null; ready: boolean } | null;
+  onLauncherUpdateClick: () => void;
+  /** True when a background catalog poll found new content to load. */
+  catalogStale?: boolean;
+  onCatalogRefresh: () => void;
 }
 
 function TopBarButton({
@@ -151,6 +158,10 @@ export function MainNav({
   activeDownloads,
   notificationsBadge,
   avatarUrl,
+  launcherUpdate,
+  onLauncherUpdateClick,
+  catalogStale,
+  onCatalogRefresh,
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -247,7 +258,10 @@ export function MainNav({
   }, [activeDownloads]);
 
   return (
-    <div className="main-nav">
+    // data-tauri-drag-region makes the empty parts of the nav drag the window.
+    // The interactive clusters opt out with .no-drag, so this only widens the
+    // grab area between the logo and the right-hand buttons.
+    <div className="main-nav" data-tauri-drag-region>
       <div className="cluster cluster-md no-drag">
         <div className="app-logo">
           <img src="/logo-circle-p.png" alt="Pandawan Launcher" className="app-logo-image" />
@@ -298,13 +312,6 @@ export function MainNav({
                 >
                   {t('gamesMenu.library')}
                 </button>
-                <button
-                  type="button"
-                  className="games-menu-item"
-                  onClick={() => handleGamesMenuItem(onDownloadsNavigate)}
-                >
-                  {t('gamesMenu.downloads')}
-                </button>
               </div>
             )}
           </div>
@@ -322,10 +329,60 @@ export function MainNav({
           >
             {t('topBar.store')}
           </button>
+          <button
+            type="button"
+            onClick={onDownloadsNavigate}
+            className={cn('nav-tab', activeView === 'downloads' && 'nav-tab-active')}
+            data-testid="nav-downloads"
+          >
+            {t('topBar.downloads')}
+            {downloadsBadge > 0 && <span className="nav-tab-count">{downloadsBadge}</span>}
+            {/* A background poll found content this session has not loaded. The
+                downloads page used to live behind a hover menu on the Games tab;
+                a real nav tab plus this dot makes new content discoverable without
+                a restart. */}
+            {catalogStale && (
+              <button
+                type="button"
+                className="nav-tab-refresh no-drag"
+                onClick={onCatalogRefresh}
+                aria-label={t('topBar.catalogStale')}
+                title={t('topBar.catalogStale')}
+              >
+                <RefreshCw className="w-3 h-3 animate-spin-once" />
+              </button>
+            )}
+          </button>
         </nav>
       </div>
 
       <div className="main-nav-right no-drag">
+        {/* Blue, and only present when there is something to act on. The banner
+            handled this before; a button next to Notifications is reachable from
+            every view and does not compete for vertical space. */}
+        {launcherUpdate && (
+          <button
+            type="button"
+            className="topbar-btn topbar-btn-update"
+            onClick={onLauncherUpdateClick}
+            aria-label={
+              launcherUpdate.ready
+                ? t('topBar.restartToUpdate')
+                : t('topBar.updateAvailable', { version: launcherUpdate.version ?? '' })
+            }
+            title={
+              launcherUpdate.ready
+                ? t('topBar.restartToUpdate')
+                : t('topBar.updateAvailable', { version: launcherUpdate.version ?? '' })
+            }
+            data-testid="launcher-update"
+          >
+            <ArrowUpCircle className="w-4 h-4" />
+            <span className="topbar-btn-update-label">
+              {launcherUpdate.ready ? t('topBar.restart') : t('topBar.update')}
+            </span>
+          </button>
+        )}
         {downloadsBadge > 0 && (
           <TopBarButton
             icon={<Download className="w-4 h-4" />}

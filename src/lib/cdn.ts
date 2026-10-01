@@ -115,3 +115,104 @@ export function resolveGameUrls(id: string, channel: string = 'stable'): { manif
     manifestUrl: `${CdnUrl.gamesPath(id, channel)}/manifest.json`,
   };
 }
+
+/**
+ * Background check for catalog changes.
+ *
+ * The launcher reads the catalog once at startup, so a game published while it
+ * was open stayed invisible until a restart. A desktop app has no push channel
+ * from the CDN, so this polls a cheap fingerprint instead, and only asks the user
+ * to refresh when something actually moved.
+ *
+ * The fingerprint is content (game ids, channels, versions, build numbers), not
+ * the document's Last-Modified: R2 bumps that on a re-upload of identical bytes,
+ * which would raise a false "new content" after every republish.
+ */
+
+/** How often to look for new content. */
+export const CATALOG_POLL_MS = 5 * 60 * 1000;
+
+/** Stable string summarizing catalog content; any meaningful change alters it. */
+export function fingerprintCatalog(catalog: { games?: Array<Record<string, unknown>> }): string {
+  const games = catalog.games ?? [];
+  return games
+    .map((game) =>
+      [
+        String(game.id ?? ''),
+        String(game.channel ?? ''),
+        String(game.version ?? ''),
+        String(game.build_number ?? ''),
+        String(game.name ?? ''),
+      ].join('|')
+    )
+    .sort()
+    .join('\n');
+}
+
+export interface CatalogPollHandle {
+  /** Stop polling. Safe to call more than once. */
+  stop: () => void;
+}
+
+/**
+ * Poll `loadCatalog` and call `onChange` when its fingerprint first differs from
+ * the baseline.
+ *
+ * Polling is skipped while `isBusy` reports the user mid-download or a game
+ * running. Applying a catalog change rebuilds the game list, which would make an
+ * in-progress download's progress state vanish from under them. Those are
+ * precisely the moments worth protecting, so the check is deferred a cycle
+ * rather than dropped.
+ */
+export function startCatalogPoll(options: {
+  loadCatalog: () => Promise<{ catalog: unknown }>;
+  onChange: () => void;
+  isBusy?: () => boolean;
+  intervalMs?: number;
+}): CatalogPollHandle {
+  const interval = options.intervalMs ?? CATALOG_POLL_MS;
+  let baseline: string | null = null;
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const schedule = (ms: number) => {
+    if (stopped) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void tick(), ms);
+  };
+
+  const tick = async () => {
+    if (stopped) return;
+
+    if (options.isBusy?.()) {
+      schedule(interval);
+      return;
+    }
+
+    try {
+      const result = await options.loadCatalog();
+      const next = fingerprintCatalog(result.catalog as never);
+      if (baseline === null) {
+        baseline = next;
+      } else if (next !== baseline) {
+        baseline = next;
+        options.onChange();
+      }
+    } catch {
+      // A failed poll is not worth surfacing: the next tick retries, and the
+      // title bar already reports an unreachable server when it is real.
+    }
+
+    schedule(interval);
+  };
+
+  void tick();
+
+  return {
+    stop: () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
