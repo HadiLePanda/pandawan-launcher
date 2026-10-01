@@ -26,11 +26,7 @@ export const commands = {
   checkGameUpdate: (gameId: string, manifest: GameManifest) =>
     typedError<boolean, LauncherError>(__TAURI_INVOKE('check_game_update', { gameId, manifest })),
 
-  verifyGame: (
-    manifest: GameManifest,
-    installPath: string,
-    onEvent: Channel<VerifyProgress>
-  ) =>
+  verifyGame: (manifest: GameManifest, installPath: string, onEvent: Channel<VerifyProgress>) =>
     typedError<VerificationResult, LauncherError>(
       __TAURI_INVOKE('verify_game', { manifest, installPath, onEvent })
     ),
