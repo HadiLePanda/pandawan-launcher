@@ -109,6 +109,47 @@ export function sync(sourceDir, keyPrefix, { endpoint, cacheControl, exclude } =
 export const NO_CACHE = 'no-cache, no-store, must-revalidate';
 export const IMMUTABLE = 'public, max-age=31536000, immutable';
 
+/**
+ * List every object under a prefix, one key per line (stripped of the trailing
+ * newline `aws s3 ls` adds).
+ *
+ * Used by the prune script to decide what to delete. Exposed here so it uses the
+ * same aws invocation and credential plumbing as upload/sync rather than
+ * re-implementing them.
+ */
+export function listKeys(keyPrefix, { endpoint } = {}) {
+  // Plain recursive `ls`, not --only-show-keys: that flag is rejected by the
+  // AWS CLI v2 build in this environment. Each line is
+  // "<date> <time> <size> <key>", so the key is everything after the third
+  // column. Keys may contain spaces, hence matching by column rather than
+  // splitting on whitespace. Lines end in CRLF, which the trim clears.
+  const args = ['s3', 'ls', keyPrefix, '--recursive', '--endpoint-url', endpoint];
+  const res = spawnSync('aws', args, { encoding: 'utf8', shell: false });
+  if (res.error) fail(`could not run aws: ${res.error.message}`);
+  if (res.status !== 0) fail(`listing ${keyPrefix} failed (exit ${res.status})`);
+  return res.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^\S+\s+\S+\s+\S+\s+(.*)$/);
+      return match ? match[1] : null;
+    })
+    .filter((key) => key !== null);
+}
+
+/**
+ * Delete every object under a prefix. Used only by prune, and only after the
+ * operator confirms, so it deliberately has no dry-run default.
+ */
+export function deletePrefix(keyPrefix, { endpoint } = {}) {
+  run(
+    'aws',
+    ['s3', 'rm', keyPrefix, '--recursive', '--endpoint-url', endpoint],
+    `Deleting ${keyPrefix}`
+  );
+}
+
 export const S3 = {
   s3Uri: (bucket, key) => `s3://${bucket}/${key}`,
 };
