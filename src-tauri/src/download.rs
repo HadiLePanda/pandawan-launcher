@@ -3,6 +3,8 @@ use futures_util::StreamExt;
 use reqwest::Client;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -162,6 +164,16 @@ impl DownloadManager {
                 .truncate(true)
                 .open(dest_path)?
         };
+
+        // Unix builds need the executable bit before the game can be spawned at
+        // all. OpenOptions creates with the process umask, so a downloaded
+        // binary lands as 0644 and Command::spawn fails with "Permission denied".
+        // Windows ignores this, so it is applied only where it means something.
+        #[cfg(unix)]
+        if let Ok(mut perms) = std::fs::metadata(dest_path)?.permissions().mode() {
+            perms |= 0o755;
+            std::fs::set_permissions(dest_path, perms)?;
+        }
 
         let total_size = if is_partial {
             response
