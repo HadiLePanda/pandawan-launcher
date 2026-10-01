@@ -126,8 +126,19 @@ sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
   cacheControl: IMMUTABLE,
 });
 
-// The manifest is mutable and is the signal that a build is available, so it is
-// uploaded last and never cached.
+// The manifest also goes inside the version directory, and this is what makes
+// per-platform resolution possible: a client pinned to an older version on one
+// platform must be able to read that version's manifest after a newer one has
+// overwritten the channel root. The copy here is immutable like everything else
+// at that path, so it can be cached forever.
+upload(manifestPath, S3.s3Uri(bucket, `${versionPrefix}/manifest.json`), {
+  endpoint,
+  cacheControl: IMMUTABLE,
+  contentType: 'application/json',
+});
+
+// The channel-root copy is mutable and is the signal that a build is available,
+// so it is uploaded last and never cached. Older clients read only this.
 upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
   endpoint,
   cacheControl: NO_CACHE,
