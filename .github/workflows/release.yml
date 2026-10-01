@@ -126,14 +126,32 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p bundles
-          gh release download "${{ github.ref_name }}" \
-            --dir bundles \
-            --pattern '*.msi' --pattern '*.msi.sig' \
-            --pattern '*.app.tar.gz' --pattern '*.app.tar.gz.sig' \
-            --pattern '*.dmg' \
-            --pattern '*.deb' --pattern '*.deb.sig' \
-            --pattern 'latest.json' \
-            --clobber
+
+          # `gh release download <tag>` does not see draft releases, and this
+          # workflow deliberately publishes drafts, so the assets are fetched
+          # through the API instead. The release id is looked up by tag for the
+          # same reason: there is no way to resolve it by name.
+          RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases" \
+            --jq ".[] | select(.tag_name == \"${{ github.ref_name }}\") | .id" \
+            | head -1)
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "No release found for tag ${{ github.ref_name }}."
+            exit 1
+          fi
+
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+            --paginate --jq '.[].name' | while read -r name; do
+              case "$name" in
+                *.msi|*.msi.sig|*.app.tar.gz|*.app.tar.gz.sig|*.dmg|*.deb|*.deb.sig|latest.json) ;;
+                *) continue ;;
+              esac
+              id=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+                --paginate --jq ".[] | select(.name == \"$name\") | .id" | head -1)
+              gh api -H "Accept: application/octet-stream" \
+                "repos/${{ github.repository }}/releases/assets/$id" > "bundles/$name"
+              echo "  fetched $name"
+            done
           ls -la bundles
 
       - name: Point latest.json at the public bucket

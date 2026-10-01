@@ -352,13 +352,16 @@ pub enum LauncherError {
     ExecutableNotFound { path: String },
     #[error("Path is outside allowed root")]
     PathNotAllowed { path: String },
-    #[error("Network request failed")]
+    /// These carry the underlying detail. Without `{0}` in the format string
+    /// thiserror renders the literal message and discards the payload, so an IO
+    /// failure surfaced as a bare "Io" with no indication of what went wrong.
+    #[error("Network request failed: {0}")]
     Network(String),
-    #[error("Failed to parse manifest")]
+    #[error("Failed to parse manifest: {0}")]
     ManifestParse(String),
-    #[error("Invalid settings")]
+    #[error("Invalid settings: {0}")]
     Validation(String),
-    #[error("IO error")]
+    #[error("IO error: {0}")]
     Io(String),
     #[error("{0}")]
     Other(String),
@@ -1224,6 +1227,33 @@ mod tests {
         assert!(err.to_string().contains("file missing"));
     }
 
+    #[test]
+    fn test_launcher_error_variants_keep_their_payload() {
+        // Every variant that carries a String must include it. Without {0} in the
+        // format string thiserror prints the literal and throws the detail away,
+        // so the launcher would show "Network request failed" with nothing about
+        // which request or why.
+        let cases: Vec<(LauncherError, &str)> = vec![
+            (LauncherError::Network("dns failure".into()), "dns failure"),
+            (LauncherError::ManifestParse("bad json".into()), "bad json"),
+            (
+                LauncherError::Validation("missing path".into()),
+                "missing path",
+            ),
+            (LauncherError::Io("disk full".into()), "disk full"),
+            (
+                LauncherError::Other("something else".into()),
+                "something else",
+            ),
+        ];
+        for (error, needle) in cases {
+            let rendered = error.to_string();
+            assert!(
+                rendered.contains(needle),
+                "expected {rendered:?} to contain {needle:?}"
+            );
+        }
+    }
     // =========================================================================
     // Edge Cases and Error Handling
     // =========================================================================
