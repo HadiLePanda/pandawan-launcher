@@ -162,6 +162,61 @@ export function isMangledKey(key) {
 }
 
 /**
+ * Abort any incomplete multipart uploads under a key prefix.
+ *
+ * `aws s3 cp` uploads anything over 8 MB in parts, and a publish interrupted
+ * part-way leaves those parts behind. R2 keeps them and counts them against
+ * storage, but no object exists for them, so they are invisible to `s3 ls` and
+ * invisible to prune-builds. Two interrupted uploads of Misspell left 30 MB of
+ * phantom "storage" in the dashboard for the whole time they sat there.
+ */
+export function abortStaleMultipartUploads(keyPrefix, { endpoint, bucket } = {}) {
+  const res = spawnSync(
+    'aws',
+    ['s3api', 'list-multipart-uploads', '--bucket', bucket, '--endpoint-url', endpoint],
+    { encoding: 'utf8', shell: false }
+  );
+  if (res.error || res.status !== 0) {
+    // Not being able to list uploads is not a reason to fail a publish.
+    return 0;
+  }
+
+  let uploads = [];
+  try {
+    uploads = JSON.parse(res.stdout).Uploads ?? [];
+  } catch {
+    return 0;
+  }
+
+  // Only uploads under this game's own prefix. Never sweep the whole bucket:
+  // a concurrent publish for another game would be killed.
+  const relevant = uploads.filter((u) => u.Key && u.Key.startsWith(keyPrefix));
+  if (relevant.length === 0) return 0;
+
+  console.log(`\n→ Aborting ${relevant.length} incomplete upload(s) from an earlier run:`);
+  for (const upload of relevant) {
+    console.log(`   ${upload.Key}`);
+    spawnSync(
+      'aws',
+      [
+        's3api',
+        'abort-multipart-upload',
+        '--bucket',
+        bucket,
+        '--key',
+        upload.Key,
+        '--upload-id',
+        upload.UploadId,
+        '--endpoint-url',
+        endpoint,
+      ],
+      { stdio: 'inherit', shell: false }
+    );
+  }
+  return relevant.length;
+}
+
+/**
  * Delete every object under a prefix. Used only by prune, and only after the
  * operator confirms, so it deliberately has no dry-run default.
  */

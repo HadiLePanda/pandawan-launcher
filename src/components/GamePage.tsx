@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Download, RefreshCw, X, Settings, Clock } from 'lucide-react';
+import { Play, Download, RefreshCw, X, SlidersHorizontal, MoreVertical, Clock } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
 import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
@@ -140,6 +140,44 @@ export function GamePage({
           <div className="game-detail-banner-content">
             <h1 className="game-detail-title">{game.info.name}</h1>
           </div>
+          {/* The options menu is not a peer of Play/Install: it is a different kind
+              of action, and sharing that pill made it read as a second half of the
+              primary action. Anchored to the banner's own corner it is clearly
+              chrome, and the menu opens flush beneath the icon.
+              Game settings sit beside it because both are "what else can I do
+              with this game"; the divider keeps them from reading as one control. */}
+          <div className="game-detail-banner-tools">
+            {onSettings && (
+              <button
+                type="button"
+                onClick={onSettings}
+                className="game-detail-menu-btn"
+                title={t('gamePage.gameSettings')}
+                aria-label={t('gamePage.gameSettings')}
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              ref={menuTriggerRef}
+              onClick={() => {
+                const rect = menuTriggerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  // The menu positions its own left edge, so passing rect.left keeps
+                  // it flush beneath the icon instead of drifting toward the
+                  // centre of the window.
+                  setMenuAnchor({ x: rect.left, y: rect.bottom + 6, placement: 'below' });
+                }
+              }}
+              className="game-detail-menu-btn"
+              title={t('gamePage.moreOptions')}
+              aria-label={t('gamePage.moreOptions')}
+              aria-haspopup="menu"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="game-detail-action-panel">
@@ -171,31 +209,6 @@ export function GamePage({
                   <span>{primaryLabel()}</span>
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              ref={menuTriggerRef}
-              onClick={() => {
-                const rect = menuTriggerRef.current?.getBoundingClientRect();
-                if (rect) {
-                  // Anchor to the icon's own right edge, below and vertically
-                  // centred on it. Anchoring the menu's left edge to the button's
-                  // left edge is what pushed the menu out toward the centre of
-                  // the window.
-                  setMenuAnchor({
-                    x: rect.right,
-                    y: rect.top + rect.height / 2,
-                    placement: 'right-start',
-                  });
-                }
-              }}
-              className={cn('game-detail-menu-btn', primaryColorClass())}
-              title={t('gamePage.moreOptions')}
-              aria-label={t('gamePage.moreOptions')}
-              aria-haspopup="menu"
-            >
-              <Settings className="w-5 h-5" />
             </button>
 
             <GameContextMenu
@@ -237,20 +250,7 @@ export function GamePage({
               </span>
             </div>
           </div>
-
-          {onSettings && (
-            <button
-              type="button"
-              onClick={onSettings}
-              className="game-detail-settings-btn"
-              title={t('gamePage.gameSettings')}
-              aria-label={t('gamePage.gameSettings')}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-          )}
         </div>
-
         {isDownloading && (
           <div className="game-detail-download">
             <div className="game-detail-download-bar">

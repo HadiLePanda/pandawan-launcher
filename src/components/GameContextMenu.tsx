@@ -38,11 +38,12 @@ export interface MenuAnchor {
   x: number;
   y: number;
   /**
-   * 'right-start' anchors the menu's left edge to the trigger's right edge and
-   * vertically centres it on the trigger. 'cursor' is the original behaviour,
-   * used where there is no trigger to measure (e.g. a right-click).
+   * 'below' aligns the menu's left edge with the trigger and opens it underneath.
+   * 'cursor' opens at the pointer, for right-click menus with no trigger to
+   * measure. Either way the menu is positioned by its own left edge, which is
+   * what stops it drifting toward the centre of the window.
    */
-  placement?: 'right-start' | 'cursor';
+  placement?: 'below' | 'cursor';
 }
 
 interface GameContextMenuProps {
@@ -83,36 +84,20 @@ export function GameContextMenu({ game, anchor, onClose, onAction }: GameContext
   let left = anchor.x;
   let top = anchor.y;
 
-  // Clamp to the viewport so the menu never opens off-screen. When anchored to a
-  // trigger the menu is nudged left of the trigger's right edge, which is what
-  // makes it read as "belongs to that icon" rather than floating near the middle.
+  // Clamp to the viewport so the menu never opens off-screen. Both placements
+  // position the menu by its own left edge, so it always reads as belonging to
+  // the thing that opened it.
   const menuWidth = 180;
   const menuHeight = items.length * 32 + 8;
-  const GAP = 6;
 
   if (typeof window !== 'undefined') {
-    if (anchor.placement === 'right-start') {
-      // anchor.x is the trigger's RIGHT edge, so the menu sits GAP to its right.
-      if (left + GAP + menuWidth > window.innerWidth - 8) {
-        // No room on the right: flip to the trigger's left instead. That needs
-        // the trigger's own width, which the caller measured but did not pass, so
-        // fall back to pinning the menu to the viewport edge rather than
-        // guessing a width and landing off-screen.
-        left = window.innerWidth - menuWidth - 8;
-      } else {
-        left = left + GAP;
-      }
-      // Vertically centre on the trigger, then keep it fully on screen.
-      top = top - menuHeight / 2;
-    } else {
-      if (left + menuWidth > window.innerWidth) {
-        left = window.innerWidth - menuWidth - 8;
-      }
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = window.innerWidth - menuWidth - 8;
     }
-
     if (top + menuHeight > window.innerHeight - 8) {
       top = window.innerHeight - menuHeight - 8;
     }
+    if (left < 8) left = 8;
     if (top < 8) top = 8;
   }
 

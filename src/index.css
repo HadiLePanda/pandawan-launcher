@@ -2782,11 +2782,54 @@ input.pin-search {
   border-radius: 6px 0 0 6px;
 }
 
+/* Banner-corner tools: game settings and the options menu. Both are "what else
+   can I do with this game", so they live together away from the primary action
+   rather than split between the banner and the action pill. */
+.game-detail-banner-tools {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .game-detail-menu-btn {
-  width: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border-left: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 0 6px 6px 0;
+  border-radius: 8px;
+  /* Translucent dark chip: legible over any banner artwork without competing
+     with the primary action below. */
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.game-detail-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.62);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* The button no longer sits beside the play button, so it must not inherit the
+   primary action's colour states. Neutralising them keeps a download or update in
+   progress from bleeding a green or blue into unrelated chrome. */
+.game-detail-menu-btn.action-green,
+.game-detail-menu-btn.action-blue,
+.game-detail-menu-btn.action-green:hover,
+.game-detail-menu-btn.action-blue:hover {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.game-detail-menu-btn.action-green:hover,
+.game-detail-menu-btn.action-blue:hover {
+  background: rgba(0, 0, 0, 0.62);
 }
 
 .game-detail-play-btn:disabled {

@@ -15,7 +15,18 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, run, S3, sync, upload } from './lib/r2.mjs';
+import {
+  abortStaleMultipartUploads,
+  fail,
+  IMMUTABLE,
+  NO_CACHE,
+  repoRoot,
+  r2Config,
+  run,
+  S3,
+  sync,
+  upload,
+} from './lib/r2.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable', 'input-dir'];
 
@@ -93,6 +104,10 @@ run('python', manifestArgs, 'Generating manifest');
 // Files first, manifest last: the manifest is what tells a client a build
 // exists, so publishing it first would let someone resolve a manifest whose
 // files are not there yet.
+// Clear any half-finished upload from a previous interrupted run first; those
+// parts are billed and are not visible to s3 ls.
+abortStaleMultipartUploads(`${prefix}/`, { endpoint, bucket });
+
 sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
   endpoint,
   cacheControl: IMMUTABLE,
