@@ -59,9 +59,18 @@ function renderDrift(drift) {
     return;
   }
   box.hidden = false;
-  box.textContent = drift
-    .map((d) => `${d.gameId} ${d.channel}: platforms disagree on version`)
-    .join('  �  ');
+  box.textContent = '';
+  // Colour alone would fail for colour-blind users, so each item also carries
+  // a glyph and the words "out of sync".
+  box.append(el('span', 'drift-mark', '!'));
+  box.append(
+    el(
+      'span',
+      null,
+      `${drift.length} channel${drift.length > 1 ? 's' : ''} out of sync: ` +
+        drift.map((d) => `${d.gameId} ${d.channel}`).join(', ')
+    )
+  );
 }
 
 function ago(iso) {
@@ -81,52 +90,66 @@ function renderInventory(inventory) {
   const host = $('inventory');
   host.textContent = '';
 
-  for (const game of inventory) {
-    const card = el('section', 'card');
-    card.append(el('h2', null, game.id));
+  if (!inventory.length) {
+    host.append(el('p', 'meta', 'Nothing published yet.'));
+    return;
+  }
 
+  // One row per channel, one cell per platform. A grid rather than a table so
+  // the three platforms line up across channels and can be compared by eye
+  // without reading down a column of repeated platform names.
+  const grid = el('div', 'inv');
+
+  const head = el('div', 'inv-row inv-head');
+  head.append(el('div', 'inv-game', 'Game'));
+  for (const platform of PLATFORMS) {
+    head.append(el('div', `inv-cell inv-${platform}`, platform));
+  }
+  grid.append(head);
+
+  for (const game of inventory) {
     for (const channel of game.channels) {
       const latest = channel.latest ?? {};
       const behind = compare(Object.values(latest).map((e) => e.version));
 
-      const head = el('div', 'card-head');
-      head.append(el('span', 'tag', channel.channel));
-      if (behind) head.append(el('span', 'tag warn', 'platforms out of sync'));
-      card.append(head);
+      const row = el('div', 'inv-row');
+      if (behind) row.classList.add('inv-warn');
 
-      const table = el('table');
-      const headRow = el('tr');
-      headRow.append(el('th', null, 'Platform'));
-      headRow.append(el('th', null, 'Version'));
-      headRow.append(el('th', null, 'Build'));
-      headRow.append(el('th', null, 'Shipped'));
-      table.append(headRow);
+      const label = el('div', 'inv-game');
+      label.append(el('span', 'inv-name', game.id));
+      label.append(el('span', 'inv-channel', channel.channel));
+      row.append(label);
 
       for (const platform of PLATFORMS) {
         const entry = latest[platform];
-        const row = el('tr', entry ? null : 'muted');
-        row.append(el('td', null, platform));
-        row.append(el('td', entry ? 'mono' : 'mono', entry ? entry.version : '�'));
-        row.append(el('td', 'mono', entry ? entry.build : '�'));
-        row.append(
-          el('td', 'muted', entry ? ago(channel.updated?.[platform]) : String.fromCharCode(0x2014))
-        );
-        if (entry && behind && entry.version === behind) {
-          row.classList.add('behind');
-          row.title = `behind ${Object.values(latest)[0].version}`;
-        }
-        table.append(row);
-      }
-      card.append(table);
+        const cell = el('div', `inv-cell inv-${platform}`);
 
-      if (channel.published.length > 1) {
-        card.append(
-          el('p', 'meta', `published: ${channel.published.map((v) => v.version).join(', ')}`)
+        if (!entry) {
+          // "Not published" is a real state, not an error, so it stays grey.
+          cell.append(el('span', 'pill pill-none', 'none'));
+          row.append(cell);
+          continue;
+        }
+
+        // Status is carried by a glyph and a word as well as colour.
+        const isBehind = behind && entry.version === behind;
+        const pill = el(
+          'span',
+          isBehind ? 'pill pill-warn' : 'pill pill-ok',
+          isBehind ? '! behind' : 'ok'
         );
+        cell.append(pill);
+        cell.append(el('span', 'mono inv-version', entry.version));
+        cell.append(el('span', 'inv-build', `build ${entry.build}`));
+        cell.append(el('span', 'inv-when', ago(channel.updated?.[platform])));
+        row.append(cell);
       }
+
+      grid.append(row);
     }
-    host.append(card);
   }
+
+  host.append(grid);
 }
 
 function el(tag, className, text) {
