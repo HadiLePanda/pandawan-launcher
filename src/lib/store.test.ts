@@ -66,6 +66,7 @@ function makeInstallation(): GameInstallation {
     game_id: 'game-1',
     installed_version: '1.1.0',
     installed_build: 2,
+    channel: 'stable',
     install_path: 'C:/games/game-1',
     installed_files: {},
     installed_at: '2026-01-01T00:00:00Z',

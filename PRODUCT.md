@@ -42,7 +42,8 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 - Automatic game-update checks and optional OS notifications for available/completed updates.
 - Launcher self-update check and install flow.
 - Playtime tracking and last-played timestamps.
-- Multi-language UI: English, French, German, Spanish.
+- Multi-language UI: English and French. All strings go through i18next, so adding a
+  language is a matter of adding a locale JSON file.
 - Dark / light / system-adaptive themes.
 - Configurable install path, download speed limit, max concurrent downloads, and notification toggles.
 - System-tray minimize/close behavior.
@@ -50,9 +51,10 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 
 **Known constraints**
 
-- The in-app **Store** and **Player Profile** are UI placeholders with no backend or purchase/account behavior.
-- `notifyFriendActivity` and `notifyNewsEvents` settings exist in the schema but are not wired to behavior.
-- Games must be configured and uploaded by Pandawan Corp; there is no end-user or third-party publishing path.
+- The in-app **Store** and **Player Profile** are UI placeholders with no backend or
+  purchase/account behavior.
+- Games must be configured and uploaded by Pandawan Corp; there is no end-user or
+  third-party publishing path.
 - Updater signing is required for production builds and releases.
 - `src/lib/bindings.ts` is currently hand-maintained because the Specta export test cannot run in this environment; it must be regenerated on a Tauri-capable machine before release.
 

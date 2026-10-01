@@ -105,6 +105,7 @@ function makeManifest(overrides?: Partial<GameManifest>): GameManifest {
     name: 'Test Game',
     version: '1.0.0',
     build_number: 1,
+    channel: 'stable',
     executable: 'TestGame.exe',
     files: [{ path: 'TestGame.exe', hash: 'abc', size: 1000, url: 'files/TestGame.exe' }],
     ...overrides,
@@ -124,6 +125,40 @@ describe('catalog-service', () => {
       manifestUrl: `https://cdn.example.com/games/${id}/${channel}/manifest.json`,
       baseUrl: `https://cdn.example.com/games/${id}/${channel}`,
     }));
+  });
+
+  describe('channel handling', () => {
+    it('keeps a manifest-declared channel', async () => {
+      (tauriFetch as Mock).mockResolvedValue(okResponse(makeManifest({ channel: 'alpha' })));
+
+      const manifest = await service.fetchGameManifest(
+        'https://cdn.example.com/games/test-game/alpha/manifest.json'
+      );
+
+      expect(manifest.channel).toBe('alpha');
+    });
+
+    it('defaults a pre-channel manifest to stable', async () => {
+      // Manifests published before channels existed have no `channel` key. They
+      // must still load rather than leaving the field undefined downstream.
+      const legacy: Record<string, unknown> = { ...makeManifest() };
+      delete legacy.channel;
+      (tauriFetch as Mock).mockResolvedValue(okResponse(legacy));
+
+      const manifest = await service.fetchGameManifest(
+        'https://cdn.example.com/games/test-game/stable/manifest.json'
+      );
+
+      expect(manifest.channel).toBe('stable');
+    });
+
+    it('exposes stable/beta/alpha and normalizes unknown channels', () => {
+      expect(service.KNOWN_CHANNELS).toEqual(['stable', 'beta', 'alpha']);
+      expect(service.normalizeChannel('beta')).toBe('beta');
+      expect(service.normalizeChannel('nightly')).toBe('stable');
+      expect(service.normalizeChannel(undefined)).toBe('stable');
+      expect(service.normalizeChannel(null)).toBe('stable');
+    });
   });
 
   describe('loadCatalog', () => {

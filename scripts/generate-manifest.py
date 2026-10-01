@@ -38,16 +38,39 @@ def compute_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def collect_files(input_dir: Path) -> list[tuple[Path, Path]]:
-    """Return list of (relative_path, absolute_path) for all files."""
+# Path fragments excluded from every build. Unity emits a
+# "<Product>_BackUpThisFolder_ButDontShipItWithYourGame" folder that must never
+# be shipped; leaving it in would download dead weight on every install.
+DEFAULT_EXCLUDES = ("_BackUpThisFolder_ButDontShipItWithYourGame",)
+
+
+def collect_files(input_dir: Path, excludes: tuple[str, ...] = DEFAULT_EXCLUDES) -> list[tuple[Path, Path]]:
+    """Return list of (relative_path, absolute_path) for all files.
+
+    Any path containing an excluded fragment is skipped. Matching is done on
+    the posix form of the relative path so the same excludes work on Windows.
+    """
     files = []
-    for root, _, filenames in os.walk(input_dir):
+    for root, dirnames, filenames in os.walk(input_dir):
+        # Prune excluded directories in place so os.walk never descends into
+        # them; checking filenames too covers excludes matched mid-path.
+        dirnames[:] = [d for d in dirnames if not any(x in d for x in excludes)]
         for name in filenames:
             abs_path = Path(root) / name
             rel_path = abs_path.relative_to(input_dir)
+            posix = rel_path.as_posix()
+            if any(x in posix for x in excludes):
+                continue
             files.append((rel_path, abs_path))
     files.sort(key=lambda x: str(x[0]).replace("\\", "/"))
     return files
+
+
+# Channels the launcher understands, ordered most to least stable. Kept in sync
+# with KNOWN_CHANNELS in src-tauri/src/types.rs and KNOWN_CHANNELS in
+# src/lib/catalog-service.ts.
+KNOWN_CHANNELS = ("stable", "beta", "alpha")
+DEFAULT_CHANNEL = "stable"
 
 
 def load_patch_notes(path: Path | None) -> list | None:
@@ -67,9 +90,18 @@ def generate_manifest(args) -> dict:
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
-    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{args.channel}"
+    # Fail loudly on an unknown channel. The launcher treats anything it does
+    # not recognise as `stable`, so a typo like "alfa" would otherwise ship a
+    # build silently labelled as a stable release.
+    channel = args.channel or DEFAULT_CHANNEL
+    if channel not in KNOWN_CHANNELS:
+        raise ValueError(
+            f"Unknown channel {channel!r}. Expected one of: {', '.join(KNOWN_CHANNELS)}"
+        )
 
-    files = collect_files(input_dir)
+    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}"
+
+    files = collect_files(input_dir, tuple(args.exclude or ()) + DEFAULT_EXCLUDES)
     entries = []
     for rel_path, abs_path in files:
         posix_path = rel_path.as_posix()
@@ -89,6 +121,7 @@ def generate_manifest(args) -> dict:
         "name": args.name,
         "version": args.version,
         "build_number": args.build_number,
+        "channel": channel,
         "executable": args.executable,
         "description": args.description or None,
         "icon_url": args.icon_url or None,
@@ -124,6 +157,15 @@ def main():
     parser.add_argument("--launch-args", default=None, help="Default launch arguments")
     parser.add_argument("--patch-notes", default=None, help="Path to a JSON patch notes file")
     parser.add_argument(
+        "--exclude",
+        action="append",
+        default=None,
+        help=(
+            "Path fragment to skip, repeatable. Always excludes "
+            f"{DEFAULT_EXCLUDES[0]!r} for Unity builds."
+        ),
+    )
+    parser.add_argument(
         "--pretty",
         action="store_true",
         default=True,
@@ -140,9 +182,11 @@ def main():
         f.write("\n")
 
     total_size = sum(entry["size"] for entry in manifest["files"])
-    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{args.channel}"
+    channel = manifest["channel"]
+    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}"
     print(f"Manifest written: {output_path}")
     print(f"Base URL: {base_url}")
+    print(f"Channel: {channel}")
     print(f"Files: {len(manifest['files'])}")
     print(f"Total size: {total_size / (1024 * 1024):.2f} MB")
 

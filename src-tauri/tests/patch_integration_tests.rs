@@ -145,6 +145,7 @@ fn test_save_and_load_installation_roundtrip() {
         last_played: Some(chrono::Utc::now()),
         total_playtime_seconds: 7200,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
 
     // Save
@@ -206,6 +207,7 @@ fn test_list_multiple_installations() {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
     }
@@ -238,6 +240,7 @@ fn test_list_installations_with_corrupted_files() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(app_data_dir, &valid).unwrap();
 
@@ -291,6 +294,7 @@ fn test_save_installation_creates_directory_structure() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
 
     // Save should create all necessary directories
@@ -319,6 +323,7 @@ fn test_update_existing_installation() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(app_data_dir, &installation_v1).unwrap();
 
@@ -337,6 +342,7 @@ fn test_update_existing_installation() {
         last_played: Some(chrono::Utc::now()),
         total_playtime_seconds: 3600,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(app_data_dir, &installation_v2).unwrap();
 
@@ -464,6 +470,7 @@ fn test_manifest_file_validation() {
             },
         ],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Verify all files in manifest exist and have correct hashes
@@ -521,6 +528,7 @@ fn test_complete_installation_scenario() {
             },
         ],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // 3. Save installation record
@@ -539,6 +547,7 @@ fn test_complete_installation_scenario() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: manifest.executable.clone(),
+        channel: "stable".to_string(),
     };
 
     save_installation(&app_data_dir, &installation).unwrap();
@@ -584,6 +593,7 @@ fn test_complete_installation_scenario() {
         last_played: Some(chrono::Utc::now()),
         total_playtime_seconds: 3600,
         executable: manifest.executable.clone(),
+        channel: "stable".to_string(),
     };
 
     save_installation(&app_data_dir, &updated_installation).unwrap();
@@ -674,6 +684,7 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
             compress: None,
         }],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Previous installation with accumulated play history
@@ -693,6 +704,7 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
         last_played: Some(previous_last_played),
         total_playtime_seconds: 3600,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(&app_data_dir, &previous).unwrap();
 
@@ -761,6 +773,7 @@ async fn test_patch_preserves_metadata_across_update_download() {
         last_played: Some(previous_last_played),
         total_playtime_seconds: 7200,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(&app_data_dir, &previous).unwrap();
 
@@ -782,6 +795,7 @@ async fn test_patch_preserves_metadata_across_update_download() {
             compress: None,
         }],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     let manager = PatchManager::new(4, None);
@@ -828,6 +842,7 @@ fn test_record_playtime_accumulates() {
         last_played: None,
         total_playtime_seconds: 3600,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
     save_installation(app_data_dir, &installation).unwrap();
 

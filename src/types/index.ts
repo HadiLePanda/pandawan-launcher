@@ -3,6 +3,9 @@ export interface GameManifest {
   name: string;
   version: string;
   build_number: number;
+  /** Release channel this build belongs to. `fetchGameManifest` fills in
+   * `stable` for pre-channel manifests that omit the field. */
+  channel: string;
   description?: string;
   icon_url?: string;
   banner_url?: string;
@@ -23,6 +26,8 @@ export interface GameInstallation {
   game_id: string;
   installed_version: string;
   installed_build: number;
+  /** Channel the installed build came from; the backend always records it. */
+  channel: string;
   install_path: string;
   installed_files: Record<string, string>;
   installed_at: string;

@@ -16,6 +16,11 @@ pub struct GameManifest {
     pub version: String,
     #[specta(type = u32)]
     pub build_number: u64,
+    /// Channel this build was published to (`stable` / `beta` / `alpha`).
+    /// Defaults to `stable` so manifests generated before channels existed
+    /// still load.
+    #[serde(default = "default_channel")]
+    pub channel: String,
     pub description: Option<String>,
     pub icon_url: Option<String>,
     pub banner_url: Option<String>,
@@ -42,6 +47,13 @@ pub struct GameInstallation {
     pub installed_version: String,
     #[specta(type = u32)]
     pub installed_build: u64,
+    /// Release channel this build came from (`stable` / `beta` / `alpha`).
+    ///
+    /// Recorded so `needs_update` can detect a channel switch and force a
+    /// re-sync even when the target build number is not higher. Defaults to
+    /// `stable` for installation records written before channels existed.
+    #[serde(default = "default_channel")]
+    pub channel: String,
     pub install_path: PathBuf,
     pub installed_files: HashMap<String, String>, // path -> hash
     pub installed_at: chrono::DateTime<chrono::Utc>,
@@ -302,15 +314,24 @@ pub struct LauncherSettings {
     pub notify_game_updates: bool,
     #[serde(default = "default_true")]
     pub notify_download_complete: bool,
-    #[serde(default)]
-    pub notify_friend_activity: bool,
-    #[serde(default = "default_true")]
-    pub notify_news_events: bool,
 }
 
 fn default_true() -> bool {
     true
 }
+
+/// Channel assumed when a manifest or older installation record omits one.
+pub fn default_channel() -> String {
+    DEFAULT_CHANNEL.to_string()
+}
+
+/// The channel a game ships on unless the publisher opts into others. Kept in
+/// sync with DEFAULT_CHANNEL in src/lib/catalog-service.ts.
+pub const DEFAULT_CHANNEL: &str = "stable";
+
+/// Channels a publisher can attach to a game, ordered most to least stable.
+/// Mirrors KNOWN_CHANNELS in src/lib/catalog-service.ts.
+pub const KNOWN_CHANNELS: [&str; 3] = ["stable", "beta", "alpha"];
 
 impl Default for LauncherSettings {
     fn default() -> Self {
@@ -326,8 +347,6 @@ impl Default for LauncherSettings {
             theme: "adaptive".to_string(),
             notify_game_updates: true,
             notify_download_complete: true,
-            notify_friend_activity: false,
-            notify_news_events: true,
         }
     }
 }
@@ -383,6 +402,7 @@ impl GameManifest {
             name: "Test Game".to_string(),
             version: "1.0.0".to_string(),
             build_number: 1,
+            channel: "stable".to_string(),
             description: None,
             icon_url: None,
             banner_url: None,
@@ -438,6 +458,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: Some(vec!["--fullscreen".to_string()]),
+            channel: "stable".to_string(),
         };
 
         let json = serde_json::to_string(&manifest).expect("Failed to serialize");
@@ -494,6 +515,7 @@ mod tests {
                 compress: None,
             }],
             launch_args: None,
+            channel: "stable".to_string(),
         };
         assert!(valid.validate().is_ok());
 
@@ -546,6 +568,7 @@ mod tests {
                 },
             ],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         assert_eq!(manifest.total_size(), 300);
@@ -612,6 +635,7 @@ mod tests {
             last_played: Some(chrono::Utc::now()),
             total_playtime_seconds: 3600,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
 
         let json = serde_json::to_string(&installation).expect("Failed to serialize");
@@ -922,8 +946,6 @@ mod tests {
         assert!(settings.games_install_path.is_none());
         assert!(settings.notify_game_updates);
         assert!(settings.notify_download_complete);
-        assert!(!settings.notify_friend_activity);
-        assert!(settings.notify_news_events);
     }
 
     #[test]
@@ -940,8 +962,6 @@ mod tests {
             theme: "dark".to_string(),
             notify_game_updates: false,
             notify_download_complete: false,
-            notify_friend_activity: true,
-            notify_news_events: false,
         };
 
         let json = serde_json::to_string(&settings).expect("Failed to serialize");
@@ -957,8 +977,25 @@ mod tests {
         );
         assert!(!deserialized.notify_game_updates);
         assert!(!deserialized.notify_download_complete);
-        assert!(deserialized.notify_friend_activity);
-        assert!(!deserialized.notify_news_events);
+    }
+
+    #[test]
+    fn test_launcher_settings_deserialization_ignores_removed_fields() {
+        // `notifyFriendActivity` / `notifyNewsEvents` were removed from the
+        // schema because no code read them. Settings files written by older
+        // builds still contain those keys, so loading must ignore them rather
+        // than fail and reset the user's configuration.
+        let json = r#"{
+            "language": "de",
+            "theme": "light",
+            "notifyFriendActivity": true,
+            "notifyNewsEvents": false
+        }"#;
+
+        let settings: LauncherSettings = serde_json::from_str(json).expect("Failed to deserialize");
+        assert_eq!(settings.language, "de");
+        assert!(settings.notify_game_updates);
+        assert!(settings.notify_download_complete);
     }
 
     #[test]
@@ -972,8 +1009,6 @@ mod tests {
         assert_eq!(settings.language, "de");
         assert!(settings.notify_game_updates);
         assert!(settings.notify_download_complete);
-        assert!(!settings.notify_friend_activity);
-        assert!(settings.notify_news_events);
     }
 
     #[test]
@@ -1173,6 +1208,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         }
     }
 }

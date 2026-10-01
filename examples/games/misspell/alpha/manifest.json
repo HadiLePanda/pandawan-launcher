@@ -1,19 +1,20 @@
 {
-  "game_id": "pandawan-rising",
-  "name": "Pandawan Rising",
+  "game_id": "misspell",
+  "name": "Misspell",
   "version": "0.1.0",
   "build_number": 1,
-  "description": "Local test game for the Pandawan launcher.",
+  "channel": "alpha",
+  "description": "Local fixture for the Pandawan launcher dev server.",
   "icon_url": "/placeholder-icon.svg",
   "banner_url": "/placeholder-banner.svg",
-  "release_date": "2026-07-08T00:00:00Z",
+  "release_date": "2026-09-30T00:00:00Z",
   "executable": "QuirheimOnline.exe",
   "patch_notes": [
     {
       "version": "0.1.0",
-      "date": "2026-07-08T00:00:00Z",
+      "date": "2026-09-30T00:00:00Z",
       "notes": [
-        "Initial test release for the Pandawan launcher.",
+        "Initial fixture release for the Pandawan launcher.",
         "Added placeholder art and example manifest data.",
         "Verified install, launch, and patch flows."
       ]
@@ -29,14 +30,14 @@
       "path": "QuirheimOnline.exe",
       "hash": "e19d5f79864307af89d5c35df3fcf87350535557668a02a5949ed7a5839c8f4e",
       "size": 9000,
-      "url": "/games/pandawan-rising/stable/files/QuirheimOnline.exe",
+      "url": "/games/misspell/alpha/files/QuirheimOnline.exe",
       "compress": false
     },
     {
       "path": "data/level0",
       "hash": "ca221aae9af8e7864aae08800b2994b34acd25b11629bf9184a650fb757f92d1",
       "size": 12000,
-      "url": "/games/pandawan-rising/stable/files/data/level0",
+      "url": "/games/misspell/alpha/files/data/level0",
       "compress": false
     }
   ]

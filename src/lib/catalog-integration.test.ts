@@ -64,8 +64,8 @@ describe('catalog integration against local example server', () => {
 
     expect(result.source).toBe('remote');
     expect(result.catalog.games.length).toBeGreaterThan(0);
-    expect(result.catalog.games.some((g) => g.id === 'pandawan-rising')).toBe(true);
+    expect(result.catalog.games.some((g) => g.id === 'misspell')).toBe(true);
     expect(result.games.length).toBeGreaterThan(0);
-    expect(result.games.some((g) => g.id === 'pandawan-rising')).toBe(true);
+    expect(result.games.some((g) => g.id === 'misspell')).toBe(true);
   });
 });

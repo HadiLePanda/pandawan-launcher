@@ -45,6 +45,7 @@ fn test_game_manifest_full_serialization() {
             "--fullscreen".to_string(),
             "--resolution=1920x1080".to_string(),
         ]),
+        channel: "stable".to_string(),
     };
 
     // Serialize
@@ -81,6 +82,7 @@ fn test_game_manifest_minimal_serialization() {
         executable: "run.exe".to_string(),
         files: vec![],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     let json = serde_json::to_string(&manifest).expect("Failed to serialize");
@@ -216,6 +218,7 @@ fn test_game_installation_full_serialization() {
         ),
         total_playtime_seconds: 36000, // 10 hours
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
 
     let json = serde_json::to_string_pretty(&installation).expect("Failed to serialize");
@@ -250,6 +253,7 @@ fn test_game_installation_with_null_last_played() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
 
     let json = serde_json::to_string(&installation).unwrap();
@@ -504,8 +508,33 @@ fn test_launcher_settings_default() {
     assert_eq!(settings.language, "en");
     assert!(settings.notify_game_updates);
     assert!(settings.notify_download_complete);
-    assert!(!settings.notify_friend_activity);
-    assert!(settings.notify_news_events);
+}
+
+#[test]
+fn test_launcher_settings_ignores_removed_notification_fields() {
+    // `notifyFriendActivity` / `notifyNewsEvents` were removed from the schema
+    // because nothing read them. Settings files written by older builds still
+    // contain those keys, so deserialization must ignore them rather than fail
+    // and reset the player's configuration.
+    let json = r#"{
+        "maxConcurrentDownloads": 4,
+        "autoUpdateGames": true,
+        "autoUpdateLauncher": true,
+        "minimizeToTray": true,
+        "closeToTray": false,
+        "language": "en",
+        "theme": "adaptive",
+        "notifyGameUpdates": true,
+        "notifyDownloadComplete": true,
+        "notifyFriendActivity": true,
+        "notifyNewsEvents": false
+    }"#;
+
+    let settings: LauncherSettings =
+        serde_json::from_str(json).expect("legacy settings should still load");
+    assert_eq!(settings.language, "en");
+    assert!(settings.notify_game_updates);
+    assert!(settings.notify_download_complete);
 }
 
 #[test]
@@ -659,6 +688,7 @@ fn test_full_data_flow() {
             compress: None,
         }],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // 2. Create installation from manifest
@@ -677,6 +707,7 @@ fn test_full_data_flow() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: manifest.executable.clone(),
+        channel: "stable".to_string(),
     };
 
     // 3. Serialize installation
@@ -707,6 +738,7 @@ fn test_serialization_with_special_characters() {
             "--path=C:\\Program Files\\Game".to_string(),
             "--name=Test User".to_string(),
         ]),
+        channel: "stable".to_string(),
     };
 
     let json = serde_json::to_string_pretty(&manifest).unwrap();
@@ -731,6 +763,7 @@ fn test_unicode_handling() {
         executable: "game.exe".to_string(),
         files: vec![],
         launch_args: Some(vec!["--path=C:\\Program Files\\Game".to_string()]),
+        channel: "stable".to_string(),
     };
 
     let json = serde_json::to_string(&manifest).unwrap();

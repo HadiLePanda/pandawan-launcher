@@ -14,7 +14,12 @@
     "tauri": "tauri",
     "tauri:dev": "node scripts/sync-updater-key.cjs && tauri dev",
     "tauri:build": "node scripts/build-signed.cjs",
-    "sync:updater-key": "node scripts/sync-updater-key.cjs"
+    "sync:updater-key": "node scripts/sync-updater-key.cjs",
+    "keys:check": "node scripts/check-updater-keys.cjs",
+    "keys:generate": "node scripts/check-updater-keys.cjs --generate",
+    "publish:game": "node scripts/publish-game.mjs",
+    "publish:catalog": "node scripts/publish-catalog.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

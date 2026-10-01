@@ -96,10 +96,20 @@ impl PatchManager {
         .to_string_lossy()
         .replace('\\', "/");
 
+        // Guard against an empty channel in a hand-edited manifest: an empty
+        // string would never equal `stable` in `needs_update` and would force a
+        // re-sync on every launch.
+        let channel = if manifest.channel.is_empty() {
+            crate::types::DEFAULT_CHANNEL.to_string()
+        } else {
+            manifest.channel.clone()
+        };
+
         Ok(GameInstallation {
             game_id: manifest.game_id.clone(),
             installed_version: manifest.version.clone(),
             installed_build: manifest.build_number,
+            channel,
             install_path: install_path.to_path_buf(),
             installed_files: manifest
                 .files
@@ -1139,6 +1149,7 @@ mod tests {
                 compress: None,
             }],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         let manager = PatchManager::new(4, None);
@@ -1199,6 +1210,7 @@ mod tests {
                 compress: None,
             }],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         let manager = PatchManager::new(4, None);
@@ -1284,6 +1296,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         }
     }
 
@@ -1314,6 +1327,7 @@ mod tests {
                 },
             ],
             launch_args: None,
+            channel: "stable".to_string(),
         }
     }
 }

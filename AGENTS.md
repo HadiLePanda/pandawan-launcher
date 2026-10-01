@@ -106,6 +106,12 @@ src-tauri/                    # Rust backend
 - Any new key must be added to both locale files in the same PR — `src/lib/i18n-coverage.test.ts` enforces key parity across locales, rejects unused/stale keys in `en.json`, and checks that translations keep the same `{{placeholders}}` as English.
 - Register conventions: FR uses the informal register (tu); French uses a non-breaking space before `?`, `!`, `;`, and `:`.
 
+### Schema Parity
+
+- The Rust `LauncherSettings` struct (`src-tauri/src/types.rs`) and the frontend `LauncherSettings` interface (`src/types/index.ts`) are maintained separately and must stay in sync. `src/lib/settings-schema-parity.test.ts` fails if either side gains a field the other lacks.
+- When adding a setting: update the Rust struct, the TypeScript interface, `DEFAULT_SETTINGS` in `src/components/Settings.tsx`, and `DEFAULT_SETTINGS_SHAPE` in the parity test together.
+- Removing a setting is backward compatible: serde ignores unknown keys, so settings files written by older builds still load. Covered by `test_launcher_settings_deserialization_ignores_removed_fields` in `src-tauri/src/types.rs`.
+
 ## Design System
 
 ### Colors

@@ -136,6 +136,23 @@ async fn install_game(
     Ok(installation)
 }
 
+/// Decide whether an installed build needs to be re-synced against a target
+/// manifest.
+///
+/// A different channel always means re-sync; the same channel means update only
+/// when the target build is newer.
+///
+/// Without the channel check, a player on alpha build 150 who returns to stable
+/// build 100 would be reported as up to date and left trapped on alpha forever.
+/// Orphaned files from the previous channel are removed by
+/// `cleanup_orphaned_files` during the patch, so a channel switch is a clean
+/// swap rather than an accumulation of both builds.
+///
+/// Split out from the command so the rule is testable without a Tauri AppHandle.
+fn needs_update(installation: &GameInstallation, manifest: &GameManifest) -> bool {
+    installation.channel != manifest.channel || installation.installed_build < manifest.build_number
+}
+
 /// Check if game needs update
 #[tauri::command]
 #[specta::specta]
@@ -153,7 +170,7 @@ async fn check_game_update(
         .map_err(|e| LauncherError::Io(e.to_string()))?;
 
     match load_installation(&app_data_dir, &game_id)? {
-        Some(installation) => Ok(installation.installed_build < manifest.build_number),
+        Some(installation) => Ok(needs_update(&installation, &manifest)),
         None => Ok(true), // Not installed
     }
 }
@@ -538,6 +555,123 @@ mod tests {
     use std::collections::HashMap;
 
     // =========================================================================
+    // needs_update / channel-switch Tests
+    // =========================================================================
+
+    fn inst(build: u64, channel: &str) -> GameInstallation {
+        GameInstallation {
+            game_id: "chan-test".to_string(),
+            installed_version: "1.0.0".to_string(),
+            installed_build: build,
+            channel: channel.to_string(),
+            install_path: std::path::PathBuf::from("/tmp/chan-test"),
+            installed_files: HashMap::new(),
+            installed_at: chrono::Utc::now(),
+            last_played: None,
+            total_playtime_seconds: 0,
+            executable: "game.exe".to_string(),
+        }
+    }
+
+    fn target(build: u64, channel: &str) -> GameManifest {
+        let mut manifest = test_utils::create_test_manifest();
+        manifest.build_number = build;
+        manifest.channel = channel.to_string();
+        manifest
+    }
+
+    #[test]
+    fn test_needs_update_same_channel_newer_build() {
+        assert!(needs_update(&inst(100, "stable"), &target(101, "stable")));
+    }
+
+    #[test]
+    fn test_needs_update_same_channel_same_build_is_current() {
+        assert!(!needs_update(&inst(100, "stable"), &target(100, "stable")));
+    }
+
+    #[test]
+    fn test_needs_update_same_channel_older_build_is_not_a_downgrade() {
+        // Within one channel the publisher should never ship a lower build, so
+        // an older target is treated as "already current" rather than forcing
+        // a pointless re-download loop.
+        assert!(!needs_update(&inst(100, "stable"), &target(99, "stable")));
+    }
+
+    #[test]
+    fn test_needs_update_switching_alpha_back_to_stable_lower_build() {
+        // The regression this guards: a player on alpha build 150 opting back
+        // into stable build 100 must still be offered the downgrade. Comparing
+        // build numbers alone would report "up to date" and trap them on alpha.
+        assert!(needs_update(&inst(150, "alpha"), &target(100, "stable")));
+    }
+
+    #[test]
+    fn test_needs_update_switching_stable_to_alpha_higher_build() {
+        assert!(needs_update(&inst(100, "stable"), &target(101, "alpha")));
+    }
+
+    #[test]
+    fn test_needs_update_switching_channel_same_build_number() {
+        // Even an identical build number must re-sync when the channel differs,
+        // because the two channels ship different file sets.
+        assert!(needs_update(&inst(100, "stable"), &target(100, "beta")));
+    }
+
+    // =========================================================================
+    // Channel Defaulting Tests
+    // =========================================================================
+
+    #[test]
+    fn test_manifest_without_channel_defaults_to_stable() {
+        // Manifests published before channels existed must still load and be
+        // treated as `stable`, so existing games do not appear broken.
+        let json = r#"{
+            "game_id": "legacy-game",
+            "name": "Legacy Game",
+            "version": "1.0.0",
+            "build_number": 7,
+            "description": null,
+            "icon_url": null,
+            "banner_url": null,
+            "executable": "game.exe",
+            "files": [],
+            "launch_args": null
+        }"#;
+
+        let manifest: GameManifest = serde_json::from_str(json).expect("legacy manifest should load");
+        assert_eq!(manifest.channel, DEFAULT_CHANNEL);
+        assert_eq!(manifest.channel, "stable");
+    }
+
+    #[test]
+    fn test_installation_without_channel_defaults_to_stable() {
+        // Same guarantee for installation records written by older builds.
+        let json = r#"{
+            "game_id": "legacy-game",
+            "installed_version": "1.0.0",
+            "installed_build": 7,
+            "install_path": "/games/legacy",
+            "installed_files": {},
+            "installed_at": "2026-01-01T00:00:00Z",
+            "last_played": null,
+            "total_playtime_seconds": 0,
+            "executable": "game.exe"
+        }"#;
+
+        let installation: GameInstallation =
+            serde_json::from_str(json).expect("legacy installation should load");
+        assert_eq!(installation.channel, DEFAULT_CHANNEL);
+    }
+
+    #[test]
+    fn test_known_channels_are_ordered_most_to_least_stable() {
+        assert_eq!(KNOWN_CHANNELS[0], "stable");
+        assert_eq!(KNOWN_CHANNELS[1], "beta");
+        assert_eq!(KNOWN_CHANNELS[2], "alpha");
+    }
+
+    // =========================================================================
     // get_default_games_path Tests
     // =========================================================================
 
@@ -614,6 +748,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         // Game is not installed, should return true (needs update/install)
@@ -637,6 +772,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
 
@@ -652,6 +788,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -674,6 +811,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
 
@@ -689,6 +827,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -711,6 +850,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation).unwrap();
 
@@ -726,6 +866,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -779,6 +920,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         // Simulate installation by creating the installation record
@@ -792,6 +934,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: manifest.executable.clone(),
+            channel: "stable".to_string(),
         };
 
         // Save installation
@@ -820,6 +963,7 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            channel: "stable".to_string(),
         };
 
         // Now should need update
@@ -848,6 +992,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
 
         save_installation(app_data_dir, &installation).unwrap();
@@ -916,6 +1061,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &valid_install).unwrap();
 
@@ -948,6 +1094,7 @@ mod tests {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation1).unwrap();
 
@@ -962,6 +1109,7 @@ mod tests {
             last_played: Some(chrono::Utc::now()),
             total_playtime_seconds: 3600,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
         save_installation(app_data_dir, &installation2).unwrap();
 

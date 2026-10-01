@@ -5,6 +5,28 @@ import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
 import i18n from './i18n';
 import { logger } from './logger';
 
+export const DEFAULT_CHANNEL = 'stable';
+
+/**
+ * Release channels a publisher can attach to a game, ordered most to least
+ * stable. Mirrors KNOWN_CHANNELS in src-tauri/src/types.rs; the parity test
+ * keeps the Rust side honest.
+ */
+export const KNOWN_CHANNELS = ['stable', 'beta', 'alpha'] as const;
+
+export type Channel = (typeof KNOWN_CHANNELS)[number];
+
+/** Coerce arbitrary input to a known channel, falling back to `stable`. */
+export function normalizeChannel(value: string | null | undefined): string {
+  if (value && (KNOWN_CHANNELS as readonly string[]).includes(value)) {
+    return value;
+  }
+  if (value) {
+    logger.warn('Unknown channel, falling back to stable', { channel: value });
+  }
+  return DEFAULT_CHANNEL;
+}
+
 /** Remote catalog endpoint. Lists game IDs + channels; no per-version URLs. */
 const CATALOG_URL = CdnUrl.catalog();
 
@@ -151,7 +173,10 @@ export async function fetchGameManifest(manifestUrl: string): Promise<GameManife
   if (!manifest || typeof manifest !== 'object' || !manifest.game_id || !manifest.version) {
     throw new Error('Invalid manifest: missing game_id or version');
   }
-  return manifest as GameManifest;
+  // Manifests published before channels existed omit the field. Normalize here,
+  // at the single boundary where manifests enter the app, so nothing downstream
+  // has to re-implement the default.
+  return { ...(manifest as GameManifest), channel: manifest.channel || DEFAULT_CHANNEL };
 }
 
 export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInfo[]> {

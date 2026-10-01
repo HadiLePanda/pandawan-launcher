@@ -1,27 +1,19 @@
 {
   "items": [
     {
-      "id": "pandawan-rising-launch",
-      "title": "Pandawan Rising Enters Early Access",
-      "excerpt": "Join the Bamboo Kingdom and experience the first chapter of this mythic action RPG.",
-      "date": "2026-07-08T00:00:00Z",
+      "id": "misspell-alpha-0-4-0",
+      "title": "Misspell 0.4.0 - Alpha Playtest",
+      "excerpt": "The first alpha playtest build for friends. Expect rough edges and breaking changes.",
+      "date": "2026-09-30T00:00:00Z",
       "category": "Release",
-      "gameId": "pandawan-rising",
+      "gameId": "misspell",
       "imageUrl": "/placeholder-banner.svg"
-    },
-    {
-      "id": "pandawan-rising-patch-0-1-0",
-      "title": "Patch 0.1.0 - Example Build",
-      "excerpt": "Initial test release for the Pandawan launcher with placeholder art and example manifest data.",
-      "date": "2026-07-08T00:00:00Z",
-      "category": "Patch Notes",
-      "gameId": "pandawan-rising"
     },
     {
       "id": "launcher-welcome",
       "title": "Welcome to the Pandawan Launcher",
       "excerpt": "Your gateway to Pandawan Corp games is here. Stay tuned for more titles and updates.",
-      "date": "2026-07-08T00:00:00Z",
+      "date": "2026-09-30T00:00:00Z",
       "category": "Launcher"
     }
   ]

@@ -68,6 +68,10 @@ coverage/
 # Downloads folder used by tests/dev
 downloads/
 
+# Runtime artifact written by the test game when launched
+test-game-ran.txt
+examples/games/*/*/files/test-game-ran.txt
+
 # Minisign updater keys
 src-tauri/.secrets/
 *.key

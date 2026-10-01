@@ -94,7 +94,81 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Pandawan Launcher ${{ github.ref_name }}'
           releaseBody: 'See the assets below to download and install Pandawan Launcher.'
+          # Draft: this release is a build record only. The updater reads
+          # latest.json from R2 (see the publish-updater job), so nothing here
+          # needs to be publicly downloadable.
           releaseDraft: true
           prerelease: false
           uploadUpdaterJson: true
           args: ${{ matrix.args }}
+
+  # Mirror the signed bundles and the updater manifest to the R2 bucket that
+  # the launcher's updater endpoint points at. The GitHub release above is
+  # private, so its asset URLs are not readable by players: the URLs inside
+  # latest.json are rewritten to the public bucket before upload.
+  publish-updater:
+    name: Publish updater assets to R2
+    needs: release
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Download signed bundles from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p bundles
+          gh release download "${{ github.ref_name }}" \
+            --dir bundles \
+            --pattern '*.msi' --pattern '*.msi.sig' \
+            --pattern '*.app.tar.gz' --pattern '*.app.tar.gz.sig' \
+            --pattern '*.deb' --pattern '*.deb.sig' \
+            --pattern 'latest.json' \
+            --clobber
+          ls -la bundles
+
+      - name: Point latest.json at the public bucket
+        run: |
+          set -euo pipefail
+          # Reads the base URL from the committed updater endpoint in
+          # tauri.conf.json, so the published manifest can never drift from
+          # the endpoint the launcher actually polls.
+          node scripts/rewrite-updater-urls.mjs \
+            bundles/latest.json \
+            --from-config src-tauri/tauri.conf.json \
+            bundles/latest.rewritten.json
+          mv bundles/latest.rewritten.json bundles/latest.json
+          cat bundles/latest.json
+
+      - name: Upload bundles to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          # Immutable, long-lived caching for the versioned bundles: their names
+          # include the version, so the bytes at a given URL never change.
+          aws s3 cp bundles/ "s3://$R2_BUCKET/launcher/" \
+            --endpoint-url "$AWS_ENDPOINT_URL" \
+            --no-progress \
+            --exclude 'latest.json' \
+            --cache-control 'public, max-age=31536000, immutable'
+          # latest.json is the one mutable file, and it must never be cached or
+          # clients keep polling a stale version and miss new releases.
+          aws s3 cp bundles/latest.json "s3://$R2_BUCKET/launcher/latest.json" \
+            --endpoint-url "$AWS_ENDPOINT_URL" \
+            --no-progress \
+            --cache-control 'no-cache, no-store, must-revalidate' \
+            --content-type 'application/json'
+          echo "Published to s3://$R2_BUCKET/launcher/"

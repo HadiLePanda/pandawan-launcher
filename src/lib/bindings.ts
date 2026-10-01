@@ -109,6 +109,7 @@ export type GameInstallation = {
   game_id: string;
   installed_version: string;
   installed_build: number;
+  channel: string;
   install_path: string;
   installed_files: Record<string, string>;
   installed_at: string;
@@ -122,6 +123,7 @@ export type GameManifest = {
   name: string;
   version: string;
   build_number: number;
+  channel: string;
   description?: string;
   icon_url?: string;
   banner_url?: string;

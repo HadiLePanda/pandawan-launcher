@@ -67,6 +67,7 @@ fn test_complete_new_installation_workflow() {
             },
         ],
         launch_args: Some(vec!["--fullscreen".to_string()]),
+        channel: "stable".to_string(),
     };
 
     // Step 2: Simulate downloading and creating files
@@ -96,6 +97,7 @@ fn test_complete_new_installation_workflow() {
         last_played: None,
         total_playtime_seconds: 0,
         executable: manifest.executable.clone(),
+        channel: "stable".to_string(),
     };
 
     // Step 4: Save installation
@@ -151,6 +153,7 @@ fn test_update_workflow_with_version_change() {
         last_played: Some(chrono::Utc::now()),
         total_playtime_seconds: 3600,
         executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
     };
 
     save_installation(app_data_dir, &v1_installation).unwrap();
@@ -182,6 +185,7 @@ fn test_update_workflow_with_version_change() {
             },
         ],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Step 3: Check if update is needed
@@ -213,6 +217,7 @@ fn test_update_workflow_with_version_change() {
         last_played: loaded.last_played,
         total_playtime_seconds: loaded.total_playtime_seconds + 1800, // Additional playtime
         executable: v2_manifest.executable.clone(),
+        channel: "stable".to_string(),
     };
 
     save_installation(app_data_dir, &v2_installation).unwrap();
@@ -287,6 +292,7 @@ fn test_verification_workflow() {
             },
         ],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Step 3: Verify installation
@@ -368,6 +374,7 @@ fn test_corrupted_file_recovery_workflow() {
             compress: None,
         }],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Step 3: Verify initial state
@@ -427,6 +434,7 @@ fn test_multiple_games_management() {
                 _ => 0,
             },
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
 
         save_installation(app_data_dir, &installation).unwrap();
@@ -620,6 +628,7 @@ fn test_recovery_from_partial_failure() {
             },
         ],
         launch_args: None,
+        channel: "stable".to_string(),
     };
 
     // Determine which files need re-download
@@ -776,6 +785,7 @@ fn test_rapid_update_workflow() {
             last_played: None,
             total_playtime_seconds: 0,
             executable: "game.exe".to_string(),
+            channel: "stable".to_string(),
         };
 
         save_installation(app_data_dir, &installation).unwrap();

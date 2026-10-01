@@ -217,29 +217,155 @@ The launcher exposes these commands to the frontend:
 The launcher uses Tauri's built-in updater.
 
 - **Public key** (committed): `src-tauri/updater.pub` is the single source of truth.
-  - Sync it into `src-tauri/tauri.conf.json` with:
-    ```bash
-    npm run sync:updater-key
-    ```
-    This is also run automatically by `npm run tauri:dev` and `npm run tauri:build`.
-- **Secret key** (gitignored): `src-tauri/.secrets/updater.key` is required before running `npm run tauri:build` locally.
-  - Copy your minisign secret key to that path; it is ignored by Git and must never be committed.
-- **CI secret**: `TAURI_SIGNING_PRIVATE_KEY` must be set in the repository's GitHub Secrets so the release workflow can sign bundles.
+  - Sync it into `src-tauri/tauri.conf.json` with `npm run sync:updater-key`.
+    This also runs automatically before `tauri:dev` and `tauri:build`.
+- **Secret key** (gitignored): `src-tauri/.secrets/updater.key` signs bundles.
+  It is ignored by Git and must never be committed.
+- **CI secret**: `TAURI_SIGNING_PRIVATE_KEY` must be set in GitHub Secrets so the
+  release workflow can sign bundles.
 
-Before shipping a release you must:
+### Checking your keys
 
-1. Generate a minisign keypair:
-   ```bash
-   # Install minisign (https://jedisct1.github.io/minisign/)
-   minisign -G -W -s src-tauri/.secrets/updater.key -p src-tauri/updater.pub
-   ```
-   - Keep `src-tauri/.secrets/updater.key` secret (store it as a CI secret, never commit it).
-   - `src-tauri/updater.pub` can be committed.
-2. Sync the public key into Tauri's config:
-   ```bash
-   npm run sync:updater-key
-   ```
-3. Sign your update bundles and host the resulting `.sig` files alongside the update manifest.
+```bash
+npm run keys:check
+```
+
+Verifies the secret key exists, that `updater.pub` really matches it, and that
+the public key is synced into `tauri.conf.json`. Run this first if the updater
+misbehaves.
+
+```bash
+npm run keys:generate
+```
+
+**Only for a brand-new setup.** It refuses to run when a secret key already
+exists, because regenerating invalidates every bundle you have already signed.
+If no key exists yet, it creates one and syncs it.
+
+Install minisign first if prompted:
+
+```bash
+winget install jedisct1.minisign    # Windows
+brew install minisign               # macOS
+```
+
+## Publishing a game build
+
+One command uploads a build to R2 and makes it visible to the launcher:
+
+```bash
+npm run publish:game -- \
+  --game-id pandawan-rising \
+  --channel alpha \
+  --version 1.2.0-alpha.3 \
+  --build-number 102 \
+  --executable "QuirheimOnline.exe" \
+  --name "Pandawan Rising" \
+  --input-dir ./Builds/StandaloneWindows64
+```
+
+It generates the manifest, uploads the game files, then uploads the manifest.
+**Files go up first on purpose** — the manifest is what tells a player's
+launcher a build exists, so publishing it early would let someone resolve a
+manifest whose files are not there yet.
+
+Optional: `--description`, `--patch-notes <file.json>`, `--icon-url`,
+`--banner-url`, `--output <path>`.
+
+`--channel` accepts `stable`, `beta`, or `alpha`; anything else is rejected so
+a typo cannot ship a build mislabelled as stable.
+
+### Credentials
+
+Put your R2 credentials in a local `.env` file (gitignored) so you never have to
+paste secrets into a shell. Copy the block from `.env.example` into `.env` and
+fill in real values:
+
+```bash
+R2_ACCOUNT_ID=<Cloudflare dashboard → R2 → Account ID>
+R2_BUCKET=<bucket name from the R2 dashboard>
+R2_CDN_ORIGIN=https://pub-xxxxxxxxxxxx.r2.dev
+R2_ACCESS_KEY_ID=<R2 → Manage R2 tokens>
+R2_SECRET_ACCESS_KEY=<same, shown once>
+```
+
+`R2_ACCOUNT_ID` is **not** the value inside the `r2.dev` URL — that subdomain
+encodes the bucket, not the account. Both are shown in the R2 dashboard.
+
+A value already present in the real environment wins over `.env`, so CI can
+inject secrets without a file. Never put real values in `.env.example` or any
+committed file.
+
+Requires [minisign](https://jedisct1.github.io/minisign/), Python, and the
+[AWS CLI](https://aws.amazon.com/cli/) (`aws s3` talks to R2 over the
+S3-compatible API; you do not need an AWS account).
+
+### Versioning
+
+`build-number` must increase on every build, across **all** channels — it is the
+only value the launcher compares. `version` is display text and is never
+compared, so ordering never depends on it.
+
+```
+stable  1.2.0            -> build 100
+beta    1.3.0-beta.1     -> build 101
+alpha   1.4.0-alpha.1    -> build 102
+stable  1.3.0            -> build 103
+```
+
+### Rolling back
+
+Keep the previous build's files in the bucket. If a build turns out broken,
+republish the earlier version's manifest (same `build-number`, same files) and
+players who already downloaded the bad build can move back down.
+
+### Publishing launcher updates to Cloudflare R2
+
+The release workflow builds and signs bundles into a **draft** GitHub Release (a
+build record only), then mirrors them to an R2 bucket that the launcher's
+updater endpoint actually reads:
+
+```
+R2 bucket
+└── launcher/
+    ├── latest.json                       # updater manifest (never cached)
+    ├── Pandawan Launcher_0.1.0_x64_en-US.msi
+    ├── Pandawan Launcher_0.1.0_x64_en-US.msi.sig
+    └── ...
+```
+
+This keeps the repository private while letting players download without
+authentication. R2 egress is free, so bandwidth costs nothing.
+
+`latest.json` generated by `tauri-action` points at GitHub Release URLs, which
+are not readable from a private repo. The workflow rewrites those URLs to the
+public bucket before upload. The base URL is read from the committed updater
+endpoint in `src-tauri/tauri.conf.json`, so the published manifest can never
+drift from the endpoint the launcher actually polls:
+
+```bash
+node scripts/rewrite-updater-urls.mjs latest.json \
+  --from-config src-tauri/tauri.conf.json out.json
+```
+
+**Repository secrets**
+
+| Name                        | Purpose                        |
+| --------------------------- | ------------------------------ |
+| `TAURI_SIGNING_PRIVATE_KEY` | Signs bundles (required)       |
+| `R2_ACCESS_KEY_ID`          | R2 API token ID (required)     |
+| `R2_SECRET_ACCESS_KEY`      | R2 API token secret (required) |
+
+**Repository variables**
+
+| Name            | Example          | Purpose                    |
+| --------------- | ---------------- | -------------------------- |
+| `R2_ACCOUNT_ID` | `abc123`         | Builds the S3 endpoint URL |
+| `R2_BUCKET`     | `pandawan-games` | Target bucket              |
+
+The base URL needs no variable because it is derived from `tauri.conf.json`.
+Attach the secrets and variables to a `production` GitHub Environment so they
+are only exposed to the release job.
 
 ## Configuration
 

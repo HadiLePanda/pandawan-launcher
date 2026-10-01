@@ -1,14 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "lastUpdated": "2026-07-08T00:00:00Z",
+  "lastUpdated": "2026-09-30T00:00:00Z",
   "games": [
     {
-      "id": "pandawan-rising",
-      "channel": "stable",
-      "name": "Pandawan Rising",
-      "description": "A mythic action RPG set in the Bamboo Kingdom.",
+      "id": "misspell",
+      "channel": "alpha",
+      "name": "Misspell",
+      "description": "A local multiplayer word game. Alpha playtest build.",
       "developer": "Pandawan Corp",
-      "genre": ["Action RPG", "Multiplayer"],
+      "genre": ["Multiplayer", "Party"],
+      "iconUrl": "/placeholder-icon.svg",
+      "bannerUrl": "/placeholder-banner.svg",
+      "screenshots": ["/placeholder-banner.svg"],
+      "supportedPlatforms": ["windows"]
+    },
+    {
+      "id": "pandawan-test-game",
+      "channel": "stable",
+      "name": "Pandawan Test Game",
+      "description": "Internal test game used to verify install, update, and channel switching.",
+      "developer": "Pandawan Corp",
+      "genre": ["Test"],
       "iconUrl": "/placeholder-icon.svg",
       "bannerUrl": "/placeholder-banner.svg",
       "screenshots": ["/placeholder-banner.svg"],
