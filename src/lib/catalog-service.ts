@@ -1,7 +1,8 @@
 import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
+import { commands } from './commands';
+import { unwrapResult } from './errors';
 import i18n from './i18n';
 import { logger } from './logger';
 
@@ -34,21 +35,15 @@ const CATALOG_OVERRIDE_FILE_NAME = 'catalog.override.json';
 
 let embeddedCatalog: GameCatalog | null = null;
 
-/** Use the Tauri HTTP plugin for absolute URLs so the launcher can talk to
- *  remote CDNs that don't send browser CORS headers. Relative URLs
- *  (like the bundled /catalog.json) keep using the standard fetch.
+/**
+ * Fetch a remote document through the Rust backend rather than the webview.
  *
- *  In dev, localhost/127.0.0.1 URLs use the browser fetch directly so the local
- *  example server works without fighting Tauri HTTP scope matching.
+ * Going through reqwest means the Tauri HTTP capability scope never has to
+ * list the CDN hostname, so pointing the launcher at a different bucket is a
+ * configuration change instead of a code change.
  */
-async function httpFetch(url: string, init?: RequestInit): Promise<Response> {
-  if (/^https?:\/\//i.test(url)) {
-    if (import.meta.env.DEV && /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(url)) {
-      return fetch(url, init);
-    }
-    return tauriFetch(url, init);
-  }
-  return fetch(url, init);
+export async function fetchRemoteText(url: string): Promise<string> {
+  return unwrapResult(await commands.fetchRemoteText(url));
 }
 
 export interface ResolvedCatalog {
@@ -114,12 +109,8 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
-  const response = await httpFetch(url, { headers: { Accept: 'application/json' } });
-  if (!response.ok) {
-    throw new Error(`Remote catalog returned ${response.status}: ${response.statusText}`);
-  }
-
-  const catalog = await response.json();
+  const body = await fetchRemoteText(url);
+  const catalog = JSON.parse(body);
   validateCatalog(catalog);
   return catalog as GameCatalog;
 }
@@ -165,11 +156,8 @@ export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<vo
 }
 
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
-  const response = await httpFetch(manifestUrl, { headers: { Accept: 'application/json' } });
-  if (!response.ok) {
-    throw new Error(`Manifest returned ${response.status}: ${response.statusText}`);
-  }
-  const manifest = await response.json();
+  const body = await fetchRemoteText(manifestUrl);
+  const manifest = JSON.parse(body);
   if (!manifest || typeof manifest !== 'object' || !manifest.game_id || !manifest.version) {
     throw new Error('Invalid manifest: missing game_id or version');
   }

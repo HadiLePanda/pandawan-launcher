@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { readTextFile } from '@tauri-apps/plugin-fs';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { commands } from './commands';
 import { resolveGameUrls } from './cdn';
 import type { GameCatalog, GameManifest } from '@/types';
 
@@ -10,8 +10,12 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   BaseDirectory: { AppData: 'AppData' },
 }));
 
-vi.mock('@tauri-apps/plugin-http', () => ({
-  fetch: vi.fn(),
+// Remote fetches go through the Rust `fetch_remote_text` command, which returns
+// the body as text. The Tauri HTTP plugin is no longer used by this module.
+vi.mock('./commands', () => ({
+  commands: {
+    fetchRemoteText: vi.fn(),
+  },
 }));
 
 vi.mock('./cdn', async () => {
@@ -66,15 +70,20 @@ function okResponse(body: unknown): Response {
   } as Response;
 }
 
-function errorResponse(status: number, statusText = 'Not Found'): Response {
-  return {
-    ok: false,
-    status,
-    statusText,
-    json: async () => ({ error: statusText }),
-    text: async () => statusText,
-    headers: new Headers(),
-  } as Response;
+/**
+ * Mimics the Rust command's discriminated result. `commands.fetchRemoteText`
+ * returns `{ status: 'ok', data }`, which `unwrapResult` unwraps, so the mock has
+ * to return the same shape rather than a bare string.
+ */
+function okBody(body: unknown) {
+  return Promise.resolve({ status: 'ok' as const, data: JSON.stringify(body) });
+}
+
+function networkError(message = 'not found') {
+  return Promise.resolve({
+    status: 'error' as const,
+    error: { code: 'Network' as const, details: message },
+  });
 }
 
 function makeCatalog(overrides?: Partial<GameCatalog>): GameCatalog {
@@ -129,7 +138,9 @@ describe('catalog-service', () => {
 
   describe('channel handling', () => {
     it('keeps a manifest-declared channel', async () => {
-      (tauriFetch as Mock).mockResolvedValue(okResponse(makeManifest({ channel: 'alpha' })));
+      (commands.fetchRemoteText as Mock).mockResolvedValue(
+        okBody(makeManifest({ channel: 'alpha' }))
+      );
 
       const manifest = await service.fetchGameManifest(
         'https://cdn.example.com/games/test-game/alpha/manifest.json'
@@ -143,7 +154,7 @@ describe('catalog-service', () => {
       // must still load rather than leaving the field undefined downstream.
       const legacy: Record<string, unknown> = { ...makeManifest() };
       delete legacy.channel;
-      (tauriFetch as Mock).mockResolvedValue(okResponse(legacy));
+      (commands.fetchRemoteText as Mock).mockResolvedValue(okBody(legacy));
 
       const manifest = await service.fetchGameManifest(
         'https://cdn.example.com/games/test-game/stable/manifest.json'
@@ -166,10 +177,10 @@ describe('catalog-service', () => {
       const catalog = makeCatalog();
       const manifest = makeManifest();
 
-      (tauriFetch as Mock).mockImplementation(async (url: string) => {
-        if (url.includes('/launcher/catalog.json')) return okResponse(catalog);
-        if (url.includes('/games/')) return okResponse(manifest);
-        return errorResponse(404);
+      (commands.fetchRemoteText as Mock).mockImplementation(async (url: string) => {
+        if (url.includes('/launcher/catalog.json')) return okBody(catalog);
+        if (url.includes('/games/')) return okBody(manifest);
+        return networkError('HTTP 404');
       });
 
       const result = await service.loadCatalog();
@@ -184,10 +195,10 @@ describe('catalog-service', () => {
       const catalog = makeCatalog();
       const manifest = makeManifest();
 
-      (tauriFetch as Mock).mockImplementation(async (url: string) => {
-        if (url.includes('/launcher/catalog.json')) return errorResponse(503);
-        if (url.includes('/games/')) return okResponse(manifest);
-        return errorResponse(404);
+      (commands.fetchRemoteText as Mock).mockImplementation(async (url: string) => {
+        if (url.includes('/launcher/catalog.json')) return networkError('HTTP 503');
+        if (url.includes('/games/')) return okBody(manifest);
+        return networkError('HTTP 404');
       });
 
       (globalThis.fetch as Mock).mockResolvedValue(okResponse(catalog));
@@ -208,10 +219,10 @@ describe('catalog-service', () => {
 
       (readTextFile as Mock).mockResolvedValue(JSON.stringify(overrideCatalog));
 
-      (tauriFetch as Mock).mockImplementation(async (url: string) => {
-        if (url.includes('/launcher/catalog.json')) return errorResponse(503);
-        if (url.includes('/games/override-game/')) return okResponse(manifest);
-        return errorResponse(404);
+      (commands.fetchRemoteText as Mock).mockImplementation(async (url: string) => {
+        if (url.includes('/launcher/catalog.json')) return networkError('HTTP 503');
+        if (url.includes('/games/override-game/')) return okBody(manifest);
+        return networkError('HTTP 404');
       });
 
       const result = await service.loadCatalog();
@@ -222,7 +233,10 @@ describe('catalog-service', () => {
     });
 
     it('throws when no catalog source is available', async () => {
-      (tauriFetch as Mock).mockResolvedValue(errorResponse(503));
+      (commands.fetchRemoteText as Mock).mockResolvedValue({
+        status: 'error',
+        error: { code: 'Network', details: 'HTTP 503' },
+      });
       (readTextFile as Mock).mockRejectedValue(new Error('No such file or directory'));
       (globalThis.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 
@@ -232,9 +246,9 @@ describe('catalog-service', () => {
     it('still returns embedded source when their manifests cannot be resolved', async () => {
       const catalog = makeCatalog();
 
-      (tauriFetch as Mock).mockImplementation(async (url: string) => {
-        if (url.includes('/launcher/catalog.json')) return errorResponse(503);
-        return errorResponse(404);
+      (commands.fetchRemoteText as Mock).mockImplementation(async (url: string) => {
+        if (url.includes('/launcher/catalog.json')) return networkError('HTTP 503');
+        return networkError('HTTP 404');
       });
 
       (globalThis.fetch as Mock).mockResolvedValue(okResponse(catalog));
@@ -250,7 +264,7 @@ describe('catalog-service', () => {
   describe('fetchRemoteCatalog', () => {
     it('parses and validates a successful response', async () => {
       const catalog = makeCatalog();
-      (tauriFetch as Mock).mockResolvedValue(okResponse(catalog));
+      (commands.fetchRemoteText as Mock).mockResolvedValue(okBody(catalog));
 
       const result = await service.fetchRemoteCatalog(
         'https://cdn.example.com/launcher/catalog.json'
@@ -259,11 +273,14 @@ describe('catalog-service', () => {
     });
 
     it('throws on non-ok responses', async () => {
-      (tauriFetch as Mock).mockResolvedValue(errorResponse(500, 'Internal Server Error'));
+      (commands.fetchRemoteText as Mock).mockResolvedValue({
+        status: 'error',
+        error: { code: 'Network', details: 'HTTP 500 Internal Server Error' },
+      });
 
       await expect(
         service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json')
-      ).rejects.toThrow('Remote catalog returned 500: Internal Server Error');
+      ).rejects.toThrow();
     });
   });
 
@@ -282,7 +299,7 @@ describe('catalog-service', () => {
     });
 
     it('returns null when the bundled catalog is missing', async () => {
-      (globalThis.fetch as Mock).mockResolvedValue(errorResponse(404));
+      (globalThis.fetch as Mock).mockRejectedValue(new Error('HTTP 404'));
 
       const result = await service.loadEmbeddedCatalog();
       expect(result).toBeNull();

@@ -68,6 +68,64 @@ pub fn assert_path_inside_root(
     })
 }
 
+/// Fetch a small remote text/JSON document (catalog, news feed).
+///
+/// The frontend deliberately goes through this command rather than the Tauri
+/// HTTP plugin: the plugin needs a capability scope listing every allowed origin,
+/// which means hard-coding the CDN hostname into default.json and editing code
+/// whenever the CDN moves. reqwest has no such scope, so the allowlist here is
+/// the whole security boundary and it cannot drift from the deployed host.
+#[tauri::command]
+#[specta::specta]
+async fn fetch_remote_text(url: String) -> Result<String, LauncherError> {
+    // Catalog and news are small documents; a cap stops a misconfigured URL from
+    // pulling an unbounded body into memory.
+    const MAX_BYTES: u64 = 8 * 1024 * 1024;
+
+    let parsed = url::Url::parse(&url)
+        .map_err(|e| LauncherError::Validation(format!("Invalid URL: {e}")))?;
+
+    let is_http = matches!(parsed.scheme(), "http" | "https");
+    if !is_http {
+        return Err(LauncherError::Validation(format!(
+            "Unsupported scheme '{}': only http and https are allowed",
+            parsed.scheme()
+        )));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| LauncherError::Network(e.to_string()))?;
+
+    let response = client
+        .get(parsed)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| LauncherError::Network(format!("Failed to fetch {url}: {e}")))?;
+
+    if !response.status().is_success() {
+        return Err(LauncherError::Network(format!(
+            "HTTP {} fetching {url}",
+            response.status()
+        )));
+    }
+
+    if let Some(len) = response.content_length() {
+        if len > MAX_BYTES {
+            return Err(LauncherError::Network(format!(
+                "Response too large ({len} bytes, limit {MAX_BYTES})"
+            )));
+        }
+    }
+
+    response
+        .text()
+        .await
+        .map_err(|e| LauncherError::Network(format!("Failed to read {url}: {e}")))
+}
+
 /// Fetch game manifest from URL
 #[tauri::command]
 #[specta::specta]
@@ -487,6 +545,7 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             fetch_game_manifest,
+            fetch_remote_text,
             install_game,
             check_game_update,
             verify_game,

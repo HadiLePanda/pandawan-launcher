@@ -1,5 +1,4 @@
 import type { NewsItem } from '@/types';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { CdnUrl } from './cdn';
 import { logger } from './logger';
 
@@ -14,15 +13,10 @@ export interface NewsFeed {
  */
 export async function loadNews(): Promise<NewsItem[]> {
   try {
-    const url = CdnUrl.news();
-    const response = /^https?:\/\//i.test(url)
-      ? await tauriFetch(url, { headers: { Accept: 'application/json' } })
-      : await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!response.ok) {
-      throw new Error(`News feed returned ${response.status}: ${response.statusText}`);
-    }
-
-    const feed = await response.json();
+    // Imported lazily to keep this module free of a hard dependency on the
+    // catalog service; both share the same Rust-backed fetch.
+    const { fetchRemoteText } = await import('./catalog-service');
+    const feed = JSON.parse(await fetchRemoteText(CdnUrl.news()));
     return validateNewsFeed(feed).items;
   } catch (err) {
     logger.warn('Failed to load news feed', { error: String(err) });

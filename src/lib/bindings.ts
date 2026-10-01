@@ -15,6 +15,9 @@ export const commands = {
   fetchGameManifest: (url: string) =>
     typedError<GameManifest, LauncherError>(__TAURI_INVOKE('fetch_game_manifest', { url })),
 
+  fetchRemoteText: (url: string) =>
+    typedError<string, LauncherError>(__TAURI_INVOKE('fetch_remote_text', { url })),
+
   installGame: (manifest: GameManifest, baseUrl: string, onEvent: Channel<DownloadEvent>) =>
     typedError<GameInstallation, LauncherError>(
       __TAURI_INVOKE('install_game', { manifest, baseUrl, onEvent })

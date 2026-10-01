@@ -10,8 +10,18 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   BaseDirectory: { AppData: 'AppData', AppLocalData: 'AppLocalData' },
 }));
 
-vi.mock('@tauri-apps/plugin-http', () => ({
-  fetch: (url: string, init?: RequestInit) => globalThis.fetch(url, init),
+// Stands in for the Rust command that performs the real fetch. Delegating to
+// globalThis.fetch keeps this test exercising a genuine HTTP round trip against
+// the example server, minus the Tauri runtime that vitest cannot provide.
+vi.mock('./commands', () => ({
+  commands: {
+    fetchRemoteText: async (url: string) => {
+      const response = await globalThis.fetch(url);
+      return response.ok
+        ? { status: 'ok', data: await response.text() }
+        : { status: 'error', error: { code: 'Network', details: `HTTP ${response.status}` } };
+    },
+  },
 }));
 
 function serveExamples(): Promise<{ server: http.Server; origin: string }> {
