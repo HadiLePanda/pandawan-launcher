@@ -1,4 +1,4 @@
-import { AlertTriangle, FileCheck, FileX, FileQuestion } from 'lucide-react';
+import { AlertTriangle, FileCheck, FileX, FileQuestion, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,19 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="modal modal-auto animate-slide-up" role="dialog" aria-modal="true">
+        {/* The dialog has no header bar - the title sits in the body - so the
+            close affordance is pinned to the panel's own corner instead. It is
+            present while the scan runs too: closing only hides the progress,
+            it does not stop the verification. */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="icon-btn verify-close"
+          aria-label={t('common.close')}
+          title={t('common.close')}
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="modal-body verify-body">
           <h3 className="verify-title">{t('verifyGameModal.title')}</h3>
 

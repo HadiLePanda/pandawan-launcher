@@ -60,17 +60,23 @@ function renderDrift(drift) {
   }
   box.hidden = false;
   box.textContent = '';
-  // Colour alone would fail for colour-blind users, so each item also carries
-  // a glyph and the words "out of sync".
+  // Colour alone would fail for colour-blind users, so the banner keeps a glyph
+  // and the word "out of sync" as well.
   box.append(el('span', 'drift-mark', '!'));
-  box.append(
-    el(
-      'span',
-      null,
-      `${drift.length} channel${drift.length > 1 ? 's' : ''} out of sync: ` +
-        drift.map((d) => `${d.gameId} ${d.channel}`).join(', ')
-    )
-  );
+  box.append(el('span', 'drift-label', 'out of sync'));
+
+  // Name the mismatched versions rather than only the channel. Knowing that
+  // "misspell alpha" drifted is half the answer; seeing that macOS is on 0.4.0
+  // while Windows is on 0.4.1 is the other half, and it is already in the
+  // payload, so the banner shows it instead of sending the reader to the grid.
+  for (const item of drift) {
+    const line = el('span', 'drift-item');
+    line.append(el('span', 'mono drift-game', `${item.gameId}/${item.channel}`));
+    for (const [platform, entry] of Object.entries(item.versions ?? {})) {
+      line.append(el('span', 'mono drift-version', `${platform} ${entry.version}`));
+    }
+    box.append(line);
+  }
 }
 
 function ago(iso) {
@@ -86,12 +92,22 @@ function ago(iso) {
   return days < 30 ? `${days}d ago` : `${Math.round(days / 30)}mo ago`;
 }
 
+/** The most recent inventory payload, kept so a click on a row can be resolved
+ *  later without the row closing over a copy of the whole dataset. */
+let lastInventory = [];
+
 function renderInventory(inventory) {
   const host = $('inventory');
   host.textContent = '';
+  lastInventory = inventory;
 
   if (!inventory.length) {
-    host.append(el('p', 'meta', 'Nothing published yet.'));
+    const empty = el('div', 'empty');
+    empty.append(el('strong', null, 'Nothing published yet.'));
+    empty.append(
+      el('span', 'meta', 'Publish a build from the Games tab and it will show up here.')
+    );
+    host.append(empty);
     return;
   }
 
@@ -115,9 +131,25 @@ function renderInventory(inventory) {
       const row = el('div', 'inv-row');
       if (behind) row.classList.add('inv-warn');
 
+      // Clicking a row jumps to the publish form with the game and channel
+      // already filled in. Publishing is the reason this page exists, and
+      // retyping the two identifiers that are visible right here was the most
+      // repetitive part of the old flow.
+      row.classList.add('inv-link');
+      row.tabIndex = 0;
+      row.title = `Publish another ${game.id} build`;
+      const go = () => prefillPublish(game.id, channel.channel);
+      row.addEventListener('click', go);
+      row.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        go();
+      });
+
       const label = el('div', 'inv-game');
       label.append(el('span', 'inv-name', game.id));
       label.append(el('span', 'inv-channel', channel.channel));
+      label.append(el('span', 'inv-go', 'publish →'));
       row.append(label);
 
       for (const platform of PLATFORMS) {
@@ -125,22 +157,21 @@ function renderInventory(inventory) {
         const cell = el('div', `inv-cell inv-${platform}`);
 
         if (!entry) {
-          // "Not published" is a real state, not an error, so it stays grey.
-          cell.append(el('span', 'pill pill-none', 'none'));
+          // Absent is shown by absence. A "none" badge in every empty cell is
+          // repeated text saying nothing; the empty cell already says it, and
+          // the platform headings above show what was expected here.
+          cell.classList.add('is-empty');
           row.append(cell);
           continue;
         }
 
-        // Status is carried by a glyph and a word as well as colour.
+        // Only a platform that is actually behind gets marked. Marking the
+        // healthy ones the same way made the eye work to find the one row that
+        // mattered, which is the opposite of what the colour is for.
         const isBehind = behind && entry.version === behind;
-        const pill = el(
-          'span',
-          isBehind ? 'pill pill-warn' : 'pill pill-ok',
-          isBehind ? '! behind' : 'ok'
-        );
-        cell.append(pill);
+        if (isBehind) cell.classList.add('is-behind');
         cell.append(el('span', 'mono inv-version', entry.version));
-        cell.append(el('span', 'inv-build', `build ${entry.build}`));
+        cell.append(el('span', 'inv-build', `#${entry.build}`));
         cell.append(el('span', 'inv-when', ago(channel.updated?.[platform])));
         row.append(cell);
       }
@@ -150,6 +181,56 @@ function renderInventory(inventory) {
   }
 
   host.append(grid);
+}
+
+/**
+ * Send the user to the publish form with the game and channel filled in.
+ *
+ * The version is left blank on purpose: it has to be a new number, and
+ * pre-filling it with the current one is the easiest way to publish a duplicate.
+ */
+function prefillPublish(gameId, channel) {
+  $('gameId').value = gameId;
+  $('channel').value = channel;
+
+  // Suggest the next patch of the version already published for this channel, so
+  // the common case is one keystroke from done instead of reading it off the grid.
+  const current = inventoryVersion(gameId, channel);
+  if (current && !$('version').value) {
+    const parts = current.split('-')[0].split('.').map(Number);
+    if (parts.length === 3 && parts.every(Number.isFinite)) {
+      parts[2] += 1;
+      $('version').value = parts.join('.');
+    }
+  }
+
+  selectTab('games');
+  $('version').focus();
+  $('version').select();
+}
+
+/** The newest version published for a channel, across whichever platforms have one. */
+function inventoryVersion(gameId, channel) {
+  const game = lastInventory.find((g) => g.id === gameId);
+  const entry = game?.channels.find((c) => c.channel === channel);
+  const versions = Object.values(entry?.latest ?? {})
+    .map((e) => e.version)
+    .filter(Boolean);
+
+  // Compare numerically per component rather than as strings: a plain sort puts
+  // "0.4.10" before "0.4.9" and would suggest bumping the wrong one.
+  const newest = versions.reduce((best, v) => {
+    if (!best) return v;
+    const a = best.split('-')[0].split('.').map(Number);
+    const b = v.split('-')[0].split('.').map(Number);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const diff = (a[i] ?? 0) - (b[i] ?? 0);
+      if (diff !== 0) return diff > 0 ? best : v;
+    }
+    return best;
+  }, null);
+
+  return newest;
 }
 
 function el(tag, className, text) {
@@ -453,6 +534,14 @@ async function stream(url, body, logId) {
 
 // --- Launcher ---------------------------------------------------------
 
+/** A number with its unit underneath it, so the magnitude reads before the word. */
+function fact(value, label) {
+  const item = el('div', 'fact');
+  item.append(el('span', 'fact-value', value));
+  item.append(el('span', 'fact-label', label));
+  return item;
+}
+
 /** Show what players currently get, and offer the tags that exist to publish. */
 async function refreshLauncher() {
   const box = $('launcherState');
@@ -462,20 +551,47 @@ async function refreshLauncher() {
 
     box.textContent = '';
 
-    const current = data.published
-      ? `v${data.published.version} — ${data.published.targets.length} targets, ${data.published.artifactCount} installers`
-      : 'nothing published yet';
+    // The version ladder: repo, what is published, and what is waiting between
+    // them, shown as three positions on one scale. This was a sentence reading
+    // "players get v0.1.0 ... repo is at v0.1.0", which made the reader assemble
+    // the comparison themselves. Rendering both versions adjacent to each other
+    // shows the one fact that matters - whether they differ - at a glance.
+    const ladder = el('div', 'ladder');
 
-    box.append(el('span', 'tag ok', 'live'));
-    box.append(el('span', 'meta', `  players get ${current}`));
-    box.append(el('span', 'meta', `  ·  repo is at v${data.packageVersion}`));
+    const rung = (label, value, state) => {
+      const item = el('div', `rung rung-${state}`);
+      item.append(el('span', 'rung-label', label));
+      item.append(el('span', 'mono rung-value', value));
+      return item;
+    };
+
+    ladder.append(rung('repo', `v${data.packageVersion}`, 'repo'));
+    ladder.append(rung('live', data.published ? `v${data.published.version}` : 'none', 'live'));
+
+    // Only present the third rung when there is a gap. When repo and live match
+    // there is nothing to say, and an empty "pending" rung would imply one.
+    const pending = (data.releases ?? []).filter(
+      (r) => !data.published || r.tagName !== `v${data.published.version}`
+    );
+    if (pending.length) {
+      ladder.append(rung('waiting', pending.map((r) => r.tagName).join(' '), 'pending'));
+    }
+
+    box.append(ladder);
+
+    // Artifact count as a tally rather than a clause inside a sentence.
+    if (data.published) {
+      const facts = el('div', 'facts');
+      facts.append(fact(String(data.published.targets.length), 'targets'));
+      facts.append(fact(String(data.published.artifactCount), 'installers'));
+      box.append(facts);
+    }
 
     // Offer the tags that exist but are not the published version: those are
     // exactly the ones waiting for a publish.
     const options = $('tagOptions');
     options.textContent = '';
-    for (const release of data.releases ?? []) {
-      if (data.published && release.tagName === `v${data.published.version}`) continue;
+    for (const release of pending) {
       const option = document.createElement('option');
       option.value = release.tagName;
       options.append(option);

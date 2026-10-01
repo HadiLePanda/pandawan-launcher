@@ -1,25 +1,75 @@
+/* ==========================================================================
+   Pandawan publishing dashboard - design system
+
+   Three ideas hold this together:
+
+   1. Colour is a signal, not decoration. Each platform owns a hue, so a
+      column can be tracked by colour alone without reading its header. Status
+      (live / behind / destructive) owns the remaining semantic hues. Body text
+      stays in the neutral ink greys, because colour-carrying body text is the
+      fastest way to make a dense tool unreadable.
+
+   2. Type does the ranking. A version is the content of this table, so it is
+      the largest thing in its cell; the build number is a superscript-sized
+      qualifier; the age is a footnote. That hierarchy is set with size and
+      weight, so no legend is needed to read the page.
+
+   3. Space is on a scale. Every gap and pad below is a multiple of 4px from
+      --s1..--s7. Rhythm comes from the spacing scale, not from per-component
+      values that happen to look right on one screen.
+   ========================================================================== */
+
 :root {
   color-scheme: dark;
-  --canvas: #0e1013;
-  --surface: #16191d;
-  --surface-2: #1e2125;
-  --border: rgba(255, 255, 255, 0.08);
-  /* Two greys, not one. --ink-muted carries body text (6.95:1 on surface);
-     --ink-subtle was #6b7280 at 3.65:1, which fails WCAG AA for the 11-12px
-     table headers and helper text it was used on. #8b9199 clears 4.5:1 on
-     every surface here while still reading as secondary. */
-  --ink: #f4f4f5;
-  --ink-muted: #9ca3af;
+
+  /* Surfaces: a near-black canvas with three steps up, so depth is readable
+     without borders doing all the work. */
+  --canvas: #0b0d10;
+  --surface: #14171c;
+  --surface-2: #1c2027;
+  --surface-3: #232830;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+
+  /* Ink: four steps. --ink-faint replaced #6b7280 (3.65:1), which failed AA on
+     the 11px labels it carried; --ink-subtle clears 4.5:1 on every surface. */
+  --ink: #f5f6f7;
+  --ink-muted: #a6adb7;
   --ink-subtle: #8b9199;
-  --action: #22c55e;
-  --action-ink: #06240f;
+  --ink-faint: #6f757e;
+
+  /* Platform hues. Chosen to stay distinguishable for common colour vision
+     deficiency: they differ in lightness as well as hue, so a deutanopic
+     reader still separates blue from violet from amber. */
+  --win: #5aa9f7;
+  --mac: #c08cf5;
+  --linux: #e8b04b;
+
+  /* Semantic. Reserved for state, never for identity. */
+  --action: #34d17a;
+  --action-ink: #04240f;
+  --warn: #f0b429;
+  --warn-ink: #1a1200;
   --danger: #f87171;
-  --warn: #fbbf24;
-  --mono: ui-monospace, 'JetBrains Mono', Consolas, monospace;
+  --action-hover: #46dd8c;
+
+  --mono: ui-monospace, 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
   --sans: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  /* One duration for every transition. These are all colour/surface swaps, so
-     a single short value reads as one system rather than a patchwork. */
-  --ease: 120ms ease;
+
+  /* 4px scale. Use these rather than one-off pixel values. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  /* One duration for every transition, so the page moves as one system. */
+  --ease: 130ms cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 * {
@@ -32,50 +82,85 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
+  /* Tabular figures everywhere: version strings, build numbers and tallies all
+     sit in columns, and proportional digits make those columns look ragged. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The single decorative gesture on the page: a very low-opacity wash behind
+   the header so the chrome separates from the canvas without a hard border.
+   Fixed and behind everything, so it never moves with the content. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: 420px;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(52, 209, 122, 0.07), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3) var(--s5);
+  background: rgba(11, 13, 16, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
   font-weight: 600;
+  letter-spacing: -0.01em;
+  font-size: 15px;
 }
+
+/* A small green mark instead of a wordmark image: it anchors the brand without
+   adding an asset to ship. */
+.brand::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: var(--s2);
+  border-radius: 2px;
+  background: var(--action);
+  vertical-align: middle;
+}
+
 .spacer {
   flex: 1;
 }
 
 /* Tabs ------------------------------------------------------------------ */
 
-/* Sitting in the top bar rather than a second row: the panels are the page, so
-   a tab strip that scrolls away with the content would be lost at exactly the
-   moment you need to switch. */
+/* In the top bar, not a second row: the panels are the page, so a tab strip
+   that scrolls away is lost exactly when you need to switch. */
 .tabs {
   display: flex;
-  gap: 2px;
-  margin-left: 20px;
+  gap: var(--s1);
+  margin-left: var(--s3);
 }
 
 .tab {
   border: none;
   background: transparent;
   color: var(--ink-subtle);
-  padding: 6px 12px;
-  border-radius: 7px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
   font: inherit;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition:
-    color 0.12s ease,
-    background 0.12s ease;
+    color var(--ease),
+    background var(--ease);
 }
 
 .tab:hover {
@@ -83,13 +168,12 @@ body {
   color: var(--ink-muted);
 }
 
-/* Selected state is carried by colour and a surface, not a moving underline:
-   an animated indicator on a bar that can scroll looks broken mid-transition. */
-/* Selected state is carried by colour and a surface, not a moving underline:
-   an animated indicator on a bar that can scroll looks broken mid-transition. */
+/* Selection is a surface plus a top hairline rather than a moving underline:
+   an animated indicator on a bar that can scroll reads as broken mid-move. */
 .tab[aria-selected='true'] {
   background: var(--surface-2);
   color: var(--ink);
+  box-shadow: inset 0 1px 0 var(--action);
 }
 
 .tab:focus-visible {
@@ -97,37 +181,66 @@ body {
   outline-offset: 1px;
 }
 
-/* hidden beats display:none for the panels because [hidden] is the default UA
-   rule; the attribute is also what the tab logic toggles. */
+/* [hidden] is the default UA rule, but anything that sets `display` outranks
+   it, so every component that does needs this. See .drift[hidden] below. */
 .tabpanel[hidden] {
   display: none;
 }
 
 .status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
   font-size: 12px;
-  color: var(--ink-muted);
+  color: var(--ink-subtle);
 }
+
+/* The connection state is a dot first and a word second, so a glance across
+   the bar reads the state before reading the label. */
+.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .status.ok {
   color: var(--action);
 }
+
 .status.bad {
-  color: #f87171;
+  color: var(--danger);
 }
 
 main {
-  max-width: 900px;
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: var(--s6) var(--s5) var(--s7);
 }
 
-.drift {
-  padding: 10px 14px;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  color: var(--warn);
-  font-size: 13px;
+/* Section heading. The rule is a flex-grow line rather than a full-width
+   border, so the label and the line sit on one optical baseline and the
+   remaining width still reads as air rather than as a divider. */
+h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0 0 var(--s4);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-subtle);
+}
+
+h2::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* Inventory grid ------------------------------------------------------- */
@@ -137,16 +250,17 @@ main {
    names. The first column is fixed so the platform columns stay aligned. */
 .inv {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   overflow: hidden;
+  background: var(--surface);
   /* Wide grids scroll inside their own box rather than widening the page. */
   overflow-x: auto;
 }
 
 .inv-row {
   display: grid;
-  grid-template-columns: minmax(9rem, 1.4fr) repeat(3, minmax(11rem, 1fr));
-  align-items: center;
+  grid-template-columns: minmax(10rem, 1.3fr) repeat(3, minmax(12rem, 1fr));
+  align-items: stretch;
   border-top: 1px solid var(--border);
 }
 
@@ -154,29 +268,63 @@ main {
   border-top: none;
 }
 
+/* Header cells are tinted with their own platform hue at very low opacity.
+   That is what lets the eye track a column down the page without re-reading
+   the header, and it is the single biggest scanning win in the layout. */
 .inv-head {
-  background: var(--surface-2);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--ink-subtle);
   font-weight: 600;
 }
 
 .inv-head .inv-cell {
-  padding: 8px 14px;
+  padding: var(--s2) var(--s4);
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+}
+
+.inv-head .inv-windows {
+  color: var(--win);
+  background: color-mix(in srgb, var(--win) 9%, var(--surface-2));
+}
+
+.inv-head .inv-macos {
+  color: var(--mac);
+  background: color-mix(in srgb, var(--mac) 9%, var(--surface-2));
+}
+
+.inv-head .inv-linux {
+  color: var(--linux);
+  background: color-mix(in srgb, var(--linux) 9%, var(--surface-2));
+}
+
+/* A small square in each header, matching the brand mark, so the platform
+   column has a shape to pair with its hue. */
+.inv-head .inv-cell::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: var(--s2);
+  border-radius: 1px;
+  background: currentColor;
+  vertical-align: middle;
 }
 
 .inv-game {
-  padding: 10px 14px;
+  padding: var(--s3) var(--s4);
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
 }
 
 .inv-name {
   font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,79 +335,143 @@ main {
   color: var(--ink-subtle);
 }
 
+/* The leading "Game" header cell shares the base header surface so the tinted
+   platform cells read as a deliberate group rather than as three odd cells. */
+.inv-head .inv-game {
+  padding: var(--s2) var(--s4);
+  background: var(--surface-2);
+}
+
 /* A channel whose platforms disagree gets a warm edge on the row, so it is
    findable while scanning without reading any cell. */
 .inv-warn {
   box-shadow: inset 3px 0 0 var(--warn);
 }
 
+/* A whole row is clickable, so it needs the affordance of one: a pointer, a
+   hover state, and a visible focus ring for keyboard use. */
+.inv-row.inv-link {
+  cursor: pointer;
+  transition: background var(--ease);
+}
+
+.inv-row.inv-link:hover {
+  background: var(--surface-2);
+}
+
+.inv-row.inv-link:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: -2px;
+}
+
+/* Hint that the row does something, shown only on hover/focus so it does not
+   add permanent noise to a dense grid. */
+.inv-go {
+  display: block;
+  font-size: 11px;
+  color: var(--action);
+  opacity: 0;
+  transition: opacity var(--ease);
+}
+
+.inv-row.inv-link:hover .inv-go,
+.inv-row.inv-link:focus-visible .inv-go {
+  opacity: 1;
+}
+
 .inv-cell {
-  padding: 10px 14px;
+  padding: var(--s3) var(--s4);
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+  align-items: baseline;
+  gap: var(--s1) var(--s2);
   border-left: 1px solid var(--border);
   min-width: 0;
 }
 
-.inv-version {
-  font-size: 12.5px;
-  color: var(--ink);
-}
-
-.inv-build {
-  font-size: 11px;
-  color: var(--ink-subtle);
-}
-
+/* The age is pushed onto its own line only when the row genuinely cannot fit
+   version, build and age together, and it stays on that line alone rather than
+   squeezing the version. `margin-left:auto` is what makes it align right when
+   it does share the line. */
 .inv-when {
   font-size: 11px;
   color: var(--ink-subtle);
   margin-left: auto;
   white-space: nowrap;
+  flex: none;
 }
 
-/* Status pills --------------------------------------------------------- */
-
-/* Every pill pairs a glyph or word with its colour, so status is still legible
-   in greyscale or to a colour-blind reader. */
-.pill {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+/* The version is the content of this table, so it carries the weight. Everything
+   else in the cell is secondary: the build number is a qualifier on the version,
+   and the age is a footnote. Type size does that ranking without a legend.
+   `nowrap` because a semver string is meaningless split across two lines
+   ("0.4.0-" / "alpha.1"). */
+.inv-version {
+  font-size: 15px;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
-.pill-ok {
-  color: var(--action);
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.3);
+.inv-build {
+  font-size: 11px;
+  color: var(--ink-faint);
 }
 
-.pill-warn {
-  color: var(--warn);
-  background: rgba(251, 191, 36, 0.12);
-  border-color: rgba(251, 191, 36, 0.32);
+/* Each platform's version is tinted with its own hue, so a whole column reads
+   as one colour as the eye moves down the page. Only the version carries the
+   tint; the build and age stay neutral so they never compete with it. */
+.inv-cell.inv-windows .inv-version {
+  color: var(--win);
 }
 
-/* "none" is an expected state, not a fault: neutral, not red. */
-.pill-none {
-  color: var(--ink-subtle);
-  background: var(--surface-2);
-  border-color: var(--border);
+.inv-cell.inv-macos .inv-version {
+  color: var(--mac);
+}
+
+.inv-cell.inv-linux .inv-version {
+  color: var(--linux);
+}
+
+/* An absent platform. Shown by absence: a hatch, so the gap reads as "nothing
+   here" rather than as a broken cell, and the tinted columns stay legible
+   across the gap. */
+.inv-cell.is-empty {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.02) 6px,
+    rgba(255, 255, 255, 0.02) 12px
+  );
+}
+
+/* Drift: the version that is behind is dimmed and struck, so it recedes rather
+   than shouting. The row's own amber edge already carries the attention. */
+.inv-cell.is-behind .inv-version {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--warn);
+  text-decoration-thickness: 1px;
 }
 
 /* Drift banner --------------------------------------------------------- */
 
+/* display:flex on .drift outranks the user-agent's [hidden] { display: none },
+   so an element with the attribute still painted. That left an empty amber
+   banner above the grid whenever there was no drift to report - which is the
+   normal case. Every component that sets display on a [hidden] element needs
+   this, and the .tabpanel rule further down does the same for the same reason. */
+.drift[hidden] {
+  display: none;
+}
+
 .drift {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   padding: 10px 14px;
   margin-bottom: 16px;
   border-radius: 8px;
@@ -267,6 +479,30 @@ main {
   border: 1px solid rgba(251, 191, 36, 0.28);
   color: var(--warn);
   font-size: 12.5px;
+}
+
+.drift-label {
+  font-weight: 600;
+}
+
+/* Each mismatched channel with the versions that disagree, so the banner
+   carries the diagnosis instead of only naming the channel. */
+.drift-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.drift-game {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.drift-version {
+  color: var(--warn);
 }
 
 .drift-mark {
@@ -282,50 +518,189 @@ main {
   font-size: 12px;
 }
 
+.copy:hover {
+  color: var(--ink);
+}
+
+/* Launcher panel: the version ladder ------------------------------------ */
+
+/* Three rungs sharing one left edge, so repo / live / waiting read as a
+   sequence down the page. Colour marks which rung players are actually on. */
+.ladder {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--border);
+}
+
+.rung {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0 5px 14px;
+  position: relative;
+}
+
+/* The rung players get is the only one that gets a marker, so it is findable
+   without reading any label. */
+.rung-live::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--action);
+}
+
+.rung-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-subtle);
+  width: 62px;
+  flex: none;
+}
+
+.rung-value {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.rung-live .rung-value {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* A tag waiting to be published is the actionable state, so it carries the
+   warn colour and the rest stay quiet. */
+.rung-pending .rung-value {
+  color: var(--warn);
+}
+
+/* Tallies ------------------------------------------------------------- */
+
+.facts {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+}
+
+.fact-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.fact-label {
+  font-size: 11px;
+  color: var(--ink-subtle);
+}
+
+/* Empty state ---------------------------------------------------------- */
+
+/* A dead end needs to say what to do next, not just that there is nothing. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+  padding: 40px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.empty strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty .meta {
+  margin: 0;
+}
+
+/* Status pills and the .tag badge were removed: both existed to put a word next
+   to a value ("ok", "none", "live") when the value itself, or the absence of a
+   mark, already carries the state. See the version cell and the version ladder. */
+
 /* Panels --------------------------------------------------------------- */
 
+/* Grouped by risk: publishing comes first, destructive work is set apart and
+   marked, so the order of the page is an order of caution. */
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
+  border-radius: var(--radius);
+  padding: var(--s5);
+  margin-bottom: var(--s4);
 }
 
-/* Panels are grouped by risk: the publish actions come first, and anything
-   destructive carries a warm edge so it is never mistaken for them. */
+/* A hairline of colour down the leading edge rather than a full coloured
+   border: it marks the panel without shouting, and it leaves the surface
+   itself neutral so the form inside still reads calmly. */
 .panel-danger {
-  border-color: rgba(251, 191, 36, 0.28);
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-danger::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--warn);
 }
 
 .panel-danger h2 {
   color: var(--warn);
 }
 
-h2 {
-  font-size: 15px;
+/* The confirm() dialogs in app.js are what actually guard destructive actions.
+   Arming the toggle changes the button it guards, so the consequence is shown
+   on the control being clicked rather than described in a permanent badge. */
+
+#pruneForm:has(#pruneConfirm:checked) button[type='submit'],
+#launcherForm:has(#launcherConfirm:checked) button[type='submit'] {
+  background: var(--warn);
+  border-color: transparent;
+  color: #1a1200;
   font-weight: 600;
-  margin: 0 0 12px;
 }
 
-.tag.warn {
-  background: rgba(251, 191, 36, 0.14);
-  color: var(--warn);
+#pruneForm:has(#pruneConfirm:checked) {
+  border-color: rgba(240, 180, 41, 0.4);
+}
+
+/* An unarmed destructive action stays visibly quieter than a primary one, so
+   the eye does not read it as an equal-weight call to action. */
+.panel-danger button[type='submit'] {
+  color: var(--ink-muted);
 }
 
 .mono {
   font-family: var(--mono);
 }
+
 .meta {
   color: var(--ink-subtle);
   font-size: 12px;
-  margin: 10px 0 0;
+  margin: var(--s3) 0 0;
 }
 
+/* Two columns rather than one long list: the eye scans across a row of related
+   fields far faster than down a single column. */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: var(--s4);
 }
 
 /* A single field (the launcher tag) should not stretch to half a grid cell
@@ -334,33 +709,45 @@ h2 {
   grid-template-columns: 1fr;
   max-width: 320px;
 }
+
 label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   font-size: 12px;
   color: var(--ink-muted);
 }
+
+/* Inputs sit a step above the canvas so they read as interactive wells rather
+   than as holes punched in the panel. */
 input {
-  background: var(--canvas);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
   color: var(--ink);
   font: inherit;
   font-family: var(--mono);
   font-size: 13px;
+  transition:
+    border-color var(--ease),
+    background var(--ease);
 }
+
+input:hover {
+  border-color: var(--border-strong);
+}
+
 /* The native placeholder default is far too faint on this canvas. A placeholder
    is a hint, never the only label, so it may sit below body contrast but must
    stay readable. */
 input::placeholder {
-  color: var(--ink-subtle);
-  opacity: 0.75;
+  color: var(--ink-faint);
 }
 
 input:focus-visible {
   border-color: var(--action);
+  background: var(--surface-3);
 }
 
 /* The select sits beside buttons in a row, so it needs the same height and
@@ -369,8 +756,8 @@ input:focus-visible {
 select {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
   color: var(--ink);
   font: inherit;
   font-size: 13px;
@@ -378,28 +765,38 @@ select {
   color-scheme: dark;
 }
 
+select:hover {
+  border-color: var(--border-strong);
+}
+
 select:focus-visible {
   outline: 2px solid var(--action);
   outline-offset: 1px;
 }
 
+/* The platform group is a set-in from the fields above it, so it is recessed
+   and inset rather than carrying another full-weight panel. */
 .platforms {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin: 16px 0;
+  border-radius: var(--radius-sm);
+  padding: var(--s4);
+  margin: var(--s5) 0;
+  background: rgba(0, 0, 0, 0.18);
 }
+
 legend {
   font-size: 12px;
   color: var(--ink-muted);
-  padding: 0 6px;
+  padding: 0 var(--s2);
 }
 
 .row {
   display: flex;
-  gap: 10px;
+  gap: var(--s2);
   justify-content: flex-end;
   align-items: center;
+  /* Separated from the fields above so the action reads as a distinct step. */
+  margin-top: var(--s5);
 }
 
 /* The prune panel's "delete for real" toggle sits in a button row, so it needs the
@@ -407,7 +804,7 @@ legend {
 label.confirm {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   margin-right: auto;
   color: var(--ink-subtle);
   cursor: pointer;
@@ -419,30 +816,40 @@ input[type='checkbox'] {
   padding: 0;
 }
 
+/* Buttons share one height and radius so a row of them reads as a set rather
+   than as several unrelated controls. */
 button {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--ink);
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
   font: inherit;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition:
     background var(--ease),
     border-color var(--ease),
+    color var(--ease),
     opacity var(--ease);
 }
+
 button:hover {
-  background: #24282e;
+  background: var(--surface-3);
+  border-color: var(--border-strong);
 }
+
+/* The one filled button per panel. Weight, not size, marks the primary action. */
 button.primary {
   background: var(--action);
   border-color: transparent;
   color: var(--action-ink);
   font-weight: 600;
 }
+
 button.primary:hover {
-  background: #34d16b;
+  background: var(--action-hover);
 }
 
 /* Every interactive element gets the same visible ring. Inputs, buttons,
@@ -463,30 +870,33 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Command output: recessed like a terminal, and quiet enough that the numbers
+   in it stay the thing you look at. */
 .log {
   background: var(--canvas);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 14px;
+  border-radius: var(--radius-sm);
+  padding: var(--s3) var(--s4);
+  margin-top: var(--s4);
   font-family: var(--mono);
   font-size: 12px;
+  line-height: 1.6;
   color: var(--ink-muted);
   white-space: pre-wrap;
   max-height: 320px;
   overflow: auto;
 }
 
-/* Launcher panel: current published state, shown as one line of facts. */
+/* Launcher panel: current published state.
+   The ladder and the tallies are separate blocks stacked vertically. This used
+   to be `display:flex` with wrapping, which made them flex siblings and pulled
+   the tallies up beside the second rung instead of under the ladder. */
 .state {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 12px 14px;
-  margin: 12px 0;
+  display: block;
   border: 1px solid var(--border);
   border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
   font-size: 13px;
 }
 
@@ -494,55 +904,65 @@ button:disabled {
   margin: 0;
 }
 
-/* Command reference: each command on its own line with a copy button. */
+/* Command reference ---------------------------------------------------- */
+
 .cmd-group {
-  margin: 18px 0;
+  margin: 0 0 var(--s5);
 }
 
+.cmd-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Group headings share the section-heading treatment so the reference reads as
+   a list of named sections rather than one undifferentiated wall. */
 .cmd-group h3 {
   font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-  margin: 0 0 8px;
+  letter-spacing: 0.1em;
+  color: var(--ink-subtle);
+  margin: 0 0 var(--s3);
 }
 
 .cmd {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
 }
 
 .cmd code {
   flex: 1;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--canvas);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 12.5px;
+  color: var(--ink-muted);
   overflow-x: auto;
   white-space: pre;
 }
 
 .cmd .copy {
   flex: none;
-  padding: 8px 12px;
+  padding: 9px 14px;
   font-size: 12px;
+  color: var(--ink-subtle);
   cursor: pointer;
 }
 
 #cmdFilter {
   width: 100%;
-  margin: 10px 0 4px;
+  margin-bottom: var(--s5);
 }
 
 .hint {
-  opacity: 0.65;
+  color: var(--ink-faint);
   font-size: 12px;
 }
 
-/* Motion here is only a colour fade, but honouring the preference costs one
+/* Motion here is only colour and opacity, but honouring the preference costs one
    block and avoids a visible transition for anyone who asked for none. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -553,26 +973,49 @@ button:disabled {
   }
 }
 
-/* Narrow windows: the two-column form and the grid collapse to one so fields
-   never scroll sideways. */
-@media (max-width: 640px) {
+/* Narrow windows: the header wraps, the two-column forms and the platform
+   columns collapse to one, so fields never scroll sideways. The grid keeps its
+   own horizontal scroll for the platform columns because a version string
+   squeezed into a third of a phone width is unreadable, and dropping the
+   platform column entirely would hide data. */
+@media (max-width: 720px) {
   .bar {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--s2) var(--s3);
+    padding: var(--s3) var(--s4);
   }
+
   .tabs {
     margin-left: 0;
     order: 3;
     width: 100%;
+    overflow-x: auto;
   }
+
   .grid,
   .grid.one {
     grid-template-columns: 1fr;
     max-width: none;
   }
+
   .row {
     flex-wrap: wrap;
   }
+
+  /* The confirm toggle needs the full width once the buttons wrap under it. */
+  label.confirm {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  main {
+    padding: var(--s5) var(--s4) var(--s6);
+  }
+
+  .inv-row {
+    grid-template-columns: minmax(9rem, 1fr) repeat(3, minmax(11rem, 1fr));
+  }
+
   .cmd code {
     font-size: 12px;
   }

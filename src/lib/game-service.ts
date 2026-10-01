@@ -39,12 +39,27 @@ export async function patchGame(
   }
   const manifest = resolved.manifest;
 
-  // Narrow the manifest to this machine's build before handing it to the backend.
-  // The downloader works from executable/files/base_url, so leaving the raw
-  // multi-platform manifest in place would download every platform's files and
-  // then try to start whichever executable happened to be at the top level.
-  const supported = supportedPlatformsFor(gameId);
-  const build = selectPlatformBuild(manifest, detectPlatform(), supported);
+  const platformManifest = toPlatformManifest(gameId, manifest);
+  const baseUrl = platformManifest.base_url ?? '';
+
+  const downloadChannel = createDownloadChannel(gameId, callbacks);
+  const installation = unwrapResult(
+    await commands.installGame(platformManifest, baseUrl, downloadChannel)
+  );
+  return { manifest, installation };
+}
+
+/**
+ * Narrow a manifest to this machine's build before handing it to the backend.
+ *
+ * Both the downloader and the verifier read executable/files/base_url, and a
+ * multi-platform manifest keeps those under `platforms` with a null top-level
+ * `files`. Passing the raw manifest through would make the Rust side reject the
+ * call outright ("invalid type: null, expected a sequence"), which is what
+ * broke file verification.
+ */
+function toPlatformManifest(gameId: string, manifest: GameManifest): GameManifest {
+  const build = selectPlatformBuild(manifest, detectPlatform(), supportedPlatformsFor(gameId));
   if (!build) {
     throw new Error(
       `No build of "${gameId}" is available for this platform (${detectPlatform() ?? 'unknown'}).`
@@ -55,21 +70,13 @@ export async function patchGame(
   // base_url, so the build resolves to an empty string. The backend turns that
   // into "/" and rejects it as a relative URL, so the channel directory is the
   // only place its files can live.
-  const baseUrl = build.baseUrl || resolveBaseUrl(manifest);
-
-  const platformManifest: GameManifest = {
+  return {
     ...manifest,
     executable: build.executable,
     files: build.files,
-    base_url: baseUrl,
+    base_url: build.baseUrl || resolveBaseUrl(manifest),
     platforms: undefined,
   };
-
-  const downloadChannel = createDownloadChannel(gameId, callbacks);
-  const installation = unwrapResult(
-    await commands.installGame(platformManifest, baseUrl, downloadChannel)
-  );
-  return { manifest, installation };
 }
 
 /**
@@ -129,7 +136,7 @@ export async function verifyGame(
   if (resolved.status === 'unavailable') {
     throw new Error('No build of ' + gameId + ' is available for this platform.');
   }
-  const manifest = resolved.manifest;
+  const manifest = toPlatformManifest(gameId, resolved.manifest);
 
   const channelHandle = new Channel<VerifyProgress>();
   channelHandle.onmessage = (row) => onProgress?.(row);

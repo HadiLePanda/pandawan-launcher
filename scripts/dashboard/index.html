@@ -45,8 +45,7 @@
 
             <div class="row">
               <label class="confirm"
-                ><input id="launcherConfirm" type="checkbox" /> Upload to R2
-                <span class="tag warn">visible to players</span></label
+                ><input id="launcherConfirm" type="checkbox" /> Upload to R2</label
               >
               <button type="submit">Publish</button>
               <button type="button" id="launcherKeys">Check keys</button>
@@ -57,9 +56,8 @@
 
         <section class="panel">
           <h2>New version</h2>
-          <p class="meta">Bumps the version, tags, and pushes — which starts the CI build.</p>
           <div class="row">
-            <select id="releaseLevel">
+            <select id="releaseLevel" title="Which part of the version to bump">
               <option value="patch">patch</option>
               <option value="minor">minor</option>
               <option value="major">major</option>
@@ -121,8 +119,7 @@
 
             <div class="row">
               <label class="confirm"
-                ><input id="pruneConfirm" type="checkbox" /> Delete for real
-                <span class="tag warn">irreversible</span></label
+                ><input id="pruneConfirm" type="checkbox" /> Delete for real</label
               >
               <button type="submit">Run prune</button>
             </div>
@@ -132,9 +129,14 @@
 
         <section class="panel">
           <h2>Catalog</h2>
-          <p class="meta">New and changed games stay invisible to the launcher until this runs.</p>
           <div class="row">
-            <button type="button" id="publishCatalog">Publish catalog</button>
+            <button
+              type="button"
+              id="publishCatalog"
+              title="Make new and changed games visible in the launcher"
+            >
+              Publish catalog
+            </button>
           </div>
           <pre id="catalogLog" class="log" hidden></pre>
         </section>
