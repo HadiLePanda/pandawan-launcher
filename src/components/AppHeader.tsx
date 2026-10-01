@@ -199,9 +199,6 @@ export function MainNav({
     // grab area between the logo and the right-hand buttons.
     <div className="main-nav" data-tauri-drag-region>
       <div className="cluster cluster-md no-drag">
-        <div className="app-logo">
-          <img src="/logo-circle-p.png" alt="Pandawan Launcher" className="app-logo-image" />
-        </div>
         <div className="nav-arrows">
           <button
             type="button"

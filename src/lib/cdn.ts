@@ -88,6 +88,7 @@ export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest)
     sizeBytes: totalSize,
     releaseDate: new Date().toISOString(),
     supportedPlatforms: entry.supportedPlatforms ?? ['windows'],
+    availableChannels: entry.availableChannels,
   };
 }
 

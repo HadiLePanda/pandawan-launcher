@@ -5,6 +5,7 @@
     {
       "id": "misspell",
       "channel": "alpha",
+      "availableChannels": ["alpha"],
       "name": "Misspell",
       "description": "A local multiplayer word game. Alpha playtest build.",
       "developer": "Pandawan Corp",

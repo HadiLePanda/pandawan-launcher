@@ -446,6 +446,19 @@ body {
   overflow-y: auto;
 }
 
+.filters-panel-brand {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+
+.filters-panel-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
 .filter-search-row {
   display: flex;
   gap: 6px;

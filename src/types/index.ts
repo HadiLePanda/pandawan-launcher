@@ -161,6 +161,8 @@ export interface GameInfo {
   sizeBytes: number;
   releaseDate: string;
   supportedPlatforms?: string[];
+  /** Channels the publisher declared as existing. Drives the channel picker. */
+  availableChannels?: string[];
   patchNotes?: PatchNote[];
 }
 
@@ -173,6 +175,17 @@ export interface GameCatalog {
 export interface CatalogGameEntry {
   id: string;
   channel?: string;
+  /**
+   * Channels this game is actually published to. The picker only offers these,
+   * so choosing "Release" for a game that has only ever shipped an alpha does
+   * not send the user to a 404 manifest.
+   *
+   * Declared by the publisher rather than probed: whether a channel exists is
+   * known at publish time, and probing costs a request per channel per game on
+   * every page open. When omitted, the launcher falls back to offering the
+   * catalog's own channel only - safe, since that is known to exist.
+   */
+  availableChannels?: string[];
   name?: string;
   description?: string;
   developer?: string;

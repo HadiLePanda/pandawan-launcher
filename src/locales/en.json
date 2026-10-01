@@ -88,7 +88,7 @@
     "unknownGenre": "Unknown Genre"
   },
   "gamesPage": {
-    "emptyDescription": "Install a game from the store to get started.",
+    "emptyDescription": "Every game in the catalog is here, so there is nothing to show. Clear the filters to see them.",
     "emptyTitle": "No Games Yet"
   },
   "news": {

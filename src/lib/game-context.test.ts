@@ -25,21 +25,26 @@ function ids(items: GameContextMenuItem[]) {
 }
 
 describe('deriveMenuItems', () => {
-  it('installed game shows play, verify, patch notes, news, info, uninstall', () => {
+  // Play and install are the primary button one click away, and game news is
+  // already in the game's sidebar. Repeating any of them in the menu presented
+  // the same action as two different choices.
+  it('installed game shows verify, patch notes, info, uninstall', () => {
     const game = makeGame('installed');
-    expect(ids(deriveMenuItems(game))).toEqual([
-      'play',
-      'verify',
-      'patchNotes',
-      'gameNews',
-      'gameInfo',
-      'uninstall',
-    ]);
+    expect(ids(deriveMenuItems(game))).toEqual(['verify', 'patchNotes', 'gameInfo', 'uninstall']);
   });
 
-  it('not installed game shows install, patch notes, news, info', () => {
+  it('not installed game shows patch notes and info only', () => {
     const game = makeGame('not_installed');
-    expect(ids(deriveMenuItems(game))).toEqual(['install', 'patchNotes', 'gameNews', 'gameInfo']);
+    expect(ids(deriveMenuItems(game))).toEqual(['patchNotes', 'gameInfo']);
+  });
+
+  it('never offers play, install or game news', () => {
+    for (const status of ['installed', 'not_installed', 'downloading', 'updating'] as const) {
+      const shown = ids(deriveMenuItems(makeGame(status)));
+      expect(shown).not.toContain('play');
+      expect(shown).not.toContain('install');
+      expect(shown).not.toContain('gameNews');
+    }
   });
 
   it('downloading game only shows game info', () => {

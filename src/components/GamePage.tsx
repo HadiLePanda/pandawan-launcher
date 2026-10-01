@@ -77,16 +77,36 @@ function versionText(t: Translate, channel: string, version: string): string {
  * display filter. Choosing the catalog's own channel clears the override, so a
  * later publisher change is picked up without touching this again.
  */
+/**
+ * Which channels to offer in the picker.
+ *
+ * Only channels a game was actually published to. Offering "Release" for a game
+ * that has only ever shipped an alpha sends the player to a manifest that 404s
+ * at install time, which is exactly what the picker exists to prevent.
+ *
+ * The catalog declares the list. When it does not, the catalog's own channel is
+ * the only safe answer: it is known to exist, whereas the other two are guesses.
+ */
+function availableChannelsFor(catalogChannel: string, declared?: string[]): Channel[] {
+  if (declared && declared.length > 0) {
+    return KNOWN_CHANNELS.filter((c) => declared.includes(c));
+  }
+  return KNOWN_CHANNELS.filter((c) => c === catalogChannel);
+}
+
 function ChannelPicker({
   gameId,
   currentChannel,
   catalogChannel,
+  availableChannels,
   onChoose,
   onClose,
 }: {
   gameId: string;
   currentChannel: string;
   catalogChannel: string;
+  /** Channels the game is published to. Only these are offered. */
+  availableChannels: Channel[];
   onChoose: (channel: Channel) => void;
   onClose: () => void;
 }) {
@@ -111,7 +131,7 @@ function ChannelPicker({
   return (
     <div ref={ref} className="game-channel-menu" role="menu">
       <p className="game-channel-menu-title">{t('gamePage.channelMenu.title')}</p>
-      {KNOWN_CHANNELS.map((channel) => {
+      {availableChannels.map((channel) => {
         const active = currentChannel === channel;
         return (
           <button
@@ -276,6 +296,10 @@ export function GamePage({
                 gameId={game.info.id}
                 currentChannel={channel}
                 catalogChannel={catalogChannel}
+                availableChannels={availableChannelsFor(
+                  catalogChannel,
+                  game.info.availableChannels
+                )}
                 onChoose={onChannelChange}
                 onClose={() => setIsChannelOpen(false)}
               />
