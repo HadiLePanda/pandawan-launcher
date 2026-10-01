@@ -4068,11 +4068,11 @@ input.pin-search {
 
 /* No divider: the title and body are one short read, and a rule between them
    splits a dialog this small into two competing bands. Padding is the only
-   separator, and it shares one 1.5rem column with the body and footer so every
-   edge lines up. */
+   separator. The close button is absolutely positioned, so it does not
+   constrain the title's 1.5rem column. */
 .verify-topbar {
   position: relative;
-  padding: 1.125rem 1.5rem;
+  padding: 1.25rem 1.5rem 0.875rem;
   flex-shrink: 0;
   justify-content: center;
   border-bottom: none;
@@ -4083,16 +4083,19 @@ input.pin-search {
 }
 
 /* Absolute rather than a flex sibling, so the close button cannot pull the
-   centred title off-centre. Its outer edge sits on the same 1.5rem column as
-   the body text and the footer button. */
+   centred title off-centre. It is deliberately smaller than the shared .icon-btn
+   and dimmed: in a 368px dialog a full-size button reads as a second element
+   competing with the title, and the eye then measures the gap between them.
+   Tucking it to the corner would widen that gap, not close it. */
 .verify-topbar .icon-btn {
   position: absolute;
-  right: 1.5rem;
+  right: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 1.75rem;
-  height: 1.75rem;
-  color: var(--ink-muted);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 4px;
+  color: var(--ink-subtle);
   transition:
     color 0.15s ease,
     background 0.15s ease;

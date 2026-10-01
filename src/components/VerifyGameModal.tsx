@@ -26,7 +26,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
         <div className="modal-header verify-topbar">
           <h3 className="title-3">{t('verifyGameModal.title')}</h3>
           <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
