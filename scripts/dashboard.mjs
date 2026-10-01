@@ -128,6 +128,11 @@ async function buildInventory() {
         channel,
         latest,
         published,
+        // When each platform actually shipped. Taken per platform from its own
+        // immutable manifest, because latest.json's Last-Modified is when the
+        // channel was last written and would make every platform look equally
+        // recent. Version drift alone says there is a gap; these say how big.
+        updated: await platformTimestamps(id, channel, latest),
         // Driven by latest.json rather than by path shape, since a flat publish
         // has no platform directories to read from.
         platforms:
@@ -140,6 +145,41 @@ async function buildInventory() {
   }
 
   return result.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * Last-Modified of each platform's own versioned manifest.
+ *
+ * Small immutable JSON, already required for per-platform resolution, so this
+ * costs one cheap request per platform. The headers are trustworthy precisely
+ * because those objects never change once written.
+ */
+async function platformTimestamps(id, channel, latest) {
+  const stamps = {};
+  await Promise.all(
+    Object.entries(latest ?? {}).map(async ([platform, entry]) => {
+      const urls = [
+        `${cdnOrigin}/games/${id}/${channel}/${entry.version}/manifest.json`,
+        // A flat, pre-version-stamped channel has no version directory, so its
+        // root manifest is the only object that carries a timestamp.
+        `${cdnOrigin}/games/${id}/${channel}/manifest.json`,
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          const header = res.headers.get('last-modified');
+          if (res.ok && header) {
+            stamps[platform] = new Date(header).toISOString();
+            return;
+          }
+        } catch {
+          // Try the next candidate.
+        }
+      }
+      stamps[platform] = null;
+    })
+  );
+  return stamps;
 }
 
 /** Channels where the platforms disagree on the current version. */

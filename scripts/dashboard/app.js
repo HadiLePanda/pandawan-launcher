@@ -1,4 +1,4 @@
-const PLATFORMS = ['windows', 'macos', 'linux'];
+﻿const PLATFORMS = ['windows', 'macos', 'linux'];
 const $ = (id) => document.getElementById(id);
 
 function compare(versions) {
@@ -19,6 +19,19 @@ function renderDrift(drift) {
   box.textContent = drift
     .map((d) => `${d.gameId} ${d.channel}: platforms disagree on version`)
     .join('  �  ');
+}
+
+function ago(iso) {
+  if (!iso) return '—';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '—';
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days < 30 ? `${days}d ago` : `${Math.round(days / 30)}mo ago`;
 }
 
 function renderInventory(inventory) {
@@ -43,6 +56,7 @@ function renderInventory(inventory) {
       headRow.append(el('th', null, 'Platform'));
       headRow.append(el('th', null, 'Version'));
       headRow.append(el('th', null, 'Build'));
+      headRow.append(el('th', null, 'Shipped'));
       table.append(headRow);
 
       for (const platform of PLATFORMS) {
@@ -51,6 +65,9 @@ function renderInventory(inventory) {
         row.append(el('td', null, platform));
         row.append(el('td', entry ? 'mono' : 'mono', entry ? entry.version : '�'));
         row.append(el('td', 'mono', entry ? entry.build : '�'));
+        row.append(
+          el('td', 'muted', entry ? ago(channel.updated?.[platform]) : String.fromCharCode(0x2014))
+        );
         if (entry && behind && entry.version === behind) {
           row.classList.add('behind');
           row.title = `behind ${Object.values(latest)[0].version}`;
