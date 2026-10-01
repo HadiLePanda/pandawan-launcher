@@ -4079,9 +4079,11 @@ input.pin-search {
 }
 
 /* Side padding is 1.25rem rather than 1.5rem to buy back width for the file
-   paths, which were ellipsizing before their names were readable. */
+   paths, which were ellipsizing before their names were readable. The bottom
+   inset matches the footer's, so the button sits evenly between the result
+   above it and the dialog edge. */
 .verify-body {
-  padding: 1.5rem 1.25rem 1.5rem;
+  padding: 1.5rem 1.25rem 1.125rem;
 }
 
 .verify-bar {
@@ -4214,8 +4216,24 @@ input.pin-search {
   padding: 0 1.25rem 1.125rem;
 }
 
+/* Ghost, not btn-secondary. Nothing else in the dialog has a fill or a border,
+   so a bordered grey box was the one element that looked pasted on. It gains a
+   surface only on hover, which is the single moment it should draw attention. */
 .verify-footer .btn {
   width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-muted);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.verify-footer .btn:hover:not(:disabled) {
+  background: var(--surface-light);
+  border-color: var(--border-default);
+  color: var(--ink-default);
 }
 
 @keyframes verify-pop {

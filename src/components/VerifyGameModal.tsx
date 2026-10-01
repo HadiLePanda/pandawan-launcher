@@ -40,7 +40,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
 
         {result && !error && (
           <div className="verify-footer">
-            <button onClick={onClose} className="btn btn-secondary">
+            <button onClick={onClose} className="btn">
               {t('common.close')}
             </button>
           </div>
