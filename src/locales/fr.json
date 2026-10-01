@@ -41,9 +41,6 @@
     "managePins": "Gérer les jeux épinglés",
     "allGames": "Tous les jeux"
   },
-  "gamesMenu": {
-    "library": "Bibliothèque"
-  },
   "filters": {
     "all": "Tous",
     "installed": "Installés",

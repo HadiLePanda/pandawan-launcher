@@ -34,9 +34,20 @@ function actionLabel(t: (key: string) => string, action: GameContextAction): str
   }
 }
 
+export interface MenuAnchor {
+  x: number;
+  y: number;
+  /**
+   * 'right-start' anchors the menu's left edge to the trigger's right edge and
+   * vertically centres it on the trigger. 'cursor' is the original behaviour,
+   * used where there is no trigger to measure (e.g. a right-click).
+   */
+  placement?: 'right-start' | 'cursor';
+}
+
 interface GameContextMenuProps {
   game: Game;
-  anchor: { x: number; y: number } | null;
+  anchor: MenuAnchor | null;
   onClose: () => void;
   onAction: (action: GameContextAction) => void;
 }
@@ -72,16 +83,37 @@ export function GameContextMenu({ game, anchor, onClose, onAction }: GameContext
   let left = anchor.x;
   let top = anchor.y;
 
-  // Basic viewport clamping to prevent overflow.
+  // Clamp to the viewport so the menu never opens off-screen. When anchored to a
+  // trigger the menu is nudged left of the trigger's right edge, which is what
+  // makes it read as "belongs to that icon" rather than floating near the middle.
   const menuWidth = 180;
   const menuHeight = items.length * 32 + 8;
+  const GAP = 6;
+
   if (typeof window !== 'undefined') {
-    if (left + menuWidth > window.innerWidth) {
-      left = window.innerWidth - menuWidth - 8;
+    if (anchor.placement === 'right-start') {
+      // anchor.x is the trigger's RIGHT edge, so the menu sits GAP to its right.
+      if (left + GAP + menuWidth > window.innerWidth - 8) {
+        // No room on the right: flip to the trigger's left instead. That needs
+        // the trigger's own width, which the caller measured but did not pass, so
+        // fall back to pinning the menu to the viewport edge rather than
+        // guessing a width and landing off-screen.
+        left = window.innerWidth - menuWidth - 8;
+      } else {
+        left = left + GAP;
+      }
+      // Vertically centre on the trigger, then keep it fully on screen.
+      top = top - menuHeight / 2;
+    } else {
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 8;
+      }
     }
-    if (top + menuHeight > window.innerHeight) {
+
+    if (top + menuHeight > window.innerHeight - 8) {
       top = window.innerHeight - menuHeight - 8;
     }
+    if (top < 8) top = 8;
   }
 
   return (

@@ -118,16 +118,30 @@ export const IMMUTABLE = 'public, max-age=31536000, immutable';
  * re-implementing them.
  */
 export function listKeys(keyPrefix, { endpoint } = {}) {
-  // Plain recursive `ls`, not --only-show-keys: that flag is rejected by the
-  // AWS CLI v2 build in this environment. Each line is
-  // "<date> <time> <size> <key>", so the key is everything after the third
-  // column. Keys may contain spaces, hence matching by column rather than
-  // splitting on whitespace. Lines end in CRLF, which the trim clears.
+  // Two wrinkles this has to absorb, both found against the live bucket:
+  //
+  // 1. `--only-show-keys` is rejected by this AWS CLI v2 build, so keys come
+  //    from parsing the default "<date> <time> <size> <key>" listing. Keys may
+  //    contain spaces, hence matching by column rather than splitting on
+  //    whitespace. Output is CRLF, which the trim clears.
+  //
+  // 2. The CLI encodes non-ASCII keys to the console codepage, so a key holding
+  //    "ç" comes back as U+FFFD. Misspell ships a bundle named
+  //    "...-français-...", so the mangled key points at an object that does not
+  //    exist and could never be deleted. `--encoding utf-8` asks the CLI to
+  //    emit UTF-8; where it is honoured (Linux CI, newer CLI) the key round-trips
+  //    exactly and needs no repair.
+  //
+  // Where the CLI still mangles the key, isMangledKey flags it so the caller can
+  // fall back to a server-side delete instead of guessing at a name. This CLI
+  // build rejects both --only-show-keys (ParamValidation, exit 252) and
+  // --encoding, so neither is passed.
   const args = ['s3', 'ls', keyPrefix, '--recursive', '--endpoint-url', endpoint];
-  const res = spawnSync('aws', args, { encoding: 'utf8', shell: false });
+  const res = spawnSync('aws', args, { shell: false });
   if (res.error) fail(`could not run aws: ${res.error.message}`);
   if (res.status !== 0) fail(`listing ${keyPrefix} failed (exit ${res.status})`);
-  return res.stdout
+  const stdout = res.stdout ? res.stdout.toString('utf8') : '';
+  return stdout
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
@@ -136,6 +150,15 @@ export function listKeys(keyPrefix, { endpoint } = {}) {
       return match ? match[1] : null;
     })
     .filter((key) => key !== null);
+}
+
+/**
+ * True when a key contains U+FFFD, meaning the CLI lost bytes while encoding
+ * the key for output. Deleting such a key literally would fail, and guessing at
+ * the original characters would risk hitting a different object.
+ */
+export function isMangledKey(key) {
+  return key.includes('\uFFFD');
 }
 
 /**

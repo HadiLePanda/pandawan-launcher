@@ -16,7 +16,7 @@
 
 import { spawnSync } from 'node:child_process';
 
-import { deletePrefix, fail, listKeys, r2Config, S3 } from './lib/r2.mjs';
+import { deletePrefix, fail, isMangledKey, listKeys, r2Config, run, S3 } from './lib/r2.mjs';
 
 function parseArgs(argv) {
   const args = {};
@@ -35,6 +35,7 @@ const channel = args.channel ?? 'stable';
 const keep = Number.parseInt(args.keep ?? '3', 10);
 const dryRun = Boolean(args['dry-run']);
 const assumeYes = Boolean(args.yes);
+const cleanFlat = Boolean(args['clean-flat']);
 
 if (!gameId) {
   fail(`--game-id is required.\n  Example: --game-id misspell --channel alpha --keep 3`);
@@ -76,9 +77,26 @@ for (const [version, info] of all) {
   console.log(`  ${version}  (${info.objects} objects)`);
 }
 
-if (all.length <= keep) {
-  console.log(`\nNothing to prune: ${all.length} build(s), keeping ${keep}.`);
-  process.exit(0);
+// Files left over from the pre-version-stamped layout sit directly under the
+// channel prefix, alongside the manifest. They are dead weight - nothing points
+// at them any more - but they cannot be swept with a recursive delete, because
+// the manifest.json in the same directory is live. Listing by prefix would
+// happily take it out too and break every install.
+const flatLeftovers = keys.filter((key) => {
+  const rest = key.slice(prefix.length + 1).split('/');
+  if (rest[0] === 'manifest.json') return false;
+  return !/^\d/.test(rest[0]);
+});
+
+if (flatLeftovers.length > 0) {
+  console.log(`\n${flatLeftovers.length} leftover object(s) from the old flat layout:`);
+  const shown = new Set(flatLeftovers.map((k) => k.slice(prefix.length + 1).split('/')[0]));
+  for (const name of shown) console.log(`  ${name}`);
+  console.log('  (manifest.json is live and is NOT a candidate.)');
+  console.log('\nRemove them with:');
+  console.log(
+    `  npm run prune:builds -- --game-id ${gameId} --channel ${channel} --clean-flat --yes`
+  );
 }
 
 // The manifest names the build clients are currently downloading. Deleting it
@@ -86,7 +104,8 @@ if (all.length <= keep) {
 // age. Best-effort: if the manifest cannot be read we keep the newest build only.
 let activeVersion = null;
 try {
-  const manifestUrl = `${process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN}/games/${gameId}/${channel}/manifest.json`;
+  const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
+  const manifestUrl = `${origin}/games/${gameId}/${channel}/manifest.json`;
   const res = spawnSync('curl', ['-sf', manifestUrl], { encoding: 'utf8', shell: false });
   if (res.status === 0 && res.stdout) activeVersion = JSON.parse(res.stdout).version;
 } catch {
@@ -97,6 +116,72 @@ const protectedVersions = new Set(all.slice(0, keep).map(([v]) => v));
 if (activeVersion) protectedVersions.add(activeVersion);
 
 const doomed = all.filter(([v]) => !protectedVersions.has(v));
+
+// --clean-flat removes the pre-layout leftovers one key at a time. A recursive
+// delete on the channel prefix would take the live manifest with them.
+if (cleanFlat) {
+  const targets = [...doomed.map(([version]) => `${prefix}/${version}/`), ...flatLeftovers];
+
+  if (targets.length === 0) {
+    console.log('\nNothing to delete.');
+    process.exit(0);
+  }
+
+  console.log(`\nDeleting ${targets.length} prefix(es):`);
+  for (const target of doomed) console.log(`  build ${target[0]}`);
+  if (flatLeftovers.length > 0) console.log(`  ${flatLeftovers.length} flat-layout object(s)`);
+
+  if (!dryRun && !assumeYes) {
+    process.stdout.write(`\nThis cannot be undone. Continue? [y/N] `);
+    const answer = spawnSync(
+      'powershell',
+      ['-NoProfile', '-Command', '$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")'],
+      { encoding: 'utf8', shell: false }
+    );
+    if ((answer.stdout || '').trim().toLowerCase() !== 'y') {
+      console.log('\nCancelled. Nothing was deleted.');
+      process.exit(0);
+    }
+  }
+
+  if (dryRun) {
+    console.log('\nDry run. Nothing was deleted.');
+    process.exit(0);
+  }
+
+  for (const [version] of doomed) {
+    deletePrefix(S3.s3Uri(bucket, `${prefix}/${version}/`), { endpoint });
+  }
+  // A key the CLI mangled cannot be deleted by name: the name it printed is not
+  // the name R2 stored. Delete its parent folder instead. That is safe here -
+  // the leftovers sit under the game's own flat layout, the live manifest is a
+  // sibling rather than a child, and the versioned builds this script protects
+  // live under a different prefix entirely.
+  let mangled = 0;
+  for (const key of flatLeftovers) {
+    if (isMangledKey(key)) {
+      mangled += 1;
+      const dir = key.slice(0, key.lastIndexOf('/') + 1);
+      if (!dir || !dir.startsWith(prefix)) continue;
+      deletePrefix(S3.s3Uri(bucket, dir), { endpoint });
+      continue;
+    }
+    run('aws', ['s3', 'rm', S3.s3Uri(bucket, key), '--endpoint-url', endpoint], `Deleting ${key}`);
+  }
+
+  console.log(
+    `\nDone. Removed ${doomed.length} build(s) and ${flatLeftovers.length} flat object(s).`
+  );
+  if (mangled > 0) {
+    console.log(`${mangled} key(s) had a mangled encoding; deleted their parent folders instead.`);
+  }
+  process.exit(0);
+}
+
+if (all.length <= keep && flatLeftovers.length === 0) {
+  console.log(`\nNothing to prune: ${all.length} build(s), keeping ${keep}.`);
+  process.exit(0);
+}
 
 if (doomed.length === 0) {
   console.log(`\nNothing to prune: the ${keep} newest build(s) cover everything.`);

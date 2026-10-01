@@ -1444,6 +1444,26 @@ input[type='search']::placeholder {
   color: #fff;
 }
 
+.topbar-btn-refresh {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #fff;
+  border: 2px solid var(--surface, #16191d);
+  z-index: 1;
+}
+
+.topbar-btn-refresh:hover {
+  background: #60a5fa;
+  color: #fff;
+}
+
 .topbar-btn {
   position: relative;
   height: 38px;
@@ -1482,9 +1502,12 @@ input[type='search']::placeholder {
   color: var(--ink-default);
 }
 
-/* Notifications button — visible background, state-driven (grey idle / green unread) */
+/* Notifications button. Idle state has no background at all: a permanently
+   filled chip reads as "something needs attention" even when nothing does. The
+   green fill is reserved for genuine unread state, and the badge carries the
+   count. */
 .topbar-btn-notif {
-  background: var(--surface-light);
+  background: transparent;
 }
 
 .topbar-btn-notif:hover {
@@ -1510,8 +1533,8 @@ input[type='search']::placeholder {
 }
 
 .topbar-badge-alert {
-  top: -4px;
-  right: -6px;
+  top: -7px;
+  right: -8px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

@@ -11,7 +11,6 @@ import { GameContextMenu } from '@components/GameContextMenu';
 import { NewsArticleView } from '@components/NewsArticleView';
 import { DownloadsPage } from '@components/DownloadsPage';
 import { NotificationsPanel } from '@components/NotificationsPanel';
-import { DownloadsPopup } from '@components/DownloadsPopup';
 import type { GameContextAction } from '@/lib/game-context';
 import { GamesHome } from '@components/GamesHome';
 import { Settings } from '@components/Settings';
@@ -42,7 +41,6 @@ function App() {
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
   const [isPinsOpen, setIsPinsOpen] = useState(false);
   const [isCatalogStale, setIsCatalogStale] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
@@ -434,20 +432,14 @@ function App() {
           setActiveView('store');
           setSelectedGameId(lastSelectedGameId);
         }}
-        onDownloadsClick={() => {
-          setIsNotificationsOpen(false);
-          setIsDownloadsOpen((v) => !v);
-        }}
         onDownloadsNavigate={() => {
           setActiveView('downloads');
           setSelectedGameId(lastSelectedGameId);
         }}
         onNotificationsClick={() => {
-          setIsDownloadsOpen(false);
           setIsNotificationsOpen((v) => !v);
         }}
         onSettingsClick={() => {
-          setIsDownloadsOpen(false);
           setIsNotificationsOpen(false);
           setIsSettingsOpen(true);
         }}
@@ -488,15 +480,6 @@ function App() {
             onMarkAllRead={markAllNotificationsRead}
             onClear={clearNotifications}
             onClose={() => setIsNotificationsOpen(false)}
-          />
-        )}
-
-        {isDownloadsOpen && (
-          <DownloadsPopup
-            downloads={activeDownloads}
-            games={games.map((g) => g.info)}
-            onCancel={cancelOperation}
-            onClose={() => setIsDownloadsOpen(false)}
           />
         )}
 

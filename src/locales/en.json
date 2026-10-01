@@ -41,9 +41,6 @@
     "managePins": "Manage pinned games",
     "allGames": "All Games"
   },
-  "gamesMenu": {
-    "library": "Library"
-  },
   "filters": {
     "all": "All",
     "installed": "Installed",

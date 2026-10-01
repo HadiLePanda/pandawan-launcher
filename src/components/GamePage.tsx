@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Download, RefreshCw, X, MoreVertical, Settings, Clock } from 'lucide-react';
+import { Play, Download, RefreshCw, X, Settings, Clock } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
-import { GameContextMenu } from '@components/GameContextMenu';
+import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
 import type { GameContextAction } from '@/lib/game-context';
 import type { Game, NewsItem } from '@/types';
 
@@ -36,9 +36,20 @@ function channelLabel(t: (key: string) => string, channel: string): string {
   return channel.charAt(0).toUpperCase() + channel.slice(1);
 }
 
+/**
+ * Display form of a version. On a prerelease channel the semver suffix already
+ * carries the information ("0.4.0-alpha.1"), so rendering it after an "Alpha"
+ * badge produced "ALPHA 0.4.0-alpha.1" - the same fact stated twice, and shouty.
+ * Strip the suffix there and let the badge carry the meaning.
+ *
+ * Stable builds keep the full string: with no badge, "0.4.0" alone would not
+ * say whether it is a release or a prerelease.
+ */
 function versionText(t: (key: string) => string, channel: string, version: string): string {
   const label = channelLabel(t, channel);
-  return label ? `${label} ${version}` : version;
+  if (!label) return version;
+  const base = version.split('-')[0];
+  return `${label} ${base}`;
 }
 
 export function GamePage({
@@ -55,7 +66,7 @@ export function GamePage({
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
-  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -168,7 +179,15 @@ export function GamePage({
               onClick={() => {
                 const rect = menuTriggerRef.current?.getBoundingClientRect();
                 if (rect) {
-                  setMenuAnchor({ x: rect.left, y: rect.bottom + 4 });
+                  // Anchor to the icon's own right edge, below and vertically
+                  // centred on it. Anchoring the menu's left edge to the button's
+                  // left edge is what pushed the menu out toward the centre of
+                  // the window.
+                  setMenuAnchor({
+                    x: rect.right,
+                    y: rect.top + rect.height / 2,
+                    placement: 'right-start',
+                  });
                 }
               }}
               className={cn('game-detail-menu-btn', primaryColorClass())}
@@ -176,7 +195,7 @@ export function GamePage({
               aria-label={t('gamePage.moreOptions')}
               aria-haspopup="menu"
             >
-              <MoreVertical className="w-5 h-5" />
+              <Settings className="w-5 h-5" />
             </button>
 
             <GameContextMenu

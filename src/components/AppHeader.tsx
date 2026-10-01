@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Download,
   Bell,
@@ -27,7 +27,6 @@ interface MainNavProps {
   onGamesClick: () => void;
   onNewsClick: () => void;
   onStoreClick: () => void;
-  onDownloadsClick: () => void;
   onDownloadsNavigate: () => void;
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
@@ -54,6 +53,7 @@ function TopBarButton({
   variant,
   onClick,
   children,
+  testId,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -64,6 +64,7 @@ function TopBarButton({
   variant?: 'notifications';
   onClick?: () => void;
   children?: React.ReactNode;
+  testId?: string;
 }) {
   return (
     <button
@@ -79,6 +80,7 @@ function TopBarButton({
       data-panel-trigger={trigger}
       aria-label={label}
       title={label}
+      data-testid={testId}
     >
       <span className="relative">
         {icon}
@@ -149,7 +151,6 @@ export function MainNav({
   onGamesClick,
   onNewsClick,
   onStoreClick,
-  onDownloadsClick,
   onDownloadsNavigate,
   onNotificationsClick,
   onSettingsClick,
@@ -165,10 +166,7 @@ export function MainNav({
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isGamesMenuOpen, setIsGamesMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -194,69 +192,7 @@ export function MainNav({
     };
   }, [isProfileMenuOpen]);
 
-  useEffect(() => {
-    if (!isGamesMenuOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsGamesMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isGamesMenuOpen]);
-
-  useEffect(() => {
-    return () => {
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
-
-  const clearGamesMenuTimers = () => {
-    if (openTimerRef.current) {
-      clearTimeout(openTimerRef.current);
-      openTimerRef.current = null;
-    }
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  };
-
-  const handleGamesTabEnter = () => {
-    clearGamesMenuTimers();
-    openTimerRef.current = setTimeout(() => {
-      setIsGamesMenuOpen(true);
-    }, 120);
-  };
-
-  const handleGamesTabLeave = () => {
-    clearGamesMenuTimers();
-    closeTimerRef.current = setTimeout(() => {
-      setIsGamesMenuOpen(false);
-    }, 150);
-  };
-
-  const handleGamesMenuItem = (action: () => void) => {
-    clearGamesMenuTimers();
-    setIsGamesMenuOpen(false);
-    action();
-  };
-
   const downloadsBadge = activeDownloads.size;
-  const averageProgress = useMemo(() => {
-    if (activeDownloads.size === 0) return 0;
-    let sum = 0;
-    for (const entry of activeDownloads.values()) {
-      sum += entry.overallProgress ?? 0;
-    }
-    return sum / activeDownloads.size;
-  }, [activeDownloads]);
-
   return (
     // data-tauri-drag-region makes the empty parts of the nav drag the window.
     // The interactive clusters opt out with .no-drag, so this only widens the
@@ -289,32 +225,17 @@ export function MainNav({
           </button>
         </div>
         <nav className="cluster cluster-lg">
-          <div
-            className="games-menu"
-            onMouseEnter={clearGamesMenuTimers}
-            onMouseLeave={handleGamesTabLeave}
+          {/* Games is a plain tab now. The hover dropdown only ever offered
+              "Library", which is the same destination as clicking the tab, so the
+              hover state was pure friction - it delayed the click and hid a
+              duplicate entry. */}
+          <button
+            type="button"
+            onClick={onGamesClick}
+            className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
           >
-            <button
-              type="button"
-              onClick={onGamesClick}
-              onMouseEnter={handleGamesTabEnter}
-              className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
-              data-panel-trigger="games-menu"
-            >
-              {t('topBar.games')}
-            </button>
-            {isGamesMenuOpen && (
-              <div className="games-menu-dropdown">
-                <button
-                  type="button"
-                  className="games-menu-item"
-                  onClick={() => handleGamesMenuItem(onGamesClick)}
-                >
-                  {t('gamesMenu.library')}
-                </button>
-              </div>
-            )}
-          </div>
+            {t('topBar.games')}
+          </button>
           <button
             type="button"
             onClick={onNewsClick}
@@ -328,30 +249,6 @@ export function MainNav({
             className={cn('nav-tab', activeView === 'store' && 'nav-tab-active')}
           >
             {t('topBar.store')}
-          </button>
-          <button
-            type="button"
-            onClick={onDownloadsNavigate}
-            className={cn('nav-tab', activeView === 'downloads' && 'nav-tab-active')}
-            data-testid="nav-downloads"
-          >
-            {t('topBar.downloads')}
-            {downloadsBadge > 0 && <span className="nav-tab-count">{downloadsBadge}</span>}
-            {/* A background poll found content this session has not loaded. The
-                downloads page used to live behind a hover menu on the Games tab;
-                a real nav tab plus this dot makes new content discoverable without
-                a restart. */}
-            {catalogStale && (
-              <button
-                type="button"
-                className="nav-tab-refresh no-drag"
-                onClick={onCatalogRefresh}
-                aria-label={t('topBar.catalogStale')}
-                title={t('topBar.catalogStale')}
-              >
-                <RefreshCw className="w-3 h-3 animate-spin-once" />
-              </button>
-            )}
           </button>
         </nav>
       </div>
@@ -383,21 +280,33 @@ export function MainNav({
             </span>
           </button>
         )}
-        {downloadsBadge > 0 && (
+        {/* Downloads goes to its own page rather than opening the dropdown. The
+            dropdown duplicated the page and had no keyboard path; the icon form
+            matches Settings and Notifications beside it. */}
+        <div className="relative">
           <TopBarButton
             icon={<Download className="w-4 h-4" />}
             label={t('topBar.downloads')}
             badge={downloadsBadge}
-            active
-            trigger="downloads"
-            wide
-            onClick={onDownloadsClick}
-          >
-            <span className="topbar-progress" aria-hidden="true">
-              <span className="topbar-progress-fill" style={{ width: `${averageProgress}%` }} />
-            </span>
-          </TopBarButton>
-        )}
+            active={activeView === 'downloads'}
+            onClick={onDownloadsNavigate}
+            testId="nav-downloads"
+          />
+          {/* A background poll found catalog content this session has not loaded.
+              It rides on Downloads because that is where transfers live; the
+              blue pill stays reserved for the launcher's own self-update. */}
+          {catalogStale && (
+            <button
+              type="button"
+              className="topbar-btn topbar-btn-refresh no-drag"
+              onClick={onCatalogRefresh}
+              aria-label={t('topBar.catalogStale')}
+              title={t('topBar.catalogStale')}
+            >
+              <RefreshCw className="w-3.5 h-3.5 animate-spin-once" />
+            </button>
+          )}
+        </div>
         <TopBarButton
           icon={<Bell className="w-4 h-4" />}
           label={t('topBar.notifications')}
