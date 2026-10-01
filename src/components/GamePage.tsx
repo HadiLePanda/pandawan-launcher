@@ -10,7 +10,6 @@ import {
   Clock,
   HardDrive,
   Newspaper,
-  Square,
 } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
@@ -362,7 +361,7 @@ export function GamePage({
                 // simultaneously disabled for running - so an open game showed a
                 // disabled "Install".
                 <>
-                  <Square className="w-5 h-5 fill-current" />
+                  <X className="w-5 h-5" />
                   <span>{primaryLabel()}</span>
                 </>
               ) : isInstalled && hasUpdate ? (

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Download, X, Gamepad2, FileDown } from 'lucide-react';
+import { Download, X, Gamepad2, FileDown, Loader2 } from 'lucide-react';
 
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 import { formatBytes, useSmoothDownload } from '@/lib/utils';
@@ -9,6 +9,8 @@ interface DownloadsPageProps {
   downloads: Map<string, DownloadProgressSnapshot>;
   games: GameInfo[];
   onCancel: (gameId: string) => void;
+  /** A cancel is in flight; the row shows it winding down. */
+  cancelling?: boolean;
 }
 
 /** "12m 04s" - seconds matter here, they are what the user is watching tick down. */
@@ -28,7 +30,7 @@ function fileNameOf(path: string | null): string | null {
   return parts.length ? parts[parts.length - 1] : null;
 }
 
-export function DownloadsPage({ downloads, games, onCancel }: DownloadsPageProps) {
+export function DownloadsPage({ downloads, games, onCancel, cancelling }: DownloadsPageProps) {
   const { t } = useTranslation();
 
   if (downloads.size === 0) {
@@ -54,6 +56,7 @@ export function DownloadsPage({ downloads, games, onCancel }: DownloadsPageProps
               name={game?.name ?? gameId}
               iconUrl={game?.iconUrl}
               onCancel={onCancel}
+              cancelling={cancelling}
             />
           );
         })}
@@ -68,12 +71,14 @@ function DownloadRow({
   name,
   iconUrl,
   onCancel,
+  cancelling,
 }: {
   gameId: string;
   progress: DownloadProgressSnapshot;
   name: string;
   iconUrl?: string;
   onCancel: (gameId: string) => void;
+  cancelling?: boolean;
 }) {
   const { t } = useTranslation();
   const { percent, etaSeconds } = useSmoothDownload(progress);
@@ -146,10 +151,11 @@ function DownloadRow({
         type="button"
         onClick={() => onCancel(gameId)}
         className="download-row-cancel"
-        title={t('downloads.cancel')}
-        aria-label={t('downloads.cancel')}
+        disabled={cancelling}
+        title={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
+        aria-label={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
       >
-        <X className="w-4 h-4" />
+        {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
       </button>
     </div>
   );

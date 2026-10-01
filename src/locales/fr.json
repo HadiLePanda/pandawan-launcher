@@ -111,7 +111,8 @@
     "filesProgress": "{{completed}} sur {{total}} fichiers",
     "ofSize": "{{done}} sur {{total}}",
     "preparing": "Préparation…",
-    "title": "Téléchargements"
+    "title": "Téléchargements",
+    "cancelling": "Annulation…"
   },
   "errors": {
     "alreadyRunning": "Le jeu est déjà en cours d'exécution.",

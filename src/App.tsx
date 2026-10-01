@@ -64,6 +64,7 @@ function App() {
     games,
     news,
     activeDownloads,
+    cancelling,
     error,
     installGame,
     updateGame,
@@ -380,6 +381,7 @@ function App() {
           downloads={activeDownloads}
           games={games.map((g) => g.info)}
           onCancel={cancelOperation}
+          cancelling={cancelling}
         />
       );
     }

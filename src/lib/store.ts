@@ -42,6 +42,8 @@ interface LauncherState {
   isLoading: boolean;
   error: string | null;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
+  /** A cancel has been sent and the backend is winding down. */
+  cancelling: boolean;
   settings: LauncherSettings | null;
   catalogSource: 'remote' | 'local' | 'embedded' | null;
   catalogUnreachable: boolean;
@@ -100,6 +102,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   isLoading: false,
   error: null,
   activeDownloads: new Map(),
+  cancelling: false,
   settings: null,
   catalogSource: null,
   catalogUnreachable: false,
@@ -338,10 +341,14 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   },
 
   cancelOperation: async () => {
+    set({ cancelling: true });
     try {
       await gameService.cancelOperation();
+      // Cleared when the download row is removed, which is what actually marks
+      // the transfer as finished winding down.
     } catch (err) {
       handleStoreError(err, set, 'cancelOperation');
+      set({ cancelling: false });
     }
   },
 
@@ -461,6 +468,9 @@ async function runPatchFlow(
   } catch (err) {
     const fallbackStatus = activeStatus === 'downloading' ? 'not_installed' : 'installed';
     updateGameStatus(gameId, fallbackStatus);
+    // Cancelling and failing both land here, and only 'complete' removes the
+    // entry. Without this the row stayed in Downloads forever after a cancel.
+    removeDownload(gameId);
     handleStoreError(err, set, `runPatchFlow:${activeStatus}`);
   }
 }
