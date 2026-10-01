@@ -208,21 +208,21 @@ jobs:
           AWS_DEFAULT_REGION: auto
           AWS_ENDPOINT_URL: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ vars.R2_BUCKET }}
+          # aws-cli 2.33.x computes a CRC32 checksum by default, and its recursive
+          # `s3 cp` then aborts with
+          #   "Need to rewind the stream <botocore.httpchecksum.AwsChunkedWrapper ...>,
+          #    but stream is not seekable"
+          # (aws-cli#10026, a regression). `when_required` restores the previous
+          # behaviour. Upload integrity is still covered by the minisign signature
+          # the launcher verifies before installing any bundle.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
         run: |
           set -euo pipefail
           # Immutable, long-lived caching for the versioned bundles: their names
           # include the version, so the bytes at a given URL never change.
-          #
-          # --no-checksum is required, not cosmetic: with a trailing --cache-control
-          # the CLI wraps the recursive upload in an AwsChunkedWrapper, and recent
-          # botocore versions then abort with
-          #   "Need to rewind the stream ... but stream is not seekable".
-          # Integrity is still enforced end to end - the launcher's minisign
-          # signature check is what actually guarantees the bytes are untampered.
           aws s3 cp bundles/ "s3://$R2_BUCKET/launcher/" \
             --endpoint-url "$AWS_ENDPOINT_URL" \
             --no-progress \
-            --no-checksum \
             --exclude 'latest.json' \
             --cache-control 'public, max-age=31536000, immutable'
           # latest.json is the one mutable file, and it must never be cached or
@@ -230,7 +230,6 @@ jobs:
           aws s3 cp bundles/latest.json "s3://$R2_BUCKET/launcher/latest.json" \
             --endpoint-url "$AWS_ENDPOINT_URL" \
             --no-progress \
-            --no-checksum \
             --cache-control 'no-cache, no-store, must-revalidate' \
             --content-type 'application/json'
           echo "Published to s3://$R2_BUCKET/launcher/"
