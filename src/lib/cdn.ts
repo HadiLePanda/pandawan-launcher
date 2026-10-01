@@ -4,7 +4,12 @@ import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
  *
  *  Games:
  *    {origin}/games/{id}/{channel}/manifest.json
- *    {origin}/games/{id}/{channel}/{file}
+ *    {origin}/games/{id}/{channel}/{version}/{file}
+ *
+ * Build bytes are version-stamped so the bytes at a given URL never change, which
+ * is what makes the one-year immutable cache header safe. The manifest is mutable
+ * and lives one directory up, so it carries its own `base_url` rather than having
+ * the client infer where the files are.
  *
  *  Launcher-wide news feed:
  *    {origin}/launcher/news.json
@@ -86,13 +91,27 @@ export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest)
   };
 }
 
-export function resolveGameUrls(
-  id: string,
-  channel: string = 'stable'
-): { manifestUrl: string; baseUrl: string } {
-  const baseUrl = `${CdnUrl.gamesPath(id, channel)}/`;
+/**
+ * Where a manifest's files live. Manifests published before the version-stamped
+ * layout omitted `base_url`; for those, fall back to the flat channel directory
+ * so an old catalog entry still resolves.
+ */
+export function resolveBaseUrl(manifest: GameManifest): string {
+  const fromManifest = manifest.base_url;
+  if (fromManifest) {
+    return fromManifest.endsWith('/') ? fromManifest : `${fromManifest}/`;
+  }
+  // `game_id`, not `gameId`: the manifest mirrors the publisher's JSON keys, and
+  // reading the camelCase name here silently produced "games/undefined/".
+  return `${CdnUrl.gamesPath(manifest.game_id, manifest.channel ?? 'stable')}/`;
+}
+
+/**
+ * Absolute URL of the manifest for a game. This is the only URL the client can
+ * derive without the manifest, so it must stay at the channel root.
+ */
+export function resolveGameUrls(id: string, channel: string = 'stable'): { manifestUrl: string } {
   return {
-    manifestUrl: `${baseUrl}manifest.json`,
-    baseUrl,
+    manifestUrl: `${CdnUrl.gamesPath(id, channel)}/manifest.json`,
   };
 }

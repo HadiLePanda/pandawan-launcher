@@ -128,7 +128,15 @@ def generate_manifest(args) -> dict:
         )
     channel = derived
 
-    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}"
+    # Build bytes live under a version-stamped directory. That is what makes the
+    # IMMUTABLE cache header honest: the bytes at a given URL never change, so a
+    # client that cached them can never serve a stale file after an update.
+    # The manifest stays one level up at .../{channel}/manifest.json because it is
+    # mutable and is the signal that a new build exists.
+    version_dir = args.version
+    base_url = (
+        f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}/{version_dir}"
+    )
 
     files = collect_files(input_dir, tuple(args.exclude or ()) + DEFAULT_EXCLUDES)
     entries = []
@@ -152,6 +160,10 @@ def generate_manifest(args) -> dict:
         "build_number": args.build_number,
         "channel": channel,
         "executable": args.executable,
+        # Absolute base the client joins each file's relative "url" onto. Carried
+        # in the manifest because the version-stamped directory is not derivable
+        # from the manifest's own location (the manifest sits one level up).
+        "base_url": f"{base_url}/",
         "description": args.description or None,
         "icon_url": args.icon_url or None,
         "banner_url": args.banner_url or None,
@@ -220,7 +232,7 @@ def main():
 
     total_size = sum(entry["size"] for entry in manifest["files"])
     channel = manifest["channel"]
-    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}"
+    base_url = manifest["base_url"]
     print(f"Manifest written: {output_path}")
     print(f"Base URL: {base_url}")
     print(f"Channel: {channel}")

@@ -10,6 +10,10 @@ export interface GameManifest {
   icon_url?: string;
   banner_url?: string;
   executable: string;
+  /** Absolute directory the file `url`s are relative to. Present on manifests
+   * published with the version-stamped layout; older ones omit it and the client
+   * falls back to the flat channel directory. */
+  base_url?: string;
   files: FileEntry[];
   launch_args?: string[];
 }

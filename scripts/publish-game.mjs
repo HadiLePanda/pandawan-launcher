@@ -49,11 +49,18 @@ const { bucket, cdnOrigin, endpoint } = r2Config();
 const prefix = `games/${gameId}/${channel}`;
 const s3Prefix = S3.s3Uri(bucket, prefix);
 
+// Build bytes go under a version-stamped directory so the IMMUTABLE cache header
+// is truthful — a client's cached copy can never be stale, because the bytes at
+// that URL never change. The manifest stays at .../{channel}/manifest.json: it is
+// mutable and is the signal that a new build exists.
+const versionPrefix = `${prefix}/${args.version}`;
+
 console.log(`Game:     ${gameId}`);
 console.log(`Channel:  ${channel}`);
 console.log(`Version:  ${args.version} (build ${args['build-number']})`);
 console.log(`Source:   ${path.relative(repoRoot, inputDir) || '.'}`);
-console.log(`Target:   ${s3Prefix}`);
+console.log(`Target:   ${S3.s3Uri(bucket, versionPrefix)}`);
+console.log(`Manifest: ${S3.s3Uri(bucket, `${prefix}/manifest.json`)}`);
 
 const manifestArgs = [
   'scripts/generate-manifest.py',
@@ -83,8 +90,13 @@ for (const optional of ['description', 'patch-notes', 'icon-url', 'banner-url'])
 
 run('python', manifestArgs, 'Generating manifest');
 
-// Object names embed the version, so the bytes at a given URL never change.
-sync(inputDir, `${s3Prefix}/`, { endpoint, cacheControl: IMMUTABLE });
+// Files first, manifest last: the manifest is what tells a client a build
+// exists, so publishing it first would let someone resolve a manifest whose
+// files are not there yet.
+sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
+  endpoint,
+  cacheControl: IMMUTABLE,
+});
 
 // The manifest is mutable and is the signal that a build is available, so it is
 // uploaded last and never cached.

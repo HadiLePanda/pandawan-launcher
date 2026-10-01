@@ -34,9 +34,10 @@ vi.mock('./cdn', async () => {
       news: vi.fn(() => 'https://cdn.example.com/launcher/news.json'),
       withCacheBust: actual.CdnUrl.withCacheBust,
     },
+    // Tests of resolveBaseUrl need the real implementation, not this stub, so they
+    // import it through importActual below rather than from './cdn'.
     resolveGameUrls: vi.fn((id: string, channel: string = 'stable') => ({
       manifestUrl: `https://cdn.example.com/games/${id}/${channel}/manifest.json`,
-      baseUrl: `https://cdn.example.com/games/${id}/${channel}`,
     })),
     resolveGameInfo: vi.fn((entry, manifest) => ({
       id: entry.id,
@@ -132,7 +133,6 @@ describe('catalog-service', () => {
     service = await import('./catalog-service');
     (resolveGameUrls as Mock).mockImplementation((id: string, channel: string = 'stable') => ({
       manifestUrl: `https://cdn.example.com/games/${id}/${channel}/manifest.json`,
-      baseUrl: `https://cdn.example.com/games/${id}/${channel}`,
     }));
   });
 

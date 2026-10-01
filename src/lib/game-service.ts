@@ -9,7 +9,7 @@ import type {
   VerificationResult,
 } from '@/types';
 import { fetchGameManifest } from './catalog-service';
-import { resolveGameUrls } from './cdn';
+import { resolveBaseUrl, resolveGameUrls } from './cdn';
 
 export type { DownloadProgressSnapshot } from './download-channel';
 
@@ -29,10 +29,12 @@ export async function patchGame(
   channel: string,
   callbacks: PatchCallbacks
 ): Promise<PatchResult> {
-  const { manifestUrl, baseUrl } = resolveGameUrls(gameId, channel);
+  const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
   const downloadChannel = createDownloadChannel(gameId, callbacks);
-  const installation = unwrapResult(await commands.installGame(manifest, baseUrl, downloadChannel));
+  const installation = unwrapResult(
+    await commands.installGame(manifest, resolveBaseUrl(manifest), downloadChannel)
+  );
   return { manifest, installation };
 }
 
