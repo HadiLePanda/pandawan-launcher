@@ -42,6 +42,55 @@ body {
 .spacer {
   flex: 1;
 }
+
+/* Tabs ------------------------------------------------------------------ */
+
+/* Sitting in the top bar rather than a second row: the panels are the page, so
+   a tab strip that scrolls away with the content would be lost at exactly the
+   moment you need to switch. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: 20px;
+}
+
+.tab {
+  border: none;
+  background: transparent;
+  color: var(--ink-subtle);
+  padding: 6px 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.tab:hover {
+  background: var(--surface-2);
+  color: var(--ink-muted);
+}
+
+/* Selected state is carried by colour and a surface, not a moving underline:
+   an animated indicator on a bar that can scroll looks broken mid-transition. */
+.tab[aria-selected='true'] {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 1px;
+}
+
+/* hidden beats display:none for the panels because [hidden] is the default UA
+   rule; the attribute is also what the tab logic toggles. */
+.tabpanel[hidden] {
+  display: none;
+}
+
 .status {
   font-size: 12px;
   color: var(--ink-muted);
@@ -144,6 +193,13 @@ tr.behind td {
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
+
+/* A single field (the launcher tag) should not stretch to half a grid cell
+   while its neighbours keep two columns. */
+.grid.one {
+  grid-template-columns: 1fr;
+  max-width: 320px;
+}
 label {
   display: flex;
   flex-direction: column;
@@ -164,6 +220,26 @@ input {
 input:focus {
   outline: none;
   border-color: var(--action);
+}
+
+/* The select sits beside buttons in a row, so it needs the same height and
+   radius as a button or the row reads as two different controls. Without
+   color-scheme the native popup renders light-on-light and is unreadable. */
+select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 1px;
 }
 
 .platforms {

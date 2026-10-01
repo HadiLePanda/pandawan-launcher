@@ -260,13 +260,16 @@ function buildDownloadsIndex(release, base) {
       if (!known.has(item.label)) {
         throw new Error(
           `downloads.json: unexpected "${item.label}" on ${platform}. ` +
-            `Add it to the order map in buildDownloadsIndex so its position is deliberate.`,
+            `Add it to the order map in buildDownloadsIndex so its position is deliberate.`
         );
       }
     }
   }
 
-  return { version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version, platforms: groups };
+  return {
+    version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version,
+    platforms: groups,
+  };
 }
 
 const { bucket, endpoint } = r2Config();
@@ -276,9 +279,10 @@ console.log(`R2:    s3://${bucket}/${PREFIX}/`);
 
 const release = fetchAssets();
 const manifest = rewriteManifestUrls(release);
-const base = JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).platforms[
-  Object.keys(manifest.platforms)[0]
-].url.split('/').slice(0, -1).join('/');
+const base = JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8'))
+  .platforms[Object.keys(manifest.platforms)[0]].url.split('/')
+  .slice(0, -1)
+  .join('/');
 const downloads = buildDownloadsIndex(release, base);
 
 if (dryRun) {

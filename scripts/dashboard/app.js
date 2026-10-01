@@ -1,6 +1,45 @@
 const PLATFORMS = ['windows', 'macos', 'linux'];
 const $ = (id) => document.getElementById(id);
 
+// --- Tabs -----------------------------------------------------------------
+//
+// Panels are already in the DOM and hidden, so switching is attribute work
+// rather than a render pass. The chosen tab is kept in the hash so a reload
+// lands where you were: publishing is slow enough that losing your place
+// mid-task is annoying.
+
+function selectTab(name, { push = true } = {}) {
+  for (const tab of document.querySelectorAll('.tab')) {
+    tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+  }
+  for (const panel of document.querySelectorAll('.tabpanel')) {
+    panel.hidden = panel.dataset.panel !== name;
+  }
+
+  if (push && location.hash.slice(1) !== name) {
+    history.replaceState(null, '', `#${name}`);
+  }
+}
+
+for (const tab of document.querySelectorAll('.tab')) {
+  tab.addEventListener('click', () => selectTab(tab.dataset.tab));
+}
+
+document.addEventListener('keydown', (event) => {
+  // Arrow keys move between tabs, which is what a tablist is expected to do.
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  const tabs = [...document.querySelectorAll('.tab')];
+  const current = tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+  if (current === -1) return;
+
+  const step = event.key === 'ArrowRight' ? 1 : -1;
+  const next = tabs[(current + step + tabs.length) % tabs.length];
+  selectTab(next.dataset.tab);
+  next.focus();
+});
+
+selectTab(location.hash.slice(1) || 'overview', { push: false });
+
 function compare(versions) {
   const list = versions.filter(Boolean);
   if (list.length < 2) return null;

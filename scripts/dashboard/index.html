@@ -9,147 +9,143 @@
   <body>
     <header class="bar">
       <span class="brand">Pandawan Publish</span>
+      <nav class="tabs" role="tablist">
+        <button role="tab" class="tab" data-tab="overview" aria-selected="true">Overview</button>
+        <button role="tab" class="tab" data-tab="launcher" aria-selected="false">Launcher</button>
+        <button role="tab" class="tab" data-tab="games" aria-selected="false">Games</button>
+        <button role="tab" class="tab" data-tab="commands" aria-selected="false">Commands</button>
+      </nav>
       <span class="spacer"></span>
       <span id="status" class="status">connecting</span>
     </header>
 
     <main>
-      <section id="drift" class="drift" hidden></section>
-      <section id="inventory"></section>
+      <!-- Overview ------------------------------------------------------ -->
+      <section class="tabpanel" data-panel="overview" role="tabpanel">
+        <section id="drift" class="drift" hidden></section>
+        <section id="inventory"></section>
+      </section>
 
-      <section class="panel">
-        <h2>Publish a build</h2>
-        <form id="form">
-          <div class="grid">
-            <label>Game<input id="gameId" required placeholder="misspell" /></label>
-            <label>Channel<input id="channel" required placeholder="alpha" /></label>
-            <label>Version<input id="version" required placeholder="0.4.1-alpha.1" /></label>
-            <label
-              >Build number<input id="buildNumber" required type="number" placeholder="3"
-            /></label>
-            <label>Executable<input id="executable" required placeholder="misspell.exe" /></label>
-            <label
-              >Input directory<input id="inputDir" required placeholder="C:\...\builds\Windows"
-            /></label>
-          </div>
+      <!-- Launcher ------------------------------------------------------ -->
+      <section class="tabpanel" data-panel="launcher" role="tabpanel" hidden>
+        <section class="panel">
+          <h2>Publish</h2>
+          <div id="launcherState" class="state">loading…</div>
 
-          <fieldset class="platforms">
-            <legend>Platforms</legend>
-            <div class="grid">
-              <label>Windows<input id="winDir" placeholder="leave blank to skip" /></label>
-              <label>macOS<input id="macDir" placeholder="leave blank to skip" /></label>
-              <label>Linux<input id="linuxDir" placeholder="leave blank to skip" /></label>
+          <form id="launcherForm">
+            <div class="grid one">
+              <label
+                >Tag<input
+                  id="launcherTag"
+                  list="tagOptions"
+                  required
+                  placeholder="v0.1.0" /><datalist id="tagOptions"></datalist
+              ></label>
             </div>
-          </fieldset>
 
+            <div class="row">
+              <label class="confirm"
+                ><input id="launcherConfirm" type="checkbox" /> Upload to R2
+                <span class="tag warn">visible to players</span></label
+              >
+              <button type="submit">Publish</button>
+              <button type="button" id="launcherKeys">Check keys</button>
+            </div>
+          </form>
+          <pre id="launcherLog" class="log" hidden></pre>
+        </section>
+
+        <section class="panel">
+          <h2>New version</h2>
+          <p class="meta">Bumps the version, tags, and pushes — which starts the CI build.</p>
           <div class="row">
-            <button type="button" id="preview">Preview command</button>
-            <button type="submit" class="primary">Publish</button>
-          </div>
-        </form>
-
-        <pre id="previewOut" class="log" hidden></pre>
-        <pre id="log" class="log" hidden></pre>
-      </section>
-
-      <section class="panel">
-        <h2>Launcher release</h2>
-        <p class="meta">
-          The launcher ships through CI, not from here: a tag is pushed, all three platforms build
-          and sign, and only then is there something to publish. These actions cover the publish
-          half, which takes seconds rather than the ~25 minutes a build takes.
-        </p>
-
-        <div id="launcherState" class="state">loading…</div>
-
-        <form id="launcherForm">
-          <div class="grid">
-            <label
-              >Tag to publish
-              <input id="launcherTag" list="tagOptions" required placeholder="v0.1.0" />
-              <datalist id="tagOptions"></datalist>
-            </label>
-          </div>
-
-          <div class="row">
+            <select id="releaseLevel">
+              <option value="patch">patch</option>
+              <option value="minor">minor</option>
+              <option value="major">major</option>
+            </select>
             <label class="confirm"
-              ><input id="launcherConfirm" type="checkbox" /> Upload to R2
-              <span class="tag warn">visible to players</span></label
+              ><input id="releaseDryRun" type="checkbox" checked /> Preview only</label
             >
-            <button type="submit">Publish launcher</button>
-            <button type="button" id="launcherKeys">Check signing keys</button>
+            <button type="button" id="releaseRun">Bump and tag</button>
           </div>
-        </form>
-        <pre id="launcherLog" class="log" hidden></pre>
-
-        <h3>Start a new launcher version</h3>
-        <p class="meta">
-          Bumps the version in <span class="mono">package.json</span>,
-          <span class="mono">Cargo.toml</span> and <span class="mono">tauri.conf.json</span>, then
-          commits and pushes a tag, which triggers the CI build.
-        </p>
-        <div class="row">
-          <select id="releaseLevel">
-            <option value="patch">patch — 0.1.0 → 0.1.1</option>
-            <option value="minor">minor — 0.1.0 → 0.2.0</option>
-            <option value="major">major — 0.1.0 → 1.0.0</option>
-          </select>
-          <label class="confirm"
-            ><input id="releaseDryRun" type="checkbox" checked /> Preview only</label
-          >
-          <button type="button" id="releaseRun">Bump and tag</button>
-        </div>
-        <pre id="releaseLog" class="log" hidden></pre>
+          <pre id="releaseLog" class="log" hidden></pre>
+        </section>
       </section>
 
-      <section class="panel">
-        <h2>Publish catalog</h2>
-        <p class="meta">
-          Uploads public/catalog.json (and the news feed) to
-          <span class="mono">launcher/catalog.json</span>. New or changed games stay invisible to
-          the launcher until this runs.
-        </p>
-        <div class="row">
-          <button type="button" id="publishCatalog">Publish catalog</button>
-        </div>
-        <pre id="catalogLog" class="log" hidden></pre>
-      </section>
+      <!-- Games --------------------------------------------------------- -->
+      <section class="tabpanel" data-panel="games" role="tabpanel" hidden>
+        <section class="panel">
+          <h2>Publish a build</h2>
+          <form id="form">
+            <div class="grid">
+              <label>Game<input id="gameId" required placeholder="misspell" /></label>
+              <label>Channel<input id="channel" required placeholder="alpha" /></label>
+              <label>Version<input id="version" required placeholder="0.4.1-alpha.1" /></label>
+              <label>Build<input id="buildNumber" required type="number" placeholder="3" /></label>
+              <label>Executable<input id="executable" required placeholder="misspell.exe" /></label>
+              <label
+                >Input directory<input id="inputDir" required placeholder="C:\...\builds\Windows"
+              /></label>
+            </div>
 
-      <section class="panel">
-        <h2>Prune old builds</h2>
-        <form id="pruneForm">
-          <div class="grid">
-            <label>Game<input id="pruneGameId" required placeholder="misspell" /></label>
-            <label>Channel<input id="pruneChannel" required placeholder="alpha" /></label>
-            <label
-              >Keep newest<input id="pruneKeep" required type="number" min="1" step="1" value="3"
-            /></label>
-          </div>
+            <fieldset class="platforms">
+              <legend>Platform directories — blank to skip</legend>
+              <div class="grid">
+                <label>Windows<input id="winDir" /></label>
+                <label>macOS<input id="macDir" /></label>
+                <label>Linux<input id="linuxDir" /></label>
+              </div>
+            </fieldset>
 
-          <p class="meta">
-            Permanently deletes every build but the newest
-            <span class="mono">N</span>. Manifest-pinned builds are never deleted. Starts as a dry
-            run — tick the box to actually delete.
-          </p>
+            <div class="row">
+              <button type="button" id="preview">Preview</button>
+              <button type="submit" class="primary">Publish</button>
+            </div>
+          </form>
 
+          <pre id="previewOut" class="log" hidden></pre>
+          <pre id="log" class="log" hidden></pre>
+        </section>
+
+        <section class="panel">
+          <h2>Prune builds</h2>
+          <form id="pruneForm">
+            <div class="grid">
+              <label>Game<input id="pruneGameId" required placeholder="misspell" /></label>
+              <label>Channel<input id="pruneChannel" required placeholder="alpha" /></label>
+              <label
+                >Keep newest<input id="pruneKeep" required type="number" min="1" step="1" value="3"
+              /></label>
+            </div>
+
+            <div class="row">
+              <label class="confirm"
+                ><input id="pruneConfirm" type="checkbox" /> Delete for real
+                <span class="tag warn">irreversible</span></label
+              >
+              <button type="submit">Run prune</button>
+            </div>
+          </form>
+          <pre id="pruneLog" class="log" hidden></pre>
+        </section>
+
+        <section class="panel">
+          <h2>Catalog</h2>
+          <p class="meta">New and changed games stay invisible to the launcher until this runs.</p>
           <div class="row">
-            <label class="confirm"
-              ><input id="pruneConfirm" type="checkbox" /> Delete for real
-              <span class="tag warn">irreversible</span></label
-            >
-            <button type="submit">Run prune</button>
+            <button type="button" id="publishCatalog">Publish catalog</button>
           </div>
-        </form>
-        <pre id="pruneLog" class="log" hidden></pre>
+          <pre id="catalogLog" class="log" hidden></pre>
+        </section>
       </section>
-      <section class="panel">
-        <h2>Command reference</h2>
-        <p class="meta">
-          Every command this project uses, for copy-paste into a terminal. The forms above do the
-          same things without the typing.
-        </p>
-        <input id="cmdFilter" placeholder="Filter commands…" autocomplete="off" />
-        <div id="cmdList"></div>
+
+      <!-- Commands ------------------------------------------------------ -->
+      <section class="tabpanel" data-panel="commands" role="tabpanel" hidden>
+        <section class="panel">
+          <input id="cmdFilter" placeholder="Filter commands" autocomplete="off" />
+          <div id="cmdList"></div>
+        </section>
       </section>
     </main>
 
