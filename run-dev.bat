@@ -60,10 +60,12 @@ echo.
 echo Starting dev launcher. First run compiles the Rust tree - this takes a
 echo few minutes. Output is shown below and mirrored to dev-launch.log.
 echo.
-REM `*>&1` merges stderr into stdout so both reach the terminal and the log.
-REM `npm.cmd` not `npm`: PowerShell prefers the npm.ps1 shim, which this machine's
-REM execution policy blocks (PSSecurityException). The .cmd wrapper is not gated.
-powershell -NoProfile -Command "& { npm.cmd run tauri:dev *>&1 | Tee-Object -FilePath '%LOG%' }"
+REM Merge stderr into stdout inside cmd, before PowerShell sees the output.
+REM PowerShell wraps a native command's stderr in a NativeCommandError record,
+REM which floods the window with red RemoteException noise for output that is
+REM perfectly normal (cargo progress, vite banners). Piping cmd's merged stream
+REM keeps stderr out of PowerShell's error stream while still reaching the log.
+powershell -NoProfile -Command "& { cmd /c 'npm run tauri:dev 2>&1' | Tee-Object -FilePath '%LOG%' }"
 
 REM `npm run tauri:dev` is normally long-lived. Reaching here means it stopped.
 echo.

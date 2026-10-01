@@ -37,9 +37,10 @@ REM `tauri dev` here would never return: it stays alive hosting the vite server.
 echo Building debug launcher (first build takes several minutes)...
 call npm run --silent sync:updater-key
 if errorlevel 1 goto :fail
-REM `npm.cmd` not `npm`: PowerShell prefers the npm.ps1 shim, which this machine's
-REM execution policy blocks (PSSecurityException). The .cmd wrapper is not gated.
-powershell -NoProfile -Command "& { npm.cmd exec -- tauri build --debug --no-bundle *>&1 | Tee-Object -FilePath '%LOG%' }"
+REM Merge stderr into stdout inside cmd, before PowerShell sees the output. PowerShell
+REM wraps a native command's stderr in NativeCommandError records, which flood the
+REM window with red noise for output that is normal (cargo progress bars).
+powershell -NoProfile -Command "& { cmd /c 'npm exec -- tauri build --debug --no-bundle 2>&1' | Tee-Object -FilePath '%LOG%' }"
 REM Tee-Object defaults to UTF-16, which findstr refuses to read and which makes
 REM the log awkward to open in an editor. Re-encode it to UTF-8.
 powershell -NoProfile -Command "Get-Content '%LOG%' | Set-Content '%LOG%.utf8' -Encoding utf8"
