@@ -9,6 +9,7 @@ import {
   MoreVertical,
   Clock,
   HardDrive,
+  Newspaper,
 } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
@@ -48,26 +49,18 @@ interface GamePageProps {
 type Translate = (key: string) => string;
 
 /**
- * Display form of a version for the info modal, which has no banner to carry a
- * channel mark. On a prerelease channel the semver suffix already says it, so the
- * suffix is dropped and the channel named instead - otherwise the modal read
- * "ALPHA 0.4.0-alpha.1", the same fact twice.
+ * Display form of a version. Always prefixed with `v`, and named by channel on a
+ * prerelease: "ALPHA v0.4.0". On stable the channel is implied by the absence of
+ * a suffix, so it says only "v0.4.0" rather than the redundant "RELEASE v0.4.0".
  *
- * Channel names are always written as literal translation calls in this file.
- * The i18n coverage test discovers keys by scanning source for that exact call
- * shape, so a template string or an indirection through a helper makes a key
- * look both missing and unused. It also scans comments, so do not paste a
- * sample call into prose either. See src/lib/i18n-coverage.test.ts.
+ * The semver prerelease suffix is dropped because the channel name already
+ * carries it - "ALPHA v0.4.0-alpha.1" stated the same thing twice.
  */
 function versionText(t: Translate, channel: string, version: string): string {
-  if (channel === 'stable') return version;
-  const label =
-    channel === 'alpha'
-      ? t('gamePage.channelMenu.alpha')
-      : channel === 'beta'
-        ? t('gamePage.channelMenu.beta')
-        : '';
-  return label ? `${label} ${version.split('-')[0]}` : version;
+  const v = `v${version.split('-')[0]}`;
+  if (channel === 'alpha') return `${t('gamePage.channelMenu.alpha').toUpperCase()} ${v}`;
+  if (channel === 'beta') return `${t('gamePage.channelMenu.beta').toUpperCase()} ${v}`;
+  return v;
 }
 
 /**
@@ -319,7 +312,11 @@ export function GamePage({
                   // The menu positions its own left edge, so passing rect.left keeps
                   // it flush beneath the icon instead of drifting toward the
                   // centre of the window.
-                  setMenuAnchor({ x: rect.left, y: rect.bottom + 6, placement: 'below' });
+                  const next = { x: rect.left, y: rect.bottom + 6, placement: 'below' as const };
+                  // Toggle: clicking the button that opened the menu closes it
+                  // again. Re-measuring first means the same click closes rather
+                  // than re-anchoring the menu where it already is.
+                  setMenuAnchor((current) => (current ? null : next));
                 }
               }}
               className="game-detail-menu-btn"
@@ -374,33 +371,39 @@ export function GamePage({
           {/* Icon-led metadata. "Version" and "Size" above each value told the
               reader what they were already looking at, and the labels broke the
               line into a list. The icon carries the meaning; the value stands
-              alone. Version drops the channel prefix because the banner badge
-              already says it. */}
+              alone. Full value stays in the tooltip.
+
+              The version is pushed to the far right with margin-left:auto so it
+              reads as the build identity at the end of the line rather than
+              crowding the size next to it. */}
           <div className="game-detail-meta">
-            {showSize && (
-              <span className="game-detail-chip" title={t('gamePage.size')}>
-                <HardDrive className="w-3.5 h-3.5" aria-hidden="true" />
-                {formatBytes(game.info.sizeBytes)}
-              </span>
-            )}
-            {game.installation && game.status !== 'not_installed' && (
-              <span
-                className="game-detail-chip"
-                title={`${t('gamePage.playtimeLabel')} ${formatPlaytimeDecimal(
-                  game.installation.total_playtime_seconds
-                )}`}
-              >
-                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
-              </span>
-            )}
-            {game.installation && game.status !== 'not_installed' && (
-              <span className="game-detail-chip" title={t('gamePage.lastPlayedLabel')}>
-                {getTimeAgo(game.installation.last_played)}
-              </span>
-            )}
-            <span className="game-detail-chip" title={t('gamePage.version')}>
-              {game.info.version}
+            <div className="game-detail-meta-facts">
+              {showSize && (
+                <span className="game-detail-chip" title={t('gamePage.size')}>
+                  <HardDrive className="w-3.5 h-3.5" aria-hidden="true" />
+                  {formatBytes(game.info.sizeBytes)}
+                </span>
+              )}
+              {game.installation && game.status !== 'not_installed' && (
+                <span
+                  className="game-detail-chip"
+                  title={`${t('gamePage.playtimeLabel')} ${formatPlaytimeDecimal(
+                    game.installation.total_playtime_seconds
+                  )}`}
+                >
+                  <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                  {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
+                </span>
+              )}
+              {game.installation && game.status !== 'not_installed' && (
+                <span className="game-detail-chip" title={t('gamePage.lastPlayedLabel')}>
+                  {getTimeAgo(game.installation.last_played)}
+                </span>
+              )}
+            </div>
+            {/* Pinned to the right by .game-detail-version's margin-left:auto. */}
+            <span className="game-detail-chip game-detail-version">
+              {versionText(t, channel, game.info.version)}
             </span>
           </div>
         </div>
@@ -458,7 +461,13 @@ export function GamePage({
             ))}
           </div>
         ) : (
-          <p className="game-detail-news-empty">{t('gamePage.noNewsForGame')}</p>
+          // An aside that collapses to nothing leaves a bare 420px column beside
+          // the game, which reads as a layout bug. A quiet icon and two words
+          // keep it contextual without pretending there is something to read.
+          <div className="game-detail-news-empty">
+            <Newspaper className="w-6 h-6" aria-hidden="true" />
+            <span>{t('gamePage.noNewsForGame')}</span>
+          </div>
         )}
       </aside>
 

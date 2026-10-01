@@ -199,6 +199,11 @@ export function MainNav({
     // grab area between the logo and the right-hand buttons.
     <div className="main-nav" data-tauri-drag-region>
       <div className="cluster cluster-md no-drag">
+        {/* Aligned above the "All games" grid button in the bar below, so the two
+            read as a single column. See .app-logo for the offset arithmetic. */}
+        <div className="app-logo">
+          <img src="/logo-circle-p.png" alt="Pandawan Launcher" className="app-logo-image" />
+        </div>
         <div className="nav-arrows">
           <button
             type="button"

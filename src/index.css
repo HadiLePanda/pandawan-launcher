@@ -446,19 +446,6 @@ body {
   overflow-y: auto;
 }
 
-.filters-panel-brand {
-  display: flex;
-  justify-content: center;
-  padding-bottom: 2px;
-}
-
-.filters-panel-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: contain;
-}
-
 /* No build for this OS. Dimmed and desaturated so the row is still legible and
    still present - a Mac player should be able to see that Misspell exists and
    read why they cannot install it, not find it silently missing. */
@@ -1270,15 +1257,21 @@ input[type='search']::placeholder {
   align-items: center;
 }
 
+/* The launcher mark, back in the nav to the left of the < > arrows.
+   Sized and offset to sit directly above the "All games" grid button in the
+   games bar below, so the two read as one column: the bar's own margin+padding
+   puts its first icon at 26px with a 44px box, and this matches both. */
 .app-logo {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  margin-left: 26px;
+  margin-right: 10px;
 }
 
 .app-logo-image {
@@ -2220,6 +2213,14 @@ input[type='search']::placeholder {
   border-bottom: none;
 }
 
+/* The generic body uses 1.5rem while the header uses 1.25rem, so the content
+   sat 4px further in than the title above it and the first row read as
+   misaligned. Here both share the header's rhythm, and the body's own top
+   padding is dropped so it does not open a second gap under the title. */
+.game-details-modal .modal-body {
+  padding: 0 1.25rem 1.25rem;
+}
+
 .game-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2640,6 +2641,15 @@ input.pin-search {
   color: var(--red-300);
 }
 
+/* Empty library. Fills the area and centres within it, so the message sits on the
+   true middle of the panel rather than in a padded box that is merely near it. */
+.games-page-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -2802,9 +2812,12 @@ input.pin-search {
   transition: filter 0.15s ease;
 }
 
+/* Full pill on its own now. It was the left half of a split button whose right
+   half (the options button) moved to the banner, which left the right edge
+   square and visibly cut. */
 .game-detail-play-btn {
   min-width: 160px;
-  border-radius: 6px 0 0 6px;
+  border-radius: 6px;
 }
 
 /* Banner-corner tools: channel settings and the options menu. Both are "what
@@ -2921,6 +2934,26 @@ input.pin-search {
 
 .game-channel-dot-alpha {
   background: #d946ef;
+}
+
+/* Facts on the left, version pinned to the right. Two groups rather than one row
+   so the version lands at the far edge instead of sitting next to the size. */
+.game-detail-meta-facts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.game-detail-meta-facts .game-detail-chip + .game-detail-chip {
+  margin-left: 0;
+}
+
+.game-detail-version {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 /* Icon-led metadata chips. No labels: the icon carries the meaning. */
@@ -3124,26 +3157,54 @@ input.pin-search {
   color: var(--ink-default);
 }
 
+/* Centred in the column it occupies. The wrapper used to centre the block while
+   the block itself padded asymmetrically, which pushed the text off-centre. */
+.game-detail-news-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
+  min-height: 160px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.game-detail-news-empty svg {
+  opacity: 0.35;
+}
+
 .game-detail-news-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
+/* No card background. The aside sits beside the game's own content, and a filled
+   panel per article made it read as a fourth surface competing with the banner.
+   The image carries the shape; a hairline and a hover tint carry the click. */
 .game-detail-news-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
+  gap: 8px;
+  padding: 0 0 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
   cursor: pointer;
-  transition: background 0.15s ease;
+  text-align: left;
+  transition: opacity 0.15s ease;
+}
+
+.game-detail-news-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .game-detail-news-card:hover {
-  background: var(--surface-hover);
+  opacity: 0.75;
 }
 
 .game-detail-news-thumb {

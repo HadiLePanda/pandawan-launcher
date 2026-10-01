@@ -90,7 +90,7 @@
     "unavailableOnPlatform": "Not available on this device"
   },
   "gamesPage": {
-    "emptyDescription": "Every game in the catalog is here, so there is nothing to show. Clear the filters to see them.",
+    "emptyDescription": "Clear the filters to see them.",
     "emptyTitle": "No Games Yet"
   },
   "news": {

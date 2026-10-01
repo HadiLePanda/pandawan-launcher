@@ -57,13 +57,6 @@ export function FiltersPanel({ games, filters, onFilterChange }: FiltersPanelPro
 
   return (
     <aside className="filters-panel no-drag">
-      {/* The launcher mark heads the sidebar rather than the top nav, so it sits
-          directly above the "All" filter and reads as labelling this column of
-          the app. In the nav it was separated from everything it refers to and
-          pushed the tab row off-centre. */}
-      <div className="filters-panel-brand">
-        <img src="/logo-circle-p.png" alt="Pandawan Launcher" className="filters-panel-logo" />
-      </div>
       <div className="filter-search-row">
         <input
           type="search"
