@@ -73,6 +73,33 @@ KNOWN_CHANNELS = ("stable", "beta", "alpha")
 DEFAULT_CHANNEL = "stable"
 
 
+def channel_from_version(version: str) -> str:
+    """Derive the release channel from a semver prerelease tag.
+
+    Deriving it removes a parameter that could contradict the version string:
+    the publisher cannot accidentally ship 0.4.0-alpha.1 labelled `stable`.
+    An unrecognised prerelease is an error rather than a silent `stable`,
+    because a typo like "0.4.0-alfa.1" would otherwise mislabel a test build
+    as a stable release for every player.
+    """
+    if "-" not in version:
+        return DEFAULT_CHANNEL
+
+    prerelease = version.split("-", 1)[1].lower()
+    if "." in prerelease:
+        prerelease = prerelease.split(".", 1)[0]
+
+    if prerelease in KNOWN_CHANNELS:
+        return prerelease
+    if prerelease == "rc":
+        return "beta"
+    raise ValueError(
+        f"Cannot derive a channel from version {version!r}: unknown prerelease "
+        f"{prerelease!r}. Use one of {', '.join(KNOWN_CHANNELS)} or 'rc', or drop "
+        "the prerelease for a stable build."
+    )
+
+
 def load_patch_notes(path: Path | None) -> list | None:
     if not path:
         return None
@@ -90,14 +117,16 @@ def generate_manifest(args) -> dict:
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
-    # Fail loudly on an unknown channel. The launcher treats anything it does
-    # not recognise as `stable`, so a typo like "alfa" would otherwise ship a
-    # build silently labelled as a stable release.
-    channel = args.channel or DEFAULT_CHANNEL
-    if channel not in KNOWN_CHANNELS:
+    # The channel is derived from the version so the two can never disagree. An
+    # explicit --channel is accepted only when it matches, which turns a
+    # mismatch into an error instead of a mislabelled build.
+    derived = channel_from_version(args.version)
+    if args.channel and args.channel != derived:
         raise ValueError(
-            f"Unknown channel {channel!r}. Expected one of: {', '.join(KNOWN_CHANNELS)}"
+            f"Channel {args.channel!r} does not match version {args.version!r}, "
+            f"which implies {derived!r}. Omit --channel to use the derived value."
         )
+    channel = derived
 
     base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}"
 
@@ -147,7 +176,15 @@ def main():
     parser.add_argument("--build-number", type=int, required=True, help="Build number")
     parser.add_argument("--executable", required=True, help="Main executable filename")
     parser.add_argument("--cdn-origin", required=True, help="CDN origin, e.g. https://cdn.pandawancorp.com")
-    parser.add_argument("--channel", default="stable", help="Release channel (default: stable)")
+    parser.add_argument(
+        "--channel",
+        default=None,
+        help=(
+            "Release channel. Derived from the version prerelease when omitted "
+            "(0.4.0-alpha.3 -> alpha, plain 1.0.0 -> stable); passing a value "
+            "that contradicts the version is an error."
+        ),
+    )
     parser.add_argument("--input-dir", required=True, help="Folder containing the built game")
     parser.add_argument("--output", default="manifest.json", help="Output manifest path")
     parser.add_argument("--description", default=None, help="Short game description")
