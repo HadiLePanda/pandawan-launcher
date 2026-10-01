@@ -256,17 +256,14 @@
   },
   "verifyGameModal": {
     "allValid": "Tous les fichiers ont été vérifiés avec succès.",
-    "fileInvalid": "{{path}} (invalide)",
-    "fileMissing": "{{path}} (manquant)",
     "needsRepair": "Certains fichiers doivent être réparés.",
-    "problemFiles": "Fichiers problématiques",
+    "progress": "{{checked}} fichiers sur {{total}}",
     "stats": {
       "invalid": "Invalides",
       "missing": "Manquants",
       "valid": "Valides"
     },
-    "title": "Vérifier les fichiers — {{game}}",
-    "verifying": "Vérification de l'intégrité de l'installation…"
+    "title": "Vérifier les fichiers — {{game}}"
   },
   "windowControls": {
     "close": "Fermer",

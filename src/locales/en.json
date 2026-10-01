@@ -256,17 +256,14 @@
   },
   "verifyGameModal": {
     "allValid": "All files verified successfully.",
-    "fileInvalid": "{{path}} (invalid)",
-    "fileMissing": "{{path}} (missing)",
     "needsRepair": "Some files need repair.",
-    "problemFiles": "Problem files",
+    "progress": "{{checked}} of {{total}} files",
     "stats": {
       "invalid": "Invalid",
       "missing": "Missing",
       "valid": "Valid"
     },
-    "title": "Verify Files — {{game}}",
-    "verifying": "Verifying installation integrity…"
+    "title": "Verify Files — {{game}}"
   },
   "windowControls": {
     "close": "Close",

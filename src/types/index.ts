@@ -1,3 +1,20 @@
+export type FileCheck = 'valid' | 'invalid' | 'missing';
+
+export interface VerifyFileRow {
+  path: string;
+  state: FileCheck;
+}
+
+export interface VerifyProgress {
+  path: string;
+  state: FileCheck;
+  checked: number;
+  total: number;
+  valid: number;
+  invalid: number;
+  missing: number;
+}
+
 export interface GameManifest {
   game_id: string;
   name: string;

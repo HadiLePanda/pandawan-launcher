@@ -1,8 +1,8 @@
 use crate::download::{DownloadError, DownloadManager, FileDownloadTask};
 use crate::path_utils::{assert_path_inside, safe_join, validate_download_url, validate_game_id};
 use crate::types::{
-    DownloadEvent, FileEntry, GameInstallation, GameManifest, LauncherError, PatchProgress,
-    PatchState, PatchStatus,
+    DownloadEvent, FileCheck, FileEntry, GameInstallation, GameManifest, LauncherError,
+    PatchProgress, PatchState, PatchStatus, VerifyProgress,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -259,30 +259,46 @@ impl PatchManager {
         &self,
         manifest: &GameManifest,
         install_path: &Path,
+        on_event: Option<&Channel<VerifyProgress>>,
     ) -> Result<VerificationResult, PatchError> {
         let mut valid_files = 0;
         let mut invalid_files = Vec::new();
         let mut missing_files = Vec::new();
+        let total = manifest.files.len();
 
-        for file_entry in &manifest.files {
+        for (index, file_entry) in manifest.files.iter().enumerate() {
             let file_path = safe_join(install_path, &file_entry.path)?;
 
-            if !file_path.exists() {
+            let (state, _) = if !file_path.exists() {
                 missing_files.push(file_entry.path.clone());
-                continue;
-            }
-
-            match compute_file_hash(&file_path).await {
-                Ok(hash) => {
-                    if hash == file_entry.hash {
+                (FileCheck::Missing, false)
+            } else {
+                match compute_file_hash(&file_path).await {
+                    Ok(hash) if hash == file_entry.hash => {
                         valid_files += 1;
-                    } else {
+                        (FileCheck::Valid, true)
+                    }
+                    Ok(_) => {
                         invalid_files.push(file_entry.path.clone());
+                        (FileCheck::Invalid, false)
+                    }
+                    Err(_) => {
+                        invalid_files.push(file_entry.path.clone());
+                        (FileCheck::Invalid, false)
                     }
                 }
-                Err(_) => {
-                    invalid_files.push(file_entry.path.clone());
-                }
+            };
+
+            if let Some(channel) = on_event {
+                let _ = channel.send(VerifyProgress {
+                    path: file_entry.path.clone(),
+                    state,
+                    checked: index + 1,
+                    total,
+                    valid: valid_files,
+                    invalid: invalid_files.len(),
+                    missing: missing_files.len(),
+                });
             }
         }
 
@@ -1006,7 +1022,7 @@ mod tests {
 
         let manager = PatchManager::new(4, None);
         let result = manager
-            .verify_installation(&manifest, install_path)
+            .verify_installation(&manifest, install_path, None)
             .await
             .unwrap();
 
@@ -1048,7 +1064,7 @@ mod tests {
 
         let manager = PatchManager::new(4, None);
         let result = manager
-            .verify_installation(&manifest, install_path)
+            .verify_installation(&manifest, install_path, None)
             .await
             .unwrap();
 
@@ -1079,7 +1095,7 @@ mod tests {
 
         let manager = PatchManager::new(4, None);
         let result = manager
-            .verify_installation(&manifest, install_path)
+            .verify_installation(&manifest, install_path, None)
             .await
             .unwrap();
 
@@ -1099,7 +1115,7 @@ mod tests {
 
         let manager = PatchManager::new(4, None);
         let result = manager
-            .verify_installation(&manifest, install_path)
+            .verify_installation(&manifest, install_path, None)
             .await
             .unwrap();
 
@@ -1256,7 +1272,9 @@ mod tests {
         }];
 
         let manager = PatchManager::new(4, None);
-        let result = manager.verify_installation(&manifest, install_path).await;
+        let result = manager
+            .verify_installation(&manifest, install_path, None)
+            .await;
         assert!(result.is_err());
     }
 

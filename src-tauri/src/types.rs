@@ -54,6 +54,36 @@ pub struct PlatformBuild {
     pub size_bytes: Option<u64>,
 }
 
+/// How one file fared during verification.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FileCheck {
+    Valid,
+    Invalid,
+    Missing,
+}
+
+/// One file's verification result, emitted as it is computed.
+///
+/// Verification hashes every file in the build, which takes seconds on anything
+/// the size of Misspell. Returning only a final aggregate left the dialog blank
+/// for that whole time with no way to tell it apart from a hang.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct VerifyProgress {
+    pub path: String,
+    pub state: FileCheck,
+    #[specta(type = u32)]
+    pub checked: usize,
+    #[specta(type = u32)]
+    pub total: usize,
+    #[specta(type = u32)]
+    pub valid: usize,
+    #[specta(type = u32)]
+    pub invalid: usize,
+    #[specta(type = u32)]
+    pub missing: usize,
+}
+
 /// Individual file entry in manifest
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct FileEntry {

@@ -26,9 +26,13 @@ export const commands = {
   checkGameUpdate: (gameId: string, manifest: GameManifest) =>
     typedError<boolean, LauncherError>(__TAURI_INVOKE('check_game_update', { gameId, manifest })),
 
-  verifyGame: (manifest: GameManifest, installPath: string) =>
+  verifyGame: (
+    manifest: GameManifest,
+    installPath: string,
+    onEvent: Channel<VerifyProgress>
+  ) =>
     typedError<VerificationResult, LauncherError>(
-      __TAURI_INVOKE('verify_game', { manifest, installPath })
+      __TAURI_INVOKE('verify_game', { manifest, installPath, onEvent })
     ),
 
   launchGame: (gameId: string) =>
@@ -190,6 +194,19 @@ export type VerificationResult = {
   invalid_files: string[];
   missing_files: string[];
   is_valid: boolean;
+};
+
+/** How one file fared. Mirrors FileCheck in src-tauri/src/types.rs. */
+export type FileCheck = 'valid' | 'invalid' | 'missing';
+
+export type VerifyProgress = {
+  path: string;
+  state: FileCheck;
+  checked: number;
+  total: number;
+  valid: number;
+  invalid: number;
+  missing: number;
 };
 
 /* Tauri Specta runtime */

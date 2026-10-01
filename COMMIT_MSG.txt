@@ -1,0 +1,1 @@
+feat: live per-file verification list with animated counters

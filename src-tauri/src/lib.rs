@@ -68,10 +68,7 @@ fn get_default_games_path() -> PathBuf {
 /// playtime recording still fire as they would on a normal exit.
 #[tauri::command]
 #[specta::specta]
-async fn close_game(
-    state: State<'_, LauncherState>,
-    game_id: String,
-) -> Result<(), LauncherError> {
+async fn close_game(state: State<'_, LauncherState>, game_id: String) -> Result<(), LauncherError> {
     let child = {
         let mut running = state.running_games.lock().await;
         running.remove(&game_id)
@@ -273,6 +270,7 @@ async fn verify_game(
     state: State<'_, LauncherState>,
     manifest: GameManifest,
     install_path: PathBuf,
+    on_event: Channel<VerifyProgress>,
 ) -> Result<patch::VerificationResult, LauncherError> {
     let allowed_root = {
         let settings = state.settings.lock().await;
@@ -285,7 +283,7 @@ async fn verify_game(
 
     Ok(state
         .patch_manager
-        .verify_installation(&manifest, &install_path)
+        .verify_installation(&manifest, &install_path, Some(&on_event))
         .await?)
 }
 

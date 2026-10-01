@@ -1,4 +1,6 @@
 import { commands } from './commands';
+import { Channel } from '@tauri-apps/api/core';
+import type { VerifyProgress } from '@/types';
 import { createDownloadChannel, type DownloadProgressSnapshot } from './download-channel';
 import { unwrapResult } from './errors';
 import type {
@@ -102,14 +104,23 @@ export async function checkForUpdates(gameId: string, channel: string): Promise<
   return unwrapResult(await commands.checkGameUpdate(gameId, manifest));
 }
 
-export async function verifyGame(gameId: string, channel: string): Promise<VerificationResult> {
+export async function verifyGame(
+  gameId: string,
+  channel: string,
+  onProgress?: (row: VerifyProgress) => void
+): Promise<VerificationResult> {
   const installation = unwrapResult(await commands.getGameInstallation(gameId));
   if (!installation) {
     throw new Error('Game is not installed');
   }
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
-  return unwrapResult(await commands.verifyGame(manifest, installation.install_path));
+
+  const channelHandle = new Channel<VerifyProgress>();
+  channelHandle.onmessage = (row) => onProgress?.(row);
+  return unwrapResult(
+    await commands.verifyGame(manifest, installation.install_path, channelHandle)
+  );
 }
 
 export async function loadInstalledGames(): Promise<GameInstallation[]> {

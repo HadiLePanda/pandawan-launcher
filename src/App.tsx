@@ -29,7 +29,7 @@ import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
 import { startCatalogPoll, type CatalogPollHandle } from '@/lib/cdn';
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
-import type { Game, VerificationResult } from '@/types';
+import type { Game, VerificationResult, VerifyProgress } from '@/types';
 
 declare global {
   interface Window {
@@ -45,6 +45,7 @@ function App() {
   const [isCatalogStale, setIsCatalogStale] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
+  const [verifyRows, setVerifyRows] = useState<VerifyProgress[]>([]);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
@@ -322,8 +323,11 @@ function App() {
     setVerifyTarget(game);
     setVerifyResult(null);
     setVerifyError(null);
+    setVerifyRows([]);
     try {
-      const result = await gameService.verifyGame(gameId, game.info.channel);
+      const result = await gameService.verifyGame(gameId, game.info.channel, (row) =>
+        setVerifyRows((prev) => [...prev, row])
+      );
       setVerifyResult(result);
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : String(err));
@@ -560,10 +564,12 @@ function App() {
         game={verifyTarget}
         result={verifyResult}
         error={verifyError}
+        rows={verifyRows}
         onClose={() => {
           setVerifyTarget(null);
           setVerifyResult(null);
           setVerifyError(null);
+          setVerifyRows([]);
         }}
       />
     </div>
