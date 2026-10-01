@@ -11,6 +11,8 @@ import {
   SunMoon,
   RefreshCw,
   User,
+  Check,
+  Copy,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import { appLogDir } from '@tauri-apps/api/path';
@@ -159,6 +161,34 @@ interface TabProps {
 
 function GeneralSettings({ settings, onChange }: TabProps) {
   const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  // The path is often long enough to clip, and users need it for support,
+  // moving installs, and checking free space. Showing it truncated with no way to
+  // read the whole thing was the gap.
+  const installPath = settings.gamesInstallPath ?? '';
+  const resolvedPath = installPath || t('settings.general.installLocation.defaultPath');
+
+  const handleCopy = async () => {
+    if (!installPath) return;
+    try {
+      await navigator.clipboard.writeText(installPath);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch (err) {
+      logger.error('Failed to copy install path', { error: String(err) });
+    }
+  };
+
+  const handleOpenFolder = async () => {
+    if (!installPath) return;
+    try {
+      await open(installPath);
+    } catch (err) {
+      logger.error('Failed to open install folder', { path: installPath, error: String(err) });
+    }
+  };
+
   const handleBrowse = async () => {
     try {
       const selected = await gameService.selectInstallFolder();
@@ -177,13 +207,41 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         title={t('settings.general.installLocation.title')}
         description={t('settings.general.installLocation.description')}
       >
-        <div className="cluster cluster-md">
-          <div className="install-path-box">
-            {settings.gamesInstallPath || t('settings.general.installLocation.defaultPath')}
+        <div className="install-path-row">
+          {/* Full path, wrapped across lines rather than clipped: a path you
+              cannot read in full is a path you cannot copy or report. */}
+          <div className="install-path-box" title={resolvedPath}>
+            {resolvedPath}
           </div>
-          <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
-            {t('settings.general.installLocation.browse')}
-          </button>
+          <div className="cluster cluster-sm">
+            {installPath && (
+              <>
+                <button
+                  onClick={handleOpenFolder}
+                  className="btn btn-secondary btn-sm"
+                  title={t('settings.general.installLocation.openFolder')}
+                  aria-label={t('settings.general.installLocation.openFolder')}
+                >
+                  <Folder className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="btn btn-secondary btn-sm"
+                  title={t('settings.general.installLocation.copyPath')}
+                  aria-label={t('settings.general.installLocation.copyPath')}
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-action" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </>
+            )}
+            <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
+              {t('settings.general.installLocation.browse')}
+            </button>
+          </div>
         </div>
       </SettingItem>
 

@@ -83,13 +83,20 @@ export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined
 
   const displayedRef = useRef(target);
   const samplesRef = useRef<Array<{ at: number; bytes: number }>>([]);
+  // The bytes for the current snapshot, held in a ref so the animation effect
+  // does not depend on the snapshot object. It is a fresh object on every
+  // backend event, so depending on it would restart the loop several times a
+  // second and the easing would never get anywhere.
+  const bytesRef = useRef(snapshot?.downloadedBytes ?? 0);
 
   useEffect(() => {
-    if (snapshot) {
-      samplesRef.current.push({ at: Date.now(), bytes: snapshot.downloadedBytes });
-      // Keep a short window; older samples describe a transfer that is done.
-      if (samplesRef.current.length > 12) samplesRef.current.shift();
-    }
+    bytesRef.current = snapshot?.downloadedBytes ?? 0;
+  }, [snapshot?.downloadedBytes]);
+
+  useEffect(() => {
+    samplesRef.current.push({ at: Date.now(), bytes: bytesRef.current });
+    // Keep a short window; older samples describe a transfer that is done.
+    if (samplesRef.current.length > 12) samplesRef.current.shift();
 
     let frame = 0;
     const step = () => {
@@ -115,6 +122,11 @@ export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined
 
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
+    // Deliberately keyed on the reported percentage rather than the whole
+    // snapshot object: the snapshot is a fresh object on every backend event, so
+    // depending on it would restart the animation loop several times a second
+    // and the easing would never get anywhere. The sample push reads only the
+    // bytes, which change exactly when `target` does.
   }, [target]);
 
   // ETA from average throughput across the sample window.

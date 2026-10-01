@@ -77,13 +77,14 @@
     "patchNotes": "Notes de patch",
     "platforms": "Plateformes",
     "play": "Jouer",
-    "playing": "En cours",
     "playtimeLabel": "Temps de jeu",
     "size": "Taille",
     "unavailableOnPlatform": "Indisponible sur cet appareil",
     "update": "Mettre à jour",
     "updating": "Mise à jour",
-    "version": "Version"
+    "version": "Version",
+    "close": "Fermer",
+    "neverPlayed": "Jamais"
   },
   "gamesHome": {
     "unknownGenre": "Genre inconnu",
@@ -179,7 +180,9 @@
         "browse": "Parcourir",
         "defaultPath": "Par défaut (PandawanGames)",
         "description": "Dossier dans lequel tes jeux sont installés",
-        "title": "Emplacement d'installation des jeux"
+        "title": "Emplacement d'installation des jeux",
+        "copyPath": "Copier le chemin",
+        "openFolder": "Ouvrir le dossier"
       },
       "language": {
         "en": "English",

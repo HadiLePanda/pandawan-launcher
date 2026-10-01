@@ -68,6 +68,7 @@ function App() {
     installGame,
     updateGame,
     launchGame,
+    closeGame,
     uninstallGame,
     cancelOperation,
     updateGameStatus,
@@ -394,6 +395,7 @@ function App() {
             news={news}
             downloadProgress={activeDownloads.get(selectedGame.info.id)}
             onPlay={() => launchGame(selectedGame.info.id)}
+            onClose={() => closeGame(selectedGame.info.id)}
             onInstall={() => handleInstallGame(selectedGame.info.id)}
             onUpdate={() => handleUpdateGame(selectedGame.info.id)}
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}

@@ -314,6 +314,8 @@ pub enum LauncherError {
     NotInstalled,
     #[error("Game is already running")]
     AlreadyRunning,
+    #[error("Game is not running")]
+    NotRunning,
     #[error("Executable not found")]
     ExecutableNotFound { path: String },
     #[error("Path is outside allowed root")]

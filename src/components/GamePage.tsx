@@ -10,6 +10,7 @@ import {
   Clock,
   HardDrive,
   Newspaper,
+  Square,
 } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
@@ -30,6 +31,8 @@ interface GamePageProps {
     totalFiles: number;
   };
   onPlay: () => void;
+  /** Stop a running game. The primary button becomes this while status is running. */
+  onClose?: () => void;
   onInstall: () => void;
   onUpdate: () => void;
   onUninstall: () => void;
@@ -164,6 +167,7 @@ export function GamePage({
   news = [],
   downloadProgress,
   onPlay,
+  onClose,
   onInstall,
   onUpdate,
   onUninstall,
@@ -197,9 +201,15 @@ export function GamePage({
     if (isDownloading) {
       return game.status === 'updating' ? t('gamePage.updating') : t('gamePage.installing');
     }
+    // Running is checked before installed on purpose. `isInstalled` is
+    // `status === 'installed'`, which is false while a game is running, so
+    // testing installed first fell through to "Install" - and the button was
+    // disabled because the game was running, producing a greyed-out "Install"
+    // for a game that was plainly open.
+    if (isRunning) return t('gamePage.close');
     if (isInstalled) {
       if (hasUpdate) return t('gamePage.update');
-      return isRunning ? t('gamePage.playing') : t('gamePage.play');
+      return t('gamePage.play');
     }
     return t('gamePage.install');
   };
@@ -214,6 +224,10 @@ export function GamePage({
   const handlePrimaryClick = () => {
     if (unavailable) return;
     if (isDownloading) return;
+    if (isRunning) {
+      if (!onClose) return; // No stop handler: do not fall through to play.
+      return onClose();
+    }
     if (isInstalled) {
       if (hasUpdate) return onUpdate();
       return onPlay();
@@ -334,13 +348,22 @@ export function GamePage({
             <button
               type="button"
               onClick={handlePrimaryClick}
-              disabled={isRunning || isDownloading || unavailable}
+              disabled={isDownloading || unavailable}
               className={cn('game-detail-play-btn', primaryColorClass())}
             >
               {isDownloading ? (
                 <>
                   <Download className="w-5 h-5" />
                   <span>{downloadPct}%</span>
+                </>
+              ) : isRunning ? (
+                // Stop, not a greyed-out stand-in. Running was previously
+                // treated as "not installed" by the label, while the button was
+                // simultaneously disabled for running - so an open game showed a
+                // disabled "Install".
+                <>
+                  <Square className="w-5 h-5 fill-current" />
+                  <span>{primaryLabel()}</span>
                 </>
               ) : isInstalled && hasUpdate ? (
                 <>
@@ -384,21 +407,29 @@ export function GamePage({
                   {formatBytes(game.info.sizeBytes)}
                 </span>
               )}
+              {/* Labels above their values, Steam-style. A run of unlabelled values
+                  ("2h · 3 days ago · 421 MB") makes the reader work out which is
+                  which; stacked pairs can be taken one at a time. */}
               {game.installation && game.status !== 'not_installed' && (
-                <span
-                  className="game-detail-chip"
-                  title={`${t('gamePage.playtimeLabel')} ${formatPlaytimeDecimal(
-                    game.installation.total_playtime_seconds
-                  )}`}
-                >
-                  <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                  {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
-                </span>
-              )}
-              {game.installation && game.status !== 'not_installed' && (
-                <span className="game-detail-chip" title={t('gamePage.lastPlayedLabel')}>
-                  {getTimeAgo(game.installation.last_played)}
-                </span>
+                <>
+                  <div className="game-detail-stat">
+                    <span className="game-detail-stat-label">{t('gamePage.playtimeLabel')}</span>
+                    <span className="game-detail-stat-value">
+                      <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                      {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
+                    </span>
+                  </div>
+                  <div className="game-detail-stat">
+                    <span className="game-detail-stat-label">{t('gamePage.lastPlayedLabel')}</span>
+                    <span className="game-detail-stat-value">
+                      {/* "Never" on its own reads as missing data rather than as a
+                          fact; the label above it is what makes it legible. */}
+                      {game.installation.last_played
+                        ? getTimeAgo(game.installation.last_played)
+                        : t('gamePage.neverPlayed')}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
             {/* Pinned to the right by .game-detail-version's margin-left:auto. */}

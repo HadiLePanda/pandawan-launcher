@@ -92,6 +92,10 @@ export async function launchGame(gameId: string): Promise<LaunchResult> {
   return result;
 }
 
+export async function closeGame(gameId: string): Promise<void> {
+  unwrapResult(await commands.closeGame(gameId));
+}
+
 export async function checkForUpdates(gameId: string, channel: string): Promise<boolean> {
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);

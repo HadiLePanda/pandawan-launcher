@@ -1865,6 +1865,28 @@ input[type='search']::placeholder {
   justify-content: flex-end;
 }
 
+/* Path and its controls share a row: the path takes the remaining width and
+   wraps across lines rather than clipping, because a path you cannot read in
+   full is a path you cannot copy or report in a bug. */
+.install-path-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.install-path-row .install-path-box {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.install-path-row .cluster {
+  flex-shrink: 0;
+}
+
 .install-path-box {
   flex: 1;
   min-width: 0;
@@ -2990,6 +3012,41 @@ input.pin-search {
   white-space: nowrap;
   color: var(--ink);
   font-weight: 500;
+}
+
+/* Label above value. Stacked pairs read as a small table, which is easier to
+   take in at a glance than a run of unlabelled values separated by dots. */
+.game-detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.game-detail-stat + .game-detail-stat {
+  margin-left: 18px;
+}
+
+.game-detail-stat-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  opacity: 0.75;
+}
+
+.game-detail-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.game-detail-stat-value svg {
+  opacity: 0.6;
 }
 
 /* Icon-led metadata chips. No labels: the icon carries the meaning. */

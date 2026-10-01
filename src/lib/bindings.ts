@@ -34,6 +34,9 @@ export const commands = {
   launchGame: (gameId: string) =>
     typedError<LaunchResult, LauncherError>(__TAURI_INVOKE('launch_game', { gameId })),
 
+  closeGame: (gameId: string) =>
+    typedError<void, LauncherError>(__TAURI_INVOKE('close_game', { gameId })),
+
   getInstalledGames: () =>
     typedError<GameInstallation[], LauncherError>(__TAURI_INVOKE('get_installed_games')),
 
@@ -153,6 +156,7 @@ export type GameManifest = {
 export type LauncherError =
   | { code: 'NotInstalled' }
   | { code: 'AlreadyRunning' }
+  | { code: 'NotRunning' }
   | { code: 'ExecutableNotFound'; details: { path: string } }
   | { code: 'PathNotAllowed'; details: { path: string } }
   | { code: 'Network'; details: string }

@@ -85,6 +85,7 @@ interface LauncherState {
   installGame: (gameId: string, channel: string) => Promise<void>;
   updateGame: (gameId: string, channel: string) => Promise<void>;
   launchGame: (gameId: string) => Promise<void>;
+  closeGame: (gameId: string) => Promise<void>;
   uninstallGame: (gameId: string) => Promise<void>;
   checkForUpdates: (gameId: string, channel: string) => Promise<boolean>;
   refreshUpdateStatus: () => Promise<void>;
@@ -282,6 +283,21 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     } catch (err) {
       updateGameStatus(gameId, 'installed');
       handleStoreError(err, set, 'launchGame');
+    }
+  },
+
+  closeGame: async (gameId) => {
+    const { updateGameStatus } = get();
+    try {
+      await gameService.closeGame(gameId);
+      // Status is left as 'running' until the backend emits game-exited, which
+      // is what records playtime and resets the button. Claiming it stopped
+      // early would drop the playtime for the seconds in between.
+    } catch (err) {
+      handleStoreError(err, set, 'closeGame');
+      // If the process was already gone the backend rejects with NotRunning;
+      // recover to 'installed' so the button does not stay stuck on Close.
+      updateGameStatus(gameId, 'installed');
     }
   },
 

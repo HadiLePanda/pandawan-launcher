@@ -60,6 +60,37 @@ fn get_default_games_path() -> PathBuf {
         .join("PandawanGames")
 }
 
+/// Stop a running game.
+///
+/// The child handle is taken out of `running_games` and killed. The waiter task
+/// that was blocked on `child.wait()` owns its own handle, so removing this one
+/// does not orphan the process: it still gets reaped, and the exit event and
+/// playtime recording still fire as they would on a normal exit.
+#[tauri::command]
+#[specta::specta]
+async fn close_game(
+    state: State<'_, LauncherState>,
+    game_id: String,
+) -> Result<(), LauncherError> {
+    let child = {
+        let mut running = state.running_games.lock().await;
+        running.remove(&game_id)
+    };
+
+    match child {
+        Some(mut child) => {
+            // start_kill asks the process to terminate; it is not awaited here
+            // because the waiter task is the one that reaps it and emits the
+            // exit event. Awaiting here too would be a double wait.
+            child
+                .start_kill()
+                .map_err(|e| LauncherError::Io(format!("Failed to stop game: {e}")))?;
+            Ok(())
+        }
+        None => Err(LauncherError::NotRunning),
+    }
+}
+
 /// Verify a path is inside a given root before deleting, writing, or executing.
 pub fn assert_path_inside_root(
     path: &std::path::Path,
@@ -548,6 +579,7 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
             check_game_update,
             verify_game,
             launch_game,
+            close_game,
             get_installed_games,
             get_game_installation,
             uninstall_game,
