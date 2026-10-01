@@ -16,7 +16,9 @@ pub mod types;
 #[cfg(test)]
 pub mod test_utils;
 
-use patch::{list_installations, load_installation, record_playtime, save_installation, PatchManager};
+use patch::{
+    list_installations, load_installation, record_playtime, save_installation, PatchManager,
+};
 use path_utils::{assert_path_inside, validate_game_id};
 use types::*;
 
@@ -329,13 +331,9 @@ async fn launch_game(
                     let _ = child.wait().await;
                     let duration_seconds = launched_at.elapsed().as_secs();
                     // Playtime loss must not break the exit event
-                    if let Err(e) =
-                        record_playtime(&app_data_dir, &game_id_clone, duration_seconds)
+                    if let Err(e) = record_playtime(&app_data_dir, &game_id_clone, duration_seconds)
                     {
-                        eprintln!(
-                            "Failed to record playtime for '{}': {}",
-                            game_id_clone, e
-                        );
+                        eprintln!("Failed to record playtime for '{}': {}", game_id_clone, e);
                     }
                     let _ = app_handle.emit(
                         "game-exited",
@@ -697,7 +695,8 @@ mod tests {
             "launch_args": null
         }"#;
 
-        let manifest: GameManifest = serde_json::from_str(json).expect("legacy manifest should load");
+        let manifest: GameManifest =
+            serde_json::from_str(json).expect("legacy manifest should load");
         assert_eq!(manifest.channel, DEFAULT_CHANNEL);
         assert_eq!(manifest.channel, "stable");
     }
@@ -807,6 +806,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         // Game is not installed, should return true (needs update/install)
@@ -847,6 +849,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -886,6 +891,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -925,6 +933,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         let needs_update = check_game_update_logic(app_data_dir, &manifest).await;
@@ -979,6 +990,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         // Simulate installation by creating the installation record
@@ -1022,6 +1036,9 @@ mod tests {
             files: vec![],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         // Now should need update

@@ -1,4 +1,5 @@
 import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
+import { selectPlatformBuild, type Platform } from './platform';
 
 /** Pandawan CDN layout convention.
  *
@@ -69,10 +70,17 @@ export const CdnUrl = {
 /**
  * Resolve a GameInfo from a catalog entry + its manifest.
  * Catalog fields override manifest fields for presentation.
+ *
+ * `platform` is the machine this launcher runs on. Size and availability are both
+ * per-platform, so a Mac player is never shown a Windows build's download size.
  */
-export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest): GameInfo {
+export function resolveGameInfo(
+  entry: CatalogGameEntry,
+  manifest: GameManifest,
+  platform: Platform | null = null
+): GameInfo {
   const channel = entry.channel ?? 'stable';
-  const totalSize = manifest.files.reduce((sum, f) => sum + (f.size ?? 0), 0);
+  const build = selectPlatformBuild(manifest, platform, entry.supportedPlatforms);
 
   return {
     id: entry.id,
@@ -85,7 +93,12 @@ export function resolveGameInfo(entry: CatalogGameEntry, manifest: GameManifest)
     bannerUrl: resolveCdnUrl(entry.bannerUrl ?? manifest.banner_url),
     screenshots: (entry.screenshots ?? []).map(resolveCdnUrl),
     version: manifest.version,
-    sizeBytes: totalSize,
+    // Size for this platform's build, not the manifest total: showing 1.2 GB to
+    // a Windows player who will download 421 MB of it is simply wrong.
+    sizeBytes: build?.sizeBytes ?? 0,
+    // Whether this machine can actually run the game. A Mac player still sees a
+    // Windows-only game, greyed, rather than it silently vanishing.
+    isAvailableOnThisPlatform: build !== null,
     releaseDate: new Date().toISOString(),
     supportedPlatforms: entry.supportedPlatforms ?? ['windows'],
     availableChannels: entry.availableChannels,

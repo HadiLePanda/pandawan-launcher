@@ -193,10 +193,14 @@ export function GamePage({
   const isInstalled = game.status === 'installed';
   const hasUpdate = game.hasUpdate;
   const showSize = game.status === 'not_installed';
+  // No build for this OS. The primary button becomes an inert explanation rather
+  // than an Install that would fail deep in the downloader.
+  const unavailable = !game.info.isAvailableOnThisPlatform;
 
   const gameNews = news.filter((item) => item.gameId === game.info.id);
 
   const primaryLabel = () => {
+    if (unavailable) return t('gamePage.unavailableOnPlatform');
     if (isDownloading) {
       return game.status === 'updating' ? t('gamePage.updating') : t('gamePage.installing');
     }
@@ -208,12 +212,14 @@ export function GamePage({
   };
 
   const primaryColorClass = () => {
+    if (unavailable) return 'action-muted';
     if (isDownloading || (isInstalled && hasUpdate)) return 'action-blue';
     if (isInstalled) return 'action-green';
     return 'action-blue';
   };
 
   const handlePrimaryClick = () => {
+    if (unavailable) return;
     if (isDownloading) return;
     if (isInstalled) {
       if (hasUpdate) return onUpdate();
@@ -331,7 +337,7 @@ export function GamePage({
             <button
               type="button"
               onClick={handlePrimaryClick}
-              disabled={isRunning || isDownloading}
+              disabled={isRunning || isDownloading || unavailable}
               className={cn('game-detail-play-btn', primaryColorClass())}
             >
               {isDownloading ? (

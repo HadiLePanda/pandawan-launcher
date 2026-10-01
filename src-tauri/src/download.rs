@@ -31,7 +31,9 @@ impl DownloadManager {
             .build()
             .expect("Failed to create HTTP client");
 
-        let rate_limiter = speed_limit.filter(|l| *l > 0).map(|l| Arc::new(RateLimiter::new(l)));
+        let rate_limiter = speed_limit
+            .filter(|l| *l > 0)
+            .map(|l| Arc::new(RateLimiter::new(l)));
 
         Self {
             client,

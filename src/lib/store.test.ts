@@ -17,6 +17,7 @@ vi.mock('./game-service', () => ({
   loadInstallation: vi.fn(),
   loadInstalledGames: vi.fn(),
   patchGame: vi.fn(),
+  rememberSupportedPlatforms: vi.fn(),
 }));
 
 vi.mock('./catalog-service', () => ({
@@ -46,6 +47,7 @@ function makeGameInfo(overrides?: Partial<GameInfo>): GameInfo {
     screenshots: [],
     version: '1.0.0',
     sizeBytes: 0,
+    isAvailableOnThisPlatform: true,
     releaseDate: '2026-01-01',
     ...overrides,
   };

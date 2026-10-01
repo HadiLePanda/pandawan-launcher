@@ -471,6 +471,9 @@ fn test_manifest_file_validation() {
         ],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Verify all files in manifest exist and have correct hashes
@@ -529,6 +532,9 @@ fn test_complete_installation_scenario() {
         ],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // 3. Save installation record
@@ -685,6 +691,9 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
         }],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Previous installation with accumulated play history
@@ -796,18 +805,15 @@ async fn test_patch_preserves_metadata_across_update_download() {
         }],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     let manager = PatchManager::new(4, None);
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     let updated = manager
-        .patch_game(
-            manifest,
-            install_dir,
-            &app_data_dir,
-            server.url(),
-            channel,
-        )
+        .patch_game(manifest, install_dir, &app_data_dir, server.url(), channel)
         .await
         .unwrap();
 

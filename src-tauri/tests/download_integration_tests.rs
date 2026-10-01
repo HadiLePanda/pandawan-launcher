@@ -690,9 +690,18 @@ fn test_concurrent_download_planning() {
 fn test_error_recovery_strategy() {
     // Test the error classification for retry logic
     let errors = vec![
-        (DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR), true),
-        (DownloadError::HttpError(StatusCode::SERVICE_UNAVAILABLE), true),
-        (DownloadError::HttpError(StatusCode::TOO_MANY_REQUESTS), true),
+        (
+            DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR),
+            true,
+        ),
+        (
+            DownloadError::HttpError(StatusCode::SERVICE_UNAVAILABLE),
+            true,
+        ),
+        (
+            DownloadError::HttpError(StatusCode::TOO_MANY_REQUESTS),
+            true,
+        ),
         (DownloadError::HttpError(StatusCode::NOT_FOUND), false),
         (DownloadError::HttpError(StatusCode::FORBIDDEN), false),
         (DownloadError::Cancelled, false),

@@ -27,6 +27,31 @@ pub struct GameManifest {
     pub executable: String,
     pub files: Vec<FileEntry>,
     pub launch_args: Option<Vec<String>>,
+    /// One platform's slice of a multi-platform manifest. Each platform's files
+    /// live under its own subdirectory of the version, so builds for different
+    /// platforms cannot overwrite each other.
+    ///
+    /// Absent on single-platform manifests, which keep the top-level
+    /// executable/files shape so clients built before platforms existed still
+    /// load them.
+    #[serde(default)]
+    pub platforms: Option<HashMap<String, PlatformBuild>>,
+    /// Total across all platforms, when the manifest is multi-platform.
+    #[serde(default)]
+    pub size_bytes: Option<u64>,
+}
+
+/// One platform's slice of a multi-platform manifest.
+///
+/// Mirrors the `platforms` map on `GameManifest`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct PlatformBuild {
+    pub executable: String,
+    #[serde(default)]
+    pub files: Vec<FileEntry>,
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub size_bytes: Option<u64>,
 }
 
 /// Individual file entry in manifest
@@ -409,6 +434,8 @@ impl GameManifest {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: None,
+            platforms: None,
+            size_bytes: None,
         }
     }
 
@@ -458,6 +485,8 @@ mod tests {
             executable: "game.exe".to_string(),
             files: vec![],
             launch_args: Some(vec!["--fullscreen".to_string()]),
+            platforms: None,
+            size_bytes: None,
             channel: "stable".to_string(),
         };
 
@@ -515,6 +544,8 @@ mod tests {
                 compress: None,
             }],
             launch_args: None,
+            platforms: None,
+            size_bytes: None,
             channel: "stable".to_string(),
         };
         assert!(valid.validate().is_ok());
@@ -568,6 +599,8 @@ mod tests {
                 },
             ],
             launch_args: None,
+            platforms: None,
+            size_bytes: None,
             channel: "stable".to_string(),
         };
 

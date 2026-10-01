@@ -252,6 +252,9 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     try {
       const installations = await gameService.loadInstalledGames();
       set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
+      // The install path needs each game's declared platforms to judge a flat,
+      // pre-platform manifest. Cached here rather than re-fetched per install.
+      gameService.rememberSupportedPlatforms(get().games.map((g) => g.info));
       // Missing settings (not loaded yet) are treated as enabled, matching the
       // DEFAULT_SETTINGS in Settings.tsx where autoUpdateGames defaults to true.
       if (get().settings?.autoUpdateGames ?? true) {
@@ -384,6 +387,8 @@ function mergeInstallations(games: Game[], installations: GameInstallation[]): G
         screenshots: [],
         version: i.installed_version,
         sizeBytes: 0,
+        // An install that exists on disk was, by definition, installable here.
+        isAvailableOnThisPlatform: true,
         releaseDate: i.installed_at,
       },
       installation: i,

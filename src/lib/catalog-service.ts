@@ -1,5 +1,6 @@
 import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import { detectPlatform } from './platform';
 import { CdnUrl, resolveGameInfo, resolveGameUrls } from './cdn';
 import { commands } from './commands';
 import { unwrapResult } from './errors';
@@ -169,11 +170,14 @@ export async function fetchGameManifest(manifestUrl: string): Promise<GameManife
 
 export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInfo[]> {
   const entries = catalog.games ?? [];
+  // Resolved once for the whole catalog: every game is judged against the same
+  // machine, and calling this per entry would re-sniff the platform each time.
+  const platform = detectPlatform();
   const resolved = await Promise.allSettled(
     entries.map(async (entry) => {
       const { manifestUrl } = resolveGameUrls(entry.id, entry.channel ?? 'stable');
       const manifest = await fetchGameManifest(manifestUrl);
-      return resolveGameInfo(entry, manifest);
+      return resolveGameInfo(entry, manifest, platform);
     })
   );
 

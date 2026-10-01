@@ -68,6 +68,9 @@ fn test_complete_new_installation_workflow() {
         ],
         launch_args: Some(vec!["--fullscreen".to_string()]),
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Step 2: Simulate downloading and creating files
@@ -186,6 +189,9 @@ fn test_update_workflow_with_version_change() {
         ],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Step 3: Check if update is needed
@@ -293,6 +299,9 @@ fn test_verification_workflow() {
         ],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Step 3: Verify installation
@@ -375,6 +384,9 @@ fn test_corrupted_file_recovery_workflow() {
         }],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Step 3: Verify initial state
@@ -542,8 +554,16 @@ fn test_error_classification_workflow() {
     // Classify various errors
     let errors = vec![
         (DownloadError::Cancelled, false, "cancelled"),
-        (DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR), true, "http"),
-        (DownloadError::HttpError(StatusCode::NOT_FOUND), false, "http"),
+        (
+            DownloadError::HttpError(StatusCode::INTERNAL_SERVER_ERROR),
+            true,
+            "http",
+        ),
+        (
+            DownloadError::HttpError(StatusCode::NOT_FOUND),
+            false,
+            "http",
+        ),
         (
             DownloadError::HashMismatch {
                 expected: "a".to_string(),
@@ -629,6 +649,9 @@ fn test_recovery_from_partial_failure() {
         ],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Determine which files need re-download

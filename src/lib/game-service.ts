@@ -9,7 +9,9 @@ import type {
   VerificationResult,
 } from '@/types';
 import { fetchGameManifest } from './catalog-service';
-import { resolveBaseUrl, resolveGameUrls } from './cdn';
+import { resolveGameUrls } from './cdn';
+import { detectPlatform, selectPlatformBuild } from './platform';
+import type { GameInfo } from '@/types';
 
 export type { DownloadProgressSnapshot } from './download-channel';
 
@@ -31,11 +33,51 @@ export async function patchGame(
 ): Promise<PatchResult> {
   const { manifestUrl } = resolveGameUrls(gameId, channel);
   const manifest = await fetchGameManifest(manifestUrl);
+
+  // Narrow the manifest to this machine's build before handing it to the backend.
+  // The downloader works from executable/files/base_url, so leaving the raw
+  // multi-platform manifest in place would download every platform's files and
+  // then try to start whichever executable happened to be at the top level.
+  const supported = supportedPlatformsFor(gameId);
+  const build = selectPlatformBuild(manifest, detectPlatform(), supported);
+  if (!build) {
+    throw new Error(
+      `No build of "${gameId}" is available for this platform (${detectPlatform() ?? 'unknown'}).`
+    );
+  }
+
+  const platformManifest: GameManifest = {
+    ...manifest,
+    executable: build.executable,
+    files: build.files,
+    base_url: build.baseUrl,
+    platforms: undefined,
+  };
+
   const downloadChannel = createDownloadChannel(gameId, callbacks);
   const installation = unwrapResult(
-    await commands.installGame(manifest, resolveBaseUrl(manifest), downloadChannel)
+    await commands.installGame(platformManifest, build.baseUrl, downloadChannel)
   );
   return { manifest, installation };
+}
+
+/**
+ * The catalog's declared platforms for a game, used to decide whether a flat
+ * (pre-platform) manifest can run here. Read from the last resolved catalog
+ * rather than re-fetched.
+ */
+let lastSupportedPlatforms: Record<string, string[]> = {};
+
+export function rememberSupportedPlatforms(games: GameInfo[]): void {
+  const next: Record<string, string[]> = {};
+  for (const game of games) {
+    if (game.supportedPlatforms) next[game.id] = game.supportedPlatforms;
+  }
+  lastSupportedPlatforms = next;
+}
+
+function supportedPlatformsFor(gameId: string): string[] | undefined {
+  return lastSupportedPlatforms[gameId];
 }
 
 export async function uninstallGame(gameId: string): Promise<void> {

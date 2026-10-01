@@ -459,6 +459,18 @@ body {
   object-fit: contain;
 }
 
+/* No build for this OS. Dimmed and desaturated so the row is still legible and
+   still present - a Mac player should be able to see that Misspell exists and
+   read why they cannot install it, not find it silently missing. */
+.game-card-unavailable {
+  opacity: 0.42;
+  filter: saturate(0.35);
+}
+
+.game-card-unavailable:hover {
+  opacity: 0.62;
+}
+
 .filter-search-row {
   display: flex;
   gap: 6px;
@@ -2984,6 +2996,13 @@ input.pin-search {
 .game-detail-play-btn.action-blue,
 .game-detail-menu-btn.action-blue {
   background: var(--blue);
+}
+
+/* No build for this OS: the button states a fact rather than offering an action. */
+.game-detail-play-btn.action-muted {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+  color: var(--ink-muted);
+  cursor: not-allowed;
 }
 
 .game-detail-play-btn.action-blue:hover:not(:disabled),

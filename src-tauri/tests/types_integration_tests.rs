@@ -46,6 +46,9 @@ fn test_game_manifest_full_serialization() {
             "--resolution=1920x1080".to_string(),
         ]),
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Serialize
@@ -83,6 +86,9 @@ fn test_game_manifest_minimal_serialization() {
         files: vec![],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     let json = serde_json::to_string(&manifest).expect("Failed to serialize");
@@ -689,6 +695,9 @@ fn test_full_data_flow() {
         }],
         launch_args: None,
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // 2. Create installation from manifest
@@ -739,6 +748,9 @@ fn test_serialization_with_special_characters() {
             "--name=Test User".to_string(),
         ]),
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     let json = serde_json::to_string_pretty(&manifest).unwrap();
@@ -764,6 +776,9 @@ fn test_unicode_handling() {
         files: vec![],
         launch_args: Some(vec!["--path=C:\\Program Files\\Game".to_string()]),
         channel: "stable".to_string(),
+
+        platforms: None,
+        size_bytes: None,
     };
 
     let json = serde_json::to_string(&manifest).unwrap();

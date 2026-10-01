@@ -80,12 +80,14 @@
     "playing": "Playing",
     "playtimeLabel": "Play time",
     "size": "Size",
+    "unavailableOnPlatform": "Not available on this device",
     "update": "Update",
     "updating": "Updating",
     "version": "Version"
   },
   "gamesHome": {
-    "unknownGenre": "Unknown Genre"
+    "unknownGenre": "Unknown Genre",
+    "unavailableOnPlatform": "Not available on this device"
   },
   "gamesPage": {
     "emptyDescription": "Every game in the catalog is here, so there is nothing to show. Clear the filters to see them.",

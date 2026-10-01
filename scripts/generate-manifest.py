@@ -72,6 +72,10 @@ def collect_files(input_dir: Path, excludes: tuple[str, ...] = DEFAULT_EXCLUDES)
 KNOWN_CHANNELS = ("stable", "beta", "alpha")
 DEFAULT_CHANNEL = "stable"
 
+# Platform identifiers, kept in sync with Platform in src-tauri/src/types.rs and
+# PLATFORM_LABELS in src/lib/game-filters.ts.
+KNOWN_PLATFORMS = ("windows", "macos", "linux")
+
 
 def channel_from_version(version: str) -> str:
     """Derive the release channel from a semver prerelease tag.
@@ -112,6 +116,100 @@ def load_patch_notes(path: Path | None) -> list | None:
     raise ValueError(f"Invalid patch notes file: {path}")
 
 
+def parse_platform_specs(specs: list[str] | None) -> list[tuple[str, Path]]:
+    """Parse repeated --platform "windows=./dir" arguments.
+
+    Rejects unknown platforms and duplicate entries rather than silently dropping
+    one: a typo like "mac=..." would otherwise ship a build the client will never
+    look for, and a duplicate would let one overwrite the other.
+    """
+    if not specs:
+        return []
+
+    out: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+
+    for spec in specs:
+        if "=" not in spec:
+            raise ValueError(
+                f"Invalid --platform {spec!r}. Expected <platform>=<dir>, e.g. macos=./Builds/mac"
+            )
+        name, raw_dir = spec.split("=", 1)
+        name = name.strip().lower()
+
+        if name not in KNOWN_PLATFORMS:
+            raise ValueError(
+                f"Unknown platform {name!r}. Use one of {', '.join(KNOWN_PLATFORMS)}."
+            )
+        if name in seen:
+            raise ValueError(f"Platform {name!r} given more than once.")
+
+        path = Path(raw_dir.strip()).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"Platform {name!r} directory not found: {path}")
+
+        seen.add(name)
+        out.append((name, path))
+
+    return out
+
+
+def platform_executable(platform: str, build_dir: Path, fallback: str) -> str:
+    """The main binary the launcher should start for this platform's build.
+
+    Windows is just the .exe. A macOS build is a .app bundle, and the process to
+    start is the binary inside Contents/MacOS rather than the bundle itself, so
+    the path has to be derived from the build. Both the bundle name and the inner
+    binary name are read from disk: Unity lets either be set in Player Settings,
+    so hardcoding either would break the moment a build is renamed.
+
+    Falls back to the manifest's top-level executable if the bundle is not found,
+    which keeps a mis-shaped macOS build from producing a manifest that points at
+    nothing.
+    """
+    if platform != "macos":
+        return fallback
+
+    bundles = [p for p in build_dir.iterdir() if p.suffix == ".app"]
+    if len(bundles) != 1:
+        return fallback
+
+    plist = bundles[0] / "Contents" / "Info.plist"
+    exe_name = fallback
+    if plist.exists():
+        # Minimal scan rather than a plist parser: this file only ever needs one
+        # string, and the build machine has no plistlib guarantee across versions.
+        try:
+            text = plist.read_text(encoding="utf-8", errors="replace")
+            marker = "<key>CFBundleExecutable</key>"
+            idx = text.find(marker)
+            if idx != -1:
+                rest = text[idx + len(marker):]
+                start = rest.find("<string>")
+                end = rest.find("</string>")
+                if start != -1 and end > start:
+                    exe_name = rest[start + len("<string>"):end].strip()
+        except OSError:
+            pass
+
+    return f"{bundles[0].name}/Contents/MacOS/{exe_name}"
+
+
+def build_file_entries(input_dir: Path, excludes: tuple[str, ...]) -> list[dict]:
+    """Hash and size every publishable file under input_dir."""
+    entries = []
+    for rel_path, abs_path in collect_files(input_dir, excludes):
+        posix_path = rel_path.as_posix()
+        entries.append({
+            "path": posix_path,
+            "hash": compute_sha256(abs_path),
+            "size": abs_path.stat().st_size,
+            "url": posix_path,
+            "compress": None,
+        })
+    return entries
+
+
 def generate_manifest(args) -> dict:
     input_dir = Path(args.input_dir).resolve()
     if not input_dir.exists():
@@ -133,24 +231,44 @@ def generate_manifest(args) -> dict:
     # client that cached them can never serve a stale file after an update.
     # The manifest stays one level up at .../{channel}/manifest.json because it is
     # mutable and is the signal that a new build exists.
+    #
+    # Each platform gets its own subdirectory below the version. Windows and macOS
+    # builds of the same version are different files with the same names in places
+    # (both have a Data folder, both ship a main binary), so a shared directory
+    # would let one overwrite the other.
     version_dir = args.version
-    base_url = (
-        f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}/{version_dir}"
-    )
+    base_url = f"{args.cdn_origin.rstrip('/')}/games/{args.game_id}/{channel}/{version_dir}"
 
-    files = collect_files(input_dir, tuple(args.exclude or ()) + DEFAULT_EXCLUDES)
-    entries = []
-    for rel_path, abs_path in files:
-        posix_path = rel_path.as_posix()
-        entries.append({
-            "path": posix_path,
-            "hash": compute_sha256(abs_path),
-            "size": abs_path.stat().st_size,
-            "url": posix_path,
-            "compress": None,
-        })
+    # --platform is repeatable: "windows=./Builds/win,macos=./Builds/mac". A single
+    # --input-dir with no --platform keeps the original flat shape, so manifests
+    # published before this existed still load.
+    platform_dirs = parse_platform_specs(args.platform)
+    if not platform_dirs:
+        platform_dirs = [(None, input_dir)]
 
-    total_size = sum(entry["size"] for entry in entries)
+    excludes = tuple(args.exclude or ()) + DEFAULT_EXCLUDES
+    platforms: dict[str, dict] = {}
+    single_entries = None
+
+    for platform, dir_path in platform_dirs:
+        entries = build_file_entries(dir_path, excludes)
+        entry_base = base_url if platform is None else f"{base_url}/{platform}"
+
+        if platform is None:
+            single_entries = entries
+            flat_base = entry_base
+        else:
+            platforms[platform] = {
+                "executable": platform_executable(platform, dir_path, args.executable),
+                "base_url": f"{entry_base}/",
+                "size_bytes": sum(e["size"] for e in entries),
+                "files": entries,
+            }
+
+    total_size = sum(p["size_bytes"] for p in platforms.values())
+    if single_entries is not None:
+        total_size = sum(e["size"] for e in single_entries)
+
     patch_notes = load_patch_notes(args.patch_notes)
 
     manifest = {
@@ -163,7 +281,7 @@ def generate_manifest(args) -> dict:
         # Absolute base the client joins each file's relative "url" onto. Carried
         # in the manifest because the version-stamped directory is not derivable
         # from the manifest's own location (the manifest sits one level up).
-        "base_url": f"{base_url}/",
+        "base_url": f"{flat_base}/" if single_entries is not None else None,
         "description": args.description or None,
         "icon_url": args.icon_url or None,
         "banner_url": args.banner_url or None,
@@ -171,7 +289,10 @@ def generate_manifest(args) -> dict:
         "launch_args": args.launch_args.split() if args.launch_args else None,
         "size_bytes": total_size,
         "patch_notes": patch_notes,
-        "files": entries,
+        "files": single_entries,
+        # Per-platform builds. Absent on single-platform manifests, which keep the
+        # top-level executable/files shape so older clients still load them.
+        "platforms": platforms or None,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -198,6 +319,17 @@ def main():
         ),
     )
     parser.add_argument("--input-dir", required=True, help="Folder containing the built game")
+    parser.add_argument(
+        "--platform",
+        action="append",
+        default=None,
+        metavar="NAME=DIR",
+        help=(
+            "Per-platform build folder, repeatable: windows=./Builds/win macos=./Builds/mac. "
+            "Each platform is published under its own subdirectory of the version. "
+            "Omit for a single-platform build, which keeps the flat manifest shape."
+        ),
+    )
     parser.add_argument("--output", default="manifest.json", help="Output manifest path")
     parser.add_argument("--description", default=None, help="Short game description")
     parser.add_argument("--icon-url", default=None, help="URL to game icon")
@@ -230,14 +362,33 @@ def main():
         json.dump(manifest, f, indent=2 if args.pretty else None, ensure_ascii=False)
         f.write("\n")
 
-    total_size = sum(entry["size"] for entry in manifest["files"])
     channel = manifest["channel"]
-    base_url = manifest["base_url"]
+    platforms = manifest.get("platforms") or {}
+
     print(f"Manifest written: {output_path}")
-    print(f"Base URL: {base_url}")
     print(f"Channel: {channel}")
-    print(f"Files: {len(manifest['files'])}")
-    print(f"Total size: {total_size / (1024 * 1024):.2f} MB")
+
+    if platforms:
+        # Per-platform. Report each one so a typo in a build folder is visible
+        # here rather than as a 404 on a player's machine.
+        print(f"Platforms: {len(platforms)}")
+        for name, data in platforms.items():
+            size = sum(entry["size"] for entry in data["files"])
+            print(
+                f"  {name}: {len(data['files'])} files, "
+                f"{size / (1024 * 1024):.2f} MB, exe={data['executable']}"
+            )
+            print(f"    {data['base_url']}")
+        total = sum(
+            sum(e["size"] for e in data["files"]) for data in platforms.values()
+        )
+        print(f"Total size: {total / (1024 * 1024):.2f} MB")
+    else:
+        entries = manifest["files"] or []
+        total_size = sum(entry["size"] for entry in entries)
+        print(f"Base URL: {manifest['base_url']}")
+        print(f"Files: {len(entries)}")
+        print(f"Total size: {total_size / (1024 * 1024):.2f} MB")
 
 
 if __name__ == "__main__":

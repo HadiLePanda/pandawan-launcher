@@ -16,6 +16,26 @@ export interface GameManifest {
   base_url?: string;
   files: FileEntry[];
   launch_args?: string[];
+
+  /**
+   * Per-platform builds. Absent on single-platform manifests, which keep the
+   * top-level executable/files so older clients still load them.
+   *
+   * Each platform's files live under its own subdirectory of the version, so
+   * Windows and macOS builds of the same version can share a manifest without
+   * overwriting each other.
+   */
+  platforms?: Record<string, PlatformBuild>;
+  /** Total across all platforms, when the manifest is multi-platform. */
+  size_bytes?: number;
+}
+
+/** One platform's slice of a multi-platform manifest. */
+export interface PlatformBuild {
+  executable: string;
+  files: FileEntry[];
+  base_url?: string;
+  size_bytes?: number;
 }
 
 export interface FileEntry {
@@ -159,6 +179,8 @@ export interface GameInfo {
   screenshots: string[];
   version: string;
   sizeBytes: number;
+  /** False when this game has no build for the platform the launcher runs on. */
+  isAvailableOnThisPlatform: boolean;
   releaseDate: string;
   supportedPlatforms?: string[];
   /** Channels the publisher declared as existing. Drives the channel picker. */

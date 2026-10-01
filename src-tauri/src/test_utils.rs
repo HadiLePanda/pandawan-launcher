@@ -66,6 +66,9 @@ pub fn create_test_manifest() -> GameManifest {
             },
         ],
         launch_args: Some(vec!["--fullscreen".to_string()]),
+
+        platforms: None,
+        size_bytes: None,
     }
 }
 
@@ -191,6 +194,9 @@ pub fn create_realistic_test_environment(base_path: &Path) -> (GameManifest, Gam
             },
         ],
         launch_args: None,
+
+        platforms: None,
+        size_bytes: None,
     };
 
     // Create installation record

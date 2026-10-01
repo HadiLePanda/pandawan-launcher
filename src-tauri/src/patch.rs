@@ -40,11 +40,7 @@ impl PatchManager {
     /// Reconfigure the underlying download manager with new concurrency and
     /// speed limits. Existing downloads are not affected, but future operations
     /// will use the new limits.
-    pub async fn reconfigure(
-        &self,
-        max_concurrent: usize,
-        speed_limit: Option<u64>,
-    ) {
+    pub async fn reconfigure(&self, max_concurrent: usize, speed_limit: Option<u64>) {
         *self.download_manager.write().await = DownloadManager::new(max_concurrent, speed_limit);
     }
 
@@ -91,10 +87,9 @@ impl PatchManager {
         previous: Option<&GameInstallation>,
     ) -> Result<GameInstallation, PatchError> {
         // Reject traversal/absolute executable paths coming from a manifest.
-        let executable = crate::path_utils::sanitize_relative_path(&manifest.executable,
-        )?
-        .to_string_lossy()
-        .replace('\\', "/");
+        let executable = crate::path_utils::sanitize_relative_path(&manifest.executable)?
+            .to_string_lossy()
+            .replace('\\', "/");
 
         // Guard against an empty channel in a hand-edited manifest: an empty
         // string would never equal `stable` in `needs_update` and would force a
@@ -229,8 +224,7 @@ impl PatchManager {
         {
             let dm = self.download_manager.read().await;
             dm.reset_cancel();
-            dm.download_files(download_tasks, on_event.clone())
-                .await?;
+            dm.download_files(download_tasks, on_event.clone()).await?;
         }
 
         // After download, ensure progress is complete
@@ -1150,6 +1144,9 @@ mod tests {
             }],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         let manager = PatchManager::new(4, None);
@@ -1211,6 +1208,9 @@ mod tests {
             }],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         };
 
         let manager = PatchManager::new(4, None);
@@ -1328,6 +1328,9 @@ mod tests {
             ],
             launch_args: None,
             channel: "stable".to_string(),
+
+            platforms: None,
+            size_bytes: None,
         }
     }
 }

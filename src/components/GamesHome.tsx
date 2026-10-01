@@ -38,14 +38,22 @@ function GameCard({
   const { t } = useTranslation();
   const isInstalled = game.status === 'installed';
   const genres = game.info.genre.join(', ');
+  // A game with no build for this OS is still listed, greyed. Hiding it would
+  // leave a Mac player wondering where Misspell went; showing it as normal would
+  // offer an install that cannot possibly run.
+  const unavailable = !game.info.isAvailableOnThisPlatform;
 
   return (
     <button
       type="button"
       onClick={onClick}
       onContextMenu={(e) => onContextMenu?.(e, game.info.id)}
-      className={cn('game-card', !isInstalled && 'game-card-uninstalled')}
-      title={game.info.name}
+      className={cn(
+        'game-card',
+        !isInstalled && 'game-card-uninstalled',
+        unavailable && 'game-card-unavailable'
+      )}
+      title={unavailable ? t('gamesHome.unavailableOnPlatform') : game.info.name}
     >
       <div className="game-card-art">
         {game.info.bannerUrl ? (
@@ -60,7 +68,11 @@ function GameCard({
       </div>
       <div className="game-card-content">
         <h3 className="game-card-title">{game.info.name}</h3>
-        <p className="game-card-genre">{genres || t('gamesHome.unknownGenre')}</p>
+        <p className="game-card-genre">
+          {unavailable
+            ? t('gamesHome.unavailableOnPlatform')
+            : genres || t('gamesHome.unknownGenre')}
+        </p>
       </div>
     </button>
   );
