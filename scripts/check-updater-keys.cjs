@@ -65,6 +65,22 @@ function main() {
     }
     fs.mkdirSync(path.dirname(secretKeyPath), { recursive: true });
     console.log('Generating a new minisign keypair...');
+
+    // Tauri does not accept the raw minisign file in TAURI_SIGNING_PRIVATE_KEY.
+    // It base64-decodes the value, and the file's first line is
+    // "untrusted comment: ..." — the space at offset 9 fails with
+    // "Invalid symbol 32", signing is skipped without error, and the release
+    // ships with no .sig and no latest.json. CI then reports
+    // "Signature not found for the updater JSON. Skipping upload".
+    const encoded = fs.readFileSync(secretKeyPath).toString('base64').trim();
+    console.log('\nSet the CI secret with the base64 form, not the raw file:');
+    console.log(
+      "  node -e \"process.stdout.write(require('fs').readFileSync('" +
+        path.relative(repoRoot, secretKeyPath).replace(/\\/g, '/') +
+        "').toString('base64'))\" | gh secret set TAURI_SIGNING_PRIVATE_KEY"
+    );
+    void encoded;
+
     const res = spawnSync(minisign, ['-G', '-W', '-s', secretKeyPath, '-p', publicKeyPath], {
       stdio: 'inherit',
     });
