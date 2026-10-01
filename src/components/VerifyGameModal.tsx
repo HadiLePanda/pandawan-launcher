@@ -1,4 +1,4 @@
-import { X, AlertTriangle, FileCheck, FileX, FileQuestion } from 'lucide-react';
+import { AlertTriangle, FileCheck, FileX, FileQuestion } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
 import { cn } from '@/lib/utils';
@@ -22,15 +22,10 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
   return (
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="modal modal-auto animate-slide-up">
-        <div className="modal-header verify-topbar">
-          <h3 className="title-3">{t('verifyGameModal.title')}</h3>
-          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
+      <div className="modal modal-auto animate-slide-up" role="dialog" aria-modal="true">
         <div className="modal-body verify-body">
+          <h3 className="verify-title">{t('verifyGameModal.title')}</h3>
+
           {error && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
