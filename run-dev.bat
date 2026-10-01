@@ -1,42 +1,66 @@
 @echo off
 REM Launch the launcher in dev mode (hot reload).
 REM
-REM Checks the things that commonly break a dev run before starting:
-REM   - updater keypair present and synced
-REM   - .env has the R2 credentials the publish scripts need
-REM   - AWS CLI on PATH (installed by winget install Amazon.AWSCLI)
+REM Double-click this file. Output is mirrored to dev-launch.log so a failed
+REM run can still be read after the window closes.
 REM
-REM Ctrl+C to stop.
+REM The window stays open on exit so any error is readable. Close with Ctrl+C,
+REM or press a key when it stops.
 
 setlocal
 cd /d "%~dp0"
+set LOG=%CD%\dev-launch.log
 
-echo Checking updater keys...
+echo.
+echo === Pandawan Launcher - dev mode ===
+echo Log: %LOG%
+echo.
+
+REM ---------------------------------------------------------------- preflight
 call npm run --silent keys:check
-if errorlevel 1 goto :fail
+if errorlevel 1 goto :preflight_failed
 
 if not exist ".env" (
-  echo.
-  echo WARNING: .env not found.
-  echo Copy .env.example to .env and fill in your R2 credentials
-  echo if you want to publish games from this machine.
-  echo.
+  echo WARNING: .env not found. Copy .env.example to .env to publish games.
 )
 
 where aws >nul 2>nul
 if errorlevel 1 (
-  echo.
   echo WARNING: aws CLI not on PATH. Game publishing will fail.
-  echo Install with: winget install Amazon.AWSCLI
-  echo.
+  echo          Install with: winget install Amazon.AWSCLI
 )
 
+REM A stale instance from an earlier run holds port 1420. Vite runs with
+REM strictPort, so it exits immediately and takes this window with it.
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":1420" ^| findstr "LISTENING"') do (
+  echo.
+  echo ERROR: port 1420 is already in use by PID %%p.
+  echo        A previous dev run is probably still going.
+  echo        Close it with:  taskkill /PID %%p /F
+  goto :fail
+)
+
+REM ------------------------------------------------------------------- run
 echo.
 echo Starting dev launcher...
-call npm run tauri:dev
-goto :eof
+call npm run tauri:dev > "%LOG%" 2>&1
+
+REM `npm run tauri:dev` is normally long-lived. Reaching here means it stopped.
+type "%LOG%"
+echo.
+echo Dev launcher stopped. Full output: %LOG%
+goto :done
+
+:preflight_failed
+echo.
+echo Pre-flight check failed. See the messages above.
+goto :done
 
 :fail
 echo.
-echo Pre-flight check failed. Fix the above and try again.
-exit /b 1
+echo Could not start. See the messages above.
+
+:done
+echo.
+pause
+endlocal

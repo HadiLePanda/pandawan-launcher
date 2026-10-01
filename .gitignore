@@ -72,6 +72,10 @@ downloads/
 test-game-ran.txt
 examples/games/*/*/files/test-game-ran.txt
 
+# Output from run-dev.bat / build-installer.bat
+dev-launch.log
+build-launch.log
+
 # Minisign updater keys
 src-tauri/.secrets/
 *.key
