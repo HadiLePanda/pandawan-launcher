@@ -1,1 +1,0 @@
-fix(install): resolve flat manifests to the channel dir; quiet the verify dialog

@@ -82,3 +82,6 @@ src-tauri/.secrets/
 
 # Hermes temp files
 .hermes-tmp.*
+
+# Scratch commit message; created outside the repo where possible
+COMMIT_MSG.txt
