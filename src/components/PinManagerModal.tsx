@@ -33,7 +33,7 @@ export function PinManagerModal({
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="modal animate-slide-up max-w-2xl h-[620px] flex-col">
+      <div className="modal modal-pin-manager animate-slide-up">
         <div className="modal-header">
           <div>
             <h2 className="title-2">{t('pinModal.title')}</h2>

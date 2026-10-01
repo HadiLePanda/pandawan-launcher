@@ -1743,6 +1743,10 @@ input[type='search']::placeholder {
    header is pinned to the top, the footer to the bottom, and a short message
    floats alone in the gap between them.
 
+   The width is set here rather than with a max-w-* utility: .modal is
+   unlayered CSS and beats Tailwind's layered utilities, so max-w-md on the
+   element was silently ignored and every "small" dialog rendered at 48rem.
+
    .modal is display:flex with no flex-direction, i.e. a row — the settings
    dialog relies on that for its sidebar-plus-content layout. Simple dialogs
    have header/body/footer as direct children, which then end up side by side,
@@ -1750,6 +1754,7 @@ input[type='search']::placeholder {
 .modal-auto {
   height: auto;
   max-height: 37.5rem;
+  max-width: 23rem;
   flex-direction: column;
 }
 
@@ -4054,6 +4059,12 @@ input.pin-search {
 }
 
 /* ---------- Verify dialog ---------- */
+
+.modal-pin-manager {
+  max-width: 42rem;
+  height: 620px;
+  flex-direction: column;
+}
 
 .verify-topbar {
   position: relative;
