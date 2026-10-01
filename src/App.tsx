@@ -485,18 +485,20 @@ function App() {
         onLauncherUpdateClick={handleLauncherUpdateClick}
       />
 
-      {activeView === 'games' && (
-        <GamesBar
-          games={pinnedGames}
-          installedIds={installedIds}
-          unpinnedGameIds={unpinnedGameIds}
-          selectedGameId={selectedGameId}
-          isOverviewSelected={selectedGameId === null}
-          onSelect={handleSelectGameIcon}
-          onContextMenu={handleContextMenu}
-          onOpenPins={() => setIsPinsOpen(true)}
-        />
-      )}
+      {/* Shown in every view, not just the games grid. News and the store are
+          navigated from a game's page, so hiding the pinned rail there meant
+          losing the way back to a game and forcing a round trip through the
+          nav every time. */}
+      <GamesBar
+        games={pinnedGames}
+        installedIds={installedIds}
+        unpinnedGameIds={unpinnedGameIds}
+        selectedGameId={selectedGameId}
+        isOverviewSelected={selectedGameId === null}
+        onSelect={handleSelectGameIcon}
+        onContextMenu={handleContextMenu}
+        onOpenPins={() => setIsPinsOpen(true)}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {isNotificationsOpen && (

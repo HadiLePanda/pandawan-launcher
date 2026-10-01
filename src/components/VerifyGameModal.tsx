@@ -23,22 +23,23 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="modal modal-auto animate-slide-up" role="dialog" aria-modal="true">
-        {/* The dialog has no header bar - the title sits in the body - so the
-            close affordance is pinned to the panel's own corner instead. It is
-            present while the scan runs too: closing only hides the progress,
-            it does not stop the verification. */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="icon-btn verify-close"
-          aria-label={t('common.close')}
-          title={t('common.close')}
-        >
-          <X className="w-4 h-4" />
-        </button>
-        <div className="modal-body verify-body">
+        <div className="verify-head">
           <h3 className="verify-title">{t('verifyGameModal.title')}</h3>
-
+          {/* In the title row rather than pinned to the panel corner: the title is
+              what identifies the dialog, so the close control belongs beside it.
+              Shown while the scan runs too - closing only hides the progress, it
+              does not stop the verification. */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="icon-btn verify-close"
+            aria-label={t('common.close')}
+            title={t('common.close')}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="modal-body verify-body">
           {error && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />

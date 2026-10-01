@@ -4,12 +4,10 @@ import {
   Folder,
   Download,
   Bell,
-  FileText,
   Globe,
   HardDrive,
   Info,
   SunMoon,
-  RefreshCw,
   User,
   Check,
   Copy,
@@ -22,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
 import { AVATAR_IDS, avatarUrl } from '@/lib/avatars';
 import * as gameService from '@/lib/game-service';
+import { commands } from '@/lib/commands';
+import { unwrapResult } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { useUpdaterStore, checkForUpdates } from '@/lib/updater-service';
 import type { LauncherSettings } from '@/types';
@@ -163,16 +163,43 @@ function GeneralSettings({ settings, onChange }: TabProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
+  // The real default, resolved from the backend, so the field can show an
+  // actual path. Showing the word "Default" hid where games go, which is the
+  // one thing someone moves installs or checks free space needs to know.
+  const [defaultPath, setDefaultPath] = useState<string>('');
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const dir = unwrapResult(await commands.getDefaultInstallFolder());
+        if (alive) setDefaultPath(dir);
+      } catch (err) {
+        logger.warn('Failed to resolve default install folder', { error: String(err) });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // The path is often long enough to clip, and users need it for support,
   // moving installs, and checking free space. Showing it truncated with no way to
   // read the whole thing was the gap.
   const installPath = settings.gamesInstallPath ?? '';
-  const resolvedPath = installPath || t('settings.general.installLocation.defaultPath');
+  const resolvedPath = installPath || defaultPath;
+  // True when the setting is empty and installs are using the backend default,
+  // which is the only case where Reset is worth showing.
+  const usingDefault = !installPath && Boolean(defaultPath);
+
+  const handleReset = () => {
+    onChange({ gamesInstallPath: null });
+  };
 
   const handleCopy = async () => {
-    if (!installPath) return;
+    if (!resolvedPath) return;
     try {
-      await navigator.clipboard.writeText(installPath);
+      await navigator.clipboard.writeText(resolvedPath);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch (err) {
@@ -181,17 +208,19 @@ function GeneralSettings({ settings, onChange }: TabProps) {
   };
 
   const handleOpenFolder = async () => {
-    if (!installPath) return;
+    if (!resolvedPath) return;
     try {
-      await open(installPath);
+      await open(resolvedPath);
     } catch (err) {
-      logger.error('Failed to open install folder', { path: installPath, error: String(err) });
+      logger.error('Failed to open install folder', { path: resolvedPath, error: String(err) });
     }
   };
 
   const handleBrowse = async () => {
     try {
-      const selected = await gameService.selectInstallFolder();
+      // Open the picker at the folder currently in use, so changing it is a
+      // small move rather than a full re-navigation each time.
+      const selected = await gameService.selectInstallFolder(resolvedPath || undefined);
       if (selected) {
         onChange({ gamesInstallPath: selected });
       }
@@ -214,35 +243,45 @@ function GeneralSettings({ settings, onChange }: TabProps) {
             {resolvedPath}
           </div>
           <div className="cluster cluster-sm">
-            {installPath && (
-              <>
-                <button
-                  onClick={handleOpenFolder}
-                  className="btn btn-secondary btn-sm"
-                  title={t('settings.general.installLocation.openFolder')}
-                  aria-label={t('settings.general.installLocation.openFolder')}
-                >
-                  <Folder className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleCopy}
-                  className="btn btn-secondary btn-sm"
-                  title={t('settings.general.installLocation.copyPath')}
-                  aria-label={t('settings.general.installLocation.copyPath')}
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-action" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </button>
-              </>
-            )}
+            {/* These act on the folder in use, which exists even on the default,
+                so they are available either way. */}
+            <button
+              onClick={handleOpenFolder}
+              className="btn btn-secondary btn-sm"
+              title={t('settings.general.installLocation.openFolder')}
+              aria-label={t('settings.general.installLocation.openFolder')}
+            >
+              <Folder className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleCopy}
+              className="btn btn-secondary btn-sm"
+              title={t('settings.general.installLocation.copyPath')}
+              aria-label={t('settings.general.installLocation.copyPath')}
+            >
+              {copied ? <Check className="w-4 h-4 text-action" /> : <Copy className="w-4 h-4" />}
+            </button>
             <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
               {t('settings.general.installLocation.browse')}
             </button>
+            {/* Only meaningful once a custom path is set: there is nothing to
+                reset back to otherwise. */}
+            {installPath && (
+              <button
+                onClick={handleReset}
+                className="btn btn-ghost btn-sm"
+                title={t('settings.general.installLocation.reset')}
+              >
+                {t('settings.general.installLocation.reset')}
+              </button>
+            )}
           </div>
         </div>
+        {/* Say where the path came from, so an unchanged field does not read as
+            "never configured". */}
+        {usingDefault && (
+          <p className="caption mt-1">{t('settings.general.installLocation.usingDefault')}</p>
+        )}
       </SettingItem>
 
       <SettingItem icon={Globe} title={t('settings.general.language.title')}>
@@ -442,25 +481,32 @@ function AboutSettings() {
   return (
     <div className="setting-group">
       <div className="cluster cluster-md p-4 rounded-xl">
-        <div className="w-14 h-14 rounded-xl bg-action flex items-center justify-center">
-          <span className="text-xl font-bold text-white">P</span>
-        </div>
+        {/* The real Circle-P mark, not a letter in a box. The app icon and the
+            download site use the same artwork, so this matches what the user
+            already recognises. */}
+        <img src="/logo-circle-p.png" alt="" className="about-logo" width={56} height={56} />
         <div className="min-w-0">
           <h4 className="title-3">Pandawan Launcher</h4>
           <p className="caption">
-            {t('settings.about.version', { version: currentVersion || '—' })}
+            {/* getVersion() returns a bare semver, which read as a stray number.
+                Release versions are referred to with a leading v everywhere else
+                in the app and on the download site. */}
+            {currentVersion ? `v${currentVersion}` : '—'}
           </p>
         </div>
       </div>
 
-      <div className="setting-item">
-        <div className="setting-header">
-          <div className="setting-icon">
-            <RefreshCw className="w-4 h-4" />
-          </div>
+      {/* Grouped into one panel with both actions, rather than two full-width
+          rows that each carry an icon and a one-line caption. The status text
+          belongs to the update action, and the log folder is a support action
+          that does not warrant a row of its own. */}
+      <div className="about-actions">
+        <div className="about-actions-head">
+          <span className="body">{t('settings.about.updates.title')}</span>
           {statusText && <span className="caption">{statusText}</span>}
         </div>
-        <div className="setting-control">
+        {logsError && <p className="caption text-red-400">{logsError}</p>}
+        <div className="about-actions-row">
           <button
             onClick={() => void checkForUpdates({ manual: true })}
             disabled={busy}
@@ -468,21 +514,10 @@ function AboutSettings() {
           >
             {t('settings.about.updates.checkButton')}
           </button>
-        </div>
-      </div>
-
-      <div className="setting-item">
-        <div className="setting-header">
-          <div className="setting-icon">
-            <FileText className="w-4 h-4" />
-          </div>
-          {logsError && <span className="caption">{logsError}</span>}
-        </div>
-        <div className="setting-control">
           <button
             onClick={() => void handleOpenLogs()}
             disabled={openingLogs}
-            className="btn btn-secondary btn-sm"
+            className="btn btn-ghost btn-sm"
           >
             {t('settings.about.logs.openButton')}
           </button>

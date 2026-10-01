@@ -144,6 +144,7 @@
       },
       "tauriVersion": "Tauri Version",
       "updates": {
+        "title": "Updates",
         "available": "Update v{{version}} available",
         "checkButton": "Check for updates",
         "checking": "Checking…",
@@ -151,8 +152,7 @@
         "error": "Update check failed: {{error}}",
         "ready": "Restart the launcher to apply the update.",
         "upToDate": "You're up to date{{suffix}}"
-      },
-      "version": "Version {{version}}"
+      }
     },
     "downloads": {
       "autoUpdateGames": {
@@ -181,11 +181,12 @@
     "general": {
       "installLocation": {
         "browse": "Browse",
-        "defaultPath": "Default (PandawanGames)",
         "description": "Where your games are installed",
         "title": "Game Install Location",
         "copyPath": "Copy path",
-        "openFolder": "Open folder"
+        "openFolder": "Open folder",
+        "reset": "Reset",
+        "usingDefault": "Using the default location"
       },
       "language": {
         "en": "English",

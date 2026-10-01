@@ -193,10 +193,12 @@ function prefillPublish(gameId, channel) {
   $('gameId').value = gameId;
   $('channel').value = channel;
 
-  // Suggest the next patch of the version already published for this channel, so
-  // the common case is one keystroke from done instead of reading it off the grid.
+  // Always recompute the suggested version. It used to be applied only when the
+  // field was empty, so after one publish the field kept the number just used
+  // and the next click-to-publish offered the same version again: clicking a
+  // different game to redo it looked broken unless you cleared the field by hand.
   const current = inventoryVersion(gameId, channel);
-  if (current && !$('version').value) {
+  if (current) {
     const parts = current.split('-')[0].split('.').map(Number);
     if (parts.length === 3 && parts.every(Number.isFinite)) {
       parts[2] += 1;
@@ -204,9 +206,39 @@ function prefillPublish(gameId, channel) {
     }
   }
 
+  // The build number is a per-game counter, so the next one is whatever is
+  // published now plus one, and the executable name follows the game.
+  const entry = inventoryEntry(gameId, channel);
+  if (entry?.build) {
+    const build = Number(entry.build);
+    if (Number.isFinite(build)) $('buildNumber').value = String(build + 1);
+  }
+  $('executable').value = `${gameId}.exe`;
+
+  // Platform directories describe local build output and cannot be inferred.
+  // Leaving the previous game's paths in place would publish this game's files
+  // from another game's folder, so clear them and make the user choose.
+  for (const id of ['winDir', 'macDir', 'linuxDir', 'inputDir']) {
+    $(id).value = '';
+  }
+
   selectTab('games');
   $('version').focus();
   $('version').select();
+}
+
+/**
+ * The current build entry for a channel, preferring the platform with the
+ * highest build number. Used to suggest the next build: the counters can differ
+ * per platform, and offering the lowest one risks republishing over a build that
+ * already exists.
+ */
+function inventoryEntry(gameId, channel) {
+  const game = lastInventory.find((g) => g.id === gameId);
+  const entry = game?.channels.find((c) => c.channel === channel);
+  const entries = Object.values(entry?.latest ?? {}).filter(Boolean);
+  if (!entries.length) return null;
+  return entries.reduce((a, b) => (Number(a.build) >= Number(b.build) ? a : b));
 }
 
 /** The newest version published for a channel, across whichever platforms have one. */

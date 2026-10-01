@@ -53,8 +53,13 @@ export const commands = {
   saveSettings: (newSettings: LauncherSettings) =>
     typedError<void, LauncherError>(__TAURI_INVOKE('save_settings', { newSettings })),
 
-  selectInstallFolder: () =>
-    typedError<string | null, LauncherError>(__TAURI_INVOKE('select_install_folder')),
+  selectInstallFolder: (start?: string | null) =>
+    typedError<string | null, LauncherError>(
+      __TAURI_INVOKE('select_install_folder', { start: start ?? null })
+    ),
+
+  getDefaultInstallFolder: () =>
+    typedError<string, LauncherError>(__TAURI_INVOKE('get_default_install_folder')),
 
   cancelOperation: () => typedError<void, LauncherError>(__TAURI_INVOKE('cancel_operation')),
 

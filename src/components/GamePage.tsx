@@ -94,6 +94,7 @@ function ChannelPicker({
   currentChannel,
   catalogChannel,
   availableChannels,
+  triggerRef,
   onChoose,
   onClose,
 }: {
@@ -110,8 +111,15 @@ function ChannelPicker({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // The trigger lives outside this menu, so a plain outside-click test treats
+    // pressing it as "click away": mousedown closed the menu and the button's own
+    // click then reopened it, making the menu impossible to dismiss with its own
+    // trigger. Treat the trigger as inside.
+    const isInside = (target: EventTarget | null) =>
+      ref.current?.contains(target as Node) || triggerRef.current?.contains(target as Node);
+
     const onPointerDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      if (!isInside(e.target)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -122,7 +130,7 @@ function ChannelPicker({
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [onClose]);
+  }, [onClose, triggerRef]);
 
   return (
     <div ref={ref} className="game-channel-menu" role="menu">

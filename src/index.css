@@ -1943,6 +1943,49 @@ input[type='search']::placeholder {
   flex-direction: column;
 }
 
+/* About panel ---------------------------------------------------------- */
+
+/* The real app mark at the size the letter-in-a-box used to occupy, so the
+   header does not change height when the artwork replaces the "P". */
+.about-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+  border-radius: 0.75rem;
+  object-fit: contain;
+}
+
+/* One panel for the update status and the log folder, instead of two rows that
+   each carried an icon and a one-line caption for a single button. */
+.about-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-default);
+  background: var(--surface-default);
+}
+
+.about-actions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* The status can be a long sentence, so it wraps under the heading instead of
+   squeezing it. */
+.about-actions-head .caption {
+  text-align: right;
+}
+
+.about-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .setting-item {
   display: flex;
   align-items: center;
@@ -4076,14 +4119,33 @@ input.pin-search {
    separate anchors and no stable edge to follow; a centred title above
    left-aligned content was worse still, since the title and the bar beneath it
    appeared to belong to different layouts. One alignment, no exceptions. */
-/* margin-bottom matches .stack-md's 1rem, so the title sits the same distance
-   from the bar as the bar sits from the count. The verdict carries no margin of
-   its own for the same reason: spacing belongs to the stack, not to items. */
+/* Title row: the title and its close control share one line, so the close sits
+   in the corner of the same band the title is in rather than floating against
+   the panel. Side padding matches .verify-body so both align. */
+.verify-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0;
+}
+
+/* margin-bottom is gone: the head row now owns the space under the title, so
+   the title sits the same distance from the bar as the bar sits from the count. */
 .verify-title {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--ink-muted);
-  margin-bottom: 1rem;
+}
+
+/* Sized to the title's line box so the close control does not inflate the
+   header row. */
+.verify-close {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
 }
 
 /* Side padding is 1.25rem rather than 1.5rem to buy back width for the file

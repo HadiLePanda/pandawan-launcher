@@ -161,8 +161,15 @@ export async function saveSettings(settings: LauncherSettings): Promise<void> {
   unwrapResult(await commands.saveSettings(settings));
 }
 
-export async function selectInstallFolder(): Promise<string | null> {
-  return unwrapResult(await commands.selectInstallFolder());
+/**
+ * Open the folder picker.
+ *
+ * `start` is where the dialog opens. Pass the folder currently in use so
+ * changing it is a short move rather than a full navigation; the backend
+ * ignores it if that directory no longer exists.
+ */
+export async function selectInstallFolder(start?: string): Promise<string | null> {
+  return unwrapResult(await commands.selectInstallFolder(start ?? null));
 }
 
 export async function cancelOperation(): Promise<void> {

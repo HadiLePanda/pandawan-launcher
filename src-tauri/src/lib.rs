@@ -499,20 +499,46 @@ async fn save_settings(
     Ok(())
 }
 
-/// Select folder using dialog
+/// The games folder that installs use when the setting is empty.
+///
+/// The frontend needs this to display a real path rather than the word
+/// "Default", and to open the folder picker where the games already are
+/// instead of at some arbitrary start directory. The rule lives here so there
+/// is exactly one definition: install_game resolves the same way.
 #[tauri::command]
 #[specta::specta]
-async fn select_install_folder(app: AppHandle) -> Result<Option<PathBuf>, LauncherError> {
+fn get_default_install_folder() -> PathBuf {
+    get_default_games_path()
+}
+
+/// Select folder using dialog.
+///
+/// `start` is the directory the picker opens in. The native dialog remembers
+/// nothing between launches, so without it the picker can open somewhere
+/// unrelated to the current install location and the user has to navigate back
+/// every time.
+#[tauri::command]
+#[specta::specta]
+async fn select_install_folder(
+    app: AppHandle,
+    start: Option<PathBuf>,
+) -> Result<Option<PathBuf>, LauncherError> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
 
     let (tx, rx) = tokio::sync::oneshot::channel();
 
-    app.dialog()
-        .file()
-        .set_title("Select Installation Folder")
-        .pick_folder(move |path| {
-            let _ = tx.send(path);
-        });
+    let mut dialog = app.dialog().file();
+    dialog = dialog.set_title("Select Installation Folder");
+
+    // Only honour a starting directory that exists: a stale path makes some
+    // platforms fall back to a default of their own, and some reject it.
+    if let Some(dir) = start.filter(|d| d.is_dir()) {
+        dialog = dialog.set_directory(dir);
+    }
+
+    dialog.pick_folder(move |path| {
+        let _ = tx.send(path);
+    });
 
     match rx.await {
         Ok(Some(FilePath::Path(p))) => Ok(Some(p)),
@@ -584,6 +610,7 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
             get_settings,
             save_settings,
             select_install_folder,
+    get_default_install_folder,
             cancel_operation,
             get_app_data_dir,
         ])
