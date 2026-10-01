@@ -76,6 +76,10 @@ examples/games/*/*/files/test-game-ran.txt
 dev-launch.log
 build-launch.log
 
+# Downloaded release assets staged by scripts/publish-launcher.mjs (~50 MB of
+# installers); recreated on every publish, never committed.
+.publish/
+
 # Minisign updater keys
 src-tauri/.secrets/
 *.key

@@ -216,6 +216,9 @@ jobs:
                 "repos/${{ github.repository }}/releases/assets/$id" > "bundles/$name"
               echo "  fetched $name"
             done
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+            --paginate > assets.json
+          cat assets.json | jq '[.[] | {id, name}]' > assets-compact.json
           ls -la bundles
 
       - name: Point latest.json at the public bucket
@@ -224,9 +227,15 @@ jobs:
           # Reads the base URL from the committed updater endpoint in
           # tauri.conf.json, so the published manifest can never drift from
           # the endpoint the launcher actually polls.
+          #
+          # --assets is required: tauri-action emits macOS URLs that end in a
+          # numeric release-asset id rather than a filename, so without the id
+          # to filename mapping those targets would be rewritten to a bucket
+          # URL that 404s for every macOS player.
           node scripts/rewrite-updater-urls.mjs \
             bundles/latest.json \
             --from-config src-tauri/tauri.conf.json \
+            --assets bundles/assets-compact.json \
             bundles/latest.rewritten.json
           mv bundles/latest.rewritten.json bundles/latest.json
           cat bundles/latest.json

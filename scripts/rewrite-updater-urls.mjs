@@ -59,7 +59,7 @@ function baseFromConfig(configPath) {
   return withoutQuery.slice(0, lastSlash);
 }
 
-function rewrite(jsonPath, publicBase, outPath) {
+function rewrite(jsonPath, publicBase, outPath, assetNames = new Map()) {
   const base = publicBase.replace(/\/+$/, '');
   const manifest = JSON.parse(readFileSync(jsonPath, 'utf-8'));
 
@@ -72,13 +72,30 @@ function rewrite(jsonPath, publicBase, outPath) {
     if (!entry || typeof entry.url !== 'string') {
       throw new Error(`Platform "${target}" has no url to rewrite`);
     }
-    // Take the filename off the original URL and re-host it. Encode the
-    // filename because release assets contain spaces (e.g. "App_0.1.0_x64.msi").
-    const fileName = decodeURIComponent(entry.url.split('/').pop());
-    rewritten[target] = {
-      ...entry,
-      url: `${base}/${encodeURIComponent(fileName)}`,
-    };
+
+    // tauri-action emits two URL shapes and both occur in one manifest:
+    //
+    //   https://github.com/<o>/<r>/releases/download/<tag>/<file>
+    //   https://api.github.com/repos/<o>/<r>/releases/assets/<id>
+    //
+    // The second appears for macOS, where a single universal archive backs every
+    // darwin target. The last path segment there is a numeric asset *id*, not a
+    // filename, so taking it verbatim produces a bucket URL that 404s for every
+    // macOS player. `assetNames` maps those ids back to real filenames; it is
+    // passed in by the caller that has already listed the release assets.
+    const last = decodeURIComponent(entry.url.split('/').pop());
+    const fileName = /^\d+$/.test(last) ? assetNames.get(last) : last;
+
+    if (!fileName) {
+      throw new Error(
+        `Platform "${target}" points at asset id ${last}, which is not among the ` +
+          'release assets. Pass --assets so the id can be resolved to a filename.'
+      );
+    }
+
+    // Encode the filename because release assets contain spaces
+    // (e.g. "App_0.1.0_x64.msi").
+    rewritten[target] = { ...entry, url: `${base}/${encodeURIComponent(fileName)}` };
   }
 
   const output = { ...manifest, platforms: rewritten };
@@ -92,16 +109,32 @@ function rewrite(jsonPath, publicBase, outPath) {
 
 const argv = process.argv.slice(2);
 const fromConfigIndex = argv.indexOf('--from-config');
+const assetsIndex = argv.indexOf('--assets');
 
 let jsonPath;
 let publicBase;
 let outPath;
+let assetNames = new Map();
+
+// `--assets <file>` is a JSON array of `{ "id": <number>, "name": <string> }`,
+// used to resolve the numeric asset ids that macOS URLs carry. Without it those
+// URLs cannot be rewritten and the script fails loudly rather than publishing a
+// broken manifest.
+if (assetsIndex !== -1) {
+  const assetsFile = argv[assetsIndex + 1];
+  if (!assetsFile) {
+    console.error('--assets needs a path to the release assets JSON.');
+    process.exit(1);
+  }
+  const parsed = JSON.parse(readFileSync(assetsFile, 'utf-8'));
+  assetNames = new Map(parsed.map((a) => [String(a.id), a.name]));
+}
 
 if (fromConfigIndex !== -1) {
-  // Drop the flag wherever it appears, then the positionals are always:
+  // Drop the flags wherever they appear, then the positionals are always:
   //   <latest.json> <tauri.conf.json> [out.json]
   // so there is nothing to infer.
-  const rest = argv.filter((a) => a !== '--from-config');
+  const rest = argv.filter((a) => a !== '--from-config' && a !== '--assets' && a !== assetsFile);
   jsonPath = rest[0];
   const configPath = rest[1];
   outPath = rest[2];
@@ -128,7 +161,7 @@ if (!/^https?:\/\//.test(publicBase)) {
 }
 
 try {
-  rewrite(jsonPath, publicBase, outPath);
+  rewrite(jsonPath, publicBase, outPath, assetNames);
 } catch (err) {
   console.error(`Failed to rewrite updater URLs: ${err.message}`);
   process.exit(1);
