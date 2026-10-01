@@ -4070,10 +4070,16 @@ input.pin-search {
    no header and no rule to split them. A header existed only to hold a close
    button, and its own padding then had to be balanced against the body's —
    which is where the lopsided gap kept coming from. */
+/* Everything shares one left rail. Centring each line gave the eye six
+   separate anchors and no stable edge to follow; a centred title above
+   left-aligned content was worse still, since the title and the bar beneath it
+   appeared to belong to different layouts. One alignment, no exceptions. */
+/* margin-bottom matches .stack-md's 1rem, so the title sits the same distance
+   from the bar as the bar sits from the count. The verdict carries no margin of
+   its own for the same reason: spacing belongs to the stack, not to items. */
 .verify-title {
   font-size: 0.875rem;
   font-weight: 600;
-  text-align: center;
   color: var(--ink-muted);
   margin-bottom: 1rem;
 }
@@ -4102,14 +4108,12 @@ input.pin-search {
 .verify-count {
   font-size: 0.75rem;
   color: var(--ink-muted);
-  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .verify-tallies {
   display: flex;
   align-items: baseline;
-  justify-content: center;
   gap: 0.875rem;
   font-size: 0.75rem;
   color: var(--ink-muted);
@@ -4164,11 +4168,9 @@ input.pin-search {
 .verify-verdict {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
   font-size: 0.9375rem;
   color: var(--ink-default);
-  text-align: center;
 }
 
 .verify-verdict-ok svg {
