@@ -294,6 +294,10 @@ export function MainNav({
             onClick={onDownloadsNavigate}
             testId="nav-downloads"
           />
+          {/* A transfer in flight marks the button directly, not only through its
+              badge. The count answers "how many"; this answers "is anything
+              happening", which is what a player glances up to find out. */}
+          {downloadsBadge > 0 && <span className="topbar-btn-active-dot" aria-hidden="true" />}
           {/* A background poll found catalog content this session has not loaded.
               It rides on Downloads because that is where transfers live; the
               blue pill stays reserved for the launcher's own self-update. */}

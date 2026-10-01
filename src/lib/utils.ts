@@ -48,6 +48,96 @@ export function formatPlaytimeDecimal(seconds: number): string {
   return `${(seconds / 3600).toFixed(1)}h`;
 }
 
+import { useEffect, useRef, useState } from 'react';
+import type { DownloadProgressSnapshot } from './download-channel';
+
+export interface SmoothDownload {
+  /** Interpolated percentage, 0-100. Glides toward the real value. */
+  percent: number;
+  /** Seconds remaining at the observed rate, or null when it cannot be known. */
+  etaSeconds: number | null;
+}
+
+/**
+ * Smooth a download snapshot for display.
+ *
+ * The backend reports on a 500ms cadence, which is fine for correctness but
+ * renders as a bar that lurches in visible steps. This eases the displayed value
+ * toward the reported one every frame, so the bar glides.
+ *
+ * Two details keep this honest rather than decorative:
+ *
+ * - It never runs *ahead* of the real value. A download can stall or be cut
+ *   short, and a bar that keeps creeping upward through a stalled transfer is
+ *   worse than an honest one.
+ * - It snaps when close, so it does not asymptotically crawl toward a target it
+ *   will never quite reach.
+ *
+ * The ETA uses a rolling average of observed throughput rather than the
+ * instantaneous rate, because a single sample can be a burst that never repeats
+ * and would produce a wildly optimistic countdown.
+ */
+export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined): SmoothDownload {
+  const target = snapshot?.overallProgress ?? 0;
+  const [percent, setPercent] = useState(target);
+
+  const displayedRef = useRef(target);
+  const samplesRef = useRef<Array<{ at: number; bytes: number }>>([]);
+
+  useEffect(() => {
+    if (snapshot) {
+      samplesRef.current.push({ at: Date.now(), bytes: snapshot.downloadedBytes });
+      // Keep a short window; older samples describe a transfer that is done.
+      if (samplesRef.current.length > 12) samplesRef.current.shift();
+    }
+
+    let frame = 0;
+    const step = () => {
+      const current = displayedRef.current;
+      const delta = target - current;
+
+      // Snap when close, or when the real value moved backwards (a retry reset).
+      if (Math.abs(delta) < 0.15 || delta < 0) {
+        if (current !== target) {
+          displayedRef.current = target;
+          setPercent(target);
+        }
+        return;
+      }
+
+      // Close roughly 8% of the remaining gap per frame: fast enough to feel
+      // responsive, slow enough to read as motion rather than a jump.
+      const next = current + delta * 0.08;
+      displayedRef.current = next;
+      setPercent(next);
+      frame = requestAnimationFrame(step);
+    };
+
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  // ETA from average throughput across the sample window.
+  const etaSeconds = (() => {
+    if (!snapshot || target >= 100 || !snapshot.totalBytes) return null;
+    const samples = samplesRef.current;
+    if (samples.length < 2) return null;
+
+    const first = samples[0];
+    const last = samples[samples.length - 1];
+    const elapsedMs = last.at - first.at;
+    if (elapsedMs <= 0) return null;
+
+    const bytesPerSecond = ((last.bytes - first.bytes) / elapsedMs) * 1000;
+    if (bytesPerSecond <= 0) return null;
+
+    const remaining = Math.max(0, snapshot.totalBytes - snapshot.downloadedBytes);
+    return Math.round(remaining / bytesPerSecond);
+  })();
+
+  return { percent, etaSeconds };
+}
+
 export function formatNewsDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-GB', {

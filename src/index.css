@@ -1469,6 +1469,30 @@ input[type='search']::placeholder {
   color: #fff;
 }
 
+/* Marks "a transfer is running" on the downloads button. Positioned bottom-left
+   rather than top-right so it does not collide with the count badge. */
+.topbar-btn-active-dot {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--action, #22c55e);
+  box-shadow: 0 0 0 2px var(--canvas-default, #0e1013);
+  animation: pandawan-breathe 2s ease-in-out infinite;
+}
+
+@keyframes pandawan-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .topbar-btn-refresh {
   position: absolute;
   top: -4px;
@@ -3505,6 +3529,38 @@ input.pin-search {
   gap: 16px;
   font-size: 0.75rem;
   color: var(--ink-muted);
+}
+
+/* Speed and ETA get slightly more weight than the byte counter: they are the
+   two numbers a user glances at to decide whether to wait or go do something
+   else. */
+.download-row-speed {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.download-row-eta {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The file being pulled right now. Without it a slow transfer looks identical to
+   a frozen one, which is exactly the misread this row is here to prevent. */
+.download-row-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.6875rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono, monospace);
+  min-width: 0;
+}
+
+.download-row-files {
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  color: var(--ink-muted);
+  opacity: 0.8;
 }
 
 .download-row-cancel {

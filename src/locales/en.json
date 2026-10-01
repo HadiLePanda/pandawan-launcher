@@ -106,6 +106,10 @@
   "downloads": {
     "cancel": "Cancel",
     "empty": "No active downloads",
+    "eta": "{{time}} left",
+    "filesProgress": "{{completed}} of {{total}} files",
+    "ofSize": "{{done}} of {{total}}",
+    "preparing": "Preparing…",
     "title": "Downloads"
   },
   "errors": {
