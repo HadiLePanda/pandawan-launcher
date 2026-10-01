@@ -1,4 +1,4 @@
-import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
+import type { CatalogGameEntry, GameInfo, GameManifest, PlatformVersion } from '@/types';
 import { selectPlatformBuild, type Platform } from './platform';
 
 /** Pandawan CDN layout convention.
@@ -102,6 +102,43 @@ export function resolveGameInfo(
     releaseDate: new Date().toISOString(),
     supportedPlatforms: entry.supportedPlatforms ?? ['windows'],
     availableChannels: entry.availableChannels,
+  };
+}
+
+/**
+ * A game whose channel exists but has no build for this machine.
+ *
+ * Built from the catalog entry alone, with no manifest: there is nothing to read
+ * one from. The version shown is the newest the channel does have, so the card
+ * can say what exists rather than looking broken.
+ */
+export function resolveUnavailableGameInfo(
+  entry: CatalogGameEntry,
+  availableVersions: Record<string, PlatformVersion>
+): GameInfo {
+  const offered = Object.entries(availableVersions);
+  const newest = offered.reduce<PlatformVersion | null>((best, [, v]) => {
+    if (!best) return v;
+    return v.version > best.version ? v : best;
+  }, null);
+
+  return {
+    id: entry.id,
+    channel: entry.channel ?? 'stable',
+    name: entry.name ?? entry.id,
+    description: entry.description ?? '',
+    developer: entry.developer ?? 'Pandawan Corp',
+    genre: entry.genre ?? [],
+    iconUrl: resolveCdnUrl(entry.iconUrl),
+    bannerUrl: resolveCdnUrl(entry.bannerUrl),
+    screenshots: (entry.screenshots ?? []).map(resolveCdnUrl),
+    version: newest?.version ?? '',
+    sizeBytes: 0,
+    isAvailableOnThisPlatform: false,
+    releaseDate: new Date().toISOString(),
+    supportedPlatforms: entry.supportedPlatforms ?? Object.keys(availableVersions),
+    availableChannels: entry.availableChannels,
+    availableVersions,
   };
 }
 

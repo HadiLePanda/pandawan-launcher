@@ -1,4 +1,10 @@
-import type { GameCatalog, CatalogGameEntry, GameInfo, GameManifest } from '@/types';
+import type {
+  GameCatalog,
+  CatalogGameEntry,
+  GameInfo,
+  GameManifest,
+  PlatformVersion,
+} from '@/types';
 import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { detectPlatform, type Platform } from './platform';
 import {
@@ -6,6 +12,7 @@ import {
   latestIndexUrl,
   resolveGameInfo,
   resolveGameUrls,
+  resolveUnavailableGameInfo,
   versionedManifestUrl,
 } from './cdn';
 import { commands } from './commands';
@@ -162,12 +169,6 @@ export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<vo
   });
 }
 
-/** One platform's current build on a channel. Mirrors publish-game.mjs output. */
-export interface PlatformVersion {
-  version: string;
-  build: number;
-}
-
 /** Why a manifest could not be resolved for this machine. */
 export type UnavailableReason = 'no-build-for-platform' | 'platform-unknown';
 
@@ -253,9 +254,17 @@ export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInf
   const platform = detectPlatform();
   const resolved = await Promise.allSettled(
     entries.map(async (entry) => {
-      const { manifestUrl } = resolveGameUrls(entry.id, entry.channel ?? 'stable');
-      const manifest = await fetchGameManifest(manifestUrl);
-      return resolveGameInfo(entry, manifest, platform);
+      const result = await resolveManifestForPlatform(
+        entry.id,
+        entry.channel ?? 'stable',
+        platform
+      );
+      // No build for this machine is a normal outcome, not a failure: the game
+      // still appears, greyed, with the tooltip explaining what is on offer.
+      if (result.status === 'unavailable') {
+        return resolveUnavailableGameInfo(entry, result.availableVersions);
+      }
+      return resolveGameInfo(entry, result.manifest, platform);
     })
   );
 

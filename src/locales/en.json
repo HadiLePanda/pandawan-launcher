@@ -57,6 +57,7 @@
     "verifyFiles": "Verify files"
   },
   "gamePage": {
+    "availableElsewhere": "Available on {{platforms}}",
     "channelMenu": {
       "alpha": "Alpha",
       "beta": "Beta",
@@ -64,6 +65,7 @@
       "stable": "Release",
       "title": "Channel"
     },
+    "close": "Close",
     "developer": "Developer",
     "filesProgress": "{{completed}} / {{total}} files",
     "gameInfo": "Game Info",
@@ -71,6 +73,7 @@
     "installing": "Installing",
     "lastPlayedLabel": "Last played",
     "moreOptions": "More options",
+    "neverPlayed": "Never",
     "news": "News",
     "noNewsForGame": "No news available for this game.",
     "noPatchNotes": "No patch notes available.",
@@ -82,9 +85,7 @@
     "unavailableOnPlatform": "Not available on this device",
     "update": "Update",
     "updating": "Updating",
-    "version": "Version",
-    "close": "Close",
-    "neverPlayed": "Never"
+    "version": "Version"
   },
   "gamesHome": {
     "unknownGenre": "Unknown Genre",

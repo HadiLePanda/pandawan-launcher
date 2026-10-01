@@ -199,6 +199,12 @@ export interface NewsItem {
   url?: string;
 }
 
+/** One platform's current build on a channel. Mirrors publish-game.mjs output. */
+export interface PlatformVersion {
+  version: string;
+  build: number;
+}
+
 export interface GameInfo {
   id: string;
   channel: string;
@@ -217,6 +223,11 @@ export interface GameInfo {
   supportedPlatforms?: string[];
   /** Channels the publisher declared as existing. Drives the channel picker. */
   availableChannels?: string[];
+  /**
+   * What the channel offers per platform, present only when this machine has no
+   * build. Feeds the tooltip that explains a greyed card, so it costs no layout.
+   */
+  availableVersions?: Record<string, PlatformVersion>;
   patchNotes?: PatchNote[];
 }
 

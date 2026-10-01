@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { commands } from './commands';
 import { resolveManifestForPlatform } from './catalog-service';
+import { resolveUnavailableGameInfo } from './cdn';
+import type { CatalogGameEntry } from '@/types';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readTextFile: vi.fn(),
@@ -102,5 +104,51 @@ describe('resolveManifestForPlatform', () => {
     const result = await resolveManifestForPlatform('misspell', 'stable', 'windows');
 
     expect(result.status).toBe('ok');
+  });
+});
+
+describe('resolveUnavailableGameInfo', () => {
+  const entry = {
+    id: 'misspell',
+    name: 'Misspell',
+    channel: 'stable',
+    description: 'A co-op game',
+  } as CatalogGameEntry;
+
+  it('marks the game unavailable and reports the newest version the channel offers', async () => {
+    respond({
+      '/stable/latest.json': JSON.stringify({
+        windows: { version: '0.4.0', build: 3 },
+        macos: { version: '0.3.9', build: 1 },
+      }),
+    });
+
+    const result = await resolveManifestForPlatform('misspell', 'stable', 'linux');
+    expect(result.status).toBe('unavailable');
+    if (result.status !== 'unavailable') return;
+
+    const info = resolveUnavailableGameInfo(entry, result.availableVersions);
+
+    expect(info.isAvailableOnThisPlatform).toBe(false);
+    // Newest by version string, so the card shows what exists, not an arbitrary one.
+    expect(info.version).toBe('0.4.0');
+    expect(info.availableVersions).toEqual({
+      windows: { version: '0.4.0', build: 3 },
+      macos: { version: '0.3.9', build: 1 },
+    });
+  });
+
+  it('prefers the catalog entry over nothing when there are no versions', async () => {
+    respond({ '/stable/latest.json': '{}' });
+
+    const result = await resolveManifestForPlatform('misspell', 'stable', 'macos');
+    expect(result.status).toBe('unavailable');
+    if (result.status !== 'unavailable') return;
+
+    const info = resolveUnavailableGameInfo(entry, result.availableVersions);
+
+    expect(info.name).toBe('Misspell');
+    expect(info.version).toBe('');
+    expect(info.availableVersions).toEqual({});
   });
 });

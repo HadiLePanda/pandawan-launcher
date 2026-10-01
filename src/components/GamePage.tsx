@@ -196,6 +196,19 @@ export function GamePage({
 
   const gameNews = news.filter((item) => item.gameId === game.info.id);
 
+  /**
+   * Why this game cannot be installed, as one sentence naming the platforms that
+   * do have a build. Rendered in a title attribute so it explains the greyed card
+   * without spending any layout space on it.
+   */
+  const unavailableTitle = () => {
+    if (!unavailable) return undefined;
+    const offered = Object.entries(game.info.availableVersions ?? {});
+    if (offered.length === 0) return t('gamePage.unavailableOnPlatform');
+    const list = offered.map(([platform, entry]) => `${platform} ${entry.version}`).join(', ');
+    return t('gamePage.availableElsewhere', { platforms: list });
+  };
+
   const primaryLabel = () => {
     if (unavailable) return t('gamePage.unavailableOnPlatform');
     if (isDownloading) {
@@ -350,6 +363,7 @@ export function GamePage({
               type="button"
               onClick={handlePrimaryClick}
               disabled={isDownloading || unavailable}
+              title={unavailableTitle()}
               className={cn('game-detail-play-btn', primaryColorClass())}
             >
               {isDownloading ? (
