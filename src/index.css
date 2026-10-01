@@ -4219,12 +4219,24 @@ input.pin-search {
 }
 
 .verify-topbar {
+  position: relative;
   padding: 0.875rem 1rem;
   background: var(--surface-light);
   flex-shrink: 0;
+  justify-content: center;
 }
 
+.verify-topbar .title-3 {
+  text-align: center;
+}
+
+/* Absolute rather than a flex sibling, so the close button cannot pull the
+   centred title off-centre. */
 .verify-topbar .icon-btn {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--ink-muted);
   transition:
     color 0.15s ease,

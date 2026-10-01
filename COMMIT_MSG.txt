@@ -1,1 +1,1 @@
-refactor(verify): top bar owns the close, footer only on result
+fix(verify): centre the dialog title in the top bar
