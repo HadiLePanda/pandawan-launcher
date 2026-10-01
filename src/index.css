@@ -4066,11 +4066,16 @@ input.pin-search {
   flex-direction: column;
 }
 
+/* No divider: the title and body are one short read, and a rule between them
+   splits a dialog this small into two competing bands. Padding is the only
+   separator, and it shares one 1.5rem column with the body and footer so every
+   edge lines up. */
 .verify-topbar {
   position: relative;
-  padding: 0.875rem 1rem;
+  padding: 1.125rem 1.5rem;
   flex-shrink: 0;
   justify-content: center;
+  border-bottom: none;
 }
 
 .verify-topbar .title-3 {
@@ -4078,10 +4083,11 @@ input.pin-search {
 }
 
 /* Absolute rather than a flex sibling, so the close button cannot pull the
-   centred title off-centre. */
+   centred title off-centre. Its outer edge sits on the same 1.5rem column as
+   the body text and the footer button. */
 .verify-topbar .icon-btn {
   position: absolute;
-  right: 0.75rem;
+  right: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
   width: 1.75rem;
@@ -4098,7 +4104,7 @@ input.pin-search {
 }
 
 .verify-body {
-  padding: 1.75rem 1.5rem 1.75rem;
+  padding: 1.5rem;
 }
 
 .verify-bar {
@@ -4228,7 +4234,7 @@ input.pin-search {
 }
 
 .verify-footer {
-  padding: 0 1.5rem 1.25rem;
+  padding: 0 1.5rem 1.125rem;
 }
 
 .verify-footer .btn {
