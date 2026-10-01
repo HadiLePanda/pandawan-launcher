@@ -22,7 +22,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
   return (
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="modal animate-slide-up max-w-md">
+      <div className="modal modal-auto animate-slide-up max-w-md">
         <div className="modal-header">
           <h3 className="title-3">{t('verifyGameModal.title')}</h3>
           <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
@@ -124,9 +124,13 @@ function ResultView({ result }: { result: VerificationResult }) {
   if (result.is_valid) {
     return (
       <div className="verify-verdict verify-verdict-ok">
-        <FileCheck className="w-5 h-5 shrink-0" />
-        <span className="body font-medium">{t('verifyGameModal.allValid')}</span>
-        <span className="verify-verdict-count tabular-nums">{valid}</span>
+        <div className="verify-verdict-head">
+          <FileCheck className="w-5 h-5 shrink-0" />
+          <span className="body font-medium">{t('verifyGameModal.allValid')}</span>
+        </div>
+        <div className="verify-verdict-detail tabular-nums">
+          {t('verifyGameModal.stats.valid')}: {valid}
+        </div>
       </div>
     );
   }
@@ -140,8 +144,10 @@ function ResultView({ result }: { result: VerificationResult }) {
   return (
     <div className="stack-md">
       <div className="verify-verdict verify-verdict-bad">
-        <AlertTriangle className="w-5 h-5 shrink-0" />
-        <span className="body font-medium">{t('verifyGameModal.needsRepair')}</span>
+        <div className="verify-verdict-head">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span className="body font-medium">{t('verifyGameModal.needsRepair')}</span>
+        </div>
       </div>
 
       <div className="cluster cluster-md">

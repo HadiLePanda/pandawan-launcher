@@ -1,1 +1,1 @@
-feat(verify): count-first live view with current file and popping tallies
+fix(verify): auto-height dialog and stacked verdict so short results read cleanly

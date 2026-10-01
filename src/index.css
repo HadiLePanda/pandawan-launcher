@@ -1725,6 +1725,14 @@ input[type='search']::placeholder {
   overflow: hidden;
 }
 
+/* Dialogs whose content is shorter than the default 37.5rem. Without this the
+   header is pinned to the top, the footer to the bottom, and a short message
+   floats alone in the gap between them. */
+.modal-auto {
+  height: auto;
+  max-height: 37.5rem;
+}
+
 .modal-sidebar {
   width: 14rem;
   padding: 1.25rem;
@@ -2954,7 +2962,7 @@ input.pin-search {
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--ink);
+  color: var(--ink-default);
   font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
@@ -3010,7 +3018,7 @@ input.pin-search {
 .game-detail-version {
   margin-left: auto;
   white-space: nowrap;
-  color: var(--ink);
+  color: var(--ink-default);
   font-weight: 500;
 }
 
@@ -3041,7 +3049,7 @@ input.pin-search {
   align-items: center;
   gap: 5px;
   font-size: 0.8125rem;
-  color: var(--ink);
+  color: var(--ink-default);
   white-space: nowrap;
 }
 
@@ -3597,7 +3605,7 @@ input.pin-search {
    two numbers a user glances at to decide whether to wait or go do something
    else. */
 .download-row-speed {
-  color: var(--ink);
+  color: var(--ink-default);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4030,13 +4038,13 @@ input.pin-search {
   font-weight: 600;
   line-height: 1;
   text-align: center;
-  color: var(--ink);
+  color: var(--ink-default);
 }
 
 .verify-bar {
   height: 6px;
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-default);
   overflow: hidden;
 }
 
@@ -4055,8 +4063,8 @@ input.pin-search {
   gap: 2px;
   padding: 8px 4px;
   border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
 }
 
 .verify-tally-value {
@@ -4094,7 +4102,7 @@ input.pin-search {
 }
 
 .verify-current-path {
-  color: var(--ink);
+  color: var(--ink-default);
   font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4108,7 +4116,7 @@ input.pin-search {
   list-style: none;
   margin: 0;
   padding: 6px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
 }
 
@@ -4167,4 +4175,45 @@ input.pin-search {
   .verify-current {
     animation: none;
   }
+}
+
+.verify-verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 18px;
+  border-radius: 12px;
+  border: 1px solid;
+  text-align: center;
+}
+
+.verify-verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.verify-verdict-detail {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.verify-verdict-ok {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.verify-verdict-bad {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px 16px;
+}
+
+.verify-verdict-bad .verify-verdict-head {
+  width: 100%;
 }
