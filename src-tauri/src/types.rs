@@ -38,6 +38,7 @@ pub struct GameManifest {
     pub platforms: Option<HashMap<String, PlatformBuild>>,
     /// Total across all platforms, when the manifest is multi-platform.
     #[serde(default)]
+    #[specta(type = Option<u32>)]
     pub size_bytes: Option<u64>,
 }
 
@@ -51,6 +52,7 @@ pub struct PlatformBuild {
     pub files: Vec<FileEntry>,
     pub base_url: Option<String>,
     #[serde(default)]
+    #[specta(type = Option<u32>)]
     pub size_bytes: Option<u64>,
 }
 
