@@ -166,12 +166,16 @@ impl DownloadManager {
         };
 
         // Unix builds need the executable bit before the game can be spawned at
-        // all. OpenOptions creates with the process umask, so a downloaded
-        // binary lands as 0644 and Command::spawn fails with "Permission denied".
-        // Windows ignores this, so it is applied only where it means something.
+        // all. OpenOptions creates with the process umask, so a downloaded binary
+        // lands as 0644 and Command::spawn fails with "Permission denied". Windows
+        // ignores this, so it is applied only where it means something.
+        //
+        // `#[cfg(unix)]` is invisible to a Windows build: this code is not
+        // compiled until a macOS or Linux runner builds it.
         #[cfg(unix)]
-        if let Ok(mut perms) = std::fs::metadata(dest_path)?.permissions().mode() {
-            perms |= 0o755;
+        {
+            let mut perms = std::fs::metadata(dest_path)?.permissions();
+            perms.set_mode(perms.mode() | 0o755);
             std::fs::set_permissions(dest_path, perms)?;
         }
 

@@ -55,6 +55,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+          targets: x86_64-unknown-linux-gnu
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
@@ -69,3 +70,10 @@ jobs:
 
       - name: Test
         run: cargo test --all-targets
+
+      # `#[cfg(unix)]` blocks are skipped entirely by a Windows build, so a
+      # mistake in one can sit in a green CI run for as long as nobody tags a
+      # release. This type-checks the Unix path on every push, and needs no
+      # linker because `cargo check` does not link.
+      - name: Check the unix code path
+        run: cargo check --target x86_64-unknown-linux-gnu --all-targets
