@@ -4120,12 +4120,6 @@ input.pin-search {
   color: var(--ink-muted);
 }
 
-/* A zero count carries no number and no colour, so colour only ever means
-   something needs attention. */
-.verify-tally-zero {
-  color: var(--ink-subtle);
-}
-
 .verify-tally {
   display: inline-flex;
   align-items: baseline;

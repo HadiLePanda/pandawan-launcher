@@ -95,8 +95,9 @@ function CurrentFile({ path, scanning }: { path?: string; scanning: string }) {
   );
 }
 
-/** A zero count is not news: it drops its number and its colour, so colour only
- * ever means something is wrong. */
+/** A zero count is dropped entirely rather than shown as a bare label: "Invalid"
+ * on its own reads as a claim with no number attached, which is worse than
+ * showing nothing. Absent means clear, and colour only ever means trouble. */
 function Tally({
   label,
   value,
@@ -106,9 +107,7 @@ function Tally({
   value: number;
   tone: 'valid' | 'invalid' | 'missing';
 }) {
-  if (value === 0) {
-    return <span className="verify-tally verify-tally-zero">{label}</span>;
-  }
+  if (value === 0) return null;
   return (
     <span className={cn('verify-tally', `verify-tally-${tone}`)}>
       <span className="verify-tally-value tabular-nums" key={value}>
