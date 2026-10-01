@@ -1,1 +1,1 @@
-feat: live per-file verification list with animated counters
+feat(verify): count-first live view with current file and popping tallies

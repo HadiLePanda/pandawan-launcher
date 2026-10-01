@@ -255,15 +255,16 @@
     "update": "Update"
   },
   "verifyGameModal": {
-    "allValid": "All files verified successfully.",
-    "needsRepair": "Some files need repair.",
-    "progress": "{{checked}} of {{total}} files",
+    "allValid": "All files verified",
+    "needsRepair": "Some files need repair",
+    "progress": "{{checked}} of {{total}}",
+    "scanning": "Scanning",
+    "title": "Verify files",
     "stats": {
       "invalid": "Invalid",
       "missing": "Missing",
       "valid": "Valid"
-    },
-    "title": "Verify Files — {{game}}"
+    }
   },
   "windowControls": {
     "close": "Close",

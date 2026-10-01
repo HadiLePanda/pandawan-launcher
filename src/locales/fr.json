@@ -255,15 +255,16 @@
     "update": "Mettre à jour"
   },
   "verifyGameModal": {
-    "allValid": "Tous les fichiers ont été vérifiés avec succès.",
-    "needsRepair": "Certains fichiers doivent être réparés.",
-    "progress": "{{checked}} fichiers sur {{total}}",
+    "allValid": "Tous les fichiers sont valides",
+    "needsRepair": "Certains fichiers doivent être réparés",
+    "progress": "{{checked}} sur {{total}}",
+    "scanning": "Analyse de",
+    "title": "Vérifier les fichiers",
     "stats": {
       "invalid": "Invalides",
       "missing": "Manquants",
       "valid": "Valides"
-    },
-    "title": "Vérifier les fichiers — {{game}}"
+    }
   },
   "windowControls": {
     "close": "Fermer",

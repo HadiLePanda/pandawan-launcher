@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { X, ShieldCheck, AlertTriangle, FileCheck, FileX, FileQuestion, Check } from 'lucide-react';
+import { X, AlertTriangle, FileCheck, FileX, FileQuestion } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
 import { cn } from '@/lib/utils';
@@ -15,28 +14,19 @@ interface VerifyGameModalProps {
 
 export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGameModalProps) {
   const { t } = useTranslation();
-  const streamRef = useRef<HTMLDivElement>(null);
   const running = !result && !error;
   const total = rows.length ? rows[rows.length - 1].total : 0;
-
-  useEffect(() => {
-    const el = streamRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [rows.length]);
 
   if (!game) return null;
 
   return (
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="modal animate-slide-up max-w-lg">
+      <div className="modal animate-slide-up max-w-md">
         <div className="modal-header">
-          <div className="cluster cluster-md">
-            <ShieldCheck className="w-5 h-5 text-ember" />
-            <h3 className="title-3">{t('verifyGameModal.title', { game: game.info.name })}</h3>
-          </div>
+          <h3 className="title-3">{t('verifyGameModal.title')}</h3>
           <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -48,25 +38,13 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
             </div>
           )}
 
-          {running && (
-            <div className="stack-md">
-              <VerifyTally rows={rows} total={total} />
-              <div className="verify-stream" ref={streamRef}>
-                {rows.map((row) => (
-                  <div key={row.path} className={cn('verify-row', `verify-row-${row.state}`)}>
-                    <RowIcon state={row.state} />
-                    <span className="truncate">{row.path}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {running && <RunningView rows={rows} total={total} />}
 
           {result && !error && <ResultView result={result} />}
         </div>
 
         <div className="modal-footer">
-          <button onClick={onClose} className="btn btn-primary">
+          <button onClick={onClose} className="btn btn-ghost">
             {t('common.close')}
           </button>
         </div>
@@ -75,13 +53,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
   );
 }
 
-function RowIcon({ state }: { state: VerifyProgress['state'] }) {
-  if (state === 'valid') return <Check className="w-3.5 h-3.5 shrink-0" />;
-  if (state === 'missing') return <FileQuestion className="w-3.5 h-3.5 shrink-0" />;
-  return <FileX className="w-3.5 h-3.5 shrink-0" />;
-}
-
-function VerifyTally({ rows, total }: { rows: VerifyProgress[]; total: number }) {
+function RunningView({ rows, total }: { rows: VerifyProgress[]; total: number }) {
   const { t } = useTranslation();
   const last = rows[rows.length - 1];
   const checked = useCountUp(rows.length);
@@ -91,27 +63,56 @@ function VerifyTally({ rows, total }: { rows: VerifyProgress[]; total: number })
   const pct = total ? Math.round((rows.length / total) * 100) : 0;
 
   return (
-    <div className="stack-sm">
-      <div className="cluster cluster-between">
-        <span className="body font-medium tabular-nums">
-          {t('verifyGameModal.progress', { checked, total })}
-        </span>
-        <span className="caption tabular-nums">{pct}%</span>
-      </div>
+    <div className="stack-md">
+      <div className="verify-pct tabular-nums">{pct}%</div>
+
       <div className="verify-bar">
         <div className="verify-bar-fill" style={{ width: `${pct}%` }} />
       </div>
-      <div className="cluster cluster-md caption tabular-nums">
-        <span className="text-emerald-400">
-          {t('verifyGameModal.stats.valid')}: {valid}
-        </span>
-        <span className="text-amber-400">
-          {t('verifyGameModal.stats.invalid')}: {invalid}
-        </span>
-        <span className="text-red-400">
-          {t('verifyGameModal.stats.missing')}: {missing}
+
+      <div className="cluster cluster-between">
+        <span className="caption tabular-nums">
+          {t('verifyGameModal.progress', { checked, total })}
         </span>
       </div>
+
+      <div className="cluster cluster-md">
+        <Tally label={t('verifyGameModal.stats.valid')} value={valid} tone="valid" />
+        <Tally label={t('verifyGameModal.stats.invalid')} value={invalid} tone="invalid" />
+        <Tally label={t('verifyGameModal.stats.missing')} value={missing} tone="missing" />
+      </div>
+
+      <CurrentFile path={last?.path} />
+    </div>
+  );
+}
+
+function CurrentFile({ path }: { path?: string }) {
+  const { t } = useTranslation();
+  if (!path) return null;
+  return (
+    <div className="verify-current" key={path}>
+      <span className="verify-current-label">{t('verifyGameModal.scanning')}</span>
+      <span className="verify-current-path">{path}</span>
+    </div>
+  );
+}
+
+function Tally({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'valid' | 'invalid' | 'missing';
+}) {
+  return (
+    <div className={cn('verify-tally', `verify-tally-${tone}`)}>
+      <span className="verify-tally-value tabular-nums" key={value}>
+        {value}
+      </span>
+      <span className="caption">{label}</span>
     </div>
   );
 }
@@ -134,6 +135,7 @@ function ResultView({ result }: { result: VerificationResult }) {
     ...result.invalid_files.map((path) => ({ path, state: 'invalid' as const })),
     ...result.missing_files.map((path) => ({ path, state: 'missing' as const })),
   ];
+  const shown = problems.slice(0, 5);
 
   return (
     <div className="stack-md">
@@ -142,51 +144,35 @@ function ResultView({ result }: { result: VerificationResult }) {
         <span className="body font-medium">{t('verifyGameModal.needsRepair')}</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <StatBox
-          icon={FileCheck}
-          label={t('verifyGameModal.stats.valid')}
-          value={result.valid_files}
-        />
-        <StatBox
-          icon={FileX}
+      <div className="cluster cluster-md">
+        <Tally label={t('verifyGameModal.stats.valid')} value={result.valid_files} tone="valid" />
+        <Tally
           label={t('verifyGameModal.stats.invalid')}
           value={result.invalid_files.length}
+          tone="invalid"
         />
-        <StatBox
-          icon={FileQuestion}
+        <Tally
           label={t('verifyGameModal.stats.missing')}
           value={result.missing_files.length}
+          tone="missing"
         />
       </div>
 
-      <div className="verify-stream verify-stream-final">
-        {problems.map(({ path, state }) => (
-          <div key={path} className={cn('verify-row', `verify-row-${state}`)}>
-            <RowIcon state={state} />
+      <ul className="verify-sample">
+        {shown.map(({ path, state }) => (
+          <li key={path} className={cn('verify-row', `verify-row-${state}`)}>
+            {state === 'invalid' ? (
+              <FileX className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <FileQuestion className="w-3.5 h-3.5 shrink-0" />
+            )}
             <span className="truncate">{path}</span>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function StatBox({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-}) {
-  const animated = useCountUp(value);
-  return (
-    <div className="p-3 rounded-xl bg-surface border border-border flex flex-col items-center gap-1">
-      <Icon className="w-4 h-4 text-ink-muted" />
-      <span className="text-lg font-semibold tabular-nums">{animated}</span>
-      <span className="caption">{label}</span>
+        {problems.length > shown.length && (
+          <li className="verify-row-more">+{problems.length - shown.length}</li>
+        )}
+      </ul>
     </div>
   );
 }
