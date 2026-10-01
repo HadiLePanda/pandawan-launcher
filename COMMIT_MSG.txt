@@ -1,1 +1,1 @@
-fix(verify): centre the dialog title in the top bar
+fix(verify): stack header/body/footer vertically

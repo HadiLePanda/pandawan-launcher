@@ -1727,10 +1727,16 @@ input[type='search']::placeholder {
 
 /* Dialogs whose content is shorter than the default 37.5rem. Without this the
    header is pinned to the top, the footer to the bottom, and a short message
-   floats alone in the gap between them. */
+   floats alone in the gap between them.
+
+   .modal is display:flex with no flex-direction, i.e. a row — the settings
+   dialog relies on that for its sidebar-plus-content layout. Simple dialogs
+   have header/body/footer as direct children, which then end up side by side,
+   so they need column. */
 .modal-auto {
   height: auto;
   max-height: 37.5rem;
+  flex-direction: column;
 }
 
 .modal-sidebar {
