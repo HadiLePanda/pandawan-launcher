@@ -293,13 +293,16 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     const { updateGameStatus } = get();
     try {
       await gameService.closeGame(gameId);
-      // Status is left as 'running' until the backend emits game-exited, which
-      // is what records playtime and resets the button. Claiming it stopped
-      // early would drop the playtime for the seconds in between.
+      // Status stays 'running' until game-exited arrives, because that event is
+      // what records playtime. Claiming it stopped early would lose those seconds.
     } catch (err) {
+      if (err instanceof CommandError && err.code === 'NotRunning') {
+        // The game exited between the click and the command landing. A race, not
+        // a failure, and not something the user can act on.
+        updateGameStatus(gameId, 'installed');
+        return;
+      }
       handleStoreError(err, set, 'closeGame');
-      // If the process was already gone the backend rejects with NotRunning;
-      // recover to 'installed' so the button does not stay stuck on Close.
       updateGameStatus(gameId, 'installed');
     }
   },

@@ -124,7 +124,8 @@
     "notInstalled": "Game is not installed.",
     "pathNotAllowed": "Path is outside the allowed install directory: {{path}}",
     "unknown": "Unknown launcher error",
-    "validation": "Invalid settings: {{details}}"
+    "validation": "Invalid settings: {{details}}",
+    "notRunning": "Game already closed"
   },
   "notificationsPanel": {
     "clear": "Clear all",

@@ -24,6 +24,10 @@ export class CommandError extends Error {
         return i18n.t('errors.notInstalled');
       case 'AlreadyRunning':
         return i18n.t('errors.alreadyRunning');
+      case 'NotRunning':
+        // Benign race: the game exited on its own between the click and the
+        // command arriving. Not worth an error toast.
+        return i18n.t('errors.notRunning');
       case 'ExecutableNotFound':
         return i18n.t('errors.executableNotFound', {
           path: (error.details as { path: string }).path,

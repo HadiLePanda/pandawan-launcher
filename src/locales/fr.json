@@ -124,7 +124,8 @@
     "notInstalled": "Le jeu n'est pas installé.",
     "pathNotAllowed": "Chemin en dehors du dossier d'installation autorisé : {{path}}",
     "unknown": "Erreur du launcher inconnue",
-    "validation": "Paramètres invalides : {{details}}"
+    "validation": "Paramètres invalides : {{details}}",
+    "notRunning": "Jeu d茅j谩 ferm茅"
   },
   "notificationsPanel": {
     "clear": "Tout effacer",

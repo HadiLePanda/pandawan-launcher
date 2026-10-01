@@ -3140,6 +3140,11 @@ input.pin-search {
   display: flex;
   align-items: center;
   gap: 24px;
+  /* Grows to fill the panel so .game-detail-version's margin-left:auto has room
+     to push it to the edge. Without it the row shrinks to its content and the
+     version sits directly beside "Last played". */
+  flex: 1;
+  min-width: 0;
 }
 
 .game-detail-meta-item {

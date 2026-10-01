@@ -102,6 +102,7 @@ function ChannelPicker({
   catalogChannel: string;
   /** Channels the game is published to. Only these are offered. */
   availableChannels: Channel[];
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
   onChoose: (channel: Channel) => void;
   onClose: () => void;
 }) {
@@ -312,6 +313,7 @@ export function GamePage({
                   catalogChannel,
                   game.info.availableChannels
                 )}
+                triggerRef={channelTriggerRef}
                 onChoose={onChannelChange}
                 onClose={() => setIsChannelOpen(false)}
               />
