@@ -4066,18 +4066,20 @@ input.pin-search {
   flex-direction: column;
 }
 
-/* No divider: the title and body are one short read, and a rule between them
-   splits a dialog this small into two competing bands. Padding is the only
-   separator. The bottom inset is much smaller than the top so the title sits
-   close to the progress it introduces, and the bar lands 54px tall — which
-   makes the centred close control 15px from the top and bottom, matching its
-   1rem right inset. */
+/* A hairline, not a band. The rule is what makes the even padding read as
+   deliberate: without it, matching the top and bottom insets looks like a
+   mistake, because nothing explains the split. The title needs air above
+   itself and the body needs room for its content, and the line lets both be
+   generous without the two drifting apart.
+
+   Side padding is 1.25rem rather than 1.5rem to buy back width for the file
+   paths, which were ellipsizing before their names were readable. */
 .verify-topbar {
   position: relative;
-  padding: 1.125rem 1.5rem 0.5rem;
+  padding: 0.875rem 1.25rem;
   flex-shrink: 0;
   justify-content: center;
-  border-bottom: none;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .verify-topbar .title-3 {
@@ -4085,18 +4087,17 @@ input.pin-search {
 }
 
 /* Absolute rather than a flex sibling, so the close button cannot pull the
-   centred title off-centre. It is deliberately smaller than the shared .icon-btn
-   and dimmed: in a 368px dialog a full-size button reads as a second element
-   competing with the title, and the eye then measures the gap between them.
-   The 1rem right inset matches the 15px the topbar's height puts above and
-   below it, so the control sits in an even corner rather than hugging the edge. */
+   centred title off-centre. Being out of flow it costs the body text no width;
+   it is only smaller so it reads as a corner control rather than a peer of the
+   title. The 1rem right inset matches the 18px the bar's height puts above and
+   below it. */
 .verify-topbar .icon-btn {
   position: absolute;
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: 4px;
   color: var(--ink-subtle);
   transition:
@@ -4109,10 +4110,10 @@ input.pin-search {
   background: var(--surface-hover);
 }
 
-/* Top inset is a shade under the sides: the title above already supplies the
-   separation, and stacking a full 1.5rem here pushed the bar 38px down. */
+/* Side padding is 1.25rem rather than 1.5rem to buy back width for the file
+   paths, which were ellipsizing before their names were readable. */
 .verify-body {
-  padding: 1.25rem 1.5rem 1.5rem;
+  padding: 1.25rem;
 }
 
 .verify-bar {
@@ -4242,7 +4243,7 @@ input.pin-search {
 }
 
 .verify-footer {
-  padding: 0 1.5rem 1.125rem;
+  padding: 0 1.25rem 1.125rem;
 }
 
 .verify-footer .btn {
