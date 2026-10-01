@@ -3640,19 +3640,21 @@ input.pin-search {
 
 /* The file being pulled right now. Without it a slow transfer looks identical to
    a frozen one, which is exactly the misread this row is here to prevent. */
+/* No margin-top: .download-row-body is a column with gap:6px, so a margin here
+   stacks on top of the gap and the row ends up with three different gaps
+   (6px, 12px, 10px) for what is one uniform rhythm. */
 .download-row-file {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
   font-size: 0.6875rem;
   color: var(--ink-muted);
   font-family: var(--font-mono, monospace);
   min-width: 0;
 }
 
+/* Spacing comes from .download-row-body's gap, same as its siblings. */
 .download-row-files {
-  margin-top: 4px;
   font-size: 0.6875rem;
   color: var(--ink-muted);
   opacity: 0.8;
