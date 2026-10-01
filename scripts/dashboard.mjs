@@ -219,6 +219,24 @@ async function serveStatic(res, name) {
     res.writeHead(404).end('not found');
   }
 }
+/** Parse a JSON request body, answering 400 itself on malformed input. */
+async function readJson(req, res) {
+  const raw = await new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => resolve(body));
+  });
+
+  try {
+    return JSON.parse(raw || '{}');
+  } catch {
+    res.writeHead(400).end('bad json');
+    return null;
+  }
+}
+
 /**
  * Run a publishing script and stream its output as server-sent events.
  *
@@ -268,26 +286,44 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/publish' && req.method === 'POST') {
-    const body = await new Promise((resolve) => {
-      let raw = '';
-      req.on('data', (chunk) => {
-        raw += chunk;
-      });
-      req.on('end', () => resolve(raw));
-    });
-
-    let payload;
-    try {
-      payload = JSON.parse(body || '{}');
-    } catch {
-      res.writeHead(400).end('bad json');
-      return;
-    }
+    const payload = await readJson(req, res);
+    if (!payload) return;
 
     // Args cross as an array and go to spawn without a shell, so nothing typed
     // into the form can become a command.
     const argv = Array.isArray(payload.args) ? payload.args.map(String) : [];
-    runPublish(argv, res);
+    runScript('publish-game.mjs', argv, res);
+    return;
+  }
+
+  if (url.pathname === '/api/prune' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+
+    // prune-builds deletes build directories, so its argv is assembled here from
+    // named fields rather than forwarded: the form cannot smuggle in flags like
+    // --clean-flat or --older-than that the UI never offers.
+    const gameId = String(payload.gameId ?? '').trim();
+    const channel = String(payload.channel ?? '').trim();
+    // prune-builds parses its own argv and treats any bare `--token` as a flag, so
+    // a value starting with one would silently turn into a different option.
+    if (!gameId || gameId.startsWith('--') || channel.startsWith('--')) {
+      res.writeHead(400).end('game and channel must be names, not flags');
+      return;
+    }
+
+    const argv = ['--game-id', gameId, '--channel', channel || 'stable'];
+    argv.push('--keep', String(Number(payload.keep) | 0));
+    // The script's own prompt reads a keystroke from a console this stream has no
+    // access to, so --dry-run is the default and a real run needs confirm: true.
+    argv.push(payload.confirm ? '--yes' : '--dry-run');
+    runScript('prune-builds.mjs', argv, res);
+    return;
+  }
+
+  if (url.pathname === '/api/catalog' && req.method === 'POST') {
+    // publish-catalog.mjs takes no arguments at all: it publishes public/catalog.json.
+    runScript('publish-catalog.mjs', [], res);
     return;
   }
 

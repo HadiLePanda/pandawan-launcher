@@ -52,9 +52,10 @@ describe('planPrune', () => {
     expect(plan.doomed.map(([v]) => v)).not.toContain('D3D12');
   });
 
-  it('never lists the live manifest as a flat leftover', () => {
+  it('never lists a live channel file as a flat leftover', () => {
     // A recursive delete of the channel prefix would take manifest.json with it
-    // and break every install.
+    // and break every install. latest.json is the per-platform pointer, and
+    // deleting it leaves every client unable to resolve its version.
     const flat = [
       key('manifest.json'),
       key('latest.json'),
@@ -65,8 +66,8 @@ describe('planPrune', () => {
     const plan = planPrune(flat, PREFIX, 1, '0.4.0');
 
     expect(plan.flatLeftovers).not.toContain(key('manifest.json'));
-    expect(plan.flatLeftovers).toContain(key('D3D12/D3D12Core.dll'));
-    expect(plan.flatLeftovers).toContain(key('latest.json'));
+    expect(plan.flatLeftovers).not.toContain(key('latest.json'));
+    expect(plan.flatLeftovers).toEqual([key('D3D12/D3D12Core.dll')]);
   });
 
   it('orders versions numerically, not lexically', () => {

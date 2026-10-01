@@ -63,6 +63,24 @@ console.log(`Keep:    ${keep} newest build(s)\n`);
 
 const keys = listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
 
+// Read the pins before planning. This must come first: planPrune receives them,
+// and a const declared below its use site throws a temporal-dead-zone error on
+// every run - which meant the script could not even do a dry run.
+const activeVersions = (() => {
+  const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
+  const read = (path) => {
+    const res = spawnSync('curl', ['-sf', `${origin}/games/${gameId}/${channel}/${path}`], {
+      encoding: 'utf8',
+      shell: false,
+    });
+    return res.status === 0 ? res.stdout : null;
+  };
+
+  const pinned = Object.values(readPinnedVersions(read('latest.json')) ?? {});
+  const manifestVersion = readActiveVersion(read('manifest.json'));
+  return [...new Set([...pinned, manifestVersion].filter(Boolean))];
+})();
+
 const { all, flatLeftovers, doomed, skippedAsYoung } = planPrune(
   keys,
   prefix,
@@ -86,25 +104,6 @@ if (flatLeftovers.length > 0) {
     `  npm run prune:builds -- --game-id ${gameId} --channel ${channel} --clean-flat --yes`
   );
 }
-
-// Every version a platform is currently pinned to. On a per-platform channel
-// these can differ — macOS may still be on an older build than Windows — and
-// deleting one of them does not remove history, it removes that platform's game.
-// Best-effort: if the index cannot be read the newest build is kept instead.
-const activeVersions = (() => {
-  const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
-  const read = (path) => {
-    const res = spawnSync('curl', ['-sf', `${origin}/games/${gameId}/${channel}/${path}`], {
-      encoding: 'utf8',
-      shell: false,
-    });
-    return res.status === 0 ? res.stdout : null;
-  };
-
-  const pinned = Object.values(readPinnedVersions(read('latest.json')) ?? {});
-  const manifestVersion = readActiveVersion(read('manifest.json'));
-  return [...new Set([...pinned, manifestVersion].filter(Boolean))];
-})();
 
 // --clean-flat removes the pre-layout leftovers one key at a time. A recursive
 // delete on the channel prefix would take the live manifest with them.

@@ -145,43 +145,66 @@ $('preview').addEventListener('click', () => {
 
 $('form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const log = $('log');
+  await stream('/api/publish', { args: buildArgs() }, 'log');
+  refresh();
+});
+
+$('publishCatalog').addEventListener('click', async () => {
+  await stream('/api/catalog', {}, 'catalogLog');
+});
+
+$('pruneForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const confirm = $('pruneConfirm').checked;
+  if (
+    confirm &&
+    !window.confirm(`Permanently delete all but the newest ${$('pruneKeep').value} builds?`)
+  ) {
+    return;
+  }
+
+  await stream(
+    '/api/prune',
+    {
+      gameId: $('pruneGameId').value.trim(),
+      channel: $('pruneChannel').value.trim(),
+      keep: $('pruneKeep').value.trim(),
+      confirm,
+    },
+    'pruneLog'
+  );
+
+  $('pruneConfirm').checked = false;
+  refresh();
+});
+
+/** POST a verb, write its output stream into the given log element. */
+async function stream(url, body, logId) {
+  const log = $(logId);
   log.hidden = false;
   log.textContent = '';
 
-  const res = await fetch('/api/publish', {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ args: buildArgs() }),
+    body: JSON.stringify(body),
   });
 
-  const stream = new EventSourceStream(res, log);
-  stream.onDone(() => refresh());
-});
-
-function EventSourceStream(res, log) {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  const handlers = { done: [] };
-  this.onDone = (fn) => handlers.done.push(fn);
-
-  (async () => {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let split;
-      while ((split = buffer.indexOf('\n\n')) !== -1) {
-        const frame = buffer.slice(0, split);
-        buffer = buffer.slice(split + 2);
-        const event = /^event: (.+)$/m.exec(frame)?.[1];
-        const data = /^data: ([\s\S]*)$/m.exec(frame)?.[1] ?? '';
-        if (event === 'output') log.textContent += data;
-        if (event === 'done') handlers.done.forEach((fn) => fn());
-      }
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let split;
+    while ((split = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, split);
+      buffer = buffer.slice(split + 2);
+      if (/^event: output$/m.test(frame))
+        log.textContent += /^data: ([\s\S]*)$/m.exec(frame)?.[1] ?? '';
     }
-  })();
+  }
 }
 
 refresh();

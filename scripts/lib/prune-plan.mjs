@@ -62,13 +62,18 @@ export function planPrune(
 
   // Files left over from the pre-version-stamped layout sit directly under the
   // channel prefix, alongside the manifest. They are dead weight, but they cannot
-  // be swept with a recursive delete: the manifest.json beside them is live and
-  // deleting it would break every install.
+  // be swept with a recursive delete: the objects beside them are live.
+  //
+  // manifest.json and latest.json are both excluded because both are mutable
+  // channel files. latest.json is the per-platform pointer, and deleting it
+  // leaves every client unable to resolve which version is current.
+  const CHANNEL_FILES = new Set(['manifest.json', 'latest.json']);
+
   const flatLeftovers = keys.filter((entry) => {
     const rest = nameOf(entry)
       .slice(prefix.length + 1)
       .split('/');
-    if (rest[0] === 'manifest.json') return false;
+    if (CHANNEL_FILES.has(rest[0])) return false;
     return !isVersionSegment(rest[0]);
   });
 
@@ -90,7 +95,9 @@ export function planPrune(
 
   return {
     all,
-    flatLeftovers,
+    // Names, not the raw entries: listKeysWithMeta yields objects, and callers
+    // slice and prefix these strings directly.
+    flatLeftovers: flatLeftovers.map(nameOf),
     protectedVersions,
     pinned,
     doomed,
