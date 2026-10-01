@@ -72,6 +72,7 @@ function App() {
     cancelOperation,
     updateGameStatus,
     refreshInstallation,
+    refreshUpdateStatus,
     loadCatalog,
     loadNews,
     loadGames,
@@ -88,6 +89,8 @@ function App() {
     avatarId,
     unpinnedGameIds,
     toggleGamePinned,
+    channelOverrides,
+    setGameChannel,
   } = useLauncherStore();
 
   const installedIds = useMemo(
@@ -286,16 +289,22 @@ function App() {
     }
   };
 
+  // The channel the player chose, falling back to the catalog's. Install and
+  // update must resolve against this, not game.info.channel, or picking a
+  // channel would change the label and nothing else.
+  const effectiveChannel = (gameId: string, catalogChannel: string) =>
+    channelOverrides[gameId] ?? catalogChannel;
+
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    await installGame(gameId, game.info.channel);
+    await installGame(gameId, effectiveChannel(gameId, game.info.channel));
   };
 
   const handleUpdateGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    await updateGame(gameId, game.info.channel);
+    await updateGame(gameId, effectiveChannel(gameId, game.info.channel));
   };
 
   const handleUninstallGame = async (gameId: string) => {
@@ -389,7 +398,15 @@ function App() {
             onUpdate={() => handleUpdateGame(selectedGame.info.id)}
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}
             onVerify={() => handleVerifyGame(selectedGame.info.id)}
-            onSettings={() => setIsSettingsOpen(true)}
+            channel={effectiveChannel(selectedGame.info.id, selectedGame.info.channel)}
+            catalogChannel={selectedGame.info.channel}
+            onChannelChange={(channel) => {
+              setGameChannel(selectedGame.info.id, channel);
+              // A channel change means a different manifest, so the cached
+              // update state no longer describes this install. Re-check rather
+              // than leaving a stale "update available" on screen.
+              void refreshUpdateStatus();
+            }}
             onSelectNewsArticle={(articleId) =>
               setNewsArticle({ articleId, gameId: selectedGame.info.id })
             }

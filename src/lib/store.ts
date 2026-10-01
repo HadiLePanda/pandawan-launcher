@@ -15,6 +15,13 @@ import { CommandError } from './errors';
 import { emptyFilters, type GameFilters } from './game-filters';
 import { loadAvatarId, saveAvatarId } from './avatars';
 import { loadUnpinnedGameIds, saveUnpinnedGameIds } from './pins';
+import {
+  loadChannelOverrides,
+  resolveChannel,
+  saveChannelOverrides,
+  setChannelOverride,
+  type Channel,
+} from './channels';
 
 export interface LauncherNotification {
   id: string;
@@ -42,11 +49,16 @@ interface LauncherState {
   notifications: LauncherNotification[];
   avatarId: string;
   unpinnedGameIds: string[];
+  /** Per-game channel the player chose, keyed by game id. Absent = use the catalog's. */
+  channelOverrides: Record<string, Channel>;
 
   // Actions
   setGames: (games: Game[]) => void;
   setAvatarId: (avatarId: string) => void;
   toggleGamePinned: (gameId: string) => void;
+  setGameChannel: (gameId: string, channel: Channel) => void;
+  /** Channel currently in effect for a game: override, else the catalog's. */
+  channelFor: (gameId: string, catalogChannel: string) => string;
   pushNotification: (notification: Omit<LauncherNotification, 'id' | 'date' | 'read'>) => void;
   markAllNotificationsRead: () => void;
   clearNotifications: () => void;
@@ -94,8 +106,25 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   notifications: [],
   avatarId: loadAvatarId(),
   unpinnedGameIds: loadUnpinnedGameIds(),
+  channelOverrides: loadChannelOverrides(),
 
   setGames: (games) => set({ games }),
+
+  channelFor: (gameId, catalogChannel) =>
+    resolveChannel(gameId, catalogChannel, get().channelOverrides),
+
+  setGameChannel: (gameId, channel) =>
+    set((state) => {
+      const game = state.games.find((g) => g.info.id === gameId);
+      // An installed game knows which channel it came from; that is the
+      // publisher's channel for it, and matching it clears a redundant override.
+      // A game not in the list has no catalog entry to compare against, so fall
+      // back to stable rather than guessing.
+      const catalogChannel = game?.info.channel ?? 'stable';
+      const next = setChannelOverride(state.channelOverrides, gameId, channel, catalogChannel);
+      saveChannelOverrides(next);
+      return { channelOverrides: next };
+    }),
 
   setAvatarId: (avatarId) => {
     saveAvatarId(avatarId);

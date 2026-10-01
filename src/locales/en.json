@@ -57,14 +57,16 @@
     "verifyFiles": "Verify files"
   },
   "gamePage": {
-    "channel": {
-      "alpha": "ALPHA",
-      "beta": "BETA"
+    "channelMenu": {
+      "alpha": "Alpha",
+      "beta": "Beta",
+      "default": "Default",
+      "stable": "Release",
+      "title": "Channel"
     },
     "developer": "Developer",
     "filesProgress": "{{completed}} / {{total}} files",
     "gameInfo": "Game Info",
-    "gameSettings": "Game settings",
     "install": "Install",
     "installing": "Installing",
     "lastPlayedLabel": "Last played",

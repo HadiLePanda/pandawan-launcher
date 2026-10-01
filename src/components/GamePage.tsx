@@ -1,8 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Download, RefreshCw, X, SlidersHorizontal, MoreVertical, Clock } from 'lucide-react';
+import {
+  Play,
+  Download,
+  RefreshCw,
+  X,
+  SlidersHorizontal,
+  MoreVertical,
+  Clock,
+  HardDrive,
+} from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
 import { resolveCdnUrl } from '@/lib/cdn';
+import { KNOWN_CHANNELS, type Channel } from '@/lib/channels';
 import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
 import type { GameContextAction } from '@/lib/game-context';
 import type { Game, NewsItem } from '@/types';
@@ -23,33 +33,117 @@ interface GamePageProps {
   onUpdate: () => void;
   onUninstall: () => void;
   onVerify: () => void;
-  onSettings?: () => void;
+  /** Channel currently in effect, including any per-game override. */
+  channel: string;
+  /** Channel the catalog publishes for this game, the picker's default option. */
+  catalogChannel: string;
+  onChannelChange: (channel: Channel) => void;
   onSelectNewsArticle?: (articleId: string) => void;
   onCancel?: () => void;
 }
 
-function channelLabel(t: (key: string) => string, channel: string): string {
-  const normalized = channel.toLowerCase();
-  if (normalized === 'stable') return '';
-  if (normalized === 'beta') return t('gamePage.channel.beta');
-  if (normalized === 'alpha') return t('gamePage.channel.alpha');
-  return channel.charAt(0).toUpperCase() + channel.slice(1);
+/**
+ * i18next's `t`, narrow enough to pass around as a plain function.
+ */
+type Translate = (key: string) => string;
+
+/**
+ * Display form of a version for the info modal, which has no banner to carry a
+ * channel mark. On a prerelease channel the semver suffix already says it, so the
+ * suffix is dropped and the channel named instead - otherwise the modal read
+ * "ALPHA 0.4.0-alpha.1", the same fact twice.
+ *
+ * Channel names are always written as literal translation calls in this file.
+ * The i18n coverage test discovers keys by scanning source for that exact call
+ * shape, so a template string or an indirection through a helper makes a key
+ * look both missing and unused. It also scans comments, so do not paste a
+ * sample call into prose either. See src/lib/i18n-coverage.test.ts.
+ */
+function versionText(t: Translate, channel: string, version: string): string {
+  if (channel === 'stable') return version;
+  const label =
+    channel === 'alpha'
+      ? t('gamePage.channelMenu.alpha')
+      : channel === 'beta'
+        ? t('gamePage.channelMenu.beta')
+        : '';
+  return label ? `${label} ${version.split('-')[0]}` : version;
 }
 
 /**
- * Display form of a version. On a prerelease channel the semver suffix already
- * carries the information ("0.4.0-alpha.1"), so rendering it after an "Alpha"
- * badge produced "ALPHA 0.4.0-alpha.1" - the same fact stated twice, and shouty.
- * Strip the suffix there and let the badge carry the meaning.
+ * Channel picker, shown from the game page's banner tools.
  *
- * Stable builds keep the full string: with no badge, "0.4.0" alone would not
- * say whether it is a release or a prerelease.
+ * The channel decides the manifest URL, so this is a real setting rather than a
+ * display filter. Choosing the catalog's own channel clears the override, so a
+ * later publisher change is picked up without touching this again.
  */
-function versionText(t: (key: string) => string, channel: string, version: string): string {
-  const label = channelLabel(t, channel);
-  if (!label) return version;
-  const base = version.split('-')[0];
-  return `${label} ${base}`;
+function ChannelPicker({
+  gameId,
+  currentChannel,
+  catalogChannel,
+  onChoose,
+  onClose,
+}: {
+  gameId: string;
+  currentChannel: string;
+  catalogChannel: string;
+  onChoose: (channel: Channel) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div ref={ref} className="game-channel-menu" role="menu">
+      <p className="game-channel-menu-title">{t('gamePage.channelMenu.title')}</p>
+      {KNOWN_CHANNELS.map((channel) => {
+        const active = currentChannel === channel;
+        return (
+          <button
+            key={`${gameId}-${channel}`}
+            type="button"
+            role="menuitemradio"
+            aria-checked={active}
+            className={cn('game-channel-menu-item', active && 'game-channel-menu-item-active')}
+            onClick={() => {
+              onChoose(channel);
+              onClose();
+            }}
+          >
+            <span
+              className={cn('game-channel-dot', `game-channel-dot-${channel}`)}
+              aria-hidden="true"
+            />
+            <span>
+              {channel === 'alpha'
+                ? t('gamePage.channelMenu.alpha')
+                : channel === 'beta'
+                  ? t('gamePage.channelMenu.beta')
+                  : t('gamePage.channelMenu.stable')}
+            </span>
+            {channel === catalogChannel && (
+              <span className="game-channel-menu-default">{t('gamePage.channelMenu.default')}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function GamePage({
@@ -61,14 +155,18 @@ export function GamePage({
   onUpdate,
   onUninstall,
   onVerify,
-  onSettings,
+  channel,
+  catalogChannel,
+  onChannelChange,
   onSelectNewsArticle,
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
+  const [isChannelOpen, setIsChannelOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const channelTriggerRef = useRef<HTMLButtonElement>(null);
 
   const isDownloading = game.status === 'downloading' || game.status === 'updating';
   const isRunning = game.status === 'running';
@@ -140,23 +238,47 @@ export function GamePage({
           <div className="game-detail-banner-content">
             <h1 className="game-detail-title">{game.info.name}</h1>
           </div>
-          {/* The options menu is not a peer of Play/Install: it is a different kind
-              of action, and sharing that pill made it read as a second half of the
-              primary action. Anchored to the banner's own corner it is clearly
-              chrome, and the menu opens flush beneath the icon.
-              Game settings sit beside it because both are "what else can I do
-              with this game"; the divider keeps them from reading as one control. */}
+          {/* Prerelease channels get a persistent mark in the banner's own
+              corner. The version string alone is too quiet to notice, and
+              mistaking a playtest for a release is the mistake worth preventing. */}
+          {channel !== 'stable' && (
+            <span className={cn('game-channel-badge', `game-channel-badge-${channel}`)}>
+              {channel === 'alpha'
+                ? t('gamePage.channelMenu.alpha')
+                : channel === 'beta'
+                  ? t('gamePage.channelMenu.beta')
+                  : t('gamePage.channelMenu.stable')}
+            </span>
+          )}
+          {/* Anchored to the banner's padding box, not its border box: the scrim
+              covers the border box, so a 16px inset from there clipped the
+              rightmost button against the edge. */}
           <div className="game-detail-banner-tools">
-            {onSettings && (
-              <button
-                type="button"
-                onClick={onSettings}
-                className="game-detail-menu-btn"
-                title={t('gamePage.gameSettings')}
-                aria-label={t('gamePage.gameSettings')}
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
+            {/* The options menu is not a peer of Play/Install: it is a different
+                kind of action, and sharing that pill made it read as a second half
+                of the primary action. Anchored to the banner's corner it is
+                clearly chrome. Channel settings sit beside it because both answer
+                "what else can I do with this game". */}
+            <button
+              type="button"
+              ref={channelTriggerRef}
+              onClick={() => setIsChannelOpen((open) => !open)}
+              className="game-detail-menu-btn"
+              title={t('gamePage.channelMenu.title')}
+              aria-label={t('gamePage.channelMenu.title')}
+              aria-haspopup="menu"
+              aria-expanded={isChannelOpen}
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
+            {isChannelOpen && (
+              <ChannelPicker
+                gameId={game.info.id}
+                currentChannel={channel}
+                catalogChannel={catalogChannel}
+                onChoose={onChannelChange}
+                onClose={() => setIsChannelOpen(false)}
+              />
             )}
             <button
               type="button"
@@ -219,36 +341,37 @@ export function GamePage({
             />
           </div>
 
+          {/* Icon-led metadata. "Version" and "Size" above each value told the
+              reader what they were already looking at, and the labels broke the
+              line into a list. The icon carries the meaning; the value stands
+              alone. Version drops the channel prefix because the banner badge
+              already says it. */}
           <div className="game-detail-meta">
             {showSize && (
-              <div className="game-detail-meta-item">
-                <span className="game-detail-meta-label">{t('gamePage.size')}</span>
-                <span className="game-detail-meta-value">{formatBytes(game.info.sizeBytes)}</span>
-              </div>
-            )}
-            {game.status !== 'not_installed' && game.installation && (
-              <div className="game-detail-meta-item">
-                <span className="game-detail-meta-label">{t('gamePage.lastPlayedLabel')}</span>
-                <span className="game-detail-meta-value">
-                  {getTimeAgo(game.installation.last_played)}
-                </span>
-              </div>
-            )}
-            {game.status !== 'not_installed' && game.installation && (
-              <div className="game-detail-meta-item">
-                <span className="game-detail-meta-label">{t('gamePage.playtimeLabel')}</span>
-                <span className="game-detail-meta-value">
-                  <Clock className="w-4 h-4" />
-                  {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
-                </span>
-              </div>
-            )}
-            <div className="game-detail-meta-item">
-              <span className="game-detail-meta-label">{t('gamePage.version')}</span>
-              <span className="game-detail-meta-value">
-                {versionText(t, game.info.channel, game.info.version)}
+              <span className="game-detail-chip" title={t('gamePage.size')}>
+                <HardDrive className="w-3.5 h-3.5" aria-hidden="true" />
+                {formatBytes(game.info.sizeBytes)}
               </span>
-            </div>
+            )}
+            {game.installation && game.status !== 'not_installed' && (
+              <span
+                className="game-detail-chip"
+                title={`${t('gamePage.playtimeLabel')} ${formatPlaytimeDecimal(
+                  game.installation.total_playtime_seconds
+                )}`}
+              >
+                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                {formatPlaytimeDecimal(game.installation.total_playtime_seconds)}
+              </span>
+            )}
+            {game.installation && game.status !== 'not_installed' && (
+              <span className="game-detail-chip" title={t('gamePage.lastPlayedLabel')}>
+                {getTimeAgo(game.installation.last_played)}
+              </span>
+            )}
+            <span className="game-detail-chip" title={t('gamePage.version')}>
+              {game.info.version}
+            </span>
           </div>
         </div>
         {isDownloading && (
@@ -280,8 +403,10 @@ export function GamePage({
         )}
       </div>
 
+      {/* No heading and no panel behind the news. The article titles are the
+          headings, and a card background in a column of other cards made the
+          aside read as a fourth surface competing with the banner. */}
       <aside className="game-detail-news">
-        <h3 className="game-detail-news-title">{t('gamePage.news')}</h3>
         {gameNews.length > 0 ? (
           <div className="game-detail-news-list">
             {gameNews.map((item) => (

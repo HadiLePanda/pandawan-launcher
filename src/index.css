@@ -2782,17 +2782,138 @@ input.pin-search {
   border-radius: 6px 0 0 6px;
 }
 
-/* Banner-corner tools: game settings and the options menu. Both are "what else
-   can I do with this game", so they live together away from the primary action
-   rather than split between the banner and the action pill. */
+/* Banner-corner tools: channel settings and the options menu. Both are "what
+   else can I do with this game", so they live together away from the primary
+   action rather than split between the banner and the action pill.
+
+   The offset is 12px, not 16px: the banner is overflow-hidden with border-radius,
+   so a 16px inset measured from the border box put the rightmost button flush
+   against the rounded corner and clipped it. */
 .game-detail-banner-tools {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Prerelease channel mark, top-left of the banner. Sized and weighted to read
+   as a stamp on the artwork rather than part of the title. */
+.game-channel-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+}
+
+.game-channel-badge-alpha {
+  background: rgba(217, 70, 239, 0.72);
+}
+
+.game-channel-badge-beta {
+  background: rgba(245, 158, 11, 0.72);
+}
+
+/* Channel picker. Anchored to the tools row, not the viewport, so it always
+   opens under the button that opened it. */
+.game-channel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 4;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--surface, #16191d);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.game-channel-menu-title {
+  margin: 0;
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.game-channel-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.game-channel-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.game-channel-menu-item-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.game-channel-menu-default {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+.game-channel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.game-channel-dot-stable {
+  background: #22c55e;
+}
+
+.game-channel-dot-beta {
+  background: #f59e0b;
+}
+
+.game-channel-dot-alpha {
+  background: #d946ef;
+}
+
+/* Icon-led metadata chips. No labels: the icon carries the meaning. */
+.game-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.game-detail-chip + .game-detail-chip {
+  margin-left: 14px;
+}
+
+.game-detail-chip svg {
+  opacity: 0.7;
 }
 
 .game-detail-menu-btn {
