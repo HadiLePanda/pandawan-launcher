@@ -220,14 +220,14 @@ async function serveStatic(res, name) {
   }
 }
 /**
- * Run a publish script and stream its output as server-sent events.
+ * Run a publishing script and stream its output as server-sent events.
  *
  * The scripts are not reimplemented here on purpose: publish-game.mjs carries the
  * channel/version guard, the version-stamped layout, platform validation and the
  * stale-multipart cleanup. A dashboard that duplicated that logic would quietly
  * lose every one of them.
  */
-function runPublish(args, res) {
+function runScript(name, args, res) {
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
@@ -236,7 +236,7 @@ function runPublish(args, res) {
 
   const send = (event, data) => res.write(`event: ${event}\ndata: ${data}\n\n`);
 
-  const child = spawn(process.execPath, [path.join(here, 'publish-game.mjs'), ...args], {
+  const child = spawn(process.execPath, [path.join(here, name), ...args], {
     cwd: path.resolve(here, '..'),
     env: process.env,
   });
