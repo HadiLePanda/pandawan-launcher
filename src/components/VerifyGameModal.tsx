@@ -23,7 +23,7 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="modal modal-auto animate-slide-up max-w-md">
-        <div className="modal-header">
+        <div className="modal-header verify-topbar">
           <h3 className="title-3">{t('verifyGameModal.title')}</h3>
           <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
             <X className="w-4 h-4" />
@@ -43,11 +43,13 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
           {result && !error && <ResultView result={result} />}
         </div>
 
-        <div className="modal-footer">
-          <button onClick={onClose} className="btn btn-ghost">
-            {t('common.close')}
-          </button>
-        </div>
+        {result && !error && (
+          <div className="modal-footer">
+            <button onClick={onClose} className="btn btn-primary w-full">
+              {t('common.close')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

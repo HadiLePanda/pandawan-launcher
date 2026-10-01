@@ -1,1 +1,1 @@
-fix(verify): auto-height dialog and stacked verdict so short results read cleanly
+refactor(verify): top bar owns the close, footer only on result

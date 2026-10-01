@@ -4217,3 +4217,21 @@ input.pin-search {
 .verify-verdict-bad .verify-verdict-head {
   width: 100%;
 }
+
+.verify-topbar {
+  padding: 0.875rem 1rem;
+  background: var(--surface-light);
+  flex-shrink: 0;
+}
+
+.verify-topbar .icon-btn {
+  color: var(--ink-muted);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.verify-topbar .icon-btn:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
+}
