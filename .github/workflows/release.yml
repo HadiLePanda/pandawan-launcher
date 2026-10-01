@@ -130,6 +130,7 @@ jobs:
             --dir bundles \
             --pattern '*.msi' --pattern '*.msi.sig' \
             --pattern '*.app.tar.gz' --pattern '*.app.tar.gz.sig' \
+            --pattern '*.dmg' \
             --pattern '*.deb' --pattern '*.deb.sig' \
             --pattern 'latest.json' \
             --clobber
