@@ -6,18 +6,18 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 
 ## Features
 
-- 🎮 **Game Library Management** - Install, update, and launch games from a central library
-- 📦 **Smart Patching** - Only downloads changed files using hash-based verification
-- ⏯️ **Resume Downloads** - Interrupted downloads automatically resume from where they left off
-- ⚡ **Parallel Downloads** - Download multiple files concurrently for faster installation
-- 🔄 **Auto-Updates** - Games automatically check for and install updates
-- ⬆️ **Launcher Self-Updates** - The launcher checks for, downloads, and installs its own updates
-- ⏱️ **Playtime Tracking** - Track total playtime and last-played date for every game
-- 🔔 **OS Notifications** - Get notified when installs finish or launcher updates are available
-- 🌐 **Multi-Language** - Available in English and French
-- 🎨 **Modern UI** - Neutral dark theme inspired by Steam and Battle.net
-- 🔧 **Configurable** - Customizable install paths, bandwidth limits, and behavior settings
-- 🖥️ **Cross-Platform** - Built with Tauri for Windows, macOS, and Linux support
+- ðŸŽ® **Game Library Management** - Install, update, and launch games from a central library
+- ðŸ“¦ **Smart Patching** - Only downloads changed files using hash-based verification
+- â¯ï¸ **Resume Downloads** - Interrupted downloads automatically resume from where they left off
+- âš¡ **Parallel Downloads** - Download multiple files concurrently for faster installation
+- ðŸ”„ **Auto-Updates** - Games automatically check for and install updates
+- â¬†ï¸ **Launcher Self-Updates** - The launcher checks for, downloads, and installs its own updates
+- â±ï¸ **Playtime Tracking** - Track total playtime and last-played date for every game
+- ðŸ”” **OS Notifications** - Get notified when installs finish or launcher updates are available
+- ðŸŒ **Multi-Language** - Available in English and French
+- ðŸŽ¨ **Modern UI** - Neutral dark theme inspired by Steam and Battle.net
+- ðŸ”§ **Configurable** - Customizable install paths, bandwidth limits, and behavior settings
+- ðŸ–¥ï¸ **Cross-Platform** - Built with Tauri for Windows, macOS, and Linux support
 
 ## Tech Stack
 
@@ -33,51 +33,51 @@ A lightweight, Battle.net-style game launcher built with **Tauri**, **React**, a
 
 ```
 pandawan-launcher/
-├── src/                          # React frontend
-│   ├── components/               # UI components
-│   │   ├── AppHeader.tsx        # TitleBar status bar + MainNav
-│   │   ├── GamesBar.tsx         # Pinned games shortcuts bar
-│   │   ├── FiltersPanel.tsx     # Game-grid filters on the overview
-│   │   ├── GamesPage.tsx        # Game library layout
-│   │   ├── GamesHome.tsx        # Default game grid view
-│   │   ├── GamePage.tsx         # Selected game detail view
-│   │   ├── News.tsx             # News feed view
-│   │   ├── NewsArticleView.tsx  # Full news article view
-│   │   ├── Settings.tsx         # Settings modal
-│   │   ├── DownloadsPage.tsx    # Active downloads view
-│   │   ├── DownloadsPopup.tsx   # Downloads popover
-│   │   ├── NotificationsPanel.tsx # Notifications dropdown
-│   │   ├── PinManagerModal.tsx  # Manage pinned games
-│   │   ├── UpdateBanner.tsx     # Launcher self-update banner
-│   │   └── VerifyGameModal.tsx  # File-integrity verification
-│   ├── lib/                      # Utilities, services, and state
-│   │   ├── store.ts             # Zustand state management
-│   │   ├── catalog-service.ts   # Remote/local/embedded catalog loading
-│   │   ├── cdn.ts               # CDN URL helpers and game info resolver
-│   │   ├── game-service.ts      # Tauri command wrappers for install/launch
-│   │   ├── news-service.ts      # News feed loader
-│   │   ├── commands.ts          # Typed Tauri invoke helpers
-│   │   ├── download-channel.ts  # Download progress event mapping
-│   │   ├── updater-service.ts   # Launcher self-update flow (check/download/relaunch)
-│   │   ├── notifications.ts     # OS notifications (install/update complete, update available)
-│   │   ├── i18n.ts              # i18next setup and language switching
-│   │   ├── utils.ts             # Shared helpers (e.g. playtime formatting)
-│   │   ├── logger.ts            # Structured logging (+ launcher.log in app log dir)
-│   │   └── window.ts            # Custom title-bar window controls
-│   ├── locales/                 # i18next resources (en/fr.json)
-│   ├── types/
-│   │   └── index.ts             # TypeScript type definitions
-│   ├── App.tsx                  # Main app component
-│   ├── main.tsx                 # Entry point
-│   └── index.css                # Global styles + CSS variables
-├── src-tauri/                    # Rust backend
-│   └── src/
-│       ├── main.rs              # Entry point
-│       ├── lib.rs               # Main library with Tauri commands
-│       ├── types.rs             # Shared types
-│       ├── download.rs          # Download manager
-│       └── patch.rs             # Patching system
-└── package.json
+â”œâ”€â”€ src/                          # React frontend
+â”‚   â”œâ”€â”€ components/               # UI components
+â”‚   â”‚   â”œâ”€â”€ AppHeader.tsx        # TitleBar status bar + MainNav
+â”‚   â”‚   â”œâ”€â”€ GamesBar.tsx         # Pinned games shortcuts bar
+â”‚   â”‚   â”œâ”€â”€ FiltersPanel.tsx     # Game-grid filters on the overview
+â”‚   â”‚   â”œâ”€â”€ GamesPage.tsx        # Game library layout
+â”‚   â”‚   â”œâ”€â”€ GamesHome.tsx        # Default game grid view
+â”‚   â”‚   â”œâ”€â”€ GamePage.tsx         # Selected game detail view
+â”‚   â”‚   â”œâ”€â”€ News.tsx             # News feed view
+â”‚   â”‚   â”œâ”€â”€ NewsArticleView.tsx  # Full news article view
+â”‚   â”‚   â”œâ”€â”€ Settings.tsx         # Settings modal
+â”‚   â”‚   â”œâ”€â”€ DownloadsPage.tsx    # Active downloads view
+â”‚   â”‚   â”œâ”€â”€ DownloadsPopup.tsx   # Downloads popover
+â”‚   â”‚   â”œâ”€â”€ NotificationsPanel.tsx # Notifications dropdown
+â”‚   â”‚   â”œâ”€â”€ PinManagerModal.tsx  # Manage pinned games
+â”‚   â”‚   â”œâ”€â”€ UpdateBanner.tsx     # Launcher self-update banner
+â”‚   â”‚   â””â”€â”€ VerifyGameModal.tsx  # File-integrity verification
+â”‚   â”œâ”€â”€ lib/                      # Utilities, services, and state
+â”‚   â”‚   â”œâ”€â”€ store.ts             # Zustand state management
+â”‚   â”‚   â”œâ”€â”€ catalog-service.ts   # Remote/local/embedded catalog loading
+â”‚   â”‚   â”œâ”€â”€ cdn.ts               # CDN URL helpers and game info resolver
+â”‚   â”‚   â”œâ”€â”€ game-service.ts      # Tauri command wrappers for install/launch
+â”‚   â”‚   â”œâ”€â”€ news-service.ts      # News feed loader
+â”‚   â”‚   â”œâ”€â”€ commands.ts          # Typed Tauri invoke helpers
+â”‚   â”‚   â”œâ”€â”€ download-channel.ts  # Download progress event mapping
+â”‚   â”‚   â”œâ”€â”€ updater-service.ts   # Launcher self-update flow (check/download/relaunch)
+â”‚   â”‚   â”œâ”€â”€ notifications.ts     # OS notifications (install/update complete, update available)
+â”‚   â”‚   â”œâ”€â”€ i18n.ts              # i18next setup and language switching
+â”‚   â”‚   â”œâ”€â”€ utils.ts             # Shared helpers (e.g. playtime formatting)
+â”‚   â”‚   â”œâ”€â”€ logger.ts            # Structured logging (+ launcher.log in app log dir)
+â”‚   â”‚   â””â”€â”€ window.ts            # Custom title-bar window controls
+â”‚   â”œâ”€â”€ locales/                 # i18next resources (en/fr.json)
+â”‚   â”œâ”€â”€ types/
+â”‚   â”‚   â””â”€â”€ index.ts             # TypeScript type definitions
+â”‚   â”œâ”€â”€ App.tsx                  # Main app component
+â”‚   â”œâ”€â”€ main.tsx                 # Entry point
+â”‚   â””â”€â”€ index.css                # Global styles + CSS variables
+â”œâ”€â”€ src-tauri/                    # Rust backend
+â”‚   â””â”€â”€ src/
+â”‚       â”œâ”€â”€ main.rs              # Entry point
+â”‚       â”œâ”€â”€ lib.rs               # Main library with Tauri commands
+â”‚       â”œâ”€â”€ types.rs             # Shared types
+â”‚       â”œâ”€â”€ download.rs          # Download manager
+â”‚       â””â”€â”€ patch.rs             # Patching system
+â””â”€â”€ package.json
 ```
 
 ## Getting Started
@@ -131,16 +131,16 @@ To distribute your games, you'll need a CDN or web server. The expected structur
 
 ```
 cdn.yourdomain.com/
-└── games/
-    └── quirheim-online/
-        ├── manifest.json          # Game manifest
-        ├── files/                 # Game files
-        │   ├── game.exe
-        │   ├── data/
-        │   └── ...
-        └── versions/
-            └── 1.0.0/
-                └── ...
+â””â”€â”€ games/
+    â””â”€â”€ quirheim-online/
+        â”œâ”€â”€ manifest.json          # Game manifest
+        â”œâ”€â”€ files/                 # Game files
+        â”‚   â”œâ”€â”€ game.exe
+        â”‚   â”œâ”€â”€ data/
+        â”‚   â””â”€â”€ ...
+        â””â”€â”€ versions/
+            â””â”€â”€ 1.0.0/
+                â””â”€â”€ ...
 ```
 
 ### Game Manifest Format
@@ -186,7 +186,7 @@ python scripts/generate-manifest.py \
   --version 1.0.0 \
   --build-number 100 \
   --executable "QuirheimOnline.exe" \
-  --cdn-origin "https://cdn.pandawancorp.com" \
+  --cdn-origin "https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev" \
   --channel stable \
   --input-dir "./Builds/StandaloneWindows64-v1.0.0" \
   --output "manifest.json"
@@ -265,7 +265,7 @@ npm run publish:game -- \
 ```
 
 It generates the manifest, uploads the game files, then uploads the manifest.
-**Files go up first on purpose** — the manifest is what tells a player's
+**Files go up first on purpose** â€” the manifest is what tells a player's
 launcher a build exists, so publishing it early would let someone resolve a
 manifest whose files are not there yet.
 
@@ -282,14 +282,14 @@ paste secrets into a shell. Copy the block from `.env.example` into `.env` and
 fill in real values:
 
 ```bash
-R2_ACCOUNT_ID=<Cloudflare dashboard → R2 → Account ID>
+R2_ACCOUNT_ID=<Cloudflare dashboard â†’ R2 â†’ Account ID>
 R2_BUCKET=<bucket name from the R2 dashboard>
 R2_CDN_ORIGIN=https://pub-xxxxxxxxxxxx.r2.dev
-R2_ACCESS_KEY_ID=<R2 → Manage R2 tokens>
+R2_ACCESS_KEY_ID=<R2 â†’ Manage R2 tokens>
 R2_SECRET_ACCESS_KEY=<same, shown once>
 ```
 
-`R2_ACCOUNT_ID` is **not** the value inside the `r2.dev` URL — that subdomain
+`R2_ACCOUNT_ID` is **not** the value inside the `r2.dev` URL â€” that subdomain
 encodes the bucket, not the account. Both are shown in the R2 dashboard.
 
 A value already present in the real environment wins over `.env`, so CI can
@@ -302,7 +302,7 @@ S3-compatible API; you do not need an AWS account).
 
 ### Versioning
 
-`build-number` must increase on every build, across **all** channels — it is the
+`build-number` must increase on every build, across **all** channels â€” it is the
 only value the launcher compares. `version` is display text and is never
 compared, so ordering never depends on it.
 
@@ -327,11 +327,11 @@ updater endpoint actually reads:
 
 ```
 R2 bucket
-└── launcher/
-    ├── latest.json                       # updater manifest (never cached)
-    ├── Pandawan Launcher_0.1.0_x64_en-US.msi
-    ├── Pandawan Launcher_0.1.0_x64_en-US.msi.sig
-    └── ...
+â””â”€â”€ launcher/
+    â”œâ”€â”€ latest.json                       # updater manifest (never cached)
+    â”œâ”€â”€ Pandawan Launcher_0.1.0_x64_en-US.msi
+    â”œâ”€â”€ Pandawan Launcher_0.1.0_x64_en-US.msi.sig
+    â””â”€â”€ ...
 ```
 
 This keeps the repository private while letting players download without
@@ -419,6 +419,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Built with ❤️ by Pandawan Corp
+Built with â¤ï¸ by Pandawan Corp
 
 Powered by [Tauri](https://tauri.app/), [React](https://react.dev/), and [Rust](https://www.rust-lang.org/)

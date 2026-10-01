@@ -12,9 +12,9 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 
 ## Key files you must have
 
-- `src-tauri/updater.pub` — minisign **public** key, committed to the repo.
-- `src-tauri/.secrets/updater.key` — minisign **secret** key, **never committed**.
-- GitHub Secret `TAURI_SIGNING_PRIVATE_KEY` — paste the contents of `updater.key` here.
+- `src-tauri/updater.pub` â€” minisign **public** key, committed to the repo.
+- `src-tauri/.secrets/updater.key` â€” minisign **secret** key, **never committed**.
+- GitHub Secret `TAURI_SIGNING_PRIVATE_KEY` â€” paste the contents of `updater.key` here.
 
 `npm run tauri:build` and the release workflow automatically sync `updater.pub` into `tauri.conf.json` for you.
 
@@ -33,7 +33,7 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
    git push -u origin release/v0.2.0
    ```
 
-4. **Stabilise** on that branch — bug fixes only, no new features.
+4. **Stabilise** on that branch â€” bug fixes only, no new features.
 
 5. **Test a local signed build**:
 
@@ -56,10 +56,10 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 
 8. **Publish** the drafted GitHub Release.
 
-9. **Upload `latest.json`** to your CDN endpoint (`https://cdn.pandawancorp.com/launcher/updates.json`) so installed launchers can find the update.
+9. **Upload `latest.json`** to your CDN endpoint (`https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/updates.json`) so installed launchers can find the update.
 
 ## Notes
 
 - Tags must match `v*.*.*` (e.g. `v0.2.0`) to trigger the workflow.
 - The release is drafted, not published automatically.
-- If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail — the workflow checks the public key exists first, but the secret itself must be set in GitHub.
+- If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail â€” the workflow checks the public key exists first, but the secret itself must be set in GitHub.

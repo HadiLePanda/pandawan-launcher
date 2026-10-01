@@ -3,13 +3,17 @@ import type { CatalogGameEntry, GameInfo, GameManifest } from '@/types';
 /** Pandawan CDN layout convention.
  *
  *  Games:
- *    https://cdn.pandawancorp.com/games/{id}/{channel}/manifest.json
- *    https://cdn.pandawancorp.com/games/{id}/{channel}/{file}
+ *    {origin}/games/{id}/{channel}/manifest.json
+ *    {origin}/games/{id}/{channel}/{file}
  *
  *  Launcher-wide news feed:
- *    https://cdn.pandawancorp.com/launcher/news.json
+ *    {origin}/launcher/news.json
+ *
+ * The origin comes from VITE_CDN_ORIGIN (see .env), falling back to the public
+ * R2 bucket. Point it at a custom domain by setting VITE_CDN_ORIGIN; nothing
+ * here needs to change when the host does.
  */
-const DEFAULT_ORIGIN = 'https://cdn.pandawancorp.com';
+const DEFAULT_ORIGIN = 'https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev';
 
 /** Make a possibly-relative CDN asset URL absolute against the current origin. */
 export function resolveCdnUrl(url: string | undefined): string {

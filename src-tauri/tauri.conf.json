@@ -54,7 +54,7 @@
     },
     "updater": {
       "active": true,
-      "endpoints": ["https://cdn.pandawancorp.com/launcher/latest.json"],
+      "endpoints": ["https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/latest.json"],
       "dialog": false,
       "pubkey": "RWQvuHc8cORDVNcS0ZqpM9YYQP8mUkjSfLJSQG9MbMuqo+o6rT2dzo16"
     }

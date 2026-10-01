@@ -84,46 +84,46 @@ This creates optimized binaries in `src-tauri/target/release/`.
 
 ```
 pandawan-launcher/
-├── src/                          # Frontend (React + TypeScript)
-│   ├── components/               # React components
-│   │   ├── Header.tsx           # Navigation bar with tabs
-│   │   ├── GameCard.tsx         # Game tile in library
-│   │   ├── GameDetail.tsx       # Full game page
-│   │   ├── Library.tsx          # Main library view
-│   │   ├── Settings.tsx         # Settings page
-│   │   ├── Store.tsx            # Store/browse page
-│   │   ├── News.tsx             # News feed page
-│   │   └── WindowControls.tsx   # Minimize/maximize/close buttons
-│   ├── lib/
-│   │   ├── store.ts             # Zustand state management
-│   │   └── utils.ts             # Helper functions (formatBytes, etc.)
-│   ├── types/
-│   │   └── index.ts             # TypeScript type definitions
-│   ├── App.tsx                  # Main app component
-│   ├── main.tsx                 # React entry point
-│   ├── index.css                # Global styles + Tailwind
-│   └── vite-env.d.ts            # Vite type declarations
-│
-├── src-tauri/                    # Backend (Rust)
-│   └── src/
-│       ├── main.rs              # Entry point
-│       ├── lib.rs               # Tauri commands + state
-│       ├── types.rs             # Shared data structures
-│       ├── download.rs          # Download manager (HTTP + progress)
-│       └── patch.rs             # Patching system (hash verification)
-│   ├── Cargo.toml               # Rust dependencies
-│   ├── tauri.conf.json          # Tauri configuration
-│   └── build.rs                 # Build script
-│
-├── scripts/
-│   └── generate-manifest.py     # Python script to create game manifests
-│
-├── examples/
-│   └── manifest.json            # Example game manifest
-│
-├── package.json                  # Node dependencies
-├── tsconfig.json                # TypeScript configuration
-└── vite.config.ts               # Vite configuration
+â”œâ”€â”€ src/                          # Frontend (React + TypeScript)
+â”‚   â”œâ”€â”€ components/               # React components
+â”‚   â”‚   â”œâ”€â”€ Header.tsx           # Navigation bar with tabs
+â”‚   â”‚   â”œâ”€â”€ GameCard.tsx         # Game tile in library
+â”‚   â”‚   â”œâ”€â”€ GameDetail.tsx       # Full game page
+â”‚   â”‚   â”œâ”€â”€ Library.tsx          # Main library view
+â”‚   â”‚   â”œâ”€â”€ Settings.tsx         # Settings page
+â”‚   â”‚   â”œâ”€â”€ Store.tsx            # Store/browse page
+â”‚   â”‚   â”œâ”€â”€ News.tsx             # News feed page
+â”‚   â”‚   â””â”€â”€ WindowControls.tsx   # Minimize/maximize/close buttons
+â”‚   â”œâ”€â”€ lib/
+â”‚   â”‚   â”œâ”€â”€ store.ts             # Zustand state management
+â”‚   â”‚   â””â”€â”€ utils.ts             # Helper functions (formatBytes, etc.)
+â”‚   â”œâ”€â”€ types/
+â”‚   â”‚   â””â”€â”€ index.ts             # TypeScript type definitions
+â”‚   â”œâ”€â”€ App.tsx                  # Main app component
+â”‚   â”œâ”€â”€ main.tsx                 # React entry point
+â”‚   â”œâ”€â”€ index.css                # Global styles + Tailwind
+â”‚   â””â”€â”€ vite-env.d.ts            # Vite type declarations
+â”‚
+â”œâ”€â”€ src-tauri/                    # Backend (Rust)
+â”‚   â””â”€â”€ src/
+â”‚       â”œâ”€â”€ main.rs              # Entry point
+â”‚       â”œâ”€â”€ lib.rs               # Tauri commands + state
+â”‚       â”œâ”€â”€ types.rs             # Shared data structures
+â”‚       â”œâ”€â”€ download.rs          # Download manager (HTTP + progress)
+â”‚       â””â”€â”€ patch.rs             # Patching system (hash verification)
+â”‚   â”œâ”€â”€ Cargo.toml               # Rust dependencies
+â”‚   â”œâ”€â”€ tauri.conf.json          # Tauri configuration
+â”‚   â””â”€â”€ build.rs                 # Build script
+â”‚
+â”œâ”€â”€ scripts/
+â”‚   â””â”€â”€ generate-manifest.py     # Python script to create game manifests
+â”‚
+â”œâ”€â”€ examples/
+â”‚   â””â”€â”€ manifest.json            # Example game manifest
+â”‚
+â”œâ”€â”€ package.json                  # Node dependencies
+â”œâ”€â”€ tsconfig.json                # TypeScript configuration
+â””â”€â”€ vite.config.ts               # Vite configuration
 ```
 
 ## Key Features
@@ -189,7 +189,7 @@ python scripts/generate-manifest.py \
   --version 1.0.0 \
   --build-number 100 \
   --executable "QuirheimOnline.exe" \
-  --cdn-origin "https://cdn.pandawancorp.com" \
+  --cdn-origin "https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev" \
   --channel stable \
   --input-dir "./Builds/StandaloneWindows64-v1.0.0" \
   --output "manifest.json"
@@ -203,7 +203,7 @@ Stored in:
 - macOS: `~/Library/Application Support/com.pandawancorp.launcher/`
 - Linux: `~/.local/share/com.pandawancorp.launcher/`
 
-## Tauri Commands (Frontend → Backend)
+## Tauri Commands (Frontend â†’ Backend)
 
 | Command                                    | Description                       |
 | ------------------------------------------ | --------------------------------- |
