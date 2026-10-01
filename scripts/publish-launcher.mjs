@@ -2,8 +2,12 @@
 /**
  * Publish the launcher release to R2 from this machine.
  *
- *   npm run release:publish -- --tag v0.1.0
- *   npm run release:publish -- --tag v0.1.0 --dry-run
+ *   npm run release:publish -- --tag v0.1.0 --confirm
+ *
+ * A dry run is the default: nothing is written to the bucket unless --confirm is
+ * passed. An upload is what makes a release visible to every player, so making it
+ * the deliberate option is safer than making it the default one. `--dry-run` is
+ * still accepted so the command reads naturally in the terminal.
  *
  * CI (.github/workflows/release.yml) builds the macOS and Linux bundles and then
  * runs the same upload this script performs. That full run takes ~25 minutes,
@@ -40,7 +44,7 @@ const PREFIX = 'launcher';
 const argv = process.argv.slice(2);
 const tagIndex = argv.indexOf('--tag');
 const tag = tagIndex !== -1 ? argv[tagIndex + 1] : null;
-const dryRun = argv.includes('--dry-run');
+const dryRun = !argv.includes('--confirm') || argv.includes('--dry-run');
 
 if (!tag || !/^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/.test(tag)) {
   fail('--tag is required, like --tag v0.1.0');

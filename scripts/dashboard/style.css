@@ -234,3 +234,68 @@ button.primary {
   max-height: 320px;
   overflow: auto;
 }
+
+/* Launcher panel: current published state, shown as one line of facts. */
+.state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.state .meta {
+  margin: 0;
+}
+
+/* Command reference: each command on its own line with a copy button. */
+.cmd-group {
+  margin: 18px 0;
+}
+
+.cmd-group h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+  margin: 0 0 8px;
+}
+
+.cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cmd code {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.cmd .copy {
+  flex: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#cmdFilter {
+  width: 100%;
+  margin: 10px 0 4px;
+}
+
+.hint {
+  opacity: 0.65;
+  font-size: 12px;
+}

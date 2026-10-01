@@ -53,6 +53,56 @@
       </section>
 
       <section class="panel">
+        <h2>Launcher release</h2>
+        <p class="meta">
+          The launcher ships through CI, not from here: a tag is pushed, all three platforms build
+          and sign, and only then is there something to publish. These actions cover the publish
+          half, which takes seconds rather than the ~25 minutes a build takes.
+        </p>
+
+        <div id="launcherState" class="state">loading…</div>
+
+        <form id="launcherForm">
+          <div class="grid">
+            <label
+              >Tag to publish
+              <input id="launcherTag" list="tagOptions" required placeholder="v0.1.0" />
+              <datalist id="tagOptions"></datalist>
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="confirm"
+              ><input id="launcherConfirm" type="checkbox" /> Upload to R2
+              <span class="tag warn">visible to players</span></label
+            >
+            <button type="submit">Publish launcher</button>
+            <button type="button" id="launcherKeys">Check signing keys</button>
+          </div>
+        </form>
+        <pre id="launcherLog" class="log" hidden></pre>
+
+        <h3>Start a new launcher version</h3>
+        <p class="meta">
+          Bumps the version in <span class="mono">package.json</span>,
+          <span class="mono">Cargo.toml</span> and <span class="mono">tauri.conf.json</span>, then
+          commits and pushes a tag, which triggers the CI build.
+        </p>
+        <div class="row">
+          <select id="releaseLevel">
+            <option value="patch">patch — 0.1.0 → 0.1.1</option>
+            <option value="minor">minor — 0.1.0 → 0.2.0</option>
+            <option value="major">major — 0.1.0 → 1.0.0</option>
+          </select>
+          <label class="confirm"
+            ><input id="releaseDryRun" type="checkbox" checked /> Preview only</label
+          >
+          <button type="button" id="releaseRun">Bump and tag</button>
+        </div>
+        <pre id="releaseLog" class="log" hidden></pre>
+      </section>
+
+      <section class="panel">
         <h2>Publish catalog</h2>
         <p class="meta">
           Uploads public/catalog.json (and the news feed) to
@@ -91,6 +141,15 @@
           </div>
         </form>
         <pre id="pruneLog" class="log" hidden></pre>
+      </section>
+      <section class="panel">
+        <h2>Command reference</h2>
+        <p class="meta">
+          Every command this project uses, for copy-paste into a terminal. The forms above do the
+          same things without the typing.
+        </p>
+        <input id="cmdFilter" placeholder="Filter commands…" autocomplete="off" />
+        <div id="cmdList"></div>
       </section>
     </main>
 

@@ -6,15 +6,34 @@
  * visible: channels ship per platform, so "windows is on 0.4.0 but mac is still
  * on 0.3.9" is the normal state of a project mid-release and should be obvious.
  *
- *   node scripts/dashboard.mjs [--port 4400]
+ *   npm run dashboard [-- --port 4400]
  *
- * SECURITY: it holds the R2 secret key, so it binds 127.0.0.1 and rejects any
- * request whose Host header is not loopback. That blocks DNS rebinding, where a
- * page the user visits resolves their hostname to 127.0.0.1 and then talks to
- * this server with the user's credentials.
+ * SECURITY - this process holds the R2 secret key and can delete bucket
+ * objects, so it is a local admin tool and must never ship to players.
+ *
+ * Three independent reasons it is safe today:
+ *
+ *  1. It is not in the shipped artifact. The launcher bundles the compiled Rust
+ *     binary plus dist/ (the Vite frontend output). `scripts/` is never part of
+ *     it, and `bundle.resources` is unset. src-tauri/tests/bundle_contents_tests.rs
+ *     fails if that ever changes, so this cannot be broken by accident.
+ *
+ *  2. It binds 127.0.0.1, and additionally rejects any request whose Host header
+ *     is not loopback. The second check blocks DNS rebinding, where a page the
+ *     user visits resolves their hostname to 127.0.0.1 and then drives this
+ *     server with the user's credentials.
+ *
+ *  3. It is not committed with credentials. R2_ACCESS_KEY_ID and
+ *     R2_SECRET_ACCESS_KEY come from .env or the environment, and .env is
+ *     gitignored. If this repository ever leaked, the dashboard source would
+ *     come with it but not the keys.
+ *
+ * Do not "fix" the host check by allowing LAN addresses, and do not add a
+ * deploy mode. If this ever needs remote access, it needs real authentication
+ * and a TLS terminator in front of it, not a loosened bind address.
  */
 import http from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -209,6 +228,59 @@ function rejectRebinding(req, res) {
   return true;
 }
 
+/**
+ * What is currently published for the launcher, and what exists to publish.
+ *
+ * Two independent sources, because they answer different questions:
+ *  - the live bucket tells players what they get today;
+ *  - the GitHub release tells us what CI has already built and signed.
+ *
+ * A tag can be signed but unpublished (CI finished, publish not run yet), and an
+ * artifact can be published from a tag with no local copy - so both are shown.
+ */
+async function launcherStatus() {
+  const repoRoot = path.resolve(here, '..');
+
+  // What players get right now. Fetched over HTTP rather than through the API so
+  // this reflects exactly what an updater would see, caching included.
+  let published = null;
+  try {
+    const response = await fetch(`${cdnOrigin}/launcher/latest.json`);
+    if (response.ok) {
+      const manifest = await response.json();
+      const targets = Object.keys(manifest.platforms ?? {});
+      published = {
+        version: manifest.version ?? null,
+        targets,
+        artifactCount: new Set(Object.values(manifest.platforms ?? {}).map((entry) => entry.url))
+          .size,
+      };
+    }
+  } catch {
+    // Nothing published, or the network is down. Both are shown as "not published"
+    // rather than failing the whole panel.
+  }
+
+  // Which releases exist, newest first.
+  let releases = [];
+  try {
+    const out = spawnSync('gh', ['release', 'list', '--limit', '10', '--json', 'tagName,isDraft'], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (out.status === 0 && out.stdout) releases = JSON.parse(out.stdout);
+  } catch {
+    // gh missing or not logged in; the panel still works without the list.
+  }
+
+  const packageVersion = JSON.parse(
+    await readFile(path.join(repoRoot, 'package.json'), 'utf-8')
+  ).version;
+
+  return { published, releases, packageVersion, cdnOrigin };
+}
+
 async function serveStatic(res, name) {
   const file = path.join(assetDir, name);
   try {
@@ -324,6 +396,62 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/catalog' && req.method === 'POST') {
     // publish-catalog.mjs takes no arguments at all: it publishes public/catalog.json.
     runScript('publish-catalog.mjs', [], res);
+    return;
+  }
+
+  // --- Launcher releases -------------------------------------------------
+  //
+  // The launcher ships through a different pipeline than games: CI builds and
+  // signs the bundles, and only then is there anything to publish. So these
+  // actions are deliberately narrower than the game ones - the dashboard never
+  // builds or signs, it only publishes what already exists.
+
+  if (url.pathname === '/api/launcher/status' && req.method === 'GET') {
+    try {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(await launcherStatus()));
+    } catch (err) {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/launcher/publish' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+    // The tag is validated against the release tag pattern before it is passed
+    // on, so a value from the form can never become an option rather than an
+    // argument (publish-launcher treats anything starting with -- as a flag).
+    const tag = String(payload.tag ?? '').trim();
+    if (!/^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/.test(tag)) {
+      res.writeHead(400).end('tag must look like v0.1.1');
+      return;
+    }
+    const argv = ['--tag', tag];
+    // --dry-run changes nothing in the bucket, so it is the default and a real
+    // upload has to be asked for explicitly.
+    if (payload.confirm) argv.push('--confirm');
+    runScript('publish-launcher.mjs', argv, res);
+    return;
+  }
+
+  if (url.pathname === '/api/launcher/keys' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+    // keys:check only reads the key and signs a throwaway file, so it is always
+    // safe to run from here.
+    runScript('check-updater-keys.cjs', [], res);
+    return;
+  }
+
+  if (url.pathname === '/api/launcher/release' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+    const level = ['patch', 'minor', 'major'].includes(payload.level) ? payload.level : 'patch';
+    const argv = [level];
+    if (payload.dryRun) argv.push('--dry-run');
+    runScript('release.mjs', argv, res);
     return;
   }
 

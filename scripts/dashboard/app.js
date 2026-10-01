@@ -1,4 +1,4 @@
-﻿const PLATFORMS = ['windows', 'macos', 'linux'];
+const PLATFORMS = ['windows', 'macos', 'linux'];
 const $ = (id) => document.getElementById(id);
 
 function compare(versions) {
@@ -178,6 +178,184 @@ $('pruneForm').addEventListener('submit', async (event) => {
   refresh();
 });
 
+/**
+ * Every command this project uses, rendered as a copyable reference so nobody
+ * has to memorise them or keep notes elsewhere.
+ *
+ * Held as data rather than prose so each entry stays next to the description of
+ * what it does, and each names the npm script the forms above mirror.
+ */
+const COMMANDS = [
+  {
+    group: 'Launcher releases',
+    items: [
+      {
+        cmd: 'npm run release',
+        about: 'Bump patch, tag, push. Triggers the CI build for all three platforms.',
+        hint: 'Also: -- minor | major | 0.2.0-beta.1 | --dry-run',
+      },
+      {
+        cmd: 'npm run release:publish -- --tag v0.1.0 --confirm',
+        about: 'Upload the built, signed launcher to R2. Dry run without --confirm.',
+      },
+      { cmd: 'npm run keys:check', about: 'Prove the signing key works and the pubkey is synced.' },
+      {
+        cmd: 'npm run keys:generate',
+        about: 'New signing keypair. Refuses to overwrite an existing one.',
+      },
+      {
+        cmd: 'npm run sync:updater-key',
+        about: 'Copy updater.pub into tauri.conf.json. Runs before builds.',
+      },
+      { cmd: 'npm run tauri:build', about: 'Local signed build. ~5 minutes on Windows.' },
+      { cmd: 'npm run tauri:dev', about: 'Run the launcher in dev mode.' },
+    ],
+  },
+  {
+    group: 'Game builds',
+    items: [
+      {
+        cmd: 'npm run publish:game -- --game-id pandawan-rising --channel alpha --version 1.2.0 --build-number 102 --executable "Game.exe" --name "Pandawan Rising" --input-dir ./Builds',
+        about: 'Upload a game build and make it visible to the launcher.',
+      },
+      {
+        cmd: 'npm run publish:catalog',
+        about: 'Upload catalog.json and news. New games stay invisible until this runs.',
+      },
+      {
+        cmd: 'npm run prune:builds -- --game-id pandawan-rising --keep 3',
+        about: 'Delete all but the 3 newest builds. Dry run unless --yes.',
+        hint: 'Pinned versions are never deleted.',
+      },
+      {
+        cmd: 'npm run backfill:latest',
+        about: 'Rewrite latest.json from what is already in the bucket.',
+      },
+      { cmd: 'npm run dashboard', about: 'Open this dashboard.' },
+    ],
+  },
+  {
+    group: 'Checks',
+    items: [
+      { cmd: 'npm test', about: 'Frontend unit tests.' },
+      { cmd: 'npm run lint', about: 'ESLint.' },
+      { cmd: 'npm run build', about: 'Typecheck and production frontend build.' },
+      { cmd: 'npm run format:check', about: 'Prettier check.' },
+      { cmd: 'npm run format', about: 'Apply Prettier.' },
+      {
+        cmd: 'cd src-tauri; cargo test',
+        about: 'Rust tests, including the updater signing checks.',
+      },
+    ],
+  },
+  {
+    group: 'Troubleshooting in CI',
+    items: [
+      {
+        cmd: 'gh run list --workflow=release.yml',
+        about: 'Recent release builds and whether they passed.',
+      },
+      { cmd: 'gh run view <id> --log-failed', about: 'Read why a CI step failed.' },
+      {
+        cmd: 'gh run rerun <id> --failed',
+        about: 'Re-run only the failed steps.',
+        hint: 'Uses the tagged commit, not main — check the fix is in the tag.',
+      },
+      {
+        cmd: 'gh secret list',
+        about: 'Secret names and when they were set. Values are never shown.',
+      },
+      {
+        cmd: 'gh workflow run release.yml -f publish_only=true -f tag=v0.1.0',
+        about: 'Re-publish to R2 from CI without rebuilding. ~30 seconds.',
+      },
+    ],
+  },
+];
+
+/** Copy text and confirm it, falling back to a selection when clipboard is blocked. */
+async function copy(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const original = button.textContent;
+    button.textContent = 'copied';
+    setTimeout(() => {
+      button.textContent = original;
+    }, 1200);
+  } catch {
+    // Clipboard needs a secure context or permission. Selecting the text is a
+    // working fallback rather than failing silently.
+    const range = document.createRange();
+    range.selectNodeContents(button.previousElementSibling);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}
+
+function renderCommands(filter = '') {
+  const host = document.getElementById('cmdList');
+  host.textContent = '';
+  const needle = filter.trim().toLowerCase();
+
+  for (const group of COMMANDS) {
+    const items = group.items.filter(
+      (item) =>
+        !needle || `${item.cmd} ${item.about} ${item.hint ?? ''}`.toLowerCase().includes(needle)
+    );
+    if (!items.length) continue;
+
+    const section = document.createElement('section');
+    section.className = 'cmd-group';
+
+    const heading = document.createElement('h3');
+    heading.textContent = group.group;
+    section.append(heading);
+
+    for (const item of items) {
+      const row = document.createElement('div');
+      row.className = 'cmd';
+
+      const code = document.createElement('code');
+      code.className = 'mono';
+      code.textContent = item.cmd;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'copy';
+      button.textContent = 'copy';
+      button.addEventListener('click', () => copy(item.cmd, button));
+
+      const about = document.createElement('p');
+      about.className = 'meta';
+      about.textContent = item.about;
+
+      row.append(code, button);
+      section.append(row, about);
+
+      if (item.hint) {
+        const hint = document.createElement('p');
+        hint.className = 'meta hint';
+        hint.textContent = item.hint;
+        section.append(hint);
+      }
+    }
+    host.append(section);
+  }
+
+  if (!host.children.length) {
+    const empty = document.createElement('p');
+    empty.className = 'meta';
+    empty.textContent = 'No commands match that.';
+    host.append(empty);
+  }
+}
+
+document.getElementById('cmdFilter')?.addEventListener('input', (event) => {
+  renderCommands(event.target.value);
+});
+
+renderCommands();
 /** POST a verb, write its output stream into the given log element. */
 async function stream(url, body, logId) {
   const log = $(logId);
@@ -207,4 +385,71 @@ async function stream(url, body, logId) {
   }
 }
 
+// --- Launcher ---------------------------------------------------------
+
+/** Show what players currently get, and offer the tags that exist to publish. */
+async function refreshLauncher() {
+  const box = $('launcherState');
+  try {
+    const data = await (await fetch('/api/launcher/status')).json();
+    if (data.error) throw new Error(data.error);
+
+    box.textContent = '';
+
+    const current = data.published
+      ? `v${data.published.version} — ${data.published.targets.length} targets, ${data.published.artifactCount} installers`
+      : 'nothing published yet';
+
+    box.append(el('span', 'tag ok', 'live'));
+    box.append(el('span', 'meta', `  players get ${current}`));
+    box.append(el('span', 'meta', `  ·  repo is at v${data.packageVersion}`));
+
+    // Offer the tags that exist but are not the published version: those are
+    // exactly the ones waiting for a publish.
+    const options = $('tagOptions');
+    options.textContent = '';
+    for (const release of data.releases ?? []) {
+      if (data.published && release.tagName === `v${data.published.version}`) continue;
+      const option = document.createElement('option');
+      option.value = release.tagName;
+      options.append(option);
+    }
+
+    if (!$('launcherTag').value && options.firstChild) {
+      $('launcherTag').value = options.firstChild.value;
+    }
+  } catch (err) {
+    box.textContent = String(err.message ?? err);
+  }
+}
+
+$('launcherForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const confirm = $('launcherConfirm').checked;
+  if (confirm && !window.confirm('Upload this launcher to R2? Players will see it immediately.')) {
+    return;
+  }
+  await stream(
+    '/api/launcher/publish',
+    { tag: $('launcherTag').value.trim(), confirm },
+    'launcherLog'
+  );
+  $('launcherConfirm').checked = false;
+  refreshLauncher();
+});
+
+$('launcherKeys')?.addEventListener('click', async () => {
+  await stream('/api/launcher/keys', {}, 'launcherLog');
+});
+
+$('releaseRun')?.addEventListener('click', async () => {
+  const dryRun = $('releaseDryRun').checked;
+  if (!dryRun && !window.confirm('Bump the version, commit and push a tag? This triggers CI.')) {
+    return;
+  }
+  await stream('/api/launcher/release', { level: $('releaseLevel').value, dryRun }, 'releaseLog');
+  refreshLauncher();
+});
+
+refreshLauncher();
 refresh();
