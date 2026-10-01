@@ -233,8 +233,15 @@ function buildDownloadsIndex(release, base) {
     });
   }
 
-  // A stable order so the page does not reshuffle between deploys.
-  const order = { windows: ['MSI installer', 'EXE installer'] };
+  // The page leads with the first entry in each group, so this decides what a
+  // person actually downloads. It must name every platform: an unlisted one
+  // falls through to alphabetical order, which silently leads macOS with the
+  // .app.tar.gz updater format instead of the .dmg a human wants.
+  const order = {
+    windows: ['MSI installer', 'EXE installer'],
+    macos: ['Disk image', 'App archive'],
+    linux: ['Debian / Ubuntu', 'Fedora / RHEL'],
+  };
   for (const [platform, items] of Object.entries(groups)) {
     const preferred = order[platform];
     items.sort((a, b) => {
@@ -242,6 +249,21 @@ function buildDownloadsIndex(release, base) {
       const bi = preferred?.indexOf(b.label) ?? 99;
       return ai - bi || a.label.localeCompare(b.label);
     });
+  }
+
+  // Any label this version does not know about still needs a defined position;
+  // without the assertion a new artifact type sorts alphabetically and can
+  // displace the format we meant to lead with.
+  for (const [platform, items] of Object.entries(groups)) {
+    const known = new Set(order[platform]);
+    for (const item of items) {
+      if (!known.has(item.label)) {
+        throw new Error(
+          `downloads.json: unexpected "${item.label}" on ${platform}. ` +
+            `Add it to the order map in buildDownloadsIndex so its position is deliberate.`,
+        );
+      }
+    }
   }
 
   return { version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version, platforms: groups };
