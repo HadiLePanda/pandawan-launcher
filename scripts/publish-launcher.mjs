@@ -191,6 +191,62 @@ function rewriteManifestUrls(release) {
   return manifest;
 }
 
+/**
+ * Build downloads.json: what a person should download, by platform.
+ *
+ * latest.json is the *updater's* manifest, so it only lists updater artifacts.
+ * That omits the macOS .dmg, which is what a human actually wants to click -
+ * the .app.tar.gz is an updater format nobody installs by hand. Deriving the
+ * list from the release assets instead means the download page can offer the
+ * .dmg as well, and cannot drift from what was really published.
+ */
+function buildDownloadsIndex(release, base) {
+  const groups = { windows: [], macos: [], linux: [] };
+
+  const classify = (name) => {
+    if (/\.msi$/.test(name) || /-setup\.exe$/.test(name)) return 'windows';
+    if (/\.dmg$/.test(name) || /\.app\.tar\.gz$/.test(name)) return 'macos';
+    if (/\.deb$/.test(name) || /\.rpm$/.test(name)) return 'linux';
+    return null;
+  };
+
+  const label = (name) => {
+    if (/\.msi$/.test(name)) return 'MSI installer';
+    if (/-setup\.exe$/.test(name)) return 'EXE installer';
+    if (/\.dmg$/.test(name)) return 'Disk image';
+    if (/\.app\.tar\.gz$/.test(name)) return 'App archive';
+    if (/\.deb$/.test(name)) return 'Debian / Ubuntu';
+    if (/\.rpm$/.test(name)) return 'Fedora / RHEL';
+    return name;
+  };
+
+  for (const asset of release.assets) {
+    // Signatures are consumed by the updater, never clicked by a person.
+    if (asset.name.endsWith('.sig') || asset.name === 'latest.json') continue;
+    const platform = classify(asset.name);
+    if (!platform) continue;
+    if (!existsSync(path.join(staging, asset.name))) continue;
+
+    groups[platform].push({
+      label: label(asset.name),
+      url: `${base}/${encodeURIComponent(asset.name)}`,
+    });
+  }
+
+  // A stable order so the page does not reshuffle between deploys.
+  const order = { windows: ['MSI installer', 'EXE installer'] };
+  for (const [platform, items] of Object.entries(groups)) {
+    const preferred = order[platform];
+    items.sort((a, b) => {
+      const ai = preferred?.indexOf(a.label) ?? 99;
+      const bi = preferred?.indexOf(b.label) ?? 99;
+      return ai - bi || a.label.localeCompare(b.label);
+    });
+  }
+
+  return { version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version, platforms: groups };
+}
+
 const { bucket, endpoint } = r2Config();
 
 console.log(`Tag:   ${tag}`);
@@ -198,11 +254,19 @@ console.log(`R2:    s3://${bucket}/${PREFIX}/`);
 
 const release = fetchAssets();
 const manifest = rewriteManifestUrls(release);
+const base = JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).platforms[
+  Object.keys(manifest.platforms)[0]
+].url.split('/').slice(0, -1).join('/');
+const downloads = buildDownloadsIndex(release, base);
 
 if (dryRun) {
   console.log('\nDry run. Would upload:');
   for (const target of Object.keys(manifest.platforms)) console.log(`  ${target}`);
   console.log('\n  latest.json (no-cache) + every .sig (immutable)');
+  console.log('\n  downloads.json — what the website offers:');
+  for (const [platform, items] of Object.entries(downloads.platforms)) {
+    console.log(`    ${platform}: ${items.map((i) => i.label).join(', ') || 'none'}`);
+  }
   process.exit(0);
 }
 
@@ -218,6 +282,16 @@ for (const name of readdirSync(staging)) {
 }
 
 upload(path.join(staging, 'latest.json'), S3.s3Uri(bucket, `${PREFIX}/latest.json`), {
+  endpoint,
+  cacheControl: NO_CACHE,
+  contentType: 'application/json',
+});
+
+// The website reads this one, not latest.json: it lists what a person should
+// click, including the macOS .dmg that the updater manifest omits.
+const indexPath = path.join(staging, 'downloads.json');
+writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
+upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
   endpoint,
   cacheControl: NO_CACHE,
   contentType: 'application/json',
