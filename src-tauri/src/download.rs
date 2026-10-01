@@ -178,6 +178,11 @@ impl DownloadManager {
             total_size,
             file_index: stats.as_ref().map(|s| s.file_index()).unwrap_or(0),
             total_files: stats.as_ref().map(|s| s.total_files()).unwrap_or(0),
+            // Ship the running totals here too. Most files finish inside the
+            // progress throttle below and never emit Progress, so this is the
+            // only way the client learns the bar moved for them.
+            overall_downloaded: stats.as_ref().map(|s| s.downloaded()),
+            overall_total: stats.as_ref().map(|s| s.total()),
         });
 
         let mut stream = response.bytes_stream();
@@ -248,10 +253,14 @@ impl DownloadManager {
             s.increment_completed();
         }
 
+        // Reported after the completed count is incremented, so `downloaded()` already
+        // includes this file's bytes.
         let _ = on_event.send(DownloadEvent::FileComplete {
             file_path: file_path_str,
             completed_files: stats.as_ref().map(|s| s.completed()),
             total_files: stats.as_ref().map(|s| s.total_files()),
+            overall_downloaded: stats.as_ref().map(|s| s.downloaded()),
+            overall_total: stats.as_ref().map(|s| s.total()),
         });
 
         Ok(())

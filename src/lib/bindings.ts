@@ -68,7 +68,16 @@ export const events = {
 export type DownloadEvent =
   | {
       event: 'started';
-      data: { filePath: string; totalSize: number; fileIndex: number; totalFiles: number };
+      data: {
+        filePath: string;
+        totalSize: number;
+        fileIndex: number;
+        totalFiles: number;
+        /** Whole-build byte totals, so the bar moves even for files too small to
+         * emit a progress update of their own. */
+        overallDownloaded?: number;
+        overallTotal?: number;
+      };
     }
   | {
       event: 'progress';
@@ -86,7 +95,13 @@ export type DownloadEvent =
     }
   | {
       event: 'fileComplete';
-      data: { filePath: string; completedFiles?: number; totalFiles?: number };
+      data: {
+        filePath: string;
+        completedFiles?: number;
+        totalFiles?: number;
+        overallDownloaded?: number;
+        overallTotal?: number;
+      };
     }
   | {
       event: 'retry';

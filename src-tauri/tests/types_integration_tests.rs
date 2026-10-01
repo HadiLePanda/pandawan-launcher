@@ -279,6 +279,8 @@ fn test_download_event_started_serialization() {
         total_size: 1_000_000_000,
         file_index: 0,
         total_files: 1,
+        overall_downloaded: Some(0),
+        overall_total: Some(1_000_000_000),
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");
@@ -344,6 +346,8 @@ fn test_download_event_file_complete_serialization() {
         file_path: "/downloads/asset.pak".to_string(),
         completed_files: Some(1),
         total_files: Some(2),
+        overall_downloaded: Some(500_000_000),
+        overall_total: Some(2_000_000_000),
     };
 
     let json = serde_json::to_string(&event).expect("Failed to serialize");

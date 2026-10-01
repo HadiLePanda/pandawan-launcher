@@ -687,7 +687,8 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 input[type='range']:hover::-webkit-slider-thumb {
-  transform: scale(1.15);
+  /* Brightness rather than scale, for the same reason as the cards: a thumb that
+     grows under the pointer moves the value it is about to set. */
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
@@ -1930,8 +1931,10 @@ input[type='search']::placeholder {
   transition: transform 0.15s ease;
 }
 
+/* No hover scale: a row of avatars that grows under the cursor shifts its
+   neighbours and makes the target move. Selection is shown by the ring below. */
 .avatar-option:hover {
-  transform: scale(1.06);
+  filter: brightness(1.1);
 }
 
 .avatar-image {
@@ -2041,9 +2044,12 @@ input[type='search']::placeholder {
     filter 0.2s ease;
 }
 
+/* Hover brightens only. The image used to scale to 1.04, which made cards jump
+   under the pointer and meant the row you were aiming at was no longer the row
+   under your cursor by the time you clicked. Press feedback still exists, on
+   :active. */
 .game-card:hover .game-card-image {
-  transform: scale(1.04);
-  filter: brightness(1.05);
+  filter: brightness(1.08);
 }
 
 .game-card-fallback {
@@ -3163,19 +3169,17 @@ input.pin-search {
   color: var(--ink-default);
 }
 
-/* Centred in the column it occupies. The wrapper used to centre the block while
-   the block itself padded asymmetrically, which pushed the text off-centre. */
+/* Top-aligned, not centred. The column runs the full height of the page, so
+   centring pushed the message into the middle of empty space and left a large
+   void above it. */
 .game-detail-news-empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
   gap: 10px;
-  flex: 1;
-  min-height: 160px;
+  padding-top: 8px;
   color: var(--ink-muted);
   font-size: 0.8125rem;
-  text-align: center;
 }
 
 .game-detail-news-empty svg {
@@ -3800,6 +3804,9 @@ input.pin-search {
 }
 
 /* ----- Store Placeholder ----- */
+/* The header's bottom margin is folded into the column as `gap` instead of
+   `margin-bottom`. With justify-content:center a trailing margin is part of the
+   centred box, so the cards sat visibly below the true centre of the page. */
 .store-page {
   height: 100%;
   overflow: auto;
@@ -3807,12 +3814,12 @@ input.pin-search {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2.5rem;
   padding: 2rem;
 }
 
 .store-header {
   text-align: center;
-  margin-bottom: 2.5rem;
 }
 
 .store-title {

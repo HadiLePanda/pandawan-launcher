@@ -101,6 +101,17 @@ pub enum DownloadEvent {
         file_index: usize,
         #[specta(type = u32)]
         total_files: usize,
+        /// Bytes already moved across the whole build, and the build's total.
+        ///
+        /// Carried on every event, not just `Progress`. A Unity build is a few
+        /// hundred files and most are a few KB, so they finish inside the 500ms
+        /// progress throttle and never emit `Progress` at all. Without these the
+        /// frontend could only learn the true position on the handful of large
+        /// files, which left the bar frozen between them.
+        #[specta(type = Option<u32>)]
+        overall_downloaded: Option<u64>,
+        #[specta(type = Option<u32>)]
+        overall_total: Option<u64>,
     },
     #[serde(rename_all = "camelCase")]
     Progress {
@@ -127,6 +138,11 @@ pub enum DownloadEvent {
         completed_files: Option<usize>,
         #[specta(type = Option<u32>)]
         total_files: Option<usize>,
+        /// Whole-build byte counts, for the same reason as on `Started`.
+        #[specta(type = Option<u32>)]
+        overall_downloaded: Option<u64>,
+        #[specta(type = Option<u32>)]
+        overall_total: Option<u64>,
     },
     #[serde(rename_all = "camelCase")]
     Retry {
@@ -716,6 +732,8 @@ mod tests {
             total_size: 1_000_000,
             file_index: 0,
             total_files: 1,
+            overall_downloaded: Some(0),
+            overall_total: Some(1_000_000),
         };
 
         let json = serde_json::to_string(&event).expect("Failed to serialize");
@@ -772,6 +790,8 @@ mod tests {
             file_path: "/downloads/asset.pak".to_string(),
             completed_files: Some(1),
             total_files: Some(2),
+            overall_downloaded: Some(500_000),
+            overall_total: Some(2_000_000),
         };
 
         let json = serde_json::to_string(&event).expect("Failed to serialize");
