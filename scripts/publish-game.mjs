@@ -28,7 +28,7 @@ import {
   upload,
 } from './lib/r2.mjs';
 
-const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable', 'input-dir'];
+const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
 
 function parseArgs(argv) {
   const args = {};
@@ -58,10 +58,17 @@ for (const name of REQUIRED) {
 
 const gameId = args['game-id'];
 const channel = args.channel;
-const inputDir = path.resolve(args['input-dir']);
+const platformSpecs = asList(args.platform);
+// --platform carries its own directory per platform, so --input-dir is only
+// required for a single-platform (flat) publish.
+if (!args['input-dir'] && platformSpecs.length === 0) {
+  fail('--input-dir is required when no --platform is given.');
+}
+
+const inputDir = args['input-dir'] ? path.resolve(args['input-dir']) : null;
 const manifestPath = path.resolve(args.output ?? path.join(repoRoot, 'dist', 'manifest.json'));
 
-if (!existsSync(inputDir)) {
+if (inputDir && !existsSync(inputDir)) {
   fail(`--input-dir does not exist: ${inputDir}`);
 }
 
@@ -78,7 +85,7 @@ const versionPrefix = `${prefix}/${args.version}`;
 console.log(`Game:     ${gameId}`);
 console.log(`Channel:  ${channel}`);
 console.log(`Version:  ${args.version} (build ${args['build-number']})`);
-console.log(`Source:   ${path.relative(repoRoot, inputDir) || '.'}`);
+if (inputDir) console.log(`Source:   ${path.relative(repoRoot, inputDir) || '.'}`);
 console.log(`Target:   ${S3.s3Uri(bucket, versionPrefix)}`);
 console.log(`Manifest: ${S3.s3Uri(bucket, `${prefix}/manifest.json`)}`);
 
@@ -98,8 +105,6 @@ const manifestArgs = [
   cdnOrigin,
   '--channel',
   channel,
-  '--input-dir',
-  inputDir,
   '--output',
   manifestPath,
 ];
@@ -112,6 +117,13 @@ for (const spec of asList(args.platform)) {
   manifestArgs.push('--platform', spec);
 }
 
+// Unity's Mac export sits next to a .zip of the same bundle. Uploading it would
+// double the platform's size for no benefit, and unlike the backup folder it is
+// not in the generator's default excludes.
+for (const pattern of asList(args.exclude)) {
+  manifestArgs.push('--exclude', pattern);
+}
+
 run('python', manifestArgs, 'Generating manifest');
 
 // Files first, manifest last: the manifest is what tells a client a build
@@ -121,10 +133,29 @@ run('python', manifestArgs, 'Generating manifest');
 // parts are billed and are not visible to s3 ls.
 abortStaleMultipartUploads(`${prefix}/`, { endpoint, bucket });
 
-sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
-  endpoint,
-  cacheControl: IMMUTABLE,
-});
+// Per-platform builds upload into their own subdirectory of the version, so the
+// two cannot overwrite each other and a client only fetches its platform's
+// files. A flat publish has no subdirectory and keeps the original shape.
+for (const spec of platformSpecs) {
+  const separator = spec.indexOf('=');
+  const platform = spec.slice(0, separator).trim().toLowerCase();
+  const dir = path.resolve(spec.slice(separator + 1).trim());
+  if (!existsSync(dir)) {
+    fail(`--platform ${platform} directory does not exist: ${dir}`);
+  }
+  console.log(`  ${platform}: ${path.relative(repoRoot, dir) || '.'}`);
+  sync(dir, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
+    endpoint,
+    cacheControl: IMMUTABLE,
+  });
+}
+
+if (inputDir) {
+  sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
+    endpoint,
+    cacheControl: IMMUTABLE,
+  });
+}
 
 // The manifest also goes inside the version directory, and this is what makes
 // per-platform resolution possible: a client pinned to an older version on one

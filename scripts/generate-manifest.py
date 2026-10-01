@@ -211,8 +211,10 @@ def build_file_entries(input_dir: Path, excludes: tuple[str, ...]) -> list[dict]
 
 
 def generate_manifest(args) -> dict:
-    input_dir = Path(args.input_dir).resolve()
-    if not input_dir.exists():
+    # Each --platform carries its own directory, so --input-dir is only needed
+    # for a single-platform (flat) publish.
+    input_dir = Path(args.input_dir).resolve() if args.input_dir else None
+    if input_dir is not None and not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
     # The channel is derived from the version so the two can never disagree. An
@@ -244,6 +246,8 @@ def generate_manifest(args) -> dict:
     # published before this existed still load.
     platform_dirs = parse_platform_specs(args.platform)
     if not platform_dirs:
+        if input_dir is None:
+            raise FileNotFoundError("--input-dir is required when no --platform is given.")
         platform_dirs = [(None, input_dir)]
 
     excludes = tuple(args.exclude or ()) + DEFAULT_EXCLUDES
@@ -318,7 +322,7 @@ def main():
             "that contradicts the version is an error."
         ),
     )
-    parser.add_argument("--input-dir", required=True, help="Folder containing the built game")
+    parser.add_argument("--input-dir", help="Folder containing the built game (single-platform publish)")
     parser.add_argument(
         "--platform",
         action="append",
