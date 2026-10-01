@@ -4068,11 +4068,13 @@ input.pin-search {
 
 /* No divider: the title and body are one short read, and a rule between them
    splits a dialog this small into two competing bands. Padding is the only
-   separator. The close button is absolutely positioned, so it does not
-   constrain the title's 1.5rem column. */
+   separator. The bottom inset is much smaller than the top so the title sits
+   close to the progress it introduces, and the bar lands 54px tall — which
+   makes the centred close control 15px from the top and bottom, matching its
+   1rem right inset. */
 .verify-topbar {
   position: relative;
-  padding: 1.25rem 1.5rem 0.875rem;
+  padding: 1.125rem 1.5rem 0.5rem;
   flex-shrink: 0;
   justify-content: center;
   border-bottom: none;
@@ -4086,10 +4088,11 @@ input.pin-search {
    centred title off-centre. It is deliberately smaller than the shared .icon-btn
    and dimmed: in a 368px dialog a full-size button reads as a second element
    competing with the title, and the eye then measures the gap between them.
-   Tucking it to the corner would widen that gap, not close it. */
+   The 1rem right inset matches the 15px the topbar's height puts above and
+   below it, so the control sits in an even corner rather than hugging the edge. */
 .verify-topbar .icon-btn {
   position: absolute;
-  right: 0.625rem;
+  right: 1rem;
   top: 50%;
   transform: translateY(-50%);
   width: 1.5rem;
@@ -4106,8 +4109,10 @@ input.pin-search {
   background: var(--surface-hover);
 }
 
+/* Top inset is a shade under the sides: the title above already supplies the
+   separation, and stacking a full 1.5rem here pushed the bar 38px down. */
 .verify-body {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 
 .verify-bar {
