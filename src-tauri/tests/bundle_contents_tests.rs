@@ -25,12 +25,7 @@ fn tauri_config() -> serde_json::Value {
 }
 
 /// Paths that must never be reachable from a shipped build.
-const FORBIDDEN: &[&str] = &[
-    "scripts",
-    "src-tauri/.secrets",
-    ".env",
-    "src-tauri/gen",
-];
+const FORBIDDEN: &[&str] = &["scripts", "src-tauri/.secrets", ".env", "src-tauri/gen"];
 
 #[test]
 fn test_bundle_does_not_include_developer_scripts_or_secrets() {

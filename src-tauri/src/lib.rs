@@ -610,7 +610,7 @@ fn create_specta_builder() -> Builder<tauri::Wry> {
             get_settings,
             save_settings,
             select_install_folder,
-    get_default_install_folder,
+            get_default_install_folder,
             cancel_operation,
             get_app_data_dir,
         ])

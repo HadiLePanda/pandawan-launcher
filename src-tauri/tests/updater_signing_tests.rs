@@ -131,17 +131,6 @@ fn test_create_updater_artifacts_is_set_on_bundle() {
     );
 }
 
-/// Verifies the signature of the PUBLISHED installer against the pubkey the
-/// launcher embeds, using the same crate the updater plugin uses at runtime.
-///
-/// This is the end-to-end proof that a release actually works for players:
-/// artifact bytes are downloaded from the public bucket, the .sig beside them is
-/// downloaded, and the pair is checked exactly as tauri-plugin-updater would.
-/// A green unit test on the committed config cannot show that; only this can.
-///
-/// Requires network access to the public bucket. Skips when unreachable so an
-/// offline `cargo test` still passes.
-
 /// GET a URL, or None when the network or the object is unavailable.
 ///
 /// Uses curl rather than a Rust HTTP client: this only has to prove that the
@@ -160,6 +149,16 @@ fn fetch(url: &str) -> Option<Vec<u8>> {
     Some(out.stdout)
 }
 
+/// Verifies the signature of the PUBLISHED installer against the pubkey the
+/// launcher embeds, using the same crate the updater plugin uses at runtime.
+///
+/// This is the end-to-end proof that a release actually works for players:
+/// artifact bytes are downloaded from the public bucket, the .sig beside them is
+/// downloaded, and the pair is checked exactly as tauri-plugin-updater would.
+/// A green unit test on the committed config cannot show that; only this can.
+///
+/// Requires network access to the public bucket. Skips when unreachable so an
+/// offline `cargo test` still passes.
 #[test]
 fn test_published_installer_signature_verifies_against_embedded_pubkey() {
     let config = tauri_config();
@@ -214,7 +213,11 @@ fn test_published_installer_signature_verifies_against_embedded_pubkey() {
     // The .sig sits beside the artifact, which is how the publish script lays it out.
     // Its presence is asserted rather than used: the signature actually checked is
     // the one embedded in latest.json, which is what the updater reads.
-    let sig_url = format!("{}/{}", url.rsplit_once('/').map_or("", |(h, _)| h), sig_name(url));
+    let sig_url = format!(
+        "{}/{}",
+        url.rsplit_once('/').map_or("", |(h, _)| h),
+        sig_name(url)
+    );
     if fetch(&sig_url).is_none() {
         panic!("published manifest points at {url} but {sig_url} is missing");
     }
@@ -228,16 +231,20 @@ fn test_published_installer_signature_verifies_against_embedded_pubkey() {
     .expect("signature is base64");
 
     // Parse exactly as the plugin does: base64-decode, then PublicKey::decode.
-// Note this is `decode` (whole PublicKeyBox), NOT `from_base64` (raw key).
+    // Note this is `decode` (whole PublicKeyBox), NOT `from_base64` (raw key).
     let key = parse_like_the_plugin(&pubkey).expect("pubkey parses like the plugin does");
-    let signature =
-        minisign_verify::Signature::decode(&String::from_utf8(decoded_sig).expect("signature utf8"))
-            .expect("signature decodes");
+    let signature = minisign_verify::Signature::decode(
+        &String::from_utf8(decoded_sig).expect("signature utf8"),
+    )
+    .expect("signature decodes");
 
     key.verify(&artifact, &signature, false)
         .expect("published artifact does not verify against the embedded pubkey");
 
-    println!("verified published windows-x86_64-msi ({} bytes)", artifact.len());
+    println!(
+        "verified published windows-x86_64-msi ({} bytes)",
+        artifact.len()
+    );
 }
 
 /// `Pandawan.Launcher_0.1.0_x64_en-US.msi` -> `Pandawan.Launcher_0.1.0_x64_en-US.msi.sig`
