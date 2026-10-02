@@ -101,11 +101,17 @@ jobs:
 
       # Each integration suite is named explicitly rather than using
       # cargo test --tests, because that flag also builds and runs the lib
-      # unittests - and the lib test binary links webview2-com-sys, resolving
-      # the WebView2 loader at load time. On an image without the runtime it
-      # dies with STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139) before a single
-      # assertion runs, so the job fails having verified nothing. Naming each
-      # suite keeps the run honest about what actually executed.
+      # unittests. The lib test binary imports `TaskDialogIndirect`, which only
+      # comctl32 **v6** exports; System32 ships v5, so on an image without the
+      # v6 controls it dies with STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139) before
+      # a single assertion runs, and the job fails having verified nothing.
+      # Naming each suite keeps the run honest about what actually executed.
+      #
+      # This is NOT a WebView2 problem, despite webview2-com-sys appearing in
+      # the link line. The WebView2 loader is linked statically
+      # (WebView2LoaderStatic.lib) and never appears in the binary's import
+      # table, so it cannot be the missing entrypoint. Verified by dumping the
+      # imports of the failing binary directly.
       #
       # These are the suites that exercise #[cfg(windows)] path joining and
       # layout, which the Linux job above cannot reach.
@@ -127,10 +133,11 @@ jobs:
       - name: Test (workflow)
         run: cargo test --test workflow_integration_tests
 
-      # The lib unit tests still belong in this job, but they cannot run without
-      # the WebView2 runtime present. continue-on-error keeps a missing runtime
-      # from failing the job, while the separate step means a real assertion
-      # failure inside them is still reported rather than hidden.
-      - name: Test (lib unit tests, needs WebView2 runtime)
+      # The lib unit tests belong in this job, but cannot run until the binary
+      # declares the comctl32 v6 dependency (an embedded SxS manifest, not a
+      # WebView2 runtime). continue-on-error means a missing runtime does not
+      # fail the job, while the separate step keeps a real assertion failure
+      # inside them reported rather than hidden behind a loader error.
+      - name: Test (lib unit tests, needs comctl32 v6)
         continue-on-error: true
         run: cargo test --lib
