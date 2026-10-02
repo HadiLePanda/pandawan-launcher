@@ -35,6 +35,11 @@ export default ts.config(
     // The dashboard's client is a plain browser page served by scripts/dashboard.mjs,
     // not part of the Vite app, so it needs the browser globals the src/ tree gets
     // from typescript-eslint's DOM defaults.
+    //
+    // Listed explicitly rather than pulled from the `globals` package: adding a
+    // dependency to fix seven no-undef errors would be the heavier change, and an
+    // explicit list keeps `npm run lint` honest - a name used in this file but
+    // missing here is reported rather than silently allowed.
     files: ['scripts/dashboard/**/*.js'],
     languageOptions: {
       globals: {
@@ -43,6 +48,17 @@ export default ts.config(
         fetch: 'readonly',
         TextDecoder: 'readonly',
         Event: 'readonly',
+        // Used by the tab strip (location.hash) and the launcher-release link.
+        location: 'readonly',
+        history: 'readonly',
+        // Polling loops: the services status poll and the refresh timer.
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setTimeout: 'readonly',
+        // The dev-server check that asks whether something is already running.
+        navigator: 'readonly',
+        // Blob URLs for the image picker's local previews.
+        URL: 'readonly',
       },
     },
   }

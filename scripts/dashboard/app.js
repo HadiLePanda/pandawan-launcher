@@ -869,7 +869,6 @@ $('releaseRun')?.addEventListener('click', async () => {
 refreshLauncher();
 refresh();
 
-
 // --- Game metadata -----------------------------------------------------
 //
 // Edit a published game's presentation without touching the build or
@@ -1186,7 +1185,7 @@ async function fillMetaGameOptions() {
     // are nested rather than flat. Reading entry.gameId here yields nothing and
     // the datalist silently stays empty.
     const ids = [
-      ...new Set((data.inventory ?? []).flatMap((entry) => entry?.id ? [entry.id] : [])),
+      ...new Set((data.inventory ?? []).flatMap((entry) => (entry?.id ? [entry.id] : []))),
     ];
     if (!ids.length) return;
     const list = $('metaGameOptions');
@@ -1221,7 +1220,9 @@ $('metaPublish')?.addEventListener('click', async () => {
   const noun = changed.length === 1 ? 'change' : 'changes';
   if (
     !dryRun &&
-    !window.confirm(`Publish ${changed.length} metadata ${noun}? Players will see them immediately.`)
+    !window.confirm(
+      `Publish ${changed.length} metadata ${noun}? Players will see them immediately.`
+    )
   ) {
     return;
   }

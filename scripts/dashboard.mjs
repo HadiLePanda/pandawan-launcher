@@ -410,7 +410,7 @@ const SERVICES = [
     port: 4400,
     url: 'http://127.0.0.1:4400',
   },
-  ];
+];
 
 /**
  * Crash-safe record of what this hub started.
@@ -437,7 +437,9 @@ const manifestPath = path.join(os.tmpdir(), 'pandawan-dashboard-services.json');
  */
 function processStartedAt(pid, attempts = 5) {
   const script =
-    'try { $p = Get-Process -Id ' + pid + ' -ErrorAction Stop; ' +
+    'try { $p = Get-Process -Id ' +
+    pid +
+    ' -ErrorAction Stop; ' +
     'Write-Output $p.StartTime.ToUniversalTime().ToString("o") } catch { Write-Output "" }';
   for (let i = 0; i < attempts; i++) {
     const out = spawnSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
