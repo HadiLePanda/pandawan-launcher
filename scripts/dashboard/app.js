@@ -928,19 +928,43 @@ function normaliseList(value) {
     .filter(Boolean);
 }
 
+/** The typed local artwork path for an image field, or '' when there is none. */
+function metaImagePath(flag) {
+  return String(metaState.inputValues[IMAGE_INPUTS[flag]] ?? '').trim();
+}
+
 /** A field is changed when its trimmed text differs from what was loaded. */
 function metaIsDirty(flag) {
   if (!(flag in metaState.original)) return false;
   const field = metaState.original[flag];
   const now = metaState.inputValues[flag] ?? '';
   if (field.list) {
-    return normaliseList(now).join(' ') !== normaliseList(field.value).join(' ');
+    const next = normaliseList(now);
+    const previous = normaliseList(field.value);
+    // An emptied list is not reportable as a change. The server skips an emptied
+    // list field - a comma list cannot express "no genres" - so counting it would
+    // promise an edit that then publishes nothing at all.
+    if (!next.length && previous.length) return false;
+    return next.join(' ') !== previous.join(' ');
   }
   return now.trim() !== String(field.value ?? '').trim();
 }
 
+/**
+ * Whether an image field counts as changed.
+ *
+ * A typed local path is a real edit even though the URL box beside it is
+ * untouched, because the server uploads the file and rewrites the URL itself.
+ * Without this the path is silently dropped on publish, because metaIsDirty
+ * only ever reads the URL text.
+ */
+function metaImageIsDirty(flag) {
+  if (!IMAGE_INPUTS[flag]) return metaIsDirty(flag);
+  return metaImagePath(flag) !== '' || metaIsDirty(flag);
+}
+
 function metaDirtyFlags() {
-  return FIELD_ORDER.filter(metaIsDirty);
+  return FIELD_ORDER.filter(metaImageIsDirty);
 }
 
 function renderMetaDirtyCount() {
@@ -981,16 +1005,17 @@ function renderMetaFields(data) {
 
     const label = el('div', 'meta-label');
     label.append(el('span', null, field.label));
-    if (metaIsDirty(flag)) label.append(el('span', 'meta-dirty', 'changed'));
+    if (metaImageIsDirty(flag)) label.append(el('span', 'meta-dirty', 'changed'));
     row.append(label);
 
     row.append(el('span', 'meta-source', SOURCE_TEXT[field.source] ?? field.source));
 
     const revert = el('button', 'meta-revert', 'Undo');
     revert.type = 'button';
-    revert.hidden = !metaIsDirty(flag);
+    revert.hidden = !metaImageIsDirty(flag);
     revert.addEventListener('click', () => {
       metaState.inputValues[flag] = String(field.value ?? '');
+      if (IMAGE_INPUTS[flag]) metaState.inputValues[IMAGE_INPUTS[flag]] = '';
       renderMetaFields(data);
     });
     row.append(revert);
@@ -1007,11 +1032,12 @@ function renderMetaFields(data) {
     // committing, not only after the whole form re-renders.
     input.addEventListener('input', () => {
       metaState.inputValues[flag] = input.value;
-      wrap.classList.toggle('is-dirty', metaIsDirty(flag));
+      const dirty = metaImageIsDirty(flag);
+      wrap.classList.toggle('is-dirty', dirty);
       const badge = label.querySelector('.meta-dirty');
-      if (metaIsDirty(flag) && !badge) label.append(el('span', 'meta-dirty', 'changed'));
-      if (!metaIsDirty(flag) && badge) badge.remove();
-      revert.hidden = !metaIsDirty(flag);
+      if (dirty && !badge) label.append(el('span', 'meta-dirty', 'changed'));
+      if (!dirty && badge) badge.remove();
+      revert.hidden = !dirty;
       renderMetaDirtyCount();
     });
     control.append(input);
@@ -1034,6 +1060,14 @@ function renderMetaFields(data) {
       path.addEventListener('input', () => {
         metaState.inputValues[IMAGE_INPUTS[flag]] = path.value;
         name.textContent = path.value.trim() || 'no file';
+        // A typed path is an edit to this field, so the row has to say so. Without
+        // this the count moves but the field still reads as untouched.
+        const dirty = metaImageIsDirty(flag);
+        wrap.classList.toggle('is-dirty', dirty);
+        const badge = label.querySelector('.meta-dirty');
+        if (dirty && !badge) label.append(el('span', 'meta-dirty', 'changed'));
+        if (!dirty && badge) badge.remove();
+        revert.hidden = !dirty;
         renderMetaDirtyCount();
       });
       actions.append(path);
@@ -1182,9 +1216,12 @@ $('metaPublish')?.addEventListener('click', async () => {
   if (!changed.length) return;
 
   const dryRun = $('metaDryRun').checked;
+  // An image field is counted as dirty when only a file path was typed, even
+  // though no text changed, so the prompt has to cover both kinds of edit.
+  const noun = changed.length === 1 ? 'change' : 'changes';
   if (
     !dryRun &&
-    !window.confirm(`Publish ${changed.length} metadata change(s)? Players will see them immediately.`)
+    !window.confirm(`Publish ${changed.length} metadata ${noun}? Players will see them immediately.`)
   ) {
     return;
   }
@@ -1194,10 +1231,15 @@ $('metaPublish')?.addEventListener('click', async () => {
     const field = metaState.original[flag];
     const value = metaState.inputValues[flag] ?? '';
     // Absent vs empty is load-bearing on the server: an absent key leaves the
-    // published value alone, an emptied text field clears it. A list field is
-    // deliberately never sent empty, because a comma list cannot express "no
-    // genres" and writing [] would erase the field instead.
+    // published value alone, an emptied text field clears it. An emptied list
+    // field is never sent, because a comma list cannot express "no genres" and
+    // writing [] would erase the field instead. metaIsDirty already refuses to
+    // report an emptied list as changed, so that guard cannot be reached.
     if (value.trim() === '' && field.list) continue;
+    // An image field that changed only because a file was typed must not also
+    // resend its unchanged URL: the server would diff the two and report a
+    // change that the operator never made, and the upload rewrites the URL.
+    if (IMAGE_INPUTS[flag] && !metaIsDirty(flag)) continue;
     payload[flag] = field.list ? normaliseList(value).join(', ') : value.trim();
   }
   for (const key of Object.values(IMAGE_INPUTS)) {
