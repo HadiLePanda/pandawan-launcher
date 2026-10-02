@@ -20,6 +20,9 @@ function selectTab(name, { push = true } = {}) {
     panel.hidden = panel.dataset.panel !== name;
   }
 
+  setPage(name);
+  watchServices(name === 'services');
+
   if (push && location.hash.slice(1) !== name) {
     history.replaceState(null, '', `#${name}`);
   }
@@ -41,7 +44,6 @@ document.addEventListener('keydown', (event) => {
   selectTab(next.dataset.tab);
   next.focus();
 });
-
 
 const PAGES = {
   overview: ['Overview', 'What is published, and where the platforms disagree.'],
@@ -239,8 +241,6 @@ function watchServices(on) {
   refreshServices();
   serviceTimer = setInterval(refreshServices, 3000);
 }
-
-
 
 selectTab(location.hash.slice(1) || 'overview', { push: false });
 
@@ -506,6 +506,7 @@ async function refresh() {
     if (data.error) throw new Error(data.error);
     renderDrift(data.drift);
     renderInventory(data.inventory);
+    renderMetrics(data.inventory, data.drift);
     status.textContent = 'connected';
     status.classList.add('ok');
   } catch (err) {
