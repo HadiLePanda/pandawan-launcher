@@ -594,7 +594,11 @@ fn save_settings_to_disk(
     Ok(())
 }
 
-fn create_specta_builder() -> Builder<tauri::Wry> {
+// Integration tests cannot call `create_specta_builder` because it is private, so
+// `pub` here purely to let `export_bindings` reuse it. The alternative is a second
+// copy of the collect_commands! list, and two copies of a command list is exactly
+// the drift this file exists to prevent.
+pub fn create_specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             fetch_game_manifest,
@@ -623,19 +627,14 @@ pub fn run() {
     let mut builder = create_specta_builder();
 
     // NOTE: Debug auto-export is disabled because the current specta-typescript
-    // 0.0.12 formatter emits TypeScript shapes (snake_case fields, `| null`
-    // optionals, Pascal event names) that drift from the frontend's source-of-truth
-    // types in `src/types/index.ts`. Regenerate `src/lib/bindings.ts` manually by
-    // running the `export_typescript_bindings` Rust unit test on a machine with the
-    // Tauri runtime, then reconcile any formatting/casing differences.
-    // #[cfg(debug_assertions)]
-    // {
-    //     let bindings_path =
-    //         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
-    //     builder
-    //         .export(Typescript::default(), bindings_path)
-    //         .expect("Failed to export TypeScript bindings");
-    // }
+    // 0.0.12 formatter emits TypeScript shapes that drift from the frontend's
+    // source-of-truth types in `src/types/index.ts`: tabs and double quotes
+    // instead of the project's formatting, snake_case struct fields, and `| null`
+    // where the frontend uses optional. The export itself now lives in
+    // `src/bin/export-bindings.rs`, which calls `create_specta_builder()` directly
+    // instead of launching the app, so it runs without a GUI stack. Run it, then
+    // reconcile the output against `src/types/index.ts`; the parity test in
+    // `src/lib/bindings-parity.test.ts` proves the command list survived.
 
     let invoke_handler = builder.invoke_handler();
 
@@ -1326,22 +1325,13 @@ mod tests {
 
     // =========================================================================
     // TypeScript Bindings Export
-    // =========================================================================
-
-    #[test]
-    #[cfg(debug_assertions)]
-    #[allow(unused_mut)]
-    fn export_typescript_bindings() {
-        use specta_typescript::Typescript;
-
-        let mut builder = create_specta_builder();
-        builder
-            .export(Typescript::default(), "../src/lib/bindings.ts")
-            .expect("Failed to export TypeScript bindings");
-
-        assert!(
-            std::path::Path::new("../src/lib/bindings.ts").exists(),
-            "bindings.ts should have been exported"
-        );
-    }
+    //
+    // This used to live here as the `export_typescript_bindings` test. It is
+    // unreachable in practice: a lib unit test links `webview2-com-sys`, which
+    // resolves the WebView2 loader when the process loads, so on a Windows host
+    // without that runtime the binary dies with STATUS_ENTRYPOINT_NOT_FOUND
+    // (0xC0000139) before any test body runs. It has been replaced by
+    // `cargo run --bin export-bindings`, which calls the same
+    // `create_specta_builder()` without starting the app and therefore works
+    // anywhere cargo does.
 }

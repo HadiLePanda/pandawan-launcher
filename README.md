@@ -42,6 +42,13 @@ Rust tests need a Tauri-capable environment and run in CI:
 cd src-tauri && cargo test
 ```
 
+`src/lib/bindings.ts` is generated from the Rust command and event definitions.
+Regenerate and reconcile it with:
+
+```bash
+npm run bindings:export
+```
+
 ## Publishing
 
 Publishing targets Cloudflare R2. Copy the block from `.env.example` into a gitignored
