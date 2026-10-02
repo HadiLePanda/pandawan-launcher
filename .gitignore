@@ -95,3 +95,9 @@ __pycache__/
 
 # Scratch commit message; created outside the repo where possible
 COMMIT_MSG.txt
+
+# Agent skills. Installed per-machine by the tooling (npx skills add ...), so
+# they belong to the developer setup rather than to the project. Nothing here is
+# needed to build, test or publish.
+.agents/
+.hermes/

@@ -28,7 +28,9 @@ npm install
 npm run tauri:dev
 ```
 
-`npm run dev` starts only the frontend, without the Rust backend.
+On Windows, `run-launcher.bat` does the same thing after checking that cargo and
+the updater keys are present. Double-clicking it opens the output in a console
+window that stays open on exit, so a failed run can be read.
 
 ```bash
 npm test          # Vitest
@@ -68,7 +70,10 @@ npm run prune:builds -- --game-id misspell --keep 3
 ```
 
 `npm run dashboard` opens a local control panel for all of these. It binds to
-127.0.0.1, holds your R2 credentials, and must never be deployed.
+127.0.0.1, holds your R2 credentials, and must never be deployed. Its Services tab
+opens the launcher and website by running `run-launcher.bat` / `run-website.bat`,
+so each gets a real console window to print into instead of a truncated log
+panel.
 
 ### CDN layout
 

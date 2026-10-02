@@ -44,6 +44,13 @@ The few things worth knowing without looking:
   control panel for the publish verbs; the `scripts/publish-*.mjs` scripts are
   those verbs. `src-tauri/tests/bundle_contents_tests.rs` fails the build if any
   of it ever reaches a bundle.
+- A dashboard service with a `bat` field is **opened**, not spawned: `start ""` gives it its own console
+  window and the dashboard captures no output from it. A service with `command`/`args` is spawned with
+  piped output and keeps a 1500-char `tail`. Do not convert a `bat` service back to a spawn because its
+  logs look useful here — truncating `tauri:dev` output to 1500 chars is why the launcher moved to a real
+  window. The consequence to respect: an opened service has `pid: null`, so `persist()` filters it out of
+  the reap manifest and `stop()` cannot kill it (it only stops offering to reopen one). `forceStop` still
+  works because it kills whatever holds the port.
 
 ## Coding Style
 
@@ -110,9 +117,13 @@ that throws CommandError.
 
 ## Development Workflow
 
-1. **Frontend only**: `npm run dev`
-2. **With Tauri**: `npm run tauri:dev`
-3. **Build**: `npm run tauri:build`
+1. **Run the launcher**: `npm run tauri:dev`, or `run-launcher.bat` on Windows
+2. **Build**: `npm run tauri:build`
+
+There is no browser mode in the workflow. `npm run dev` still exists for Vite's
+own sake, but the app is never meant to be opened in a browser: it calls Tauri
+commands that only exist inside the webview, so a browser load fails at the first
+IPC call. Do not add a frontend-only path to the dashboard's service list.
 
 ## Important Notes
 
@@ -124,6 +135,19 @@ that throws CommandError.
 - The `game-exited` event is typed through Tauri Specta and consumed via `events.gameExited` from `src/lib/bindings.ts`. Its payload includes `duration_seconds`; the backend (`record_playtime` in `src-tauri/src/patch.rs`) adds that to the game's accumulated `total_playtime_seconds` and stamps `last_played` on exit. The listener in `App.tsx` refreshes the installation so `GamePage` shows the updated playtime and last-played right away.
 - `src/lib/bindings.ts` is regenerated with `npm run bindings:export`, which runs the `export-bindings` binary (`src-tauri/src/bin/export-bindings.rs`). It calls `create_specta_builder()` directly instead of launching the app, so it works on any machine with cargo — the earlier in-binary auto-export needed the Tauri runtime and could not run in CI. The raw output still needs reconciling: `specta-typescript` 0.0.12 emits tabs, double quotes, snake_case fields, and `| null` where the frontend uses optional. `bindings-parity.test.ts` proves the command list survived that reconciliation; it was last hand-edited for `GameExited.duration_seconds`.
 - News images never resolve to nothing. `resolveNewsImage` in `src/lib/cdn.ts` picks the item's own image, else the game's banner, else the game's icon, else `public/placeholder-news.svg`, and never returns an empty string — so the four call sites render an `<img>` unconditionally instead of guarding. `handleImageError` catches a URL that is present but dead, which is the browser's broken-image glyph rather than a placeholder.
+- Game artwork has the same three-step fallback in two places, and it must stay a fallback *chain*, not
+  two independent picks. On a grid card `CardArt` in `src/components/GamesHome.tsx` holds an index into
+  `[bannerUrl, iconUrl]` in `useState` and advances it in `onError`, ending on a gamepad glyph. The state
+  is the point: `bannerUrl ? ... : ...` cannot tell "no banner configured" from "the banner 404ed", because
+  both are a falsy string, and only the second should fall through to the icon. `GamesBar` pins icons too
+  small for a visible chain to be worthwhile, so it hides the image and sets `data-art-failed="true"` on
+  the slot, which is the only thing that reveals `.games-bar-icon-fallback`; the default there is
+  `display: none`, because a visible-by-default overlay would sit on top of every working icon.
+- `.games-grid` uses `repeat(auto-fit, minmax(clamp(150px, 16vw, 210px), 1fr))`, not `auto-fill`. With
+  `auto-fill` the empty tracks are kept, so a library of two games renders two 160px cards against a
+  window 1000px wide and the page reads as broken rather than empty. `auto-fit` collapses them and the
+  cards stretch. `.games-grid > *` is pinned to `width: 100%` so a card cannot set its own width and
+  break the equal-column guarantee that keeps the last row aligned while the window is dragged.
 - The store is intentionally last priority; it is a grid of promotions that links out to the Pandawan Corp store website and is not wired to real purchases or accounts yet.
 - `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.
