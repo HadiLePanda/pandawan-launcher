@@ -408,7 +408,10 @@ pub fn default_channel() -> String {
 pub const DEFAULT_CHANNEL: &str = "stable";
 
 /// Channels a publisher can attach to a game, ordered most to least stable.
-/// Mirrors KNOWN_CHANNELS in src/lib/catalog-service.ts.
+/// Mirrors KNOWN_CHANNELS in src/lib/channels.ts. The declarations are deliberately
+/// not generated from one another - the Rust side cannot read a TS file - so
+/// changing one means changing all three: here, src/lib/channels.ts and
+/// src/lib/catalog-service.ts.
 pub const KNOWN_CHANNELS: [&str; 3] = ["stable", "beta", "alpha"];
 
 impl Default for LauncherSettings {

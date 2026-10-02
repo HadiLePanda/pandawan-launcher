@@ -51,8 +51,8 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 
 **Known constraints**
 
-- The in-app **Store** and **Player Profile** are UI placeholders with no backend or
-  purchase/account behavior.
+- The in-app **Store** is a grid of cards that open `pandawancorp.com/store` in the
+  system browser. There is no in-app purchase, account or Player Profile.
 - Games must be configured and uploaded by Pandawan Corp; there is no end-user or
   third-party publishing path.
 - Updater signing is required for production builds and releases.

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { readTextFile } from '@tauri-apps/plugin-fs';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { commands } from './commands';
 import { resolveGameUrls } from './cdn';
 import type { GameCatalog, GameManifest } from '@/types';
@@ -169,6 +171,31 @@ describe('catalog-service', () => {
       expect(service.normalizeChannel('nightly')).toBe('stable');
       expect(service.normalizeChannel(undefined)).toBe('stable');
       expect(service.normalizeChannel(null)).toBe('stable');
+    });
+
+    it('agrees with channels.ts on which channels exist', async () => {
+      // Two frontend copies of the same list is a drift risk on its own. The
+      // channel picker reads channels.ts and the catalog resolver reads this
+      // module, so a channel added to one and not the other would let a player
+      // pick a channel the launcher cannot resolve a manifest for.
+      const { KNOWN_CHANNELS: fromChannels } = await import('./channels');
+      expect([...service.KNOWN_CHANNELS]).toEqual([...fromChannels]);
+    });
+
+    it('agrees with the Rust KNOWN_CHANNELS', () => {
+      // The third copy lives in src-tauri/src/types.rs and cannot be imported
+      // from here, so read the declaration as text. That is a weaker check than
+      // an import, but it turns "someone added a channel to Rust and forgot the
+      // frontend" from a runtime surprise into a failing test.
+      const rust = readFileSync(resolve(__dirname, '../../src-tauri/src/types.rs'), 'utf-8');
+      const match = rust.match(/KNOWN_CHANNELS: \[&str; \d+\] = \[([^\]]+)\]/);
+      expect(match, 'KNOWN_CHANNELS declaration not found in types.rs').not.toBeNull();
+
+      const parsed = (match as RegExpMatchArray)[1]
+        .split(',')
+        .map((part) => part.trim().replace(/^"|"$/g, ''))
+        .filter(Boolean);
+      expect(parsed).toEqual([...service.KNOWN_CHANNELS]);
     });
   });
 
