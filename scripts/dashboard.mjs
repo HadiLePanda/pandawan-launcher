@@ -368,37 +368,25 @@ function runScript(name, args, res) {
  * `launcher` and `frontend` deliberately share port 1420, because tauri dev
  * starts vite itself. Only one of them can run at a time.
  */
+// Dev services the dashboard can launch.
+//
+// Each one opens its own console window by running a .bat file, rather than
+// being spawned with its output piped into this process. That is deliberate:
+// `npm run tauri:dev` prints a lot, and piping it here meant the useful output
+// stopped at a 1500-character tail in the dashboard while the user had to find a
+// log file to read the rest. Running the .bat means the window the user already
+// knows how to read is the window the output appears in, and the dashboard only
+// has to say whether it came up.
 const SERVICES = [
   {
     id: 'launcher',
     name: 'Launcher',
-    note: 'Tauri app with hot reload. First build takes minutes.',
+    note: 'Tauri app with hot reload, in its own window. First build takes minutes.',
+    // Opened rather than spawned: see the note above.
+    bat: 'run-launcher.bat',
     cwd: repoRoot,
-    command: 'npm',
-    args: ['run', 'tauri:dev'],
     port: 1420,
     url: null,
-  },
-  {
-    id: 'frontend',
-    name: 'Launcher frontend',
-    note: 'Vite only, in your browser. Shares port 1420 with the launcher.',
-    cwd: repoRoot,
-    command: 'npm',
-    args: ['run', 'dev'],
-    port: 1420,
-    url: 'http://localhost:1420',
-  },
-  {
-    id: 'site',
-    name: 'Website',
-    note: 'pandawan-launcher-site, via wrangler pages dev.',
-    cwd: siteRoot,
-    command: 'npm',
-    args: ['run', 'dev'],
-    port: 8788,
-    url: 'http://127.0.0.1:8788',
-    requires: siteRoot,
   },
   {
     id: 'dashboard',
@@ -409,6 +397,18 @@ const SERVICES = [
     args: ['run', 'dashboard'],
     port: 4400,
     url: 'http://127.0.0.1:4400',
+  },
+  {
+    id: 'website',
+    name: 'Website',
+    note: 'pandawan-launcher-site, via wrangler pages dev.',
+    bat: 'run-website.bat',
+    cwd: repoRoot,
+    port: 8788,
+    url: 'http://127.0.0.1:8788',
+    // The site lives in a sibling repository, so the .bat is only runnable when
+    // that checkout is present.
+    requires: siteRoot,
   },
 ];
 
@@ -470,7 +470,12 @@ function writeManifest(entries) {
 /** Mirror the live map to disk so the next launch can clean up after this one. */
 function persist() {
   writeManifest(
-    [...started.values()].map((e) => ({ pid: e.pid, startedAt: e.startedAt, id: e.service.id }))
+    // `pid` is null for a service that was opened in its own window rather than
+    // spawned: there is no process of ours to remember, so it is left out instead
+    // of persisting a null that would read as "unknown pid" on the next launch.
+    [...started.values()]
+      .filter((e) => e.pid)
+      .map((e) => ({ pid: e.pid, startedAt: e.startedAt, id: e.service.id }))
   );
 }
 
@@ -573,6 +578,38 @@ function start(service) {
   // lookup. It also means the pid belongs to cmd.exe rather than to node, which
   // is harmless here precisely because killTree walks the tree.
   const comspec = process.env.ComSpec || 'cmd.exe';
+
+  // A service backed by a .bat is *opened*, not spawned: `start` gives it its own
+  // console window that outlives this dashboard and can be read directly. Its
+  // output is not captured here at all, because the whole point is that the user
+  // reads it in that window rather than in a truncated panel.
+  if (service.bat) {
+    const child = spawn(comspec, ['/d', '/s', '/c', 'start', '""', service.bat], {
+      cwd: service.cwd,
+      env: buildEnv(),
+      shell: false,
+      // `start` returns as soon as the window opens, so there is nothing to wait
+      // on and nothing that would keep this process alive.
+      stdio: 'ignore',
+      detached: true,
+    });
+    child.unref();
+    started.set(service.id, {
+      pid: null,
+      at: Date.now(),
+      startedAt: null,
+      tail: [],
+      service,
+      // Not tracked by pid: the console window belongs to cmd, and killing that
+      // would close the user's terminal rather than the dev server. Presence is
+      // tracked by the port instead, which is what the user actually cares about.
+      opened: true,
+      exited: false,
+    });
+    persist();
+    return { ok: true, opened: true };
+  }
+
   const commandLine = [service.command, ...service.args].join(' ');
   const child = spawn(comspec, ['/d', '/s', '/c', commandLine], {
     cwd: service.cwd,
@@ -620,6 +657,17 @@ function start(service) {
 function stop(id) {
   const entry = started.get(id);
   if (!entry) return { ok: false, error: 'not started by the dashboard' };
+
+  // A service opened in its own console window has no process of ours to kill,
+  // and killing the window would close the user's terminal rather than the dev
+  // server. The window is theirs to close; the button only stops offering to
+  // reopen one.
+  if (!entry.pid) {
+    started.delete(id);
+    persist();
+    return { ok: true, opened: true, note: 'close its window to stop it' };
+  }
+
   killTree(entry.pid);
   started.delete(id);
   persist();
@@ -634,8 +682,13 @@ async function status() {
         ...service,
         up: await portInUse(service.port),
         ours: Boolean(entry) && !entry.exited,
+        // True when this service runs in its own console window rather than as a
+        // process we can stop. The UI needs it to avoid offering a Stop button that
+        // would only kill part of the tree, and to say where the output is going.
+        opened: Boolean(service.bat),
         // The last few lines of output, so a service that failed to start can
-        // explain itself in the page instead of only in the console.
+        // explain itself in the page instead of only in the console. Always null
+        // for a `bat` service: its output is in its own window, not here.
         log: entry?.exited ? entry.tail.join('').trim().slice(-600) : null,
       };
     })

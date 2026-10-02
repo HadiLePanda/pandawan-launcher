@@ -213,12 +213,30 @@ body::before {
   color: var(--danger);
 }
 
+/*
+ * Full width, always.
+ *
+ * This was capped at 1080px and centred, which is a reading-width measure meant
+ * for prose. On a data tool it produced two problems at once: a wide window left
+ * a large empty gutter down both sides, and every table inside was laid out
+ * against that narrower column, so the grid stopped filling the space it
+ * actually had. A desktop tool should use the window it is given and let its
+ * own tables stretch to match.
+ */
 main {
   position: relative;
   z-index: 1;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--s6) var(--s5) var(--s7);
+  width: 100%;
+  min-width: 0;
+  padding: var(--s5) var(--s5) var(--s6);
+}
+
+/* The one place a max-width is right: prose. Patch notes and descriptions are
+   long-form text and become unreadable past ~70 characters per line, so this
+   caps the measure without capping the layout. */
+main > .panel--prose,
+.panel--prose {
+  max-width: 78ch;
 }
 
 /* Section heading. The rule is a flex-grow line rather than a full-width
@@ -580,6 +598,10 @@ h2::after {
 
 /* Tallies ------------------------------------------------------------- */
 
+/* Distributed rather than a fixed-gap flex row: with a plain flex and a 24px gap
+   the pair sits hard against the left edge and the rest of the panel reads as
+   empty, which is the same "clumped in one corner" symptom the main column cap
+   caused. `flex: 1` on each fact lets the two share the full width. */
 .facts {
   display: flex;
   gap: 24px;
@@ -591,6 +613,9 @@ h2::after {
 .fact {
   display: flex;
   flex-direction: column;
+  /* min-width: 0 stops a long value from forcing the row wider than its panel. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .fact-value {
@@ -696,12 +721,32 @@ h2::after {
   margin: var(--s3) 0 0;
 }
 
-/* Two columns rather than one long list: the eye scans across a row of related
-   fields far faster than down a single column. */
+/*
+ * Two columns rather than one long list: the eye scans across a row of related
+ * fields far faster than down a single column.
+ *
+ * `minmax(0, 1fr)` rather than `1fr` so a long value in one input cannot force
+ * its column wider and break the alignment of the row. The min is 0 and the max
+ * is 1fr, so the columns stay equal *and* are allowed to shrink; a plain `1fr`
+ * has an implicit min-content floor that is exactly what causes a form to blow
+ * out its layout when someone pastes a long path into it.
+ */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s4);
+}
+
+/* Inputs carry the width, not the track. Without this a grid track sizes to its
+   content and a long build path widens the whole row. */
+.grid > label {
+  min-width: 0;
+}
+
+.grid input,
+.grid select {
+  min-width: 0;
+  width: 100%;
 }
 
 /* A single field (the launcher tag) should not stretch to half a grid cell

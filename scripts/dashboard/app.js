@@ -156,7 +156,15 @@ function renderServices(services) {
 
     row.append(el('div', 'svc-note', service.note));
     row.append(el('div', 'svc-state is-' + key, STATE_LABELS[key]));
-    row.append(el('div', 'svc-meta', service.url ?? 'port ' + service.port + ' · native window'));
+    // A `bat` service prints into its own window, so naming the port here would
+    // send the user looking for output that is not on this page.
+    row.append(
+      el(
+        'div',
+        'svc-meta',
+        service.url ?? (service.opened ? 'opens its own window' : 'port ' + service.port)
+      )
+    );
 
     if (service.log) row.append(el('pre', 'svc-log', service.log));
 
@@ -181,7 +189,9 @@ function renderServices(services) {
       // back to, and hunting for that pid by hand is the chore this list exists
       // to remove.
       const stopBtn = el('button', 'stop', 'Stop it');
-      stopBtn.title = 'Stop the process holding this port, whoever started it';
+      stopBtn.title = service.opened
+        ? 'Kill the process holding this port. Its console window stays open and will say the server stopped.'
+        : 'Stop the process holding this port, whoever started it';
       stopBtn.addEventListener('click', () =>
         serviceAct('/api/service/force-stop', service.id, stopBtn)
       );
