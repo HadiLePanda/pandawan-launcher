@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,21 +7,55 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <header class="bar">
-      <span class="brand">Pandawan Publish</span>
-      <nav class="tabs" role="tablist" aria-label="Sections">
-        <button role="tab" class="tab" data-tab="overview" aria-selected="true">Overview</button>
-        <button role="tab" class="tab" data-tab="launcher" aria-selected="false">Launcher</button>
-        <button role="tab" class="tab" data-tab="games" aria-selected="false">Games</button>
-        <button role="tab" class="tab" data-tab="commands" aria-selected="false">Commands</button>
-      </nav>
-      <span class="spacer"></span>
-      <span id="status" class="status">connecting</span>
-    </header>
+    <div class="shell">
+      <!-- Sidebar ------------------------------------------------------- -->
+      <aside class="side">
+        <div class="side-brand">
+          <span class="side-mark"></span>
+          <span class="side-name">Pandawan</span>
+        </div>
+        <nav class="side-nav" aria-label="Sections">
+          <button class="tab nav-item" data-tab="overview" aria-selected="true">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/></svg>
+            <span>Overview</span>
+          </button>
+          <button class="tab nav-item" data-tab="games" aria-selected="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3h6l3 3v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7v4M6 9h4" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+            <span>Games</span>
+          </button>
+          <button class="tab nav-item" data-tab="launcher" aria-selected="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 12h4" stroke="currentColor" stroke-width="1.3"/></svg>
+            <span>Launcher</span>
+          </button>
+          <button class="tab nav-item" data-tab="services" aria-selected="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="12" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 4.7h.01M4.5 11.2h.01" stroke="currentColor" stroke-width="1.6"/></svg>
+            <span>Services</span>
+          </button>
+          <button class="tab nav-item" data-tab="commands" aria-selected="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.8 6.2L6.6 8l-1.8 1.8M8.4 10h3" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+            <span>Commands</span>
+          </button>
+        </nav>
+        <div class="side-foot">
+          <span class="hint">local admin tool</span>
+        </div>
+      </aside>
 
-    <main>
+      <!-- Main ---------------------------------------------------------- -->
+      <div class="main-wrap">
+        <header class="topbar">
+          <div class="page-head">
+            <h1 id="pageTitle">Overview</h1>
+            <p id="pageSub">What is published, and where the platforms disagree.</p>
+          </div>
+          <div class="topbar-actions">
+            <span id="status" class="status">connecting</span>
+          </div>
+        </header>
+        <main>
       <!-- Overview ------------------------------------------------------ -->
       <section class="tabpanel" data-panel="overview" role="tabpanel">
+        <div class="metrics" id="metrics"></div>
         <section id="drift" class="drift" hidden></section>
         <section id="inventory"></section>
       </section>
@@ -30,7 +64,7 @@
       <section class="tabpanel" data-panel="launcher" role="tabpanel" hidden>
         <section class="panel">
           <h2>Publish</h2>
-          <div id="launcherState" class="state">loading…</div>
+          <div id="launcherState" class="state">loadingâ€¦</div>
 
           <form id="launcherForm">
             <div class="grid one">
@@ -88,7 +122,7 @@
             </div>
 
             <fieldset class="platforms">
-              <legend>Platform directories — blank to skip</legend>
+              <legend>Platform directories â€” blank to skip</legend>
               <div class="grid">
                 <label>Windows<input id="winDir" /></label>
                 <label>macOS<input id="macDir" /></label>
@@ -139,6 +173,61 @@
             </button>
           </div>
           <pre id="catalogLog" class="log" hidden></pre>
+        </section>
+
+        <!-- Game metadata ------------------------------------------------- -->
+        <section class="panel" id="metaPanel">
+          <h2>Game metadata</h2>
+          <p class="meta">
+            Edit how a published game presents itself: its name, description, genres and artwork. The
+            build itself is not touched and no game files are re-uploaded. Load a game to fill this
+            in from what is live now, edit what changed, then publish.
+          </p>
+
+          <form id="metaForm">
+            <div class="grid">
+              <label>Game<input id="metaGameId" list="metaGameOptions" placeholder="misspell" /></label>
+              <label
+                >Channel<select id="metaChannel">
+                  <option value="alpha">alpha</option>
+                  <option value="beta">beta</option>
+                  <option value="stable">stable</option>
+                </select></label
+              >
+            </div>
+            <!-- Outside the grid: a datalist is not a field, and putting it in the
+                 column layout would leave it occupying a cell. -->
+            <datalist id="metaGameOptions"></datalist>
+
+            <div class="row">
+              <button type="button" id="metaLoad">Load current</button>
+              <span id="metaState" class="meta"></span>
+            </div>
+          </form>
+
+          <div id="metaBody" hidden>
+            <div id="metaWarnings"></div>
+            <div id="metaFields" class="meta-fields"></div>
+
+            <div class="row meta-actions">
+              <button type="button" id="metaRevertAll">Discard all changes</button>
+              <label class="confirm"
+                ><input id="metaDryRun" type="checkbox" checked /> Preview only</label
+              >
+              <button type="button" id="metaPublish" class="primary">Publish metadata</button>
+              <span id="metaDirtyCount" class="meta"></span>
+            </div>
+          </div>
+
+          <pre id="metaLog" class="log" hidden></pre>
+        </section>
+      </section>
+
+      <!-- Services ------------------------------------------------------ -->
+      <section class="tabpanel" data-panel="services" role="tabpanel" hidden>
+        <section class="panel">
+          <h2>Local dev services</h2>
+          <div id="services"></div>
         </section>
       </section>
 

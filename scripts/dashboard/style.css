@@ -1042,3 +1042,604 @@ button:disabled {
     font-size: 12px;
   }
 }
+
+/* Local dev services ----------------------------------------------------- */
+
+/* Service rows --------------------------------------------------------- */
+
+.svc {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  padding: var(--s3) 0;
+  border-top: 1px solid var(--border);
+}
+.svc:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.svc-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+}
+
+/* Status is a coloured dot plus a word. The word is there because colour alone
+   fails for a colour-blind reader, and because "running" vs "started here" are
+   different facts worth stating. */
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  flex: none;
+}
+.svc.up .dot {
+  background: var(--action);
+}
+
+.svc-note {
+  grid-column: 1;
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+.svc-meta {
+  grid-column: 1;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.svc-actions {
+  grid-row: 1 / -1;
+  grid-column: 2;
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--ease),
+    border-color var(--ease),
+    color var(--ease);
+}
+button:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.go {
+  background: var(--action);
+  border-color: transparent;
+  color: var(--action-ink);
+  font-weight: 600;
+}
+button.go:hover {
+  background: #46dd8c;
+}
+
+/* Stop is deliberately not red. It is a normal operation most of the time, and
+   painting it as danger made it read as a destructive action to be avoided. */
+button.stop {
+  color: var(--ink-muted);
+}
+
+a.open {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--ease),
+    border-color var(--ease);
+}
+a.open:hover {
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+button:focus-visible,
+a.open:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.error {
+  margin-top: var(--s2);
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* State chip ---------------------------------------------------------- */
+
+/* Carries its own colour, and always sits with the word, so the state is
+   readable without relying on hue. */
+.svc-state {
+  grid-column: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.svc-state::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 1px;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+.svc-state.is-running {
+  color: var(--action);
+}
+
+/* Something else already holds the port. Amber rather than green because it
+   needs the user's attention, but not red: nothing is wrong. */
+.svc-state.is-external {
+  color: var(--warn);
+}
+.svc-state.is-failed {
+  color: var(--danger);
+}
+
+/* Output from a service that died on startup. */
+.svc-log {
+  grid-column: 1;
+  margin: var(--s2) 0 0;
+  padding: var(--s2) var(--s3);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow: auto;
+
+  /* ==========================================================================
+   Game metadata panel
+
+   The hard requirement here is that a pending change is unmistakable. An
+   operator about to overwrite a published display name needs to see, without
+   reading anything, which fields are about to change - so a changed field gets
+   an accent left border, a tinted surface, and the word "changed". The word is
+   not decoration: colour alone would leave the state invisible to a
+   colour-blind user, which is the same class of bug the drift banner avoids.
+   ========================================================================== */
+
+  .meta-actions {
+    align-items: center;
+    gap: var(--s3);
+    margin-top: var(--s5);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--border);
+  }
+
+  .meta-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    margin-top: var(--s4);
+  }
+
+  .meta-field {
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    background: var(--surface-2);
+    transition:
+      border-color 0.12s ease,
+      background 0.12s ease;
+  }
+
+  .meta-field.is-dirty {
+    border-left-color: var(--action);
+    background: color-mix(in srgb, var(--action) 7%, var(--surface-2));
+  }
+
+  .meta-field-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: 6px;
+  }
+
+  .meta-label {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex-direction: row;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+
+  .meta-dirty {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--action) 20%, transparent);
+    color: var(--action);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .meta-source {
+    color: var(--ink-faint);
+    font-size: 11px;
+    font-weight: 400;
+    cursor: help;
+  }
+
+  .meta-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+  }
+
+  .meta-control input[type='text'] {
+    width: 100%;
+  }
+
+  .meta-revert {
+    padding: 3px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-subtle);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .meta-revert:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
+  }
+
+  .meta-warning {
+    margin: var(--s3) 0 0;
+    padding: var(--s2) var(--s3);
+    border-left: 3px solid var(--warn);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+    color: var(--warn);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Artwork: a real preview, because the only question when picking an icon is
+   whether it is the right one, and a URL box cannot answer that. */
+  .meta-image {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin-top: var(--s2);
+  }
+
+  .meta-preview {
+    width: 132px;
+    height: 56px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--surface-3);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .meta-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .meta-preview-empty {
+    color: var(--ink-faint);
+    font-size: 11px;
+  }
+
+  .meta-image-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .meta-file-name {
+    color: var(--ink-subtle);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta-file {
+    max-width: 220px;
+    font-size: 12px;
+    color: var(--ink-subtle);
+  }
+}
+
+/* ==========================================================================
+   Shell: sidebar + main
+
+   Layout follows the Task Manager / Intel Graphics pattern the brief asked
+   for: a persistent left rail for navigation, a large page title, and content
+   that scrolls independently of both.
+
+   Colour is deliberately NOT the reference's blue. This is a terminal: one
+   desaturated green carries accent, everything else is a neutral grey ramp, and
+   the platform hues from the grid below are the only other colour on the page.
+   ========================================================================== */
+
+:root {
+  --canvas: #0d0f12;
+  --side: #13161b;
+  --surface: #171b21;
+  --surface-2: #1e232a;
+  --surface-3: #262c35;
+  --inset: #090b0e;
+  --border: rgba(255, 255, 255, 0.065);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  --ink: #eef1f4;
+  --ink-muted: #a2aab4;
+  --ink-subtle: #7d858f;
+  --ink-faint: #626a74;
+
+  --accent: #3ecf8e;
+  --accent-hover: #55dd9f;
+  --accent-ink: #052b18;
+}
+
+body {
+  background: var(--canvas);
+}
+
+/* The header wash from the earlier theme fought the sidebar: it drew a glow
+   across the top-left rail, which should be flat. */
+body::before {
+  display: none;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100dvh;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  background: var(--side);
+  border-right: 1px solid var(--border);
+  padding: var(--s4) var(--s3);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+}
+
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2) var(--s3);
+}
+
+.side-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.side-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The nav button is a `.tab` so the existing selectTab() logic keeps working
+   unchanged; only its appearance changes. */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: 8px var(--s3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-subtle);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ease),
+    color var(--ease);
+}
+
+.nav-item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: currentColor;
+  opacity: 0.85;
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--ink-muted);
+}
+
+.nav-item[aria-selected='true'] {
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.side-foot {
+  margin-top: auto;
+  padding: var(--s3) var(--s2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.main-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s5) var(--s6) var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.page-head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+main {
+  max-width: none;
+  padding: var(--s5) var(--s6) var(--s7);
+}
+
+/* Metric cards --------------------------------------------------------- */
+
+/* Four across on a wide window, the reference's rhythm. The card is the unit
+   of scanning on this page: a label, one number, and a recessed strip that
+   gives the number a visual anchor without inventing a chart that would imply
+   data we do not have. */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4) var(--s4);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.metric-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.metric-label {
+  font-size: 11.5px;
+  color: var(--ink-subtle);
+  letter-spacing: 0.01em;
+}
+
+.metric-value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.metric-sub {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+}
+
+/* The recessed strip. On the reference each card holds a sparkline; here it
+   holds the one qualifier that belongs with the number, on the same darker
+   surface used for command output. */
+.metric-strip {
+  margin-top: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--inset);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric.is-alert .metric-value {
+  color: var(--warn);
+}
+
+.metric.is-good .metric-value {
+  color: var(--accent);
+}
