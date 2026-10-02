@@ -109,3 +109,28 @@ fn test_env_and_signing_keys_are_gitignored() {
         );
     }
 }
+
+#[test]
+fn test_rust_tests_run_on_windows_in_ci() {
+    // The launcher ships to Windows first, but CI ran `cargo test` on Linux
+    // only. Everything under `#[cfg(windows)]`, and every plain-Windows path
+    // join, was therefore verified only when a Windows dev ran it locally.
+    //
+    // This is a guard on the workflow rather than on the code, because the
+    // failure mode is invisible: a missing Windows job does not fail anything,
+    // it just quietly stops checking. Removing the job should be a deliberate
+    // act that trips this test.
+    let raw = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml"))
+        .expect("ci.yml is readable");
+
+    assert!(
+        raw.contains("rust-windows"),
+        "CI must keep a job that runs the Rust tests on windows-latest; \
+         the launcher is a Windows app and Linux-only cargo test cannot catch \
+         Windows-specific breakage"
+    );
+    assert!(
+        raw.contains("runs-on: windows-latest"),
+        "the rust-windows job must actually run on Windows"
+    );
+}

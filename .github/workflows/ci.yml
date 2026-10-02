@@ -77,3 +77,29 @@ jobs:
       # linker because `cargo check` does not link.
       - name: Check the unix code path
         run: cargo check --target x86_64-unknown-linux-gnu --all-targets
+
+  # The launcher ships to Windows first, so the reverse gap matters just as much:
+  # `#[cfg(windows)]` and plain-Windows behaviour (path joining, cmd.exe, the
+  # installer's own layout) are only ever exercised by the Linux job above when a
+  # Windows dev runs it locally. This is the job that catches those.
+  rust-windows:
+    name: Rust (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # Only tests here, no fmt/clippy: the point of this job is to prove the
+      # suite RUNS on Windows, not to re-check what the Linux job already checks.
+      - name: Test
+        run: cargo test --all-targets
