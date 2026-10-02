@@ -868,3 +868,346 @@ $('releaseRun')?.addEventListener('click', async () => {
 
 refreshLauncher();
 refresh();
+
+
+// --- Game metadata -----------------------------------------------------
+//
+// Edit a published game's presentation without touching the build or
+// re-uploading a single game file. The contract implemented here is not
+// invented: the field list, the catalog-beats-manifest precedence and the
+// absent/empty distinction all come from the server. See
+// scripts/lib/metadata-fields.mjs (FIELDS, IMAGE_FIELDS) and
+// scripts/lib/game-metadata.mjs (readGameMetadata), which backs /api/meta.
+//
+// FIELD_ORDER mirrors the order of FIELDS in metadata-fields.mjs. The API
+// returns fields as an object keyed by flag and carries no order, but a form
+// whose fields reshuffle between loads is unusable, so the sequence is pinned
+// here deliberately. Labels are NOT hardcoded - each field's own `label` from
+// the response is used, so a rename in the contract shows up without touching
+// this file.
+const FIELD_ORDER = [
+  'name',
+  'description',
+  'developer',
+  'genre',
+  'icon-url',
+  'banner-url',
+  'screenshots',
+  'supported-platforms',
+  'available-channels',
+];
+
+// The two fields that also accept an artwork upload, and the payload key the
+// server reads each from. Mirrors IMAGE_FIELDS in metadata-fields.mjs.
+const IMAGE_INPUTS = {
+  'icon-url': 'iconFile',
+  'banner-url': 'bannerFile',
+};
+
+const SOURCE_TEXT = {
+  catalog: 'from catalog',
+  manifest: 'inherited from manifest',
+  empty: 'not set',
+};
+
+/**
+ * The loaded game plus the values as they were when loaded.
+ *
+ * `original` is the comparison baseline, not just the rendered starting point:
+ * publish sends only what changed, because the server treats an absent key as
+ * "leave whatever is published". Sending the whole form would silently
+ * overwrite fields the operator never touched.
+ */
+const metaState = { gameId: '', channel: '', exists: false, original: {}, inputValues: {} };
+
+/** Split a comma list the way the publisher does, so "a, b" == "a,b". */
+function normaliseList(value) {
+  return String(value ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** A field is changed when its trimmed text differs from what was loaded. */
+function metaIsDirty(flag) {
+  if (!(flag in metaState.original)) return false;
+  const field = metaState.original[flag];
+  const now = metaState.inputValues[flag] ?? '';
+  if (field.list) {
+    return normaliseList(now).join(' ') !== normaliseList(field.value).join(' ');
+  }
+  return now.trim() !== String(field.value ?? '').trim();
+}
+
+function metaDirtyFlags() {
+  return FIELD_ORDER.filter(metaIsDirty);
+}
+
+function renderMetaDirtyCount() {
+  const count = metaDirtyFlags().length;
+  $('metaDirtyCount').textContent = count ? `${count} field${count > 1 ? 's' : ''} changed` : '';
+}
+
+function metaPreviewInto(box, url) {
+  box.textContent = '';
+  if (!url) {
+    box.append(el('span', 'meta-preview-empty', 'no artwork'));
+    return;
+  }
+  const img = document.createElement('img');
+  // The URL is typed by an operator and may well be broken, so a failed load
+  // falls back to the placeholder rather than leaving a torn-image icon.
+  img.addEventListener('error', () => {
+    box.textContent = '';
+    box.append(el('span', 'meta-preview-empty', 'cannot load'));
+  });
+  img.src = url;
+  img.alt = '';
+  box.append(img);
+}
+
+function renderMetaFields(data) {
+  const box = $('metaFields');
+  box.textContent = '';
+
+  for (const flag of FIELD_ORDER) {
+    const field = data.fields[flag];
+    // The server merges whatever the contract declares; a flag it does not
+    // know about is skipped rather than rendered as a nameless input.
+    if (!field) continue;
+
+    const wrap = el('div', 'meta-field');
+    const row = el('div', 'meta-field-row');
+
+    const label = el('div', 'meta-label');
+    label.append(el('span', null, field.label));
+    if (metaIsDirty(flag)) label.append(el('span', 'meta-dirty', 'changed'));
+    row.append(label);
+
+    row.append(el('span', 'meta-source', SOURCE_TEXT[field.source] ?? field.source));
+
+    const revert = el('button', 'meta-revert', 'Undo');
+    revert.type = 'button';
+    revert.hidden = !metaIsDirty(flag);
+    revert.addEventListener('click', () => {
+      metaState.inputValues[flag] = String(field.value ?? '');
+      renderMetaFields(data);
+    });
+    row.append(revert);
+
+    wrap.append(row);
+
+    const control = el('div', 'meta-control');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `meta-${flag}`;
+    input.value = metaState.inputValues[flag] ?? '';
+    if (field.list) input.placeholder = 'comma separated';
+    // Live marking: the operator must see what they just changed before
+    // committing, not only after the whole form re-renders.
+    input.addEventListener('input', () => {
+      metaState.inputValues[flag] = input.value;
+      wrap.classList.toggle('is-dirty', metaIsDirty(flag));
+      const badge = label.querySelector('.meta-dirty');
+      if (metaIsDirty(flag) && !badge) label.append(el('span', 'meta-dirty', 'changed'));
+      if (!metaIsDirty(flag) && badge) badge.remove();
+      revert.hidden = !metaIsDirty(flag);
+      renderMetaDirtyCount();
+    });
+    control.append(input);
+
+    if (IMAGE_INPUTS[flag]) {
+      const art = el('div', 'meta-image');
+      const preview = el('div', 'meta-preview');
+      metaPreviewInto(preview, input.value.trim());
+      art.append(preview);
+
+      const actions = el('div', 'meta-image-actions');
+      const path = document.createElement('input');
+      path.type = 'text';
+      path.className = 'meta-file';
+      path.placeholder = 'path to a local image';
+      // A browser cannot report an absolute path from a file input, so this is
+      // a typed path rather than a picker. The server resolves and verifies it.
+      path.value = metaState.inputValues[IMAGE_INPUTS[flag]] ?? '';
+      const name = el('span', 'meta-file-name', path.value.trim() || 'no file');
+      path.addEventListener('input', () => {
+        metaState.inputValues[IMAGE_INPUTS[flag]] = path.value;
+        name.textContent = path.value.trim() || 'no file';
+        renderMetaDirtyCount();
+      });
+      actions.append(path);
+      actions.append(name);
+      art.append(actions);
+
+      // A pasted URL updates its own preview, which is the only way to confirm
+      // the URL points at the intended image.
+      input.addEventListener('input', () => metaPreviewInto(preview, input.value.trim()));
+      control.append(art);
+    }
+
+    wrap.append(control);
+    box.append(wrap);
+  }
+
+  renderMetaDirtyCount();
+}
+
+/** Show what would confuse the operator, before they publish rather than after. */
+function renderMetaWarnings(data) {
+  const box = $('metaWarnings');
+  box.textContent = '';
+
+  const warn = (text) => box.append(el('p', 'meta-warning', text));
+
+  if (!data.hasManifest) {
+    warn(
+      'No manifest for this channel. The launcher will only see what the catalog says, so a value that exists only in a manifest cannot be recovered here.'
+    );
+  }
+  if (data.channelMismatch) {
+    warn(
+      `The catalog entry is on "${data.publishedChannel}", not "${data.channel}". The launcher reads the entry's own channel, so this edit will not appear until that channel is resolved.`
+    );
+  }
+
+  const inherited = FIELD_ORDER.filter((flag) => data.fields[flag]?.inherited);
+  if (inherited.length) {
+    const names = inherited.map((flag) => data.fields[flag].label).join(', ');
+    warn(
+      data.hasCatalogEntry
+        ? `Inherited from the manifest, so the catalog does not own them yet: ${names}.`
+        : `No catalog entry, so every value below is inherited from the manifest: ${names}.`
+    );
+  }
+}
+
+/**
+ * Load one game's live metadata and rebuild the form around it.
+ *
+ * The original values are re-read into the inputs on every load, because Load
+ * current is also how an operator abandons a half-finished edit.
+ */
+async function loadMeta() {
+  const gameId = $('metaGameId').value.trim();
+  const channel = $('metaChannel').value;
+  const log = $('metaLog');
+  const state = $('metaState');
+  log.hidden = true;
+
+  if (!gameId) {
+    state.textContent = 'Enter a game id first.';
+    $('metaBody').hidden = true;
+    return;
+  }
+
+  state.textContent = 'Loading...';
+  try {
+    const query = `gameId=${encodeURIComponent(gameId)}&channel=${encodeURIComponent(channel)}`;
+    const res = await fetch(`/api/meta?${query}`);
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail.error ?? `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+
+    metaState.gameId = data.gameId;
+    metaState.channel = data.channel;
+    metaState.exists = Boolean(data.exists);
+    metaState.original = data.fields ?? {};
+    metaState.inputValues = {};
+    // Reset to exactly what the server reported, never merged with the previous
+    // load: a stale value left over from another game would look like a pending
+    // edit and then get published.
+    for (const [flag, field] of Object.entries(metaState.original)) {
+      metaState.inputValues[flag] = String(field.value ?? '');
+    }
+    for (const key of Object.values(IMAGE_INPUTS)) metaState.inputValues[key] = '';
+
+    if (!data.exists) {
+      $('metaBody').hidden = true;
+      state.textContent = `${data.gameId} / ${data.channel} is not published yet, so there is nothing to edit.`;
+      return;
+    }
+
+    $('metaBody').hidden = false;
+    renderMetaWarnings(data);
+    renderMetaFields(data);
+
+    const parts = [`${data.gameId} / ${data.channel}`];
+    parts.push(data.hasCatalogEntry ? 'catalog entry found' : 'no catalog entry');
+    state.textContent = parts.join(' - ');
+  } catch (err) {
+    $('metaBody').hidden = true;
+    state.textContent = String(err.message ?? err);
+  }
+}
+
+/** Populate the game datalist from what the inventory already knows about. */
+async function fillMetaGameOptions() {
+  try {
+    const res = await fetch('/api/inventory');
+    const data = await res.json();
+    // An inventory entry is { id, channels: [{ channel, ... }] }, so the ids
+    // are nested rather than flat. Reading entry.gameId here yields nothing and
+    // the datalist silently stays empty.
+    const ids = [
+      ...new Set((data.inventory ?? []).flatMap((entry) => entry?.id ? [entry.id] : [])),
+    ];
+    if (!ids.length) return;
+    const list = $('metaGameOptions');
+    list.textContent = '';
+    for (const id of ids) {
+      const option = document.createElement('option');
+      option.value = id;
+      list.append(option);
+    }
+  } catch {
+    // The datalist is only a convenience. An inventory failure is already
+    // reported in its own panel, so there is nothing useful to add here.
+  }
+}
+
+$('metaForm')?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  loadMeta();
+});
+
+$('metaLoad')?.addEventListener('click', loadMeta);
+
+$('metaRevertAll')?.addEventListener('click', () => loadMeta());
+
+$('metaPublish')?.addEventListener('click', async () => {
+  const changed = metaDirtyFlags();
+  if (!changed.length) return;
+
+  const dryRun = $('metaDryRun').checked;
+  if (
+    !dryRun &&
+    !window.confirm(`Publish ${changed.length} metadata change(s)? Players will see them immediately.`)
+  ) {
+    return;
+  }
+
+  const payload = { gameId: metaState.gameId, channel: metaState.channel, dryRun };
+  for (const flag of changed) {
+    const field = metaState.original[flag];
+    const value = metaState.inputValues[flag] ?? '';
+    // Absent vs empty is load-bearing on the server: an absent key leaves the
+    // published value alone, an emptied text field clears it. A list field is
+    // deliberately never sent empty, because a comma list cannot express "no
+    // genres" and writing [] would erase the field instead.
+    if (value.trim() === '' && field.list) continue;
+    payload[flag] = field.list ? normaliseList(value).join(', ') : value.trim();
+  }
+  for (const key of Object.values(IMAGE_INPUTS)) {
+    const path = (metaState.inputValues[key] ?? '').trim();
+    if (path) payload[key] = path;
+  }
+
+  await stream('/api/meta/publish', payload, 'metaLog');
+  await loadMeta();
+  refresh();
+});
+
+fillMetaGameOptions();
