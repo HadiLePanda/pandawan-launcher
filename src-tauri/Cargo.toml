@@ -5,6 +5,11 @@ description = "Pandawan Corp Game Launcher"
 authors = ["Pandawan Corp"]
 edition = "2021"
 rust-version = "1.70"
+# Required because the crate has two binaries: the app itself and the
+# `export-bindings` tool. Without this, `cargo run` refuses to start with
+# "could not determine which binary to run", and since Tauri's dev command is
+# just `cargo run`, `npm run tauri:dev` fails before it builds anything.
+default-run = "pandawan-launcher"
 
 [lib]
 name = "pandawan_launcher_lib"
