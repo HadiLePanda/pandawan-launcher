@@ -305,7 +305,15 @@ body {
   transform: scale(0.97);
 }
 
-/* Hide scrollbar utility */
+/*
+ * Scrollbar-hiding utility.
+ *
+ * No element uses this any more: it existed for the games bar's horizontal
+ * scroller, which was replaced by a fixed cap (see GamesBar MAX_VISIBLE) because
+ * a scroller in a 62px strip is nearly invisible and steals the wheel. Kept only
+ * because removing a shared utility is a separate concern from the change that
+ * stopped needing it; delete it if nothing picks it up again.
+ */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -313,6 +321,34 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/*
+ * "+N" badge on the manage-pins button, for pins past the cap.
+ *
+ * Absolutely positioned into the corner so it does not widen the button and shift
+ * every icon to its left when it appears or disappears.
+ */
+.games-bar-overflow {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  /* --surface-elevated: the badge must sit above the bar's own
+     --surface-default and read as a chip on top of it. */
+  background: var(--surface-elevated);
+  color: var(--ink-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--border-default);
 }
 
 .sidebar-separator {
@@ -332,7 +368,17 @@ body {
   background: var(--surface-default);
   border-radius: 10px;
   flex-shrink: 0;
-  overflow-x: auto;
+  /*
+   * No scrolling. The bar is a fixed-height strip of shortcuts, and a horizontal
+   * scroller in it is close to invisible, steals the wheel from the page, and
+   * hides the fact that anything is pinned past the edge. The number of pins is
+   * capped in GamesBar instead, with the overflow shown as a count on the
+   * manage-pins button.
+   */
+  overflow: hidden;
+  /* min-width: 0 so the strip can shrink inside its flex parent instead of
+     forcing the parent wider and reintroducing a page-level scrollbar. */
+  min-width: 0;
 }
 
 .games-bar-item {
@@ -427,6 +473,9 @@ body {
 }
 
 .games-bar-add {
+  /* Anchors .games-bar-overflow. Without it the badge positions against the
+     nearest positioned ancestor instead, landing somewhere across the bar. */
+  position: relative;
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -2476,8 +2525,11 @@ input[type='search']::placeholder {
 }
 
 .news-thumb {
-  width: 12rem;
-  height: 8rem;
+  /* 9rem x 6rem rather than the previous 12rem x 8rem. The list is scanned,
+     not studied: a thumbnail exists to identify the item, and at 12rem it was the
+     loudest thing on a row that is otherwise text. */
+  width: 9rem;
+  height: 6rem;
   border-radius: 0.5rem;
   overflow: hidden;
   flex-shrink: 0;
@@ -3501,7 +3553,16 @@ input.pin-search {
 
 .news-article-banner {
   width: 100%;
-  max-height: 360px;
+  /*
+   * Fixed aspect rather than max-height. With only a max-height the box is zero
+   * tall until the image arrives and then jumps to 360px, pushing the article
+   * text down as it loads - a layout shift on every article open. Reserving the
+   * space up front means the text never moves.
+   */
+  aspect-ratio: 16 / 9;
+  /* The aspect ratio sets the height; the cap still applies, so a very wide
+     window does not produce a banner taller than the viewport. */
+  max-height: 280px;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 24px;

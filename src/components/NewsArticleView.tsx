@@ -47,11 +47,18 @@ export function NewsArticleView({
         </button>
       </div>
 
-      {/* Always rendered, for the same reason as the news cards: an article with
-          no image shows its game's artwork, or a placeholder, rather than the
-          page starting mid-sentence. */}
+      {/*
+       * Always rendered, for the same reason as the news cards: an article with no
+       * image shows its game's artwork, or a placeholder, rather than the page starting
+       * mid-sentence.
+       *
+       * decoding="async" for the same reason, and more important here: this is the
+       * largest image in the app, so decoding it on the main thread stalls the scroll
+       * that just opened it.
+       */}
       <div className="news-article-banner">
         <img
+          decoding="async"
           src={resolveNewsImage(article, { bannerUrl: gameBannerUrl, iconUrl: gameIconUrl })}
           alt=""
           onError={handleImageError}

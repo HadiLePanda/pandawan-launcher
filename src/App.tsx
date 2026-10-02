@@ -352,7 +352,12 @@ function App() {
   };
 
   const renderContent = () => {
-    if (newsArticle) {
+    // The article view wins over the tab underneath it, which means navigating to
+    // another tab has to close it explicitly or it stays on screen - the store
+    // looked like it was rendering the news article. Scoping it to the news tab
+    // makes the invariant structural: there is no state combination where an
+    // article is showing while the store is.
+    if (activeView === 'news' && newsArticle) {
       const article = news.find((n) => n.id === newsArticle.articleId);
       const articleGame = games.find((g) => g.info.id === newsArticle.gameId);
       if (article && articleGame) {
@@ -451,14 +456,19 @@ function App() {
           }
         }}
         onNewsClick={() => {
+          // Cleared, not just hidden: leaving it set means coming back to News
+          // reopens the article the user walked away from.
+          setNewsArticle(null);
           setActiveView('news');
           setSelectedGameId(lastSelectedGameId);
         }}
         onStoreClick={() => {
+          setNewsArticle(null);
           setActiveView('store');
           setSelectedGameId(lastSelectedGameId);
         }}
         onDownloadsNavigate={() => {
+          setNewsArticle(null);
           setActiveView('downloads');
           setSelectedGameId(lastSelectedGameId);
         }}

@@ -54,7 +54,12 @@ export function News({ onSelectArticle }: NewsProps) {
                 instead of collapsing around the text. onError catches the case a
                 present-but-dead URL cannot be detected from here. */}
             <div className="news-thumb">
+              {/* `decoding="async"` hands the decode off the main thread. With a
+                  multi-megabyte banner, decoding inline blocks paint until it
+                  finishes, which is the visible half of the slowness - the other
+                  half is the download. */}
               <img
+                decoding="async"
                 src={resolveNewsImage(item, item.gameId ? gameArt(item.gameId) : null)}
                 alt={item.title}
                 onError={handleImageError}

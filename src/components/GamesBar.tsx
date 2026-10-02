@@ -14,6 +14,14 @@ export interface GamesBarProps {
   onOpenPins: () => void;
 }
 
+// How many pinned games the bar shows.
+//
+// This is a cap rather than a scroll: a horizontal scroller in a 62px strip is
+// easy to miss, scrolls the whole page when the wheel is over it, and hides the
+// fact that more are pinned. Overflow is signalled by a count on the manage-pins
+// button instead, so the limit is discoverable without a scrollbar.
+const MAX_VISIBLE = 7;
+
 export function GamesBar({
   games,
   installedIds,
@@ -26,10 +34,16 @@ export function GamesBar({
 }: GamesBarProps) {
   const { t } = useTranslation();
 
-  const visibleGames = games.filter((g) => isGamePinned(g.id, unpinnedGameIds));
+  const pinned = games.filter((g) => isGamePinned(g.id, unpinnedGameIds));
+  const visibleGames = pinned.slice(0, MAX_VISIBLE);
+  // Games that are pinned but past the limit. Counted rather than rendered: the
+  // overflow has to be visible somewhere or the cap looks like data loss.
+  const overflow = pinned.length - visibleGames.length;
 
+  // The bar carries no `no-scrollbar` class: it no longer scrolls, so hiding a
+  // scrollbar would only conceal the cap from anyone who goes looking for it.
   return (
-    <div className="games-bar no-scrollbar" data-testid="games-bar">
+    <div className="games-bar" data-testid="games-bar">
       <div className="games-bar-item">
         <button
           type="button"
@@ -66,6 +80,12 @@ export function GamesBar({
           <span className="games-bar-tip">{game.name}</span>
         </div>
       ))}
+      {/*
+       * The overflow count rides on the manage-pins button because that is the
+       * one control that can reach the hidden games. It is aria-hidden: the
+       * button's own label already says what it does, and a bare number next to
+       * it would be read aloud as part of the name.
+       */}
       <button
         type="button"
         className="games-bar-add"
@@ -74,6 +94,11 @@ export function GamesBar({
         onClick={onOpenPins}
       >
         <Plus size={16} />
+        {overflow > 0 && (
+          <span className="games-bar-overflow" aria-hidden="true">
+            +{overflow}
+          </span>
+        )}
       </button>
     </div>
   );
