@@ -99,7 +99,38 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # Only tests here, no fmt/clippy: the point of this job is to prove the
-      # suite RUNS on Windows, not to re-check what the Linux job already checks.
-      - name: Test
-        run: cargo test --all-targets
+      # Each integration suite is named explicitly rather than using
+      # cargo test --tests, because that flag also builds and runs the lib
+      # unittests - and the lib test binary links webview2-com-sys, resolving
+      # the WebView2 loader at load time. On an image without the runtime it
+      # dies with STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139) before a single
+      # assertion runs, so the job fails having verified nothing. Naming each
+      # suite keeps the run honest about what actually executed.
+      #
+      # These are the suites that exercise #[cfg(windows)] path joining and
+      # layout, which the Linux job above cannot reach.
+      - name: Test (bundle contents)
+        run: cargo test --test bundle_contents_tests
+
+      - name: Test (download)
+        run: cargo test --test download_integration_tests
+
+      - name: Test (patch)
+        run: cargo test --test patch_integration_tests
+
+      - name: Test (types)
+        run: cargo test --test types_integration_tests
+
+      - name: Test (updater signing)
+        run: cargo test --test updater_signing_tests
+
+      - name: Test (workflow)
+        run: cargo test --test workflow_integration_tests
+
+      # The lib unit tests still belong in this job, but they cannot run without
+      # the WebView2 runtime present. continue-on-error keeps a missing runtime
+      # from failing the job, while the separate step means a real assertion
+      # failure inside them is still reported rather than hidden.
+      - name: Test (lib unit tests, needs WebView2 runtime)
+        continue-on-error: true
+        run: cargo test --lib
