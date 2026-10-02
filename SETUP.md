@@ -118,9 +118,6 @@ pandawan-launcher/
 â”œâ”€â”€ scripts/
 â”‚   â””â”€â”€ generate-manifest.py     # Python script to create game manifests
 â”‚
-â”œâ”€â”€ examples/
-â”‚   â””â”€â”€ manifest.json            # Example game manifest
-â”‚
 â”œâ”€â”€ package.json                  # Node dependencies
 â”œâ”€â”€ tsconfig.json                # TypeScript configuration
 â””â”€â”€ vite.config.ts               # Vite configuration

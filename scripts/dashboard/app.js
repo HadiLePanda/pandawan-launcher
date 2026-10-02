@@ -42,6 +42,206 @@ document.addEventListener('keydown', (event) => {
   next.focus();
 });
 
+
+const PAGES = {
+  overview: ['Overview', 'What is published, and where the platforms disagree.'],
+  games: ['Games', 'Publish a build, prune old ones, or refresh the catalog.'],
+  launcher: ['Launcher', 'The version players are downloading, and what is queued.'],
+  services: ['Services', 'Local dev servers, started and stopped from here.'],
+  commands: ['Commands', 'Every command this project uses, copyable.'],
+};
+
+// Declared here, not next to watchServices() further down: selectTab() runs at
+// load and calls watchServices(), which touches this. A let further down would
+// still be in its temporal dead zone at that moment and would throw on load.
+let serviceTimer = null;
+
+function setPage(name) {
+  const page = PAGES[name] ?? PAGES.overview;
+  $('pageTitle').textContent = page[0];
+  $('pageSub').textContent = page[1];
+}
+
+/** One metric card: label, number, qualifier, and the recessed strip. */
+function metric(label, value, opts) {
+  const o = opts ?? {};
+  const card = el('div', 'metric' + (o.tone ? ' is-' + o.tone : ''));
+  const top = el('div', 'metric-top');
+  const labels = el('div');
+  labels.append(el('div', 'metric-label', label));
+  if (o.sub) labels.append(el('div', 'metric-sub', o.sub));
+  top.append(labels, el('div', 'metric-value', value));
+  card.append(top);
+  if (o.strip) card.append(el('div', 'metric-strip', o.strip));
+  return card;
+}
+
+function renderMetrics(inventory, drift) {
+  const host = $('metrics');
+  if (!host) return;
+  host.textContent = '';
+
+  const channels = inventory.reduce((n, g) => n + g.channels.length, 0);
+  const platforms = new Set();
+  const versions = [];
+  for (const g of inventory) {
+    for (const c of g.channels) {
+      for (const p of c.platforms ?? []) platforms.add(p);
+      for (const e of Object.values(c.latest ?? {})) if (e.version) versions.push(e.version);
+    }
+  }
+  versions.sort();
+
+  host.append(
+    metric('Games', String(inventory.length), {
+      sub: channels + ' channel' + (channels === 1 ? '' : 's'),
+      strip: inventory.length ? inventory.map((g) => g.id).join(', ') : 'nothing published yet',
+    })
+  );
+
+  host.append(
+    metric('Platforms live', String(platforms.size), {
+      sub: 'of 3 possible',
+      strip: [...platforms].sort().join(' · ') || 'none',
+    })
+  );
+
+  host.append(
+    metric('Out of sync', String(drift.length), {
+      sub: drift.length ? 'needs a publish' : 'all aligned',
+      strip: drift.length ? drift.map((d) => d.gameId).join(', ') : 'every channel agrees',
+      tone: drift.length ? 'alert' : 'good',
+    })
+  );
+
+  host.append(
+    metric('Newest version', versions.at(-1) ?? '—', {
+      sub: 'across all channels',
+      strip: versions.at(-1) ? 'latest build on any platform' : 'publish a build to see this',
+    })
+  );
+}
+
+// --- Local dev services -------------------------------------------------
+//
+// One list, polled only while the Services tab is visible. Polling a hidden
+// tab would keep five TCP connects running for a page nobody is looking at.
+
+const STATE_LABELS = {
+  running: 'running here',
+  external: 'running elsewhere',
+  stopped: 'stopped',
+  failed: 'exited',
+};
+
+function renderServices(services) {
+  const host = $('services');
+  if (!host) return;
+  host.textContent = '';
+
+  for (const service of services) {
+    const row = el('div', 'svc');
+    if (service.up) row.classList.add('up');
+
+    const name = el('div', 'svc-name');
+    name.append(el('span', 'dot'));
+    name.append(el('span', null, service.name));
+    row.append(name);
+
+    let key = 'stopped';
+    if (!service.up && service.log) key = 'failed';
+    else if (service.up) key = service.ours ? 'running' : 'external';
+
+    row.append(el('div', 'svc-note', service.note));
+    row.append(el('div', 'svc-state is-' + key, STATE_LABELS[key]));
+    row.append(el('div', 'svc-meta', service.url ?? 'port ' + service.port + ' · native window'));
+
+    if (service.log) row.append(el('pre', 'svc-log', service.log));
+
+    const actions = el('div', 'svc-actions');
+
+    if (service.url) {
+      const open = el('a', 'open', 'Open');
+      open.href = service.url;
+      open.target = '_blank';
+      open.rel = 'noreferrer';
+      open.title = service.up ? '' : 'Nothing is listening on this port yet';
+      actions.append(open);
+    }
+
+    if (service.ours) {
+      const stopBtn = el('button', 'stop', 'Stop');
+      stopBtn.addEventListener('click', () => serviceAct('/api/service/stop', service.id, stopBtn));
+      actions.append(stopBtn);
+    } else if (service.up) {
+      // Up, but this dashboard did not start it. Offered because a half-dead
+      // tree can leave a process holding the port with nothing left to trace it
+      // back to, and hunting for that pid by hand is the chore this list exists
+      // to remove.
+      const stopBtn = el('button', 'stop', 'Stop it');
+      stopBtn.title = 'Stop the process holding this port, whoever started it';
+      stopBtn.addEventListener('click', () =>
+        serviceAct('/api/service/force-stop', service.id, stopBtn)
+      );
+      actions.append(stopBtn);
+    } else {
+      const startBtn = el('button', 'go', key === 'failed' ? 'Retry' : 'Start');
+      startBtn.addEventListener('click', () =>
+        serviceAct('/api/service/start', service.id, startBtn)
+      );
+      actions.append(startBtn);
+    }
+
+    row.append(actions);
+    host.append(row);
+  }
+}
+
+async function serviceAct(endpoint, id, button) {
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = 'working';
+
+  try {
+    const res = await fetch(endpoint + '?id=' + encodeURIComponent(id), { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok && data.error) {
+      button.textContent = previous;
+      button.disabled = false;
+      const row = button.closest('.svc');
+      row.querySelector('.error')?.remove();
+      row.append(el('div', 'error', data.error));
+      return;
+    }
+  } catch {
+    button.textContent = previous;
+    button.disabled = false;
+    return;
+  }
+
+  await refreshServices();
+}
+
+async function refreshServices() {
+  const host = $('services');
+  if (!host) return;
+  try {
+    renderServices(await (await fetch('/api/services')).json());
+  } catch (err) {
+    host.textContent = String(err.message ?? err);
+  }
+}
+
+function watchServices(on) {
+  clearInterval(serviceTimer);
+  serviceTimer = null;
+  if (!on) return;
+  refreshServices();
+  serviceTimer = setInterval(refreshServices, 3000);
+}
+
+
+
 selectTab(location.hash.slice(1) || 'overview', { push: false });
 
 function compare(versions) {

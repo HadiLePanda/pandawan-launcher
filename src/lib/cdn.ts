@@ -31,11 +31,11 @@ export function resolveCdnUrl(url: string | undefined): string {
 
 function detectOrigin(): string {
   try {
+    // No dev default: without VITE_CDN_ORIGIN there is nothing local to serve
+    // from any more, and silently pointing at a dead localhost would only mask
+    // a missing configuration.
     const envOrigin = import.meta.env.VITE_CDN_ORIGIN as string | undefined;
     if (envOrigin) return envOrigin;
-    // In dev, default to the local example server so the launcher works out of
-    // the box even if .env.development is missing or not loaded.
-    if (import.meta.env.DEV) return 'http://localhost:8765';
   } catch {
     // import.meta may not be available in all build contexts; fall through.
   }

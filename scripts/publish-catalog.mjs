@@ -42,7 +42,7 @@ upload(catalogPath, S3.s3Uri(bucket, 'launcher/catalog.json'), {
   contentType: 'application/json',
 });
 
-const newsPath = path.join(repoRoot, 'examples', 'launcher', 'news.json');
+const newsPath = path.join(repoRoot, 'public', 'news.json');
 if (existsSync(newsPath) && !process.env.SKIP_NEWS) {
   upload(newsPath, S3.s3Uri(bucket, 'launcher/news.json'), {
     endpoint,

@@ -29,7 +29,7 @@ A simple, self-updating client for a company-controlled catalog — like Blizzar
 - **Windowing:** Frameless window with a custom title bar (`TitleBar`) and standard window controls.
 - **Persistence:** Settings are saved as JSON in the Tauri app data directory; playtime and last-played are recorded on game exit.
 - **Security/release workflow:** Launcher self-updates are signed with minisign. `src-tauri/updater.pub` is committed; the secret key lives in `src-tauri/.secrets/updater.key` and in the `TAURI_SIGNING_PRIVATE_KEY` GitHub Secret. Releases are cut from `main` via `v*.*.*` tags.
-- **Development:** `npm run tauri:dev` runs the local Vite frontend and Rust backend. A local example server (`examples/StartExampleServer.bat`) serves catalog/manifest examples for offline UI testing.
+- **Development:** `npm run tauri:dev` runs the local Vite frontend and Rust backend. The CDN origin comes from `VITE_CDN_ORIGIN` in `.env`; point it at any static server to develop against local content.
 
 ## Capabilities and Constraints
 

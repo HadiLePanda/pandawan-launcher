@@ -38,6 +38,12 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { S3, listKeysWithMeta, loadDotEnv, r2Config } from './lib/r2.mjs';
+// The field contract is shared with the publisher rather than restated here, so
+// the form cannot offer a field the script would silently ignore. The read side
+// lives in a module so it can be tested without booting a server that holds the
+// R2 keys.
+import { FIELDS } from './lib/metadata-fields.mjs';
+import { readGameMetadata } from './lib/game-metadata.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetDir = path.join(here, 'dashboard');
@@ -396,6 +402,74 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/catalog' && req.method === 'POST') {
     // publish-catalog.mjs takes no arguments at all: it publishes public/catalog.json.
     runScript('publish-catalog.mjs', [], res);
+    return;
+  }
+
+  // --- Game metadata -------------------------------------------------------
+  //
+  // Editing metadata is a different verb from publishing a build: the build
+  // already exists and only the presentation layer changes. The panel loads what
+  // is live first so an edit starts from the truth rather than from a blank form,
+  // which is what stops a display name being typed over a good one by accident.
+
+  if (url.pathname === '/api/meta' && req.method === 'GET') {
+    const gameId = url.searchParams.get('gameId') ?? '';
+    const channel = url.searchParams.get('channel') ?? '';
+    if (!gameId || !channel) {
+      res.writeHead(400).end('gameId and channel are required');
+      return;
+    }
+    try {
+      const data = await readGameMetadata(gameId, channel, { cdnOrigin, fields: FIELDS });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/meta/publish' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+
+    // The argument list is assembled here from named fields rather than
+    // forwarded, for the same reason prune does it: the form must not be able to
+    // pass through a flag the UI never offers.
+    const argv = ['--game-id', String(payload.gameId ?? '').trim()];
+    argv.push('--channel', String(payload.channel ?? '').trim());
+    if (payload.dryRun) argv.push('--dry-run');
+
+    for (const field of FIELDS) {
+      const value = payload[field.flag];
+      // An absent key means "leave whatever is published". That is what makes a
+      // partial edit safe, so the distinction between absent and empty has to
+      // survive all the way to here.
+      if (value === undefined || value === null) continue;
+      const text = String(value).trim();
+      // An emptied text field is a real intent: it clears the value. An emptied
+      // list field is not, since a comma list cannot express "no genres" and
+      // writing [] would silently erase the field.
+      if (text === '' && field.list) continue;
+      argv.push(`--${field.flag}`, text);
+    }
+
+    for (const [flag, key] of [
+      ['icon-file', 'iconFile'],
+      ['banner-file', 'bannerFile'],
+    ]) {
+      const file = payload[key];
+      if (typeof file !== 'string' || !file.trim()) continue;
+      const localPath = path.resolve(file.trim());
+      if (!existsSync(localPath)) {
+        res.writeHead(400).end(`No such file: ${file}`);
+        return;
+      }
+      argv.push(`--${flag}`, localPath);
+    }
+
+    runScript('publish-metadata.mjs', argv, res);
     return;
   }
 

@@ -93,26 +93,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     logger.warn('Failed to load local override catalog', { error: String(err) });
   }
 
-  // 3. In dev, use the bundled examples/ folder as a static fixture. This works
-  //    when the local example server is not running or when Tauri HTTP calls
-  //    to localhost are blocked, so developers can still test the catalog UI.
-  if (import.meta.env.DEV) {
-    try {
-      const fixture = await import('./catalog-dev-fixture').then((m) => m.loadDevFixtureCatalog());
-      if (fixture) {
-        return {
-          catalog: fixture.catalog,
-          games: fixture.games,
-          source: 'embedded',
-          unreachable: true,
-        };
-      }
-    } catch (err) {
-      logger.warn('Failed to load dev fixture catalog', { error: String(err) });
-    }
-  }
-
-  // 4. Fall back to the embedded catalog bundled with the app.
+  // 3. Fall back to the embedded catalog bundled with the app.
   const embedded = await loadEmbeddedCatalog();
   if (embedded) {
     const games = await resolveCatalogGames(embedded);
