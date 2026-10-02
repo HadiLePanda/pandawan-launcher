@@ -361,6 +361,7 @@ function App() {
             article={article}
             gameName={articleGame.info.name}
             gameIconUrl={articleGame.info.iconUrl}
+            gameBannerUrl={articleGame.info.bannerUrl}
             onBack={() => setNewsArticle(null)}
             onClose={() => setNewsArticle(null)}
           />

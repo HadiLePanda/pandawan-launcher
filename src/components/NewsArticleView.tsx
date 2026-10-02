@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, X } from 'lucide-react';
 import { formatNewsDate } from '@/lib/utils';
-import { resolveCdnUrl } from '@/lib/cdn';
+import { handleImageError, resolveNewsImage } from '@/lib/cdn';
 import type { NewsItem } from '@/types';
 
 interface NewsArticleViewProps {
   article: NewsItem;
   gameName: string;
   gameIconUrl?: string | null;
+  /** The game's banner, used as the article image when the item has none of its own. */
+  gameBannerUrl?: string | null;
   onBack: () => void;
   onClose: () => void;
 }
@@ -16,6 +18,7 @@ export function NewsArticleView({
   article,
   gameName,
   gameIconUrl,
+  gameBannerUrl,
   onBack,
   onClose,
 }: NewsArticleViewProps) {
@@ -44,11 +47,16 @@ export function NewsArticleView({
         </button>
       </div>
 
-      {article.imageUrl && (
-        <div className="news-article-banner">
-          <img src={resolveCdnUrl(article.imageUrl)} alt="" />
-        </div>
-      )}
+      {/* Always rendered, for the same reason as the news cards: an article with
+          no image shows its game's artwork, or a placeholder, rather than the
+          page starting mid-sentence. */}
+      <div className="news-article-banner">
+        <img
+          src={resolveNewsImage(article, { bannerUrl: gameBannerUrl, iconUrl: gameIconUrl })}
+          alt=""
+          onError={handleImageError}
+        />
+      </div>
 
       <article className="news-article-body">
         <div className="news-article-game">

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Calendar } from 'lucide-react';
 import { EmptyState } from '@components/EmptyState';
 import { useLauncherStore } from '@/lib/store';
-import { resolveCdnUrl } from '@/lib/cdn';
+import { handleImageError, resolveNewsImage } from '@/lib/cdn';
 import type { NewsItem } from '@/types';
 
 interface NewsProps {
@@ -11,7 +11,13 @@ interface NewsProps {
 
 export function News({ onSelectArticle }: NewsProps) {
   const { t } = useTranslation();
-  const { news } = useLauncherStore();
+  const { news, games } = useLauncherStore();
+
+  /** The artwork of the game an item belongs to, for items with no image of their own. */
+  const gameArt = (gameId: string) => {
+    const game = games.find((g) => g.info.id === gameId);
+    return game ? { bannerUrl: game.info.bannerUrl, iconUrl: game.info.iconUrl } : null;
+  };
 
   if (news.length === 0) {
     return (
@@ -43,11 +49,17 @@ export function News({ onSelectArticle }: NewsProps) {
                 <p className="news-excerpt">{item.excerpt}</p>
               </div>
             </div>
-            {item.imageUrl && (
-              <div className="news-thumb">
-                <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
-              </div>
-            )}
+            {/* Always rendered: resolveNewsImage returns the game's artwork or a
+                placeholder, never an empty string, so the card keeps its shape
+                instead of collapsing around the text. onError catches the case a
+                present-but-dead URL cannot be detected from here. */}
+            <div className="news-thumb">
+              <img
+                src={resolveNewsImage(item, item.gameId ? gameArt(item.gameId) : null)}
+                alt={item.title}
+                onError={handleImageError}
+              />
+            </div>
           </article>
         ))}
       </div>

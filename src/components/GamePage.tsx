@@ -12,7 +12,7 @@ import {
   Newspaper,
 } from 'lucide-react';
 import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils';
-import { resolveCdnUrl } from '@/lib/cdn';
+import { handleImageError, resolveNewsImage } from '@/lib/cdn';
 import { KNOWN_CHANNELS, type Channel } from '@/lib/channels';
 import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
 import type { GameContextAction } from '@/lib/game-context';
@@ -502,11 +502,11 @@ export function GamePage({
                 className="game-detail-news-card"
                 onClick={() => onSelectNewsArticle?.(item.id)}
               >
-                {item.imageUrl && (
-                  <div className="game-detail-news-thumb">
-                    <img src={resolveCdnUrl(item.imageUrl)} alt="" />
-                  </div>
-                )}
+                {/* The game's own artwork stands in when an item has no image of its
+                    own, so this list never shows ragged thumbnails. */}
+                <div className="game-detail-news-thumb">
+                  <img src={resolveNewsImage(item, game.info)} alt="" onError={handleImageError} />
+                </div>
                 <div className="game-detail-news-body">
                   <h4 className="game-detail-news-card-title">{item.title}</h4>
                   <p className="game-detail-news-card-excerpt">{item.excerpt}</p>
@@ -650,11 +650,13 @@ export function GameDetailsModal({
               {news.length > 0 ? (
                 news.map((item) => (
                   <article key={item.id} className="game-news-card">
-                    {item.imageUrl && (
-                      <div className="game-news-thumb">
-                        <img src={resolveCdnUrl(item.imageUrl)} alt={item.title} />
-                      </div>
-                    )}
+                    <div className="game-news-thumb">
+                      <img
+                        src={resolveNewsImage(item, game.info)}
+                        alt={item.title}
+                        onError={handleImageError}
+                      />
+                    </div>
                     <div className="game-news-body">
                       <div className="game-news-meta">
                         {item.category && (

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="No image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#171719"/>
+      <stop offset="100%" stop-color="#0b0b0c"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <circle cx="660" cy="110" r="170" fill="#e85d3f" opacity="0.07"/>
+  <circle cx="110" cy="390" r="130" fill="#e85d3f" opacity="0.05"/>
+  <!-- A generic image glyph, deliberately saying nothing about any game. This is
+       what a reader sees for an item with no artwork that belongs to no game, so
+       naming a title here would misrepresent the item it stands in for. -->
+  <g fill="none" stroke="#5c5c63" stroke-width="9" stroke-linejoin="round"
+     stroke-linecap="round" opacity="0.8">
+    <rect x="296" y="162" width="208" height="146" rx="14"/>
+    <path d="M296 268l54-50 42 38 34-30 78 66"/>
+  </g>
+  <circle cx="350" cy="206" r="14" fill="#5c5c63" opacity="0.8"/>
+</svg>

@@ -29,6 +29,79 @@ export function resolveCdnUrl(url: string | undefined): string {
   return `${CDN_ORIGIN}/${url}`;
 }
 
+/**
+ * Which image represents a news item, and what to show when there is none.
+ *
+ * A news item only carries artwork if the publisher attached one, and most items
+ * will not have. Resolving the image in four places separately meant each one
+ * silently rendered nothing, leaving a hole in the layout and a card that looked
+ * broken. So the order is decided once, here:
+ *
+ *   1. the item's own imageUrl
+ *   2. the game's banner, since the item is about that game
+ *   3. the game's icon, better than nothing at any size
+ *   4. a bundled placeholder, so a slot is never left empty
+ *
+ * The last step is what makes this safe: there is no path through this function
+ * that returns an empty string, so a caller can render the image unconditionally
+ * instead of guarding every site.
+ */
+
+/** Bundled art for a news item with no image and no game to borrow from. */
+export const NEWS_PLACEHOLDER = '/placeholder-news.svg';
+
+/**
+ * Resolve the artwork for one news item.
+ *
+ * @param item      the news item
+ * @param gameArt   the game's banner and icon, when the item belongs to a game
+ * @returns an absolute-or-root-relative URL that is always non-empty
+ */
+export function resolveNewsImage(
+  // imageUrl optional, not required: absence is the case this exists to handle.
+  item: { imageUrl?: string | null },
+  gameArt?: { bannerUrl?: string | null; iconUrl?: string | null } | null
+): string {
+  const own = item.imageUrl?.trim();
+  if (own) return resolveCdnUrl(own);
+
+  // The game's banner is the right fallback: it is the widest art the game has,
+  // so it crops correctly at both thumbnail and banner sizes.
+  const banner = gameArt?.bannerUrl?.trim();
+  if (banner) return resolveCdnUrl(banner);
+
+  const icon = gameArt?.iconUrl?.trim();
+  if (icon) return resolveCdnUrl(icon);
+
+  return NEWS_PLACEHOLDER;
+}
+
+/**
+ * Swap in the placeholder when an image fails to load.
+ *
+ * A URL can be present and still 404 - artwork deleted from the bucket, a typo in
+ * a catalog entry, a CDN hiccup. Without this the browser shows its broken-image
+ * glyph, which is the exact "missing image" the placeholder exists to prevent, so
+ * the failure has to be caught in the browser rather than trusted not to happen.
+ *
+ * Guards against looping: if the placeholder itself somehow fails, the handler
+ * detaches instead of retrying forever.
+ */
+export function handleImageError(event: { currentTarget: HTMLImageElement }): void {
+  const img = event.currentTarget;
+  if (!img) return;
+  // Compare the URL rather than tracking a flag: an img element has no reliable
+  // place to record that a fallback already happened (the dataset survives
+  // re-renders inconsistently, and a keyed remount starts clean), so the only
+  // trustworthy signal is "am I already showing the placeholder".
+  //
+  // This also cannot loop. Assigning the same src the browser already failed on
+  // fires no new error event, and if it somehow did, the equality check below
+  // stops it.
+  if (img.src === NEWS_PLACEHOLDER || img.src.endsWith(NEWS_PLACEHOLDER)) return;
+  img.src = NEWS_PLACEHOLDER;
+}
+
 function detectOrigin(): string {
   try {
     // No dev default: without VITE_CDN_ORIGIN there is nothing local to serve

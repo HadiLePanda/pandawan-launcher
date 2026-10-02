@@ -1,7 +1,106 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CDN_ORIGIN, fingerprintCatalog, resolveBaseUrl } from './cdn';
+import {
+  CDN_ORIGIN,
+  fingerprintCatalog,
+  handleImageError,
+  NEWS_PLACEHOLDER,
+  resolveBaseUrl,
+  resolveNewsImage,
+} from './cdn';
 import { startCatalogPoll, CATALOG_POLL_MS } from './cdn';
 import type { GameManifest } from '@/types';
+
+describe('resolveNewsImage', () => {
+  it('prefers the item own image', () => {
+    expect(resolveNewsImage({ imageUrl: '/news/hero.png' })).toBe(`${CDN_ORIGIN}/news/hero.png`);
+  });
+
+  it('falls back to the game banner when the item has no image', () => {
+    // The point of the feature: a news item about a game shows that game's art
+    // rather than an empty hole in the card.
+    expect(resolveNewsImage({ imageUrl: undefined }, { bannerUrl: '/games/a/banner.png' })).toBe(
+      `${CDN_ORIGIN}/games/a/banner.png`
+    );
+  });
+
+  it('prefers the banner over the icon', () => {
+    // The banner is the wider of the two, so it crops correctly at both thumbnail
+    // and article sizes. Reaching for the icon first would show a square image
+    // stretched into a 16:9 slot.
+    const art = { bannerUrl: '/games/a/banner.png', iconUrl: '/games/a/icon.png' };
+    expect(resolveNewsImage({}, art)).toBe(`${CDN_ORIGIN}/games/a/banner.png`);
+  });
+
+  it('falls back to the icon when the game has no banner', () => {
+    expect(resolveNewsImage({}, { iconUrl: '/games/a/icon.png' })).toBe(
+      `${CDN_ORIGIN}/games/a/icon.png`
+    );
+  });
+
+  it('falls back to the placeholder when nothing else exists', () => {
+    // An item with no gameId - a launcher-wide announcement - has nothing to
+    // borrow from, so the placeholder is the only correct answer.
+    expect(resolveNewsImage({}, null)).toBe(NEWS_PLACEHOLDER);
+  });
+
+  it('never returns an empty string', () => {
+    // The invariant that lets callers drop their `&& item.imageUrl` guard. If this
+    // ever returns '', every call site regresses to an empty slot.
+    const cases: Array<[Parameters<typeof resolveNewsImage>[0], unknown]> = [
+      [{}, undefined],
+      [{ imageUrl: '' }, null],
+      [{ imageUrl: '   ' }, {}],
+      [{}, { bannerUrl: '', iconUrl: null }],
+      [{}, { bannerUrl: null, iconUrl: undefined }],
+    ];
+    for (const [item, art] of cases) {
+      expect(resolveNewsImage(item, art as never)).not.toBe('');
+    }
+  });
+
+  it('treats a whitespace-only image as absent', () => {
+    // A publisher leaving a stray space should not produce a request to " ".
+    expect(resolveNewsImage({ imageUrl: '  ' }, { bannerUrl: '/b.png' })).toBe(
+      `${CDN_ORIGIN}/b.png`
+    );
+  });
+
+  it('keeps an absolute URL untouched', () => {
+    const url = 'https://cdn.elsewhere.test/hero.png';
+    expect(resolveNewsImage({ imageUrl: url })).toBe(url);
+  });
+});
+
+describe('handleImageError', () => {
+  function fakeImg() {
+    return { src: '' } as unknown as HTMLImageElement & { src: string };
+  }
+
+  it('substitutes the placeholder when an image fails', () => {
+    const img = fakeImg();
+    img.src = 'https://cdn.test/gone.png';
+    handleImageError({ currentTarget: img });
+    expect(img.src).toBe(NEWS_PLACEHOLDER);
+  });
+
+  it('does not loop if the placeholder also fails', () => {
+    const img = fakeImg();
+    handleImageError({ currentTarget: img });
+    expect(img.src).toBe(NEWS_PLACEHOLDER);
+
+    // A second error event for the same element must be a no-op. Otherwise a
+    // placeholder that itself 404s re-triggers the handler forever, spinning the
+    // main thread rather than just showing a broken image once.
+    handleImageError({ currentTarget: img });
+    expect(img.src).toBe(NEWS_PLACEHOLDER);
+  });
+
+  it('does nothing for an element with no src at all', () => {
+    // Defensive: React can fire the handler for an unmounted node in some
+    // versions, and touching a detached element is not worth handling.
+    expect(() => handleImageError({ currentTarget: null as never })).not.toThrow();
+  });
+});
 
 describe('fingerprintCatalog', () => {
   const catalog = (games: Array<Record<string, unknown>>) => ({ games });

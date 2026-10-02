@@ -85,9 +85,7 @@ const FILES: Record<string, unknown> = {
     build_number: 1,
     channel: 'stable',
     executable: 'flat-game.exe',
-    files: [
-      { path: 'flat-game.exe', hash: 'b'.repeat(64), size: 2048, url: 'flat-game.exe' },
-    ],
+    files: [{ path: 'flat-game.exe', hash: 'b'.repeat(64), size: 2048, url: 'flat-game.exe' }],
   },
   '/games/windows-only/stable/latest.json': WINDOWS_ONLY_LATEST,
 };
@@ -184,11 +182,7 @@ describe('catalog integration over HTTP', () => {
     // This channel was published to Windows only, so its latest.json has no macOS
     // entry. That must come back as a normal "unavailable" outcome the UI can grey
     // out and explain, not a thrown error.
-    const result = await service.resolveManifestForPlatform(
-      'windows-only',
-      'stable',
-      'macos'
-    );
+    const result = await service.resolveManifestForPlatform('windows-only', 'stable', 'macos');
 
     expect(result.status).toBe('unavailable');
     if (result.status !== 'unavailable') return;
