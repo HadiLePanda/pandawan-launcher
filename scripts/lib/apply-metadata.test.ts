@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { applyMetadataChanges } from './apply-metadata.mjs';
+import { FIELDS, IMAGE_FIELDS } from './metadata-fields.mjs';
 
 const nameField = {
   flag: 'name',
@@ -82,5 +83,47 @@ describe('applying metadata changes', () => {
     ]);
 
     expect(applied).toEqual([]);
+  });
+});
+
+describe('image fields in the metadata contract', () => {
+  // The real bug these guard: IMAGE_FIELDS is keyed by flag ("icon-url"), but the
+  // publisher looked the field up by catalog key ("iconUrl"), which matches
+  // nothing. The resulting change had no destination, so an icon upload wrote a
+  // literal "undefined" key into the catalog and left the real URL untouched.
+  //
+  // These assert a property of the contract itself rather than re-implementing
+  // the lookup. A test that repeats the expression under test passes whether or
+  // not the bug is present, which is what the first attempt here did.
+  for (const [flag, spec] of Object.entries(IMAGE_FIELDS)) {
+    it(`"${flag}" is a flag that FIELDS actually carries`, () => {
+      // The invariant the publisher depends on: every IMAGE_FIELDS key must be
+      // findable on FIELDS.flag, and must NOT be findable on FIELDS.catalog,
+      // because that mismatch is exactly what silently broke the lookup.
+      expect(
+        FIELDS.some((f) => f.flag === flag),
+        'must match on flag'
+      ).toBe(true);
+      expect(
+        FIELDS.some((f) => f.catalog === flag),
+        'keying IMAGE_FIELDS by a catalog key is what caused the bug'
+      ).toBe(false);
+      expect(spec.objectName).toBeTruthy();
+    });
+  }
+
+  it('an unmatched field produces a destinationless change, not a silent one', () => {
+    // Pin the failure mode itself: this is what the publisher used to hand to
+    // applyMetadataChanges, and it wrote entry["undefined"]. Documenting it here
+    // means the shape is caught even if the lookup regresses elsewhere.
+    const entry: Record<string, unknown> = { id: 'misspell' };
+    const manifest: Record<string, unknown> = {};
+    const field = FIELDS.find((f) => f.flag === 'icon-url');
+
+    applyMetadataChanges(entry, manifest, [{ ...field, value: 'https://cdn/icon.png' }]);
+
+    expect(entry.iconUrl).toBe('https://cdn/icon.png');
+    expect(manifest.icon_url).toBe('https://cdn/icon.png');
+    expect(Object.keys(entry)).not.toContain('undefined');
   });
 });

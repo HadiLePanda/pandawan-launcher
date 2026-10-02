@@ -106,10 +106,18 @@ export async function publishMetadata(argv) {
     uploads.push({ localPath, key, label: file.objectName });
 
     // A chosen file supersedes any URL in the same payload rather than adding a
-    // second change for the same field.
-    const field = FIELDS.find((f) => f.catalog === catalogKey);
+    // second change for the same field. IMAGE_FIELDS is keyed by flag, so the
+    // lookup has to match on flag too: matching on catalog finds nothing, which
+    // yields a change with no destination and writes a literal "undefined" key
+    // into the catalog instead of the icon URL.
+    const field = FIELDS.find((f) => f.flag === catalogKey);
+    if (!field) fail(`No field contract entry for "${catalogKey}".`);
     const change = { ...field, value: `${cdnOrigin}/${key}` };
-    const at = changes.findIndex((c) => c.catalog === catalogKey);
+    // Compare on flag, for the same reason as the lookup above: catalogKey is a
+    // flag, so testing it against c.catalog never matches and the file change is
+    // appended instead of superseding the typed URL, leaving two writes for one
+    // field where only the last one survives.
+    const at = changes.findIndex((c) => c.flag === catalogKey);
     if (at >= 0) changes[at] = change;
     else changes.push(change);
   }
