@@ -28,11 +28,12 @@
  * directory as icon.png / banner.png and the field is pointed at it.
  */
 
-import { existsSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { fail, NO_CACHE, repoRoot, r2Config, run, S3, upload } from './lib/r2.mjs';
+import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, run, S3, upload } from './lib/r2.mjs';
 
 import {
   CHANNELS,
@@ -100,10 +101,22 @@ export async function publishMetadata(argv) {
     if (!existsSync(localPath)) fail(`--${file.flag} does not exist: ${localPath}`);
     if (!statSync(localPath).isFile()) fail(`--${file.flag} is not a file: ${localPath}`);
 
-    // One fixed object name per slot, so replacing an icon does not leave a
-    // trail of stale copies behind.
-    const key = `${prefix}/${file.objectName}`;
-    uploads.push({ localPath, key, label: file.objectName });
+    // Content-addressed name. A stable `icon.png` cannot be cached for long,
+    // because a client that already has it can never learn the file changed; that
+    // forced NO_CACHE, which re-downloaded megabytes on every launch. Hashing the
+    // bytes puts changed artwork on a new URL, so the old one stays valid forever
+    // and clients pick up new art only by reading a manifest that names it.
+    //
+    // The extension is taken from the source file rather than forced to .png, so a
+    // JPEG icon is served as a JPEG instead of being uploaded with the wrong
+    // Content-Type and rendered unpredictably.
+    const ext =
+      path.extname(localPath).toLowerCase() ||
+      file.objectName.slice(file.objectName.lastIndexOf('.'));
+    const base = file.objectName.slice(0, file.objectName.lastIndexOf('.'));
+    const hash = createHash('sha256').update(readFileSync(localPath)).digest('hex').slice(0, 8);
+    const key = `${prefix}/${base}-${hash}${ext}`;
+    uploads.push({ localPath, key, label: `${base}-${hash}${ext}` });
 
     // A chosen file supersedes any URL in the same payload rather than adding a
     // second change for the same field. IMAGE_FIELDS is keyed by flag, so the
@@ -194,10 +207,17 @@ export async function publishMetadata(argv) {
         '--endpoint-url',
         endpoint,
         '--no-progress',
-        // Artwork is replaced in place under a stable name, so it must not be
-        // cached for a year: the old image is what players already hold.
+        // Immutable, and the key carries a content hash (see `artworkKey`), so a
+        // year-long cache is truthful: a changed image lands on a different URL,
+        // which means a client that cached the old one is never served stale art.
+        //
+        // The earlier NO_CACHE here was correct in isolation - the name was
+        // stable, so a cached copy could outlive the file - but it made every
+        // launch re-download megabytes of artwork, which showed up as slow cards
+        // and a layout that shifted as images arrived. Hashing the name fixes
+        // both the staleness and the download.
         '--cache-control',
-        NO_CACHE,
+        IMMUTABLE,
       ],
       `Uploading ${item.label}`
     );
