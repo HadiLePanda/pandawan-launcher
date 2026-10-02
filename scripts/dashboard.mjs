@@ -35,6 +35,9 @@
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { S3, listKeysWithMeta, loadDotEnv, r2Config } from './lib/r2.mjs';
@@ -47,6 +50,13 @@ import { readGameMetadata } from './lib/game-metadata.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetDir = path.join(here, 'dashboard');
+
+// Module scope on purpose: repoRoot also appears as a local inside
+// launcherStatus(), which a module-level service list cannot see.
+const repoRoot = path.resolve(here, '..');
+
+// The public download page is a separate repository next to this one.
+const siteRoot = path.resolve(repoRoot, '..', 'pandawan-launcher-site');
 
 loadDotEnv();
 const { cdnOrigin, endpoint, bucket } = r2Config();
@@ -346,6 +356,330 @@ function runScript(name, args, res) {
   });
 }
 
+/**
+ * Every dev surface, as data.
+ *
+ * `port` is what makes "is it up" answerable: a service counts as running when
+ * something is listening there, which is the same thing the user would discover
+ * by opening the URL and seeing a connection error. It also lets the dashboard report
+ * a target as already up when the dashboard did not start it, which is the honest
+ * answer and stops the Stop button from claiming to own someone else's process.
+ *
+ * `launcher` and `frontend` deliberately share port 1420, because tauri dev
+ * starts vite itself. Only one of them can run at a time.
+ */
+const SERVICES = [
+  {
+    id: 'launcher',
+    name: 'Launcher',
+    note: 'Tauri app with hot reload. First build takes minutes.',
+    cwd: repoRoot,
+    command: 'npm',
+    args: ['run', 'tauri:dev'],
+    port: 1420,
+    url: null,
+  },
+  {
+    id: 'frontend',
+    name: 'Launcher frontend',
+    note: 'Vite only, in your browser. Shares port 1420 with the launcher.',
+    cwd: repoRoot,
+    command: 'npm',
+    args: ['run', 'dev'],
+    port: 1420,
+    url: 'http://localhost:1420',
+  },
+  {
+    id: 'site',
+    name: 'Website',
+    note: 'pandawan-launcher-site, via wrangler pages dev.',
+    cwd: siteRoot,
+    command: 'npm',
+    args: ['run', 'dev'],
+    port: 8788,
+    url: 'http://127.0.0.1:8788',
+    requires: siteRoot,
+  },
+  {
+    id: 'dashboard',
+    name: 'Publishing dashboard',
+    note: 'Local R2 publish panel. Needs .env for credentials.',
+    cwd: repoRoot,
+    command: 'npm',
+    args: ['run', 'dashboard'],
+    port: 4400,
+    url: 'http://127.0.0.1:4400',
+  },
+  ];
+
+/**
+ * Crash-safe record of what this hub started.
+ *
+ * Why this exists: on Windows, closing a console app does NOT reliably deliver
+ * SIGINT or SIGTERM, and process.on('exit') does not run when the window is
+ * closed with the X button - which is precisely how run-dashboard.bat ends. So
+ * the reap-on-exit handler is a best effort, not a guarantee, and a hard kill
+ * would strand every tree it started.
+ *
+ * The manifest is the real guarantee: each started pid is written to disk with
+ * its process start time, and the next hub launch reaps anything from a previous
+ * run that is still alive. Start time is what makes this safe - a recycled pid
+ * belonging to some unrelated program will not match, so it is never killed.
+ */
+const manifestPath = path.join(os.tmpdir(), 'pandawan-dashboard-services.json');
+
+/**
+ * Read a process's start time, or null if it is gone.
+ *
+ * Retries, because a process spawned a moment ago is not always visible to
+ * Get-Process yet. Returning null on the first miss would record a pid with no
+ * identity, and an unverifiable pid must never be killed later.
+ */
+function processStartedAt(pid, attempts = 5) {
+  const script =
+    'try { $p = Get-Process -Id ' + pid + ' -ErrorAction Stop; ' +
+    'Write-Output $p.StartTime.ToUniversalTime().ToString("o") } catch { Write-Output "" }';
+  for (let i = 0; i < attempts; i++) {
+    const out = spawnSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
+    const value = (out.stdout ?? '').trim();
+    if (value) return value;
+    spawnSync('ping', ['-n', '2', '127.0.0.1'], { stdio: 'ignore' });
+  }
+  return null;
+}
+
+function readManifest() {
+  try {
+    return JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
+function writeManifest(entries) {
+  try {
+    writeFileSync(manifestPath, JSON.stringify(entries, null, 2));
+  } catch {
+    // A missing manifest costs a possible orphan on a hard kill; it must never
+    // stop the dashboard from starting.
+  }
+}
+
+/** Mirror the live map to disk so the next launch can clean up after this one. */
+function persist() {
+  writeManifest(
+    [...started.values()].map((e) => ({ pid: e.pid, startedAt: e.startedAt, id: e.service.id }))
+  );
+}
+
+/** Kill anything a previous hub run left behind, ignoring pids that were reused. */
+function reapPreviousRun() {
+  const stale = readManifest();
+  if (!stale.length) return 0;
+  let killed = 0;
+  for (const entry of stale) {
+    if (!entry.pid) continue;
+    const startedAt = processStartedAt(entry.pid);
+    if (startedAt === null) continue; // already gone
+    // No recorded identity means the pid cannot be proven to be ours. A
+    // recycled pid would kill an unrelated program, so skip rather than guess.
+    if (!entry.startedAt) continue;
+    if (startedAt !== entry.startedAt) continue;
+    killTree(entry.pid);
+    killed++;
+  }
+  writeManifest([]);
+  return killed;
+}
+
+/**
+ * The toolchain directories `scripts/dev-env.bat` adds on a double-click.
+ *
+ * Mirrored rather than invoked because that file is a batch script and the dashboard
+ * starts commands directly. Without this, a hub started from a desktop that
+ * predates a Rust install cannot find cargo, which is exactly the case
+ * dev-env.bat exists to cover.
+ */
+function buildEnv() {
+  const env = { ...process.env };
+
+  // Windows spells this variable "Path" far more often than "PATH", and
+  // env keys on Windows are case-insensitive to the OS but case-SENSITIVE to a
+  // JavaScript object. Reading env.PATH therefore returned undefined, and
+  // prepending to it produced the literal string "dir;undefined" - which
+  // destroyed PATH for every child, so even npm could not be found. Use
+  // whichever spelling this process actually has.
+  const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
+
+  const add = (dir) => {
+    if (dir && existsSync(dir)) env[pathKey] = `${dir};${env[pathKey] ?? ''}`;
+  };
+
+  const userProfile = env.USERPROFILE || `${env.SystemDrive || 'C:'}\\Users\\${env.USERNAME}`;
+  if (spawnSync('cargo', ['--version'], { stdio: 'ignore' }).status !== 0) {
+    add(path.join(userProfile, '.cargo', 'bin'));
+  }
+  add('C:\\Program Files\\Amazon\\AWSCLIV2');
+  return env;
+}
+
+/**
+ * Everything the dashboard has started, keyed by service id.
+ *
+ * `pid` is the root of the tree we spawned. Nothing else is tracked: the whole
+ * tree dies with it, so tracking children would only create state that can
+ * disagree with reality.
+ */
+const started = new Map();
+
+/** True when something is accepting connections on the port. */
+function portInUse(port) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: '127.0.0.1', port });
+    const finish = (result) => {
+      socket.destroy();
+      resolve(result);
+    };
+    // The timeout matters: a port held by a half-dead process accepts the
+    // connection slowly, and a hung probe would stall the whole status poll.
+    socket.setTimeout(700);
+    socket.once('connect', () => finish(true));
+    socket.once('timeout', () => finish(false));
+    socket.once('error', () => finish(false));
+  });
+}
+
+/**
+ * Kill a process and everything it started.
+ *
+ * `/T` is the whole point. `npm run tauri:dev` puts node, cargo and the built
+ * exe several levels below the pid we spawned, and killing only that pid is
+ * what strands them holding ports. `/F` is needed because these trees do not
+ * respond to a polite close.
+ */
+function killTree(pid) {
+  spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+}
+
+function start(service) {
+  if (started.has(service.id)) return { ok: false, error: 'already started by the dashboard' };
+  if (service.requires && !existsSync(service.requires)) {
+    return { ok: false, error: `folder not found: ${service.requires}` };
+  }
+
+  // `shell: true` on Windows resolves `npm`/`python` through the PATHEXT
+  // lookup. It also means the pid belongs to cmd.exe rather than to node, which
+  // is harmless here precisely because killTree walks the tree.
+  const comspec = process.env.ComSpec || 'cmd.exe';
+  const commandLine = [service.command, ...service.args].join(' ');
+  const child = spawn(comspec, ['/d', '/s', '/c', commandLine], {
+    cwd: service.cwd,
+    env: buildEnv(),
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  const tail = [];
+  // Output is kept, not discarded. A service that dies during startup is the
+  // most common failure here, and with stdio ignored the only symptom was a
+  // button that stopped working, which tells the user nothing about why.
+  const collect = (chunk) => {
+    tail.push(chunk.toString());
+    while (tail.length > 1 && tail.join('').length > 1500) tail.shift();
+  };
+  child.stdout?.on('data', collect);
+  child.stderr?.on('data', collect);
+
+  const entry = {
+    pid: child.pid,
+    at: Date.now(),
+    startedAt: processStartedAt(child.pid),
+    tail,
+    service,
+    exited: false,
+  };
+  started.set(service.id, entry);
+  persist();
+
+  // On an unexpected exit the entry is kept (marked exited) rather than deleted,
+  // so the status endpoint can still report why the service died. Starting the
+  // same service again overwrites it.
+  child.on('error', (err) => {
+    tail.push('\nspawn failed: ' + err.message);
+    entry.exited = true;
+  });
+  child.on('exit', () => {
+    entry.exited = true;
+  });
+
+  return { ok: true, pid: child.pid };
+}
+
+function stop(id) {
+  const entry = started.get(id);
+  if (!entry) return { ok: false, error: 'not started by the dashboard' };
+  killTree(entry.pid);
+  started.delete(id);
+  persist();
+  return { ok: true };
+}
+
+async function status() {
+  return Promise.all(
+    SERVICES.map(async (service) => {
+      const entry = started.get(service.id);
+      return {
+        ...service,
+        up: await portInUse(service.port),
+        ours: Boolean(entry) && !entry.exited,
+        // The last few lines of output, so a service that failed to start can
+        // explain itself in the page instead of only in the console.
+        log: entry?.exited ? entry.tail.join('').trim().slice(-600) : null,
+      };
+    })
+  );
+}
+
+/**
+ * The pid currently listening on a loopback port, or null.
+ *
+ * Used by the explicit "stop it anyway" action. The hub deliberately does not
+ * do this by itself: a service whose root process died can leave a descendant
+ * still holding the port, and that descendant is no longer provably ours, so
+ * killing it automatically would risk killing an unrelated program that later
+ * inherited the pid. Making it a button the user presses keeps the decision with
+ * the person who can see what they are stopping.
+ */
+function listenerPid(port) {
+  const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8', maxBuffer: 1 << 24 });
+  for (const line of (out.stdout ?? '').split(/\r?\n/)) {
+    const parts = line.trim().split(/\s+/);
+    // columns: protocol, local address, foreign address, state, pid
+    if (parts.length < 5 || parts[3] !== 'LISTENING') continue;
+    // Take the port from the local-address column rather than matching the
+    // whole line: a server may bind 0.0.0.0 rather than 127.0.0.1, and a regex
+    // pinned to loopback silently failed to find exactly the processes it was
+    // meant to clean up.
+    const local = parts[1];
+    const colon = local.lastIndexOf(':');
+    if (colon === -1 || Number(local.slice(colon + 1)) !== port) continue;
+    const pid = Number(parts[parts.length - 1]);
+    if (Number.isInteger(pid) && pid > 0) return pid;
+  }
+  return null;
+}
+
+function forceStop(id) {
+  const service = SERVICES.find((s) => s.id === id);
+  if (!service) return { ok: false, error: 'unknown service' };
+  const pid = listenerPid(service.port);
+  if (!pid) return { ok: false, error: 'nothing is listening on that port' };
+  killTree(pid);
+  started.delete(id);
+  persist();
+  return { ok: true, pid };
+}
+
 const server = http.createServer(async (req, res) => {
   if (rejectRebinding(req, res)) return;
 
@@ -360,6 +694,43 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ error: String(err) }));
     }
+    return;
+  }
+
+  // --- Local dev services -------------------------------------------------
+  //
+  // Start, stop and inspect the local dev servers. They live here rather than
+  // on a page of their own so there is one place to look, and so the same
+  // loopback-only, rebinding-guarded server owns them.
+
+  if (url.pathname === '/api/services' && req.method === 'GET') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(await status()));
+    return;
+  }
+
+  if (url.pathname === '/api/service/start' && req.method === 'POST') {
+    const service = SERVICES.find((s) => s.id === url.searchParams.get('id'));
+    if (!service) {
+      res.writeHead(404).end('unknown service');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(start(service)));
+    return;
+  }
+
+  if (url.pathname === '/api/service/stop' && req.method === 'POST') {
+    const result = stop(url.searchParams.get('id'));
+    res.writeHead(result.ok ? 200 : 409, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (url.pathname === '/api/service/force-stop' && req.method === 'POST') {
+    const result = forceStop(url.searchParams.get('id'));
+    res.writeHead(result.ok ? 200 : 409, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(result));
     return;
   }
 
@@ -532,7 +903,19 @@ const server = http.createServer(async (req, res) => {
   await serveStatic(res, url.pathname === '/' ? 'index.html' : url.pathname.slice(1));
 });
 
+for (const signal of ['exit', 'SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    for (const entry of started.values()) killTree(entry.pid);
+    started.clear();
+    writeManifest([]);
+    if (signal !== 'exit') process.exit(0);
+  });
+}
+
+const reaped = reapPreviousRun();
+
 server.listen(PORT, '127.0.0.1', () => {
+  if (reaped) console.log(`Stopped ${reaped} leftover service tree(s) from a previous run`);
   console.log(`Dashboard on http://127.0.0.1:${PORT}`);
   console.log(`Bucket: ${bucket}`);
 });
