@@ -5,19 +5,41 @@ This launcher is data-driven: it ships with only a catalog URL and resolves game
 ## CDN layout
 
 ```
-https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev
-â”œâ”€â”€ /launcher/catalog.json      # game index (id, channel, display overrides)
-â”œâ”€â”€ /launcher/news.json         # global news feed
-â””â”€â”€ /games/{id}/{channel}
-    â”œâ”€â”€ manifest.json           # version, files, hashes, patch notes
-    â”œâ”€â”€ icon.png
-    â”œâ”€â”€ banner.png
-    â””â”€â”€ ... game files ...
+{origin}/launcher/catalog.json                  # game index (id, channel, display overrides)
+{origin}/launcher/news.json                     # global news feed
+{origin}/games/{id}/{channel}/manifest.json     # current build for the channel
+{origin}/games/{id}/{channel}/latest.json       # per-platform current version
+{origin}/games/{id}/{channel}/icon.png
+{origin}/games/{id}/{channel}/banner.png
+{origin}/games/{id}/{channel}/{version}/{platform}/...   # build bytes
 ```
+
+Build bytes live under a version-stamped path so a one-year immutable cache header
+is truthful — the bytes at a given URL never change. The manifest and catalog are
+mutable and never cached.
+
+`latest.json` exists because platforms ship independently: one `manifest.json`
+cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0". It maps each platform
+to the version it is pinned at, and the launcher reads its own entry before
+fetching that version's manifest.
+
+## Metadata lives in two places
+
+Name, description, genres, icon and banner are described **twice**, and the two
+copies drift:
+
+- `catalog.json` — the publisher's display fields. The launcher prefers these.
+- `manifest.json` — whatever the build shipped with. This is what a client sees
+  when it resolves a build without the catalog.
+
+`npm run publish:meta` (`scripts/publish-metadata.mjs`) writes both without
+re-uploading a single game file, and only touches the fields you name; anything
+unset keeps its published value. It writes a field when _either_ document differs,
+so a catalog fixed by hand does not leave a stale name behind in the manifest.
 
 ## `catalog.json`
 
-Minimal game index. It intentionally does **not** contain versions, manifest URLs, or news â€” those are resolved at runtime.
+Minimal game index. It intentionally does **not** contain versions, manifest URLs, or news — those are resolved at runtime.
 
 ```json
 {
@@ -127,13 +149,16 @@ python scripts/generate-manifest.py \
   --patch-notes "patch-notes.json"
 ```
 
-Upload the resulting `manifest.json` and the build folder to:
+Uploading is `npm run publish:game`, which generates the manifest, uploads the
+build bytes, then writes `manifest.json` and `latest.json` for the channel.
+**Files go up first on purpose** — the manifest is the signal that a build exists,
+so publishing it early would let a client resolve a manifest whose files are not
+there yet. `npm run dashboard` wraps the same verb in a form.
 
-```
-https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/games/{id}/{channel}/
-```
-
-To ship a new version, replace the files and manifest in that folder. The launcher will see the new version on next launch. No launcher rebuild, no catalog edit.
+To ship a new version, publish it. Build bytes go to a new version-stamped
+directory, so the previous version stays downloadable and players can roll back
+by republishing its manifest. No launcher rebuild, and no catalog edit unless the
+game is new.
 
 ## Separation of concerns
 

@@ -28,61 +28,22 @@ This is a Tauri-based game launcher for Pandawan Corp games, built with React an
 - **Hashing**: SHA2
 - **Type-Safe IPC**: tauri-specta + specta (generates `src/lib/bindings.ts`)
 
-## File Structure
+## Layout
 
-```
-src/                          # React frontend
-├── components/               # React components
-│   ├── AppHeader.tsx         # TitleBar status bar + MainNav
-│   ├── GamesBar.tsx          # Pinned games shortcuts bar
-│   ├── FiltersPanel.tsx      # Game-grid filters on the overview
-│   ├── DownloadsPopup.tsx    # Active downloads popover
-│   ├── DownloadsPage.tsx
-│   ├── EmptyState.tsx
-│   ├── GameContextMenu.tsx
-│   ├── GamePage.tsx
-│   ├── GamesHome.tsx
-│   ├── GamesPage.tsx
-│   ├── News.tsx
-│   ├── NewsArticleView.tsx
-│   ├── NotificationsPanel.tsx
-│   ├── PinManagerModal.tsx   # Manage pinned games
-│   ├── Settings.tsx
-│   ├── StorePlaceholder.tsx  # Store tab placeholder cards
-│   ├── UpdateBanner.tsx
-│   ├── VerifyGameModal.tsx
-│   └── WindowControls.tsx
-# Note: the header is two bars (TitleBar status + MainNav); filters are
-# FiltersPanel (overview) only — GameRail was removed.
-├── lib/                      # Utilities, services, and store
-│   ├── store.ts              # Zustand state management
-│   ├── catalog-service.ts    # Remote/local/embedded catalog loading
-│   ├── cdn.ts                # CDN URL helpers and game info resolver
-│   ├── game-service.ts       # Tauri command wrappers for install/launch
-│   ├── news-service.ts       # News feed loader
-│   ├── commands.ts           # Re-exports generated Tauri Specta bindings
-│   ├── bindings.ts           # Auto-generated typed commands/events/types
-│   ├── errors.ts             # CommandError / unwrapResult helpers
-│   ├── download-channel.ts   # Download progress event mapping
-│   ├── updater-service.ts    # Launcher self-update flow (check/download/relaunch)
-│   ├── notifications.ts      # OS notifications (install/update complete, update available)
-│   ├── i18n.ts               # i18next setup, supported languages, applyLanguage()
-│   ├── utils.ts              # Shared helpers (formatPlaytime, etc.)
-│   ├── logger.ts             # Lightweight structured logging
-│   ├── window.ts             # Custom title-bar window controls
-│   └── *.test.ts             # Vitest unit tests, colocated with sources
-├── locales/                  # i18next resources (en/fr.json)
-├── types/                    # TypeScript types
-├── App.tsx                   # Main app
-└── main.tsx                  # Entry point
+Read the tree when you need it — `ls`, the file explorer, or search. It is
+deliberately not duplicated here: a copied listing goes stale the moment a file is
+added or removed, and a stale listing is worse than none because it gets trusted.
 
-src-tauri/                    # Rust backend
-└── src/
-    ├── lib.rs                # Main library with commands
-    ├── types.rs              # Shared types
-    ├── download.rs           # Download manager
-    └── patch.rs              # Patching system
-```
+The few things worth knowing without looking:
+
+- `src/lib/` holds the logic worth reading first — `cdn.ts` (URL building and the
+  news-image fallback), `catalog-service.ts` (catalog resolution), `store.ts`.
+- `src-tauri/src/lib.rs` is where every Tauri command is defined; the frontend
+  wrappers in `src/lib/bindings.ts` are generated from it.
+- `scripts/` is local tooling and never ships. `scripts/dashboard.mjs` is the
+  control panel for the publish verbs; the `scripts/publish-*.mjs` scripts are
+  those verbs. `src-tauri/tests/bundle_contents_tests.rs` fails the build if any
+  of it ever reaches a bundle.
 
 ## Coding Style
 
@@ -136,27 +97,16 @@ src-tauri/                    # Rust backend
 
 ## Tauri Commands
 
-Available commands are defined in `src-tauri/src/lib.rs` and exported through `src/lib/bindings.ts`:
+Every command is defined with #[tauri::command] in src-tauri/src/lib.rs and
+exported through the generated src/lib/bindings.ts. Treat those two as the source
+of truth instead of any table written here - a hand-maintained command list omits
+commands the moment one is added, and the omission is invisible until something
+fails to resolve at runtime.
 
-| Command               | Args                       | Returns                  | Error type    |
-| --------------------- | -------------------------- | ------------------------ | ------------- |
-| fetch_game_manifest   | url: String                | GameManifest             | LauncherError |
-| install_game          | manifest, baseUrl, onEvent | GameInstallation         | LauncherError |
-| check_game_update     | gameId, manifest           | bool                     | LauncherError |
-| verify_game           | manifest, installPath      | VerificationResult       | LauncherError |
-| launch_game           | gameId: String             | LaunchResult             | LauncherError |
-| get_installed_games   | -                          | GameInstallation[]       | LauncherError |
-| get_game_installation | gameId: String             | GameInstallation \| null | LauncherError |
-| uninstall_game        | gameId: String             | ()                       | LauncherError |
-| get_settings          | -                          | LauncherSettings         | LauncherError |
-| save_settings         | settings                   | ()                       | LauncherError |
-| select_install_folder | -                          | PathBuf \| null          | LauncherError |
-| cancel_operation      | -                          | ()                       | LauncherError |
-| get_app_data_dir      | -                          | PathBuf                  | LauncherError |
-
-All commands are wrapped by Tauri Specta in a discriminated result union on the frontend:
-`{ status: "ok"; data: T } | { status: "error"; error: LauncherError }`. Use `unwrapResult()` in
-`src/lib/errors.ts` to convert this into a plain promise that throws `CommandError`.
+All commands are wrapped by Tauri Specta in a discriminated result union on the
+frontend: { status: "ok"; data: T } | { status: "error"; error: LauncherError }.
+Use unwrapResult() in src/lib/errors.ts to convert this into a plain promise
+that throws CommandError.
 
 ## Development Workflow
 
@@ -173,6 +123,7 @@ All commands are wrapped by Tauri Specta in a discriminated result union on the 
 - Games are expected to have `-launcher` arg passed
 - The `game-exited` event is typed through Tauri Specta and consumed via `events.gameExited` from `src/lib/bindings.ts`. Its payload includes `duration_seconds`; the backend (`record_playtime` in `src-tauri/src/patch.rs`) adds that to the game's accumulated `total_playtime_seconds` and stamps `last_played` on exit. The listener in `App.tsx` refreshes the installation so `GamePage` shows the updated playtime and last-played right away.
 - `src/lib/bindings.ts` is generated by the `export_typescript_bindings` Rust unit test only. Debug auto-export is disabled because `specta-typescript` 0.0.12 emits TypeScript shapes (snake_case fields, `| null` optionals, Pascal event names) that drift from the frontend's source-of-truth types in `src/types/index.ts`. It is checked in because the CI/test environment cannot execute the Tauri runtime; refresh it by running the export test on a machine with the Tauri runtime, then reconcile any formatting/casing differences. It was last hand-edited for `GameExited.duration_seconds` because the export test could not run in this environment — it MUST be regenerated/verified on a Tauri-capable machine before the next release.
+- News images never resolve to nothing. `resolveNewsImage` in `src/lib/cdn.ts` picks the item's own image, else the game's banner, else the game's icon, else `public/placeholder-news.svg`, and never returns an empty string — so the four call sites render an `<img>` unconditionally instead of guarding. `handleImageError` catches a URL that is present but dead, which is the browser's broken-image glyph rather than a placeholder.
 - The store is intentionally last priority; it is a grid of promotions that links out to the Pandawan Corp store website and is not wired to real purchases or accounts yet.
 - `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.

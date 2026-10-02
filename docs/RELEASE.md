@@ -12,8 +12,8 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 
 ## Key files you must have
 
-- `src-tauri/updater.pub` â€” minisign **public** key, committed to the repo.
-- `src-tauri/.secrets/updater.key` â€” minisign **secret** key, **never committed**.
+- `src-tauri/updater.pub` — minisign **public** key, committed to the repo.
+- `src-tauri/.secrets/updater.key` — minisign **secret** key, **never committed**.
 - GitHub Secrets:
   - `TAURI_SIGNING_PRIVATE_KEY` - the **verbatim contents of `updater.key`**:
     `gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/.secrets/updater.key`.
@@ -44,7 +44,7 @@ formats are not interchangeable. Use `npm run keys:generate` (which wraps
    git push -u origin release/v0.2.0
    ```
 
-4. **Stabilise** on that branch â€” bug fixes only, no new features.
+4. **Stabilise** on that branch — bug fixes only, no new features.
 
 5. **Test a local signed build**:
 
@@ -73,4 +73,4 @@ formats are not interchangeable. Use `npm run keys:generate` (which wraps
 
 - Tags must match `v*.*.*` (e.g. `v0.2.0`) to trigger the workflow.
 - The release is drafted, not published automatically.
-- If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail â€” the workflow checks the public key exists first, but the secret itself must be set in GitHub.
+- If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail — the workflow checks the public key exists first, but the secret itself must be set in GitHub.
