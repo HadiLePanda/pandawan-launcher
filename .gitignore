@@ -70,7 +70,6 @@ downloads/
 
 # Runtime artifact written by the test game when launched
 test-game-ran.txt
-examples/games/*/*/files/test-game-ran.txt
 
 # Output from run-dev.bat / build-installer.bat
 dev-launch.log
@@ -86,6 +85,13 @@ src-tauri/.secrets/
 
 # Hermes temp files
 .hermes-tmp.*
+
+# Python bytecode. generate-manifest.py and the skills' helper scripts run
+# locally, so this appears in the working tree after any of them is invoked and is
+# never something to commit.
+__pycache__/
+*.py[cod]
+*$py.class
 
 # Scratch commit message; created outside the repo where possible
 COMMIT_MSG.txt
