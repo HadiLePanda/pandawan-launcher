@@ -275,6 +275,17 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   mode), `postcss` (arbitrary `.map` read) and `sharp` (libheif) were all
   production-reachable and have been fixed; keep it at 0.
 
+## System tray
+
+- The tray (`src-tauri/src/tray.rs`) is built in Rust, never from the frontend. Its menu is Open, a Stop item per running game (labelled with the game's name, reusing the close path), Check for updates and Quit; the tooltip reflects state (plain, a game running, an update available). A state-dependent icon is deliberately absent — it would need image compositing, so the tooltip carries the state.
+- `minimize_to_tray` and `close_to_tray` are real settings now: the custom minimize button hides to the tray instead of minimising, and a window close hides instead of exiting.
+- **A running game always docks to the tray on close, whatever `close_to_tray` says.** The launcher owns the waiter task that records playtime and emits `game-exited`, so a real quit mid-game silently loses that session's playtime. The rule is the pure `should_dock_on_close(close_to_tray, game_running)` in `src-tauri/src/window_behavior.rs`, unit-tested over all four combinations. The tray's explicit Quit still exits: with no game it exits immediately, and with a game running it asks the frontend to confirm first, naming the playtime it will drop.
+- The close policy is mirrored into a `std::sync::Mutex` (`TrayState`) because the `CloseRequested` handler is synchronous and cannot await the tokio mutex the settings live behind.
+- Update-available state comes from the frontend: the JS updater store calls `set_launcher_update_available` when it finds, downloads or installs an update, since the plugin is JS-side.
+- The one-time tray hint persists as the `tray_hint_shown` setting, not in the webview store, so clearing webview storage cannot resurrect it.
+- `tauri-plugin-single-instance` must be registered **first** (Tauri's requirement) and restores the possibly tray-hidden window, so a second launch never starts a second process that would fight over `settings.json` and the log. It exposes no IPC commands, so it needs no capability entry.
+- Tray menu and tooltip strings are English-only in Rust; they sit outside the webview i18n system.
+
 ## Important Notes
 
 - Window is frameless with custom title bar (`AppHeader` component)
