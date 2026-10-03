@@ -211,11 +211,11 @@
   color: var(--ink-default);
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
+  /* Wraps rather than clipping. `white-space: nowrap` plus `text-overflow` here
+     fought the row's `overflow-wrap: anywhere`, so a long path was cut to one line
+     with an ellipsis - exactly the path you cannot copy or report that this box
+     exists to show. */
+  overflow-wrap: anywhere;
 }
 
 .setting-group {
@@ -389,18 +389,20 @@
   padding: 24px;
 }
 
+/* Fixed-width tracks, left aligned. A `minmax(…, 1fr)` track grew with the window,
+   so a small library stretched into a few very wide cards; a fixed track keeps every
+   card the same size and leaves the remainder as empty space on the right. */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, clamp(150px, 16vw, 210px));
   justify-content: start;
   align-content: start;
   gap: 1.25rem;
 }
 
-@media (min-width: 1280px) {
-  .games-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
+/* Pinned so a card cannot set its own width and break the equal-column guarantee. */
+.games-grid > * {
+  width: 100%;
 }
 
 .game-card {

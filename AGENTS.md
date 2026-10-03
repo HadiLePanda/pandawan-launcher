@@ -287,11 +287,12 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   small for a visible chain to be worthwhile, so it hides the image and sets `data-art-failed="true"` on
   the slot, which is the only thing that reveals `.games-bar-icon-fallback`; the default there is
   `display: none`, because a visible-by-default overlay would sit on top of every working icon.
-- `.games-grid` uses `repeat(auto-fit, minmax(clamp(150px, 16vw, 210px), 1fr))`, not `auto-fill`. With
-  `auto-fill` the empty tracks are kept, so a library of two games renders two 160px cards against a
-  window 1000px wide and the page reads as broken rather than empty. `auto-fit` collapses them and the
-  cards stretch. `.games-grid > *` is pinned to `width: 100%` so a card cannot set its own width and
-  break the equal-column guarantee that keeps the last row aligned while the window is dragged.
+- `.games-grid` uses fixed-width tracks - `repeat(auto-fill, clamp(150px, 16vw, 210px))` - with
+  `justify-content: start`, so cards are one size and the row is left aligned. Do not use
+  `minmax(…, 1fr)`: a flexible track grows with the window, so a library of two games stretches into
+  two very wide cards instead of two cards and some space. `.games-grid > *` is pinned to `width: 100%`
+  so a card cannot set its own width and break the equal-column guarantee that keeps the last row
+  aligned while the window is dragged.
 - The store is intentionally last priority; it is a grid of promotions that links out to the Pandawan Corp store website and is not wired to real purchases or accounts yet.
 - `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.
