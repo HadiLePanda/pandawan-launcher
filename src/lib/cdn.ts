@@ -79,7 +79,9 @@ export function resolveNewsImage(
   gameArt?: { bannerUrl?: string | null; iconUrl?: string | null } | null
 ): string {
   const own = item.imageUrl?.trim();
-  if (own) return resolveCdnUrl(own);
+  // A bundled placeholder stored as the item's own image is not artwork. Honoring
+  // it would end the chain on a grey file and hide the banner the game actually has.
+  if (own && !BUNDLED_ART.has(own)) return resolveCdnUrl(own);
 
   // The game's banner is the right fallback: it is the widest art the game has,
   // so it crops correctly at both thumbnail and banner sizes.

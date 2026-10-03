@@ -24,6 +24,17 @@ describe('resolveNewsImage', () => {
     );
   });
 
+  it('ignores a bundled placeholder stored as the item image', () => {
+    // Published as data, a placeholder would otherwise stop the chain at a grey
+    // file and hide the banner the game does have.
+    expect(
+      resolveNewsImage(
+        { imageUrl: '/placeholder-banner.svg' },
+        { bannerUrl: '/games/a/banner.png' }
+      )
+    ).toBe(`${CDN_ORIGIN}/games/a/banner.png`);
+  });
+
   it('prefers the banner over the icon', () => {
     // The banner is the wider of the two, so it crops correctly at both thumbnail
     // and article sizes. Reaching for the icon first would show a square image
