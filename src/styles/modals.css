@@ -185,11 +185,16 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  /* The path asks for the whole row and wraps the controls under itself. Its
+     min-content width is one character, so as a shrinkable flex item beside the
+     buttons it collapsed into a vertical column of letters. */
+  flex-wrap: wrap;
   width: 100%;
+  min-width: 0;
 }
 
 .install-path-row .install-path-box {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
