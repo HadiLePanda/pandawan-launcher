@@ -1759,8 +1759,11 @@ const server = http.createServer(async (req, res) => {
     // Dropped on acceptance: a read taken during the publish would otherwise be
     // served for the rest of the TTL. The same script re-uploads public/news.json
     // to launcher/news.json unless SKIP_NEWS, so /api/news is stale too. /api/meta
-    // is not touched: a catalog publish moves no manifest.
+    // IS touched: the publish merges launcher/catalog.json, which readGameMetadata
+    // resolves, so it can add or change a game's catalog entry. Dropped on a dry
+    // run as well - one extra read beats a panel that shows pre-publish values.
     invalidateCache('/api/catalog');
+    invalidateCache('/api/meta');
     invalidateCache('/api/inventory');
     invalidateCache('/api/news');
     runScript('publish-catalog.mjs', payload.dryRun ? ['--dry-run'] : [], res);

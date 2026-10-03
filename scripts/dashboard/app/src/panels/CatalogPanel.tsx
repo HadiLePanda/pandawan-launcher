@@ -18,10 +18,9 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileWarning,
-  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -30,14 +29,15 @@ import {
 import { apiGet, messageOf } from '@/lib/api';
 import {
   KNOWN_CHANNELS as CHANNELS,
-  PLATFORMS,
   type CatalogDiff,
   type CatalogEntry as CatalogGame,
+  type CatalogPlan,
   type CatalogResponse,
   type MetaFieldSpec,
 } from '@/types/api';
 import { splitList } from '@lib/format';
-import { FieldControl, type FieldControlProps } from './FieldControl';
+import { platformTone } from '@lib/platform-hue';
+import { useSession } from '@store/session';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
 import {
@@ -52,9 +52,6 @@ import {
   TextInput,
 } from './ui';
 import { channelTone } from './channel-tone';
-import type { CatalogPlan } from '@/types/api';
-import { useArtworkObjects } from '@components/tabs/ArtworkTab';
-import { platformTone } from '@lib/platform-hue';
 import { usePublisherStream, verdictLine } from './usePublisherStream';
 
 /**
@@ -72,10 +69,26 @@ type Load =
 
 export default function CatalogPanel() {
   const [load, setLoad] = useState<Load>({ state: 'loading' });
-  const [editing, setEditing] = useState<CatalogGame | 'new' | null>(null);
+  const [registering, setRegistering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<CatalogGame | null>(null);
   const [publishDryRun, setPublishDryRun] = useState(true);
   const publish = usePublisherStream();
+
+  // The one link out of registration: pick the game in the rail and open its
+  // Metadata tab, where its display fields live. The catalog never edits them.
+  const select = useSession((state) => state.select);
+  const setSection = useSession((state) => state.setSection);
+  const setTab = useSession((state) => state.setTab);
+
+  function openMetadata(game: CatalogGame) {
+    const channel = String(game.channel ?? '').trim();
+    // A channel is required by validateCatalog; an entry without one cannot be
+    // resolved into a scope, so the link is disabled rather than misleading.
+    if (!channel) return;
+    select(game.id, channel);
+    setSection('games');
+    setTab('metadata');
+  }
 
   // The request, with no setState in it. A loader that reaches into component
   // state makes the effect below a synchronous setState, which the react-hooks
@@ -144,12 +157,12 @@ export default function CatalogPanel() {
             Reload
           </Button>
           <Button
-            onClick={() => setEditing('new')}
+            onClick={() => setRegistering(true)}
             disabled={publish.busy}
-            aria-label="Add a catalog entry"
+            aria-label="Register a game in the catalog"
           >
             <Plus aria-hidden size={14} />
-            Add entry
+            Register a game
           </Button>
         </>
       }
@@ -166,14 +179,12 @@ export default function CatalogPanel() {
         </ErrorNote>
       ) : null}
 
-      {editing ? (
-        <CatalogEditor
-          game={editing === 'new' ? null : editing}
-          fields={fields}
+      {registering ? (
+        <RegisterGame
           existingIds={liveGames.map((game) => game.id)}
-          onCancel={() => setEditing(null)}
+          onCancel={() => setRegistering(false)}
           onDone={async () => {
-            setEditing(null);
+            setRegistering(false);
             await refresh();
           }}
         />
@@ -203,7 +214,7 @@ export default function CatalogPanel() {
           <CatalogTable
             games={liveGames}
             busy={publish.busy}
-            onEdit={(game) => setEditing(game)}
+            onOpen={openMetadata}
             onDelete={(game) => setConfirmDelete(game)}
           />
 
@@ -214,7 +225,7 @@ export default function CatalogPanel() {
             fields={fields}
           />
 
-          {editing ? null : (
+          {registering ? null : (
             <PublishCard
               diff={diff}
               plan={load.data.plan}
@@ -228,7 +239,7 @@ export default function CatalogPanel() {
         </>
       ) : null}
 
-      {publish.log && publish.verdict.state !== 'idle' && !editing ? (
+      {publish.log && publish.verdict.state !== 'idle' && !registering ? (
         <PublishLog log={publish.log} verdict={publish.verdict} />
       ) : null}
     </GlobalPanel>
@@ -240,19 +251,20 @@ export default function CatalogPanel() {
 function CatalogTable({
   games,
   busy,
-  onEdit,
+  onOpen,
   onDelete,
 }: {
   games: CatalogGame[];
   busy: boolean;
-  onEdit: (game: CatalogGame) => void;
+  /** Select the game in the rail and open its Metadata tab. */
+  onOpen: (game: CatalogGame) => void;
   onDelete: (game: CatalogGame) => void;
 }) {
   if (!games.length) {
     return (
       <EmptyState
         title="The live catalog has no games"
-        children="Nothing is published for the launcher to list yet. Add an entry, or publish the local catalog.json."
+        children="Nothing is published for the launcher to list yet. Register a game, or publish the local catalog.json."
       />
     );
   }
@@ -325,21 +337,21 @@ function CatalogTable({
                 {game.developer || <span className="text-ink-subtle">not set</span>}
               </td>
               <td className="px-3 py-2 align-middle">
-                {/* Icon-only. The word beside the icon would repeat once per game,
-                    which is attention load worth cutting. What is NOT cut is the
-                    name: the aria-label below is the accessible name, `title` is
-                    the hover tooltip, and the trash icon plus the danger tint keep
-                    the destructive one legible - colour never alone. */}
+                {/* The display values above are READ-ONLY here: one editable home
+                    per field, on the game's own page. This column is the link to
+                    it, with the icon-only rule kept (the aria-label is the name,
+                    `title` the tooltip). Disabled until the entry has a channel,
+                    since there is no scope to select without one. */}
                 <div className="flex items-center justify-end gap-1">
                   <Button
                     size="sm"
                     iconOnly
-                    onClick={() => onEdit(game)}
-                    disabled={busy}
-                    title={`Edit ${label(game)}`}
-                    aria-label={`Edit ${label(game)} in the catalog`}
+                    onClick={() => onOpen(game)}
+                    disabled={busy || !String(game.channel ?? '').trim()}
+                    title={`Open ${label(game)} in Metadata`}
+                    aria-label={`Open ${label(game)} in Games, Metadata`}
                   >
-                    <Pencil aria-hidden size={13} />
+                    <ExternalLink aria-hidden size={13} />
                   </Button>
                   <Button
                     size="sm"
@@ -647,140 +659,36 @@ function PublishLog({ log, verdict }: { log: string; verdict: Parameters<typeof 
   );
 }
 
-// --- Create / edit --------------------------------------------------------
-
-/**
- * The chips offered for a list field. Only platforms and channels have a closed
- * vocabulary in the contract, so genres and screenshots - free text - get none.
- */
-function suggestionsFor(field: MetaFieldSpec): string[] | undefined {
-  if (field.flag === 'supported-platforms') return [...PLATFORMS];
-  if (field.flag === 'available-channels') return [...CHANNELS];
-  return undefined;
-}
+// --- Registration --------------------------------------------------------
 
 /** The label for a diff field name, from the served contract; falls back to the key. */
 function labelForField(fields: MetaFieldSpec[], key: string): string {
   return fields.find((field) => field.catalog === key)?.label ?? key;
 }
 
-/** A catalog entry rendered as form values keyed by flag, from the served list. */
-function gameToFields(
-  game: CatalogGame | null | undefined,
-  fields: MetaFieldSpec[]
-): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const field of fields) {
-    const raw = (game as Record<string, unknown> | null | undefined)?.[field.catalog];
-    out[field.flag] = field.list ? splitList(raw).join(', ') : String(raw ?? '');
-  }
-  return out;
-}
-
 /**
- * Why a catalog entry cannot be created, or null.
+ * Registering a game - the catalog's only write that is about a game at all.
  *
- * Mirrors validateCatalog() in catalog-merge.mjs, the rule the publisher enforces
- * anyway, so the operator reads the constraint against the field they are on.
+ * Registration is id and channel: which games exist, and how the launcher resolves
+ * each one's manifest. The display fields (name, description, developer, genres,
+ * icon, banner, screenshots) are deliberately absent - they have exactly one
+ * editable home, on the game's own Metadata page, and a second copy here is how
+ * the two drift. A register writes the entry into the local catalog.json and
+ * publishes the same additive merge the Publish button runs; existing entries are
+ * never touched.
  */
-function validateGame(id: string, channel: string, fields: Record<string, string>): string | null {
-  const trimmedId = id.trim();
-  if (!trimmedId)
-    return 'A catalog entry needs an id. It is the key every manifest URL is built from.';
-  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(trimmedId)) {
-    return 'Use letters, digits, dots, dashes and underscores only, starting with a letter or digit.';
-  }
-  if (!channel.trim())
-    return 'A catalog entry needs a channel; the launcher builds its manifest URL from it.';
-  if (!CHANNELS.includes(channel.trim() as (typeof CHANNELS)[number])) {
-    return `Channel must be one of ${CHANNELS.join(', ')}.`;
-  }
-  if (!String(fields.name ?? '').trim()) {
-    return 'A catalog entry needs a display name. The launcher shows that, not the id.';
-  }
-  for (const platform of splitList(fields['supported-platforms'])) {
-    if (!PLATFORMS.includes(platform as (typeof PLATFORMS)[number])) {
-      return `Platform "${platform}" is not one of ${PLATFORMS.join(', ')}.`;
-    }
-  }
-  for (const name of splitList(fields['available-channels'])) {
-    if (!CHANNELS.includes(name as (typeof CHANNELS)[number])) {
-      return `Available channel "${name}" is not one of ${CHANNELS.join(', ')}.`;
-    }
-  }
-  return null;
-}
-
-/** The catalog entry's URL for one field, or '' when the entry has none. */
-function catalogUrl(game: CatalogGame | null, catalogKey: string): string {
-  const raw = (game as Record<string, unknown> | null)?.[catalogKey];
-  return typeof raw === 'string' ? raw : '';
-}
-
-/**
- * An image field's control, which needs the bucket listing the plain
- * FieldControl cannot fetch for itself.
- *
- * The listing is marked against this field's CURRENT value rather than the
- * published one, so a pick the operator just made is highlighted - see
- * useArtworkObjects. On a new entry the game does not exist yet, so the listing
- * comes back empty and the paste-a-URL escape is what remains.
- */
-function CatalogImageField({
-  field,
-  id,
-  value,
-  previewUrl,
-  changed,
-  onChange,
-  gameId,
-  channel,
-}: FieldControlProps & { gameId: string; channel: string }) {
-  const { objects } = useArtworkObjects({ gameId, channel, field: field.flag, value });
-  return (
-    <FieldControl
-      field={field}
-      id={id}
-      value={value}
-      previewUrl={previewUrl}
-      artworks={objects}
-      changed={changed}
-      onChange={onChange}
-    />
-  );
-}
-
-/**
- * The create and edit form, on the same field contract the metadata tab uses.
- *
- * The field list comes from CATALOG_FIELDS, which mirrors FIELDS in
- * metadata-fields.mjs. Only the changed fields are sent, for the same reason the
- * news and metadata panels send only what changed: the publisher reads an absent
- * key as "leave whatever is published", so sending the whole form would blank
- * every field nobody touched. A create sends everything, because nothing is
- * published yet.
- */
-function CatalogEditor({
-  game,
-  fields,
+function RegisterGame({
   existingIds,
   onCancel,
   onDone,
 }: {
-  game: CatalogGame | null;
-  /** The served field contract; the form renders from this, in this order. */
-  fields: MetaFieldSpec[];
   existingIds: string[];
   onCancel: () => void;
   onDone: () => Promise<void>;
 }) {
-  const isNew = game === null;
-  const [id, setId] = useState(game?.id ?? '');
-  const [channel, setChannel] = useState(game?.channel ?? 'stable');
-  const [values, setValues] = useState<Record<string, string>>(() => gameToFields(game, fields));
-  const [original] = useState<Record<string, string>>(() => gameToFields(game, fields));
+  const [id, setId] = useState('');
+  const [channel, setChannel] = useState<string>(CHANNELS[0]);
   const [problem, setProblem] = useState<string | null>(null);
-  const [dryRun, setDryRun] = useState(true);
   const stream = usePublisherStream();
   const [done, setDone] = useState(false);
   const firstField = useRef<HTMLInputElement | null>(null);
@@ -789,102 +697,54 @@ function CatalogEditor({
     firstField.current?.focus();
   }, []);
 
-  const constraint = validateGame(id, channel, values);
-  const takenElsewhere = !isNew && existingIds.includes(id.trim()) && id.trim() !== game?.id;
+  const trimmedId = id.trim();
+  const taken = existingIds.includes(trimmedId);
+  // The server owns the format rule (catalog-edit.mjs); this only stops an
+  // obviously unusable id from being sent at all.
+  const constraint = !trimmedId
+    ? 'An id is needed. It is the key every manifest URL is built from.'
+    : !/^[a-z0-9][a-z0-9._-]*$/i.test(trimmedId)
+      ? 'Use letters, digits, dots, dashes and underscores only, starting with a letter or digit.'
+      : null;
   const blocking =
-    constraint ?? (takenElsewhere ? `The id "${id.trim()}" is already in the catalog.` : null);
-
-  const changed = fields
-    .filter((field) => (values[field.flag] ?? '').trim() !== (original[field.flag] ?? '').trim())
-    .map((field) => field.flag);
+    constraint ?? (taken ? `The id "${trimmedId}" is already in the catalog.` : null);
 
   async function submit() {
     setProblem(null);
-    const reason = blocking;
-    if (reason) {
-      setProblem(reason);
+    if (blocking) {
+      setProblem(blocking);
       return;
     }
-
-    if (isNew) {
-      // A create publishes an entry for a game with no build yet. There is no
-      // dry run on this verb: it writes the local catalog.json and then runs the
-      // same additive merge the Publish button does, which adds what the CDN lacks
-      // and touches nothing else. The button says so.
-      const code = await stream.start('/api/catalog/create', {
-        id: id.trim(),
-        channel: channel.trim(),
-        ...values,
-      });
-      setDone(code === 0);
-      return;
-    }
-
-    // An edit is /api/meta/publish, the verb that writes catalog entry fields in
-    // place rather than re-uploading the document - the same one the Metadata tab
-    // uses, and the same FIELDS contract this form is built from. Only changed
-    // fields are sent: the server treats an absent key as "leave whatever is
-    // published", so sending the whole form would blank every field untouched.
-    const payload: Record<string, unknown> = {
-      gameId: id.trim(),
-      channel: channel.trim(),
-      dryRun,
-    };
-    for (const field of fields) {
-      if (!changed.includes(field.flag)) continue;
-      const text = (values[field.flag] ?? '').trim();
-      // An emptied text field is a real intent - it clears the value. An emptied
-      // list field is not, because a comma list cannot express "none" and writing
-      // [] would silently erase the field. Mirrors dashboard.mjs exactly.
-      if (text === '' && field.list) continue;
-      payload[field.flag] = text;
-    }
-
-    const code = await stream.start('/api/meta/publish', payload);
-    // A dry run is a preview: the edit is not live, so nothing has been consumed
-    // and the draft must survive for the real publish.
-    setDone(code === 0 && !dryRun);
+    const code = await stream.start('/api/catalog/create', { id: trimmedId, channel });
+    setDone(code === 0);
   }
 
   return (
-    // Card supplies the fill, not a border, so a caller that wants a border has to
-    // ask for both the width and the colour. This one earns it: the editor is
-    // the panel currently demanding the operator's attention, and that is worth
-    // an edge the eye can find without reading.
     <Card className="border border-action/40">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-ink">
-          {isNew ? 'Add a catalog entry' : `Edit ${label(game ?? { id: '' })}`}
-        </h3>
-        <Button size="sm" variant="quiet" onClick={onCancel} aria-label="Close the catalog editor">
-          <ArrowLeft aria-hidden size={14} />
+        <h3 className="text-sm font-semibold text-ink">Register a game</h3>
+        <Button size="sm" variant="quiet" onClick={onCancel} aria-label="Close registration">
           Close
         </Button>
       </div>
 
-      {isNew ? null : (
-        <p className="mb-3 text-xs text-ink-muted">
-          The id is the join key every manifest URL is built from, so it cannot be renamed in place.
-        </p>
-      )}
+      <p className="mb-3 max-w-prose text-xs text-ink-muted">
+        Registers an entry in the catalog the launcher reads: which game exists, and the channel its
+        manifest resolves to. The game's display fields are edited on its own Metadata page.
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
           label="Id"
           required
           htmlFor="catalog-id"
-          error={takenElsewhere ? (blocking ?? null) : null}
-          hint={
-            isNew
-              ? 'The key every manifest URL is built from. Letters, digits, dots, dashes, underscores.'
-              : 'Fixed: renaming in place orphans the manifest paths and the artwork object names.'
-          }
+          error={taken ? (blocking ?? null) : null}
+          hint="The key every manifest URL is built from. Letters, digits, dots, dashes, underscores."
         >
           <TextInput
             id="catalog-id"
             ref={firstField}
             value={id}
-            readOnly={!isNew}
             onChange={(event) => setId(event.target.value)}
             placeholder="pandawan-rising"
             className="font-mono"
@@ -895,7 +755,7 @@ function CatalogEditor({
           label="Channel"
           required
           htmlFor="catalog-channel"
-          hint="Required. The launcher builds its manifest URL from it."
+          hint="The launcher builds its manifest URL from it."
         >
           <div className="flex gap-1.5" id="catalog-channel">
             {CHANNELS.map((one) => (
@@ -913,42 +773,6 @@ function CatalogEditor({
         </Field>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {fields.map((field) => {
-          const inputId = `catalog-${field.flag}`;
-          const value = values[field.flag] ?? '';
-          const isChanged = changed.includes(field.flag);
-          const onChange = (next: string) => setValues({ ...values, [field.flag]: next });
-          return field.image ? (
-            <CatalogImageField
-              key={field.flag}
-              field={field}
-              id={inputId}
-              value={value}
-              // The catalog holds the resolved URL this field renders; fall back
-              // to the raw value (which may already be that URL, or a bare key).
-              previewUrl={catalogUrl(game, field.catalog) || value}
-              changed={isChanged}
-              onChange={onChange}
-              gameId={id.trim()}
-              channel={channel.trim()}
-            />
-          ) : (
-            <FieldControl
-              key={field.flag}
-              field={field}
-              id={inputId}
-              value={value}
-              onChange={onChange}
-              suggestions={suggestionsFor(field)}
-              changed={isChanged}
-            />
-          );
-        })}
-      </div>
-
-      {constraint ? <p className="mt-3 text-xs text-ember">{constraint}</p> : null}
-
       {problem ? <ErrorNote>{problem}</ErrorNote> : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -956,36 +780,17 @@ function CatalogEditor({
           variant="primary"
           onClick={() => void submit()}
           busy={stream.busy}
-          disabled={stream.busy}
+          disabled={stream.busy || Boolean(constraint)}
         >
-          {isNew ? 'Create entry' : dryRun ? 'Preview save' : 'Save entry'}
+          Register
         </Button>
         <Button onClick={onCancel} disabled={stream.busy}>
           Cancel
         </Button>
-        {!isNew ? (
-          <>
-            <label className="inline-flex items-center gap-2 text-xs text-ink-muted">
-              <input
-                type="checkbox"
-                checked={dryRun}
-                onChange={(event) => setDryRun(event.target.checked)}
-                className="h-4 w-4 accent-[var(--color-action)]"
-              />
-              Preview only (dry run)
-            </label>
-            <span className="text-xs text-ink-dim">
-              {changed.length
-                ? `${changed.length} field${changed.length === 1 ? '' : 's'} will be sent. Untouched fields are left exactly as the CDN has them.`
-                : 'Nothing changed. Saving sends no fields, so the CDN entry stays byte-identical.'}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs text-ink-dim">
-            Creates the entry in the local catalog.json and publishes the merge. Existing entries
-            are never touched.
-          </span>
-        )}
+        <span className="text-xs text-ink-dim">
+          Creates the entry in the local catalog.json and publishes the merge. Existing entries are
+          never touched.
+        </span>
       </div>
 
       {stream.log ? (
