@@ -1043,6 +1043,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "export-bindings"
+version = "0.0.0"
+dependencies = [
+ "pandawan-launcher",
+ "specta-typescript",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2696,7 +2704,7 @@ dependencies = [
 
 [[package]]
 name = "pandawan-launcher"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",

@@ -10,7 +10,11 @@
 //! job is to regenerate a file has to work on a machine with no GUI stack, so
 //! this calls `create_specta_builder()` directly and never opens a window.
 //!
-//! Run with: `cargo run --bin export-bindings`
+//! It lives in `src-tauri/export-bindings/` rather than as `src-tauri/src/bin/`
+//! because a second binary in the app crate breaks the macOS bundle - see this
+//! package's Cargo.toml.
+//!
+//! Run with: `cargo run -p export-bindings`
 //!
 //! The output is NOT ready to commit as-is. specta-typescript 0.0.12 emits
 //! snake_case fields, `| null` optionals and Pascal event names, all of which
@@ -24,7 +28,7 @@ use std::path::PathBuf;
 use specta_typescript::Typescript;
 
 fn main() {
-    let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
+    let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/lib/bindings.ts");
 
     pandawan_launcher_lib::create_specta_builder()
         .export(Typescript::default(), bindings_path)

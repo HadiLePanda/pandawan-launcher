@@ -1,0 +1,16 @@
+[package]
+name = "export-bindings"
+version = "0.0.0"
+description = "Regenerate src/lib/bindings.ts from the launcher's command definitions"
+edition = "2021"
+rust-version = "1.70"
+publish = false
+
+# A dev tool in its own package rather than the app's second binary. The app crate
+# has to declare exactly one binary: for `--target universal-apple-darwin` the
+# bundler copies every binary it finds, and the universal build never produces this
+# one, so macOS failed the whole release with "export-bindings does not exist".
+# Keeping it here also matches the rule that dev tooling never ships.
+[dependencies]
+pandawan-launcher = { path = ".." }
+specta-typescript = "=0.0.12"
