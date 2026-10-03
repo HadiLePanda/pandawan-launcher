@@ -26,9 +26,12 @@
  * be able to do. `--dry-run` reports and changes nothing.
  *
  * The decision lives in scripts/lib/catalog-merge.mjs so it is testable without
- * R2 credentials; this file only reads, writes and prints. news.json is
- * published exactly as before - publish-news.mjs writes both copies precisely
- * because this script replaces the CDN one from the checked-in fallback.
+ * R2 credentials; this file only reads, writes and prints.
+ *
+ * news.json is guarded by the same rule and for the same reason: this script
+ * replaces the CDN feed with the checked-in public/news.json, so an upload that
+ * would REMOVE a published item is refused rather than performed. `--force-news`
+ * overrides it. The decision is `droppedNewsIds` in scripts/lib/news-merge.mjs.
  */
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -36,19 +39,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { fail, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
+import { parseArgs } from './lib/args.mjs';
 import { mergeCatalog, remoteCatalogRefusal, validateCatalog } from './lib/catalog-merge.mjs';
-
-/** `--flag value`, or `--flag` on its own; a value is consumed only if it is not a flag. */
-function parseArgs(argv) {
-  const args = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (!argv[i].startsWith('--')) continue;
-    const next = argv[i + 1];
-    const value = next && !next.startsWith('--') ? argv[++i] : 'true';
-    args[argv[i].slice(2)] = value;
-  }
-  return args;
-}
+import { droppedNewsIds, newsRefusal } from './lib/news-merge.mjs';
 
 /** Fetch a JSON document from the CDN, or null when it is absent or unparseable. */
 async function fetchJson(url) {
@@ -56,6 +49,31 @@ async function fetchJson(url) {
     const res = await fetch(url, { cache: 'no-store' });
     return res.ok ? await res.json() : null;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * The CDN document's body, or null when it is genuinely absent.
+ *
+ * Unlike fetchJson this does not fold a read failure into "absent": treating a
+ * network blip as an empty document is exactly what lets a publish overwrite
+ * something it never managed to read.
+ */
+async function fetchOptionalJson(url) {
+  let res;
+  try {
+    res = await fetch(url, { cache: 'no-store' });
+  } catch (err) {
+    fail(`could not read ${url} (${err.message}). Refusing to publish.`);
+  }
+  if (res.status === 404) return null;
+  if (!res.ok) fail(`could not read ${url} (HTTP ${res.status}). Refusing to publish.`);
+  try {
+    return await res.json();
+  } catch {
+    // Present but malformed: there is nothing to protect, and replacing it with a
+    // valid local document is a repair rather than a revert.
     return null;
   }
 }
@@ -221,13 +239,32 @@ export async function publishCatalog(argv = []) {
     console.log('\nDry run. Nothing was uploaded.');
   }
 
-  // News is out of scope for the merge and unchanged: publish-news.mjs writes
-  // both copies because this script replaces the CDN one from the checked-in
-  // fallback, so a news edit cannot be lost here.
+  // News is guarded, not merged: the local file may add items to the CDN feed but
+  // may not remove any, which is the one silent revert left in this script.
   const newsPath = path.join(repoRoot, 'public', 'news.json');
   if (existsSync(newsPath) && !process.env.SKIP_NEWS) {
+    const newsUrl = `${cdnOrigin}/launcher/news.json`;
+    let localNews;
+    try {
+      localNews = JSON.parse(readFileSync(newsPath, 'utf-8'));
+    } catch (err) {
+      fail(`${newsPath} is not valid JSON: ${err.message}`);
+    }
+
+    const publishedNews = await fetchOptionalJson(newsUrl);
+    const dropped = droppedNewsIds(publishedNews, localNews);
+    if (dropped.length > 0 && !args['force-news']) {
+      fail(newsRefusal(newsUrl, dropped));
+    }
+    if (dropped.length > 0) {
+      console.log(
+        `\n!! --force-news: replacing ${newsUrl} will remove ${dropped.length} ` +
+          `published item(s): ${dropped.join(', ')}`
+      );
+    }
+
     if (dryRun) {
-      console.log('news.json: not uploaded (dry run).');
+      console.log('\nnews.json: not uploaded (dry run).');
     } else {
       upload(newsPath, S3.s3Uri(bucket, 'launcher/news.json'), {
         endpoint,
