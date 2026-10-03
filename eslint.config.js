@@ -13,6 +13,15 @@ export default ts.config(
       'src-tauri/gen',
       'scripts/**/*.cjs',
       'scripts/**/*.mjs',
+      // The dashboard's built React bundle. It is generated output, minified, and
+      // linted by the same `eslint .` that walks the repo - so linting it reports
+      // thousands of bogus errors against vendor code (`no-undef` on `performance`,
+      // `MutationObserver` and friends). The source is linted instead; this is only
+      // the compiled result.
+      //
+      // Matched as a directory rather than a file list because the hashed asset
+      // names change on every build and a file-glob ignore would go stale.
+      'scripts/dashboard/app/dist',
       '.agents',
       '.claude',
       '.github/skills',
@@ -57,8 +66,11 @@ export default ts.config(
         setTimeout: 'readonly',
         // The dev-server check that asks whether something is already running.
         navigator: 'readonly',
-        // Blob URLs for the image picker's local previews.
+        // Blob URLs and image uploads for the artwork picker.
         URL: 'readonly',
+        FileReader: 'readonly',
+        // Query strings for the artwork listing.
+        URLSearchParams: 'readonly',
       },
     },
   }
