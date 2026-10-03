@@ -27,7 +27,9 @@
     "release:publish": "node scripts/publish-launcher.mjs",
     "dashboard": "node scripts/dashboard.mjs",
     "dashboard:build": "node scripts/dashboard/app/run-build.cjs",
-    "backfill:latest": "node scripts/backfill-latest.mjs"
+    "backfill:latest": "node scripts/backfill-latest.mjs",
+    "version:set": "node scripts/set-version.mjs",
+    "version:check": "node scripts/set-version.mjs --check"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

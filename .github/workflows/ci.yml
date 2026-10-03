@@ -31,6 +31,9 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Version parity
+        run: npm run version:check
+
       - name: Type check and build
         run: npm run build
 
