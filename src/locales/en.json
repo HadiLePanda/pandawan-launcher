@@ -282,6 +282,10 @@
   "tray": {
     "quitWhileGameRunning": "A game is running. Quitting now stops tracking this session — its playtime will not be recorded. Quit anyway?"
   },
+  "trayHint": {
+    "message": "The launcher keeps running in the tray when you close or minimise it. Click the tray icon to bring it back.",
+    "changeSetting": "Change this"
+  },
   "windowControls": {
     "close": "Close",
     "maximize": "Maximize",

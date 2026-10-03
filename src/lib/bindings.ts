@@ -185,6 +185,7 @@ export type LauncherSettings = {
   autoUpdateLauncher: boolean;
   minimizeToTray: boolean;
   closeToTray: boolean;
+  trayHintShown: boolean;
   language: string;
   theme: string;
   notifyGameUpdates: boolean;

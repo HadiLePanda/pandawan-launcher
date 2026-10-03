@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS: LauncherSettings = {
   autoUpdateLauncher: true,
   minimizeToTray: true,
   closeToTray: false,
+  trayHintShown: false,
   language: 'en',
   theme: 'adaptive',
   notifyGameUpdates: true,

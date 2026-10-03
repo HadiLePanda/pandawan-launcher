@@ -138,6 +138,8 @@ export interface LauncherSettings {
   autoUpdateLauncher: boolean;
   minimizeToTray: boolean;
   closeToTray: boolean;
+  /** One-time tray tutorial has been shown; persisted so it never returns. */
+  trayHintShown: boolean;
   language: string;
   theme: string;
   notifyGameUpdates: boolean;

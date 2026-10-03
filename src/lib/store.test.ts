@@ -87,6 +87,7 @@ function makeSettings(overrides?: Partial<LauncherSettings>): LauncherSettings {
     autoUpdateLauncher: true,
     minimizeToTray: true,
     closeToTray: false,
+    trayHintShown: false,
     language: 'en',
     theme: 'adaptive',
     notifyGameUpdates: true,

@@ -90,6 +90,7 @@ function App() {
     loadSettings,
     clearError,
     settings,
+    setSettings,
     catalogSource,
     catalogUnreachable,
     gameFilters,
@@ -206,6 +207,13 @@ function App() {
     setIsCatalogStale(false);
     await loadCatalog();
   }, [loadCatalog]);
+
+  // The one-time tray tutorial. Marking it shown is a settings write, so it is
+  // persisted with the rest and a cleared webview store cannot bring it back.
+  const dismissTrayHint = useCallback(() => {
+    if (!settings || settings.trayHintShown) return;
+    void setSettings({ ...settings, trayHintShown: true });
+  }, [settings, setSettings]);
 
   // The nav button and the banner are two views of the same updater state. The
   // button is the persistent affordance; the banner is the launch-time prompt
@@ -599,6 +607,28 @@ function App() {
       )}
 
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* Shown once, after the first run, while the launcher is still visible -
+          a hint about the tray after it hides would have nothing to render into. */}
+      {settings && !settings.trayHintShown && (
+        <div className="toast">
+          <div className="toast-content">
+            <div className="toast-message">{t('trayHint.message')}</div>
+            <button
+              onClick={() => {
+                dismissTrayHint();
+                setIsSettingsOpen(true);
+              }}
+              className="toast-dismiss"
+            >
+              {t('trayHint.changeSetting')}
+            </button>
+            <button onClick={dismissTrayHint} className="toast-dismiss">
+              {t('common.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="toast toast-error">

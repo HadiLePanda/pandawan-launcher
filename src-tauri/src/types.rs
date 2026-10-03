@@ -371,6 +371,10 @@ pub struct LauncherSettings {
     pub auto_update_launcher: bool,
     pub minimize_to_tray: bool,
     pub close_to_tray: bool,
+    /// Whether the one-time "still running in the tray" tutorial has been
+    /// shown. Persisted here rather than in the webview store so clearing that
+    /// store does not resurrect the tutorial.
+    pub tray_hint_shown: bool,
     pub language: String,
     pub theme: String,
     #[serde(default = "default_true")]
@@ -409,6 +413,7 @@ impl Default for LauncherSettings {
             auto_update_launcher: true,
             minimize_to_tray: true,
             close_to_tray: false,
+            tray_hint_shown: false,
             language: "en".to_string(),
             theme: "adaptive".to_string(),
             notify_game_updates: true,
@@ -1014,6 +1019,7 @@ mod tests {
         assert!(settings.auto_update_launcher);
         assert!(settings.minimize_to_tray);
         assert!(!settings.close_to_tray);
+        assert!(!settings.tray_hint_shown);
         assert!(settings.max_download_speed.is_none());
         assert!(settings.games_install_path.is_none());
         assert!(settings.notify_game_updates);
@@ -1030,6 +1036,7 @@ mod tests {
             auto_update_launcher: false,
             minimize_to_tray: false,
             close_to_tray: true,
+            tray_hint_shown: false,
             language: "fr".to_string(),
             theme: "dark".to_string(),
             notify_game_updates: false,

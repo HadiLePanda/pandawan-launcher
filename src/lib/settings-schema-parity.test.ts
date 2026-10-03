@@ -114,6 +114,7 @@ const DEFAULT_SETTINGS_SHAPE: Record<keyof LauncherSettings, unknown> = {
   autoUpdateLauncher: true,
   minimizeToTray: true,
   closeToTray: false,
+  trayHintShown: false,
   language: 'en',
   theme: 'adaptive',
   notifyGameUpdates: true,

@@ -282,6 +282,10 @@
   "tray": {
     "quitWhileGameRunning": "Un jeu est en cours. Quitter maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Quitter quand même\u00a0?"
   },
+  "trayHint": {
+    "message": "Le launcher continue de tourner dans la barre d'état quand tu le fermes ou le réduis. Clique sur l'icône de la barre d'état pour le rouvrir.",
+    "changeSetting": "Modifier ce réglage"
+  },
   "windowControls": {
     "close": "Fermer",
     "maximize": "Agrandir",
