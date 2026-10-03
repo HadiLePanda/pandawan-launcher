@@ -159,6 +159,3 @@ export const LAUNCHER_SUBS: readonly LauncherSubDefinition[] = [
 export function launcherSubFor(id: LauncherTabId): LauncherSubDefinition | undefined {
   return LAUNCHER_SUBS.find((sub) => sub.id === id);
 }
-
-/** LauncherPanel, re-exported so App does not import the panel barrel twice. */
-export { LauncherPanel, CatalogPanel };

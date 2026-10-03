@@ -1,11 +1,9 @@
 /**
  * What publishing would change, shown as a diff rather than described as one.
  *
- * The form said "changed" but never said what it was about to become, so the
- * only way to find out was to publish and read the script's output. This renders
- * the same numbers from the same dirty predicates that build the payload, so the
- * review cannot disagree with what would be sent: `rows` is computed by the tab
- * and the publish payload is built from that very list.
+ * It renders the same numbers from the same dirty predicates that build the
+ * payload, so the review cannot disagree with what would be sent: `rows` is
+ * computed by the tab and the publish payload is built from that very list.
  *
  * The published value is never hidden or struck through. It sits beside the new
  * value at the same size, because the only way to review a change is to see both

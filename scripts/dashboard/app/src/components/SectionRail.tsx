@@ -1,26 +1,12 @@
 /**
  * The one rail: the brand and the five sections.
  *
- * This rail holds SECTIONS and nothing else. The game list used to live here,
- * under Games, and it crowded the five sections out of the rail's own budget -
- * so the list moved into the Games page, where it is a column beside the detail
- * it selects rather than a second navigation system sharing a column with the
- * sections. What moved is only where the list is drawn; what the rail does is
- * unchanged, and Games keeps a count so the rail still says how much there is.
+ * It holds SECTIONS and nothing else. Roving tabindex, Arrow/Home/End and the
+ * accent edge live here because the rail is the only thing that changes section;
+ * the game list is a column on the Games page, not a second navigation system.
  *
- * A section and the thing it acts on no longer sit in one visual column, and
- * that is the trade. In exchange the rail is five rows tall whatever the bucket
- * holds, so a long list of games can never push Launcher, Website, Services and
- * Commands off the bottom of the screen - which is what a hundred games did.
- *
- * Roving tabindex, Arrow/Home/End and the accent edge are here because the rail
- * is the only thing that changes section. The list cannot: it is a list on the
- * Games page, not a second tablist, so there is nothing to switch between
- * twice.
- *
- * PROSE BUDGET. Nothing in here explains anything - no tooltips, no hints, no
- * per-section sentences. Icon, label and count only. If a label needed
- * explaining, the layout would be wrong; see docs/DASHBOARD_DESIGN.md,
+ * PROSE BUDGET. Icon, label and count only - no tooltips, no hints. If a label
+ * needed explaining, the layout would be wrong; see docs/DASHBOARD_DESIGN.md,
  * "Show, don't tell".
  */
 
@@ -32,10 +18,8 @@ import { useSession, type SectionId } from '@store/session';
 import { SECTIONS } from '@components/sections/registry';
 
 /**
- * One icon per section. Lives here rather than in the registry so this file adds
- * no dependency on a file other work is editing; the labels still come from the
- * registry, so there is exactly one source for both words and nothing to keep in
- * step beyond this table.
+ * One icon per section. The labels come from the registry, so there is exactly
+ * one source for the words and only this table to keep in step with them.
  */
 const SECTION_ICON: Record<SectionId, LucideIcon> = {
   games: Gamepad2,
@@ -58,10 +42,6 @@ export function SectionRail({ gameCount }: { gameCount: number }) {
     const current = ids.indexOf(section);
     if (current === -1) return;
 
-    // No ArrowLeft/ArrowRight branch here any more. Those keys used to fold the
-    // game list away while staying on Games; the list is on the page now, so
-    // there is nothing beside the rail to fold, and swallowing the keys would
-    // only make them feel dead. They reach the browser as they always did.
     event.preventDefault();
     let next: SectionId | undefined;
     if (event.key === 'Home') next = ids[0];
@@ -85,17 +65,15 @@ export function SectionRail({ gameCount }: { gameCount: number }) {
       aria-label="Dashboard"
       className="flex h-full min-h-0 w-[208px] shrink-0 flex-col border-r border-edge bg-side"
     >
-      {/* The mark is at the top of the rail rather than in a bar of its own,
-          because the rail is always here: the app keeps its only identity on
-          all five sections instead of four fifths of them. */}
+      {/* The mark is at the top of the rail because the rail is always present:
+          the app keeps its identity on all five sections. */}
       <div className="flex shrink-0 items-center gap-2 px-4 py-2.5">
         <span className="size-3.5 shrink-0 rounded-[3px] bg-accent" aria-hidden="true" />
         <span className="text-[13px] font-semibold tracking-[-0.01em]">Pandawan</span>
       </div>
 
-      {/* Five fixed rows and no overflow: this list cannot grow, so the five
-          sections are always all there and none of them can be pushed off the
-          bottom. That was the whole point of the move. */}
+      {/* Five fixed rows and no overflow: the list cannot grow, so all five
+          sections are always visible and none can be pushed off the bottom. */}
       <div
         ref={tablistRef}
         role="tablist"
@@ -136,9 +114,8 @@ export function SectionRail({ gameCount }: { gameCount: number }) {
               )}
               <Icon className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{entry.label}</span>
-              {/* How many rows the Games page's list has. A count, not a
-                  navigation: the games are picked on that page, so the rail says
-                  the size without duplicating the way in. */}
+              {/* A count, not navigation: the games are picked on the Games page,
+                  so the rail only says how many there are. */}
               {isGames && gameCount > 0 && (
                 <span className="ml-auto shrink-0 rounded-full bg-surface-3 px-1.5 text-[10px] font-semibold leading-[1.7] tabular-nums text-ink-subtle">
                   {gameCount}

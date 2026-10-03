@@ -1,10 +1,7 @@
 /**
  * Upload another build of the selected game.
  *
- * Ported from app.js's publish form with the prefill logic intact, and with the
- * game and channel locked to the selection. Retyping the two identifiers that
- * were visible two inches away in the inventory was the most repetitive part of
- * the old flow; here there is nothing to retype.
+ * The game and channel are locked to the selection - there is nothing to retype.
  *
  * The prefill is the part worth reading. The version is suggested from what is
  * live and the build number from the highest counter any platform is on, both
@@ -13,9 +10,8 @@
  * build. See suggestNextVersion / suggestNextBuild in @lib/version.
  *
  * Platform directories are left EMPTY on purpose. They describe local build
- * output and cannot be inferred; leaving the previous game's paths in place would
- * publish this game's files from another game's folder, which is exactly what
- * app.js's prefillPublish had to guard against.
+ * output and cannot be inferred; carrying the previous game's paths over would
+ * publish this game's files from another game's folder.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,10 +32,9 @@ const PLATFORM_LABEL: Record<string, string> = {
 
 export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps) {
   // Suggested from the scope on every render of the form's initial state, so
-  // switching games always recomputes. The old client applied the suggestion only
-  // when the field was empty, so after one publish the field kept the number just
-  // used and the next click offered the same version again - which looked broken
-  // unless you cleared it by hand.
+  // switching games always recomputes. Applying the suggestion only when the
+  // field is empty would leave the number just used in place after a publish and
+  // offer the same version again.
   const suggestedVersion = useMemo(() => suggestNextVersion(scope.version), [scope.version]);
   const suggestedBuild = useMemo(
     () => suggestNextBuild(Object.values(scope.latest)),
@@ -64,20 +59,14 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
   /**
    * Reset the form when the SELECTION changes, not just on mount.
    *
-   * Two real problems were fixed here, both found by `react-hooks/immutability`:
-   *
-   *  1. The effect sat ABOVE the `useState` declarations it called. `setPlatformDirs`
-   *     and `setInputDir` were read before they were declared — a temporal dead
-   *     zone hazard that only did not crash because the effect body runs after the
-   *     component body has finished.
-   *  2. Seven separate `setState` calls are seven updates, so the form could paint
-   *     halfway between the old game's version and the new one — a mixed pair that
-   *     never existed in the data.
+   * All seven fields are set in one effect rather than at their declarations, so
+   * the form cannot paint halfway between the old game's version and the new
+   * one - a mixed pair that never existed in the data.
    *
    * The reset guard is the other half. Without it the effect also ran when
    * `suggestedVersion` changed after a publish, which would wipe whatever the
-   * operator was in the middle of typing. Comparing the selection against the last
-   * one it saw means this fires only on a genuine game change.
+   * operator was in the middle of typing. Comparing the selection against the
+   * last one it saw means this fires only on a genuine game change.
    */
   const selection = `${gameId} ${channel}`;
   const resetRef = useRef(selection);

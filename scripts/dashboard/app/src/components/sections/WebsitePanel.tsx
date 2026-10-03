@@ -26,9 +26,8 @@
  * ENDPOINT SHAPES (GET /api/website, POST /api/website/{verify,deploy})
  * ============================================================================
  *
- * The website server side is being written alongside this panel, so the types
- * below are written defensively and every field that the panel would otherwise
- * have to trust is checked before it is rendered:
+ * The types below are written defensively: every field the panel would
+ * otherwise trust is checked before it is rendered:
  *
  *   present      boolean  the site repo is checked out at `path`
  *   path         string   absolute path that was checked
@@ -192,13 +191,9 @@ function artifactOf(raw: unknown): SiteArtifact | null {
 function platformFrom(id: string, raw: unknown, name: string, fallbackHint: string): SitePlatform {
   // Shape C, and the one the server actually sends: summariseDownloads emits a
   // `{ preferred, alternatives }` record per platform, having already applied the
-  // site's PREFERRED-label rule and any HEAD check.
-  //
-  // This branch was missing, so every platform fell through to the `null` case
-  // below and the panel rendered "Not available yet" for all of them - the site's
-  // downloads, the single most useful thing on the page, silently blank. It is
-  // handled first because the two array shapes are what a raw downloads.json
-  // looks like, and neither of those is what arrives over HTTP.
+  // site's PREFERRED-label rule and any HEAD check. Handled first because the two
+  // array shapes are what a raw downloads.json looks like, and neither of those
+  // is what arrives over HTTP.
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const record = raw as Record<string, unknown>;
     if ('preferred' in record || 'alternatives' in record || 'empty' in record) {

@@ -5,12 +5,8 @@
  * imports every tab, and a tab importing the registry to get its own prop type
  * would close a cycle. Types are erased at build time so this costs nothing.
  *
- * There is no longer a PanelTabProps. The panels that used to be tabs - catalog,
- * launcher, services, commands - are top-level sections or Launcher
- * sub-sections now, and a thing that acts on no game is not reached through a
- * selection. The distinction still matters, so it is now structural rather than
- * a flag in one union: a game tab's props name a game, and a section's take
- * nothing at all, so the compiler enforces the split instead of a runtime check.
+ * A game tab's props name a game and a section's take nothing at all, so the
+ * split is enforced by the compiler rather than by a runtime flag.
  */
 
 import type { GameScope } from '@lib/games';

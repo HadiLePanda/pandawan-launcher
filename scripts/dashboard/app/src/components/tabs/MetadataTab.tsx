@@ -11,7 +11,7 @@
  * anything, which fields are about to change - so a changed field gets an accent
  * left border, a tinted surface, a tinted control, and the word "changed". The
  * word is not decoration: colour alone would leave the state invisible to a
- * colour-blind reader, which is the same class of bug the drift banner avoids.
+ * colour-blind reader.
  *
  * The game and channel arrive as props and are never editable here. Typing an id
  * into a metadata form was the failure mode this whole redesign removes.

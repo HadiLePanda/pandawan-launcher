@@ -10,10 +10,8 @@
  * list off screen, and the game list must not scroll away while a form is being
  * filled in above it.
  *
- * The "no game selected" state is the one thing here that is not a tab. It says
- * what to do next rather than reporting an absence: the old overview's "Nothing
- * published yet" told the reader a fact they already knew and nothing they could
- * do about it.
+ * The "no game selected" state says what to do next rather than reporting an
+ * absence.
  */
 
 import { Plus } from 'lucide-react';
@@ -64,7 +62,6 @@ export function DetailPane({
   const activeId = (definition?.id ?? 'metadata') as GameTabId;
 
   // EVERY game tab needs a selection, so the strip is gated unconditionally.
-  // There is no panel-style exception to skip here any more.
   const showTabStrip = Boolean(scope);
 
   return (
@@ -93,9 +90,8 @@ export function DetailPane({
           <CreateGameDialog
             onClose={() => setCreating(false)}
             onCreated={() => {
-              // Re-read so the rail reflects whatever the publisher wrote. A
-              // game with no build may not appear yet, which is honest: the
-              // selection is already set either way.
+              // Re-read so the header and list reflect whatever the publisher
+              // wrote. The selection is already set either way.
               onRefresh();
               onPublished();
             }}

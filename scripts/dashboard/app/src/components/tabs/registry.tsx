@@ -8,13 +8,6 @@
  * the whole layout exists to remove, and the types now enforce it, because
  * `GameTabProps` has no way to name an id the shell did not choose.
  *
- * There is deliberately no `panel` flag any more. The panels that used to sit in
- * this strip - catalog, launcher, services, commands - are not game tabs and
- * gating them on a selection was wrong: "pick a game first" is not a useful thing
- * to say to someone who came to publish a launcher or stop a dev server. They are
- * top-level sections now, or - for the launcher and its catalog - sub-sections of
- * the Launcher section. See components/sections/registry.tsx.
- *
  * ============================================================================
  * ADDING A TAB INSIDE GAMES (a builds-history view, a per-game stats view, ...)
  * ============================================================================
@@ -93,18 +86,15 @@ export const GAME_TABS: readonly TabDefinition[] = [
 /**
  * The news feed, reached from inside Games.
  *
- * One honest wrinkle, and it is why this adapter exists rather than a plain
- * import. The spec puts News inside Games, and it does: the tab lives in the game
- * strip, behind a selection. But a news item can be about any game or none, so
- * the panel it renders is still global - it must not be given a scope, or the
- * feed would silently filter itself to whichever game happens to be selected.
+ * The tab is scoped to the selection but the content is not: a news item can be
+ * about any game or none, so the panel it renders must not be given a scope, or
+ * the feed would silently filter itself to whichever game happens to be
+ * selected.
  *
- * So the tab is scoped and the content is not, and the strip's hint says which is
- * which. Wrapping rather than importing also keeps the panel's contract intact:
- * it still takes no props and still reads the server itself - which is why this
- * function declares no parameters at all. A component with fewer parameters still
- * satisfies `ComponentType<GameTabProps>`; taking the props and ignoring them
- * would only invite someone to read them one day.
+ * Wrapping rather than importing keeps the panel's contract intact - it still
+ * takes no props and reads the server itself - which is why this function
+ * declares no parameters at all. A component with fewer parameters still
+ * satisfies `ComponentType<GameTabProps>`.
  */
 function NewsWithinGame() {
   return <NewsPanel />;
@@ -113,5 +103,3 @@ function NewsWithinGame() {
 export function tabFor(id: GameTabId): TabDefinition | undefined {
   return GAME_TABS.find((tab) => tab.id === id);
 }
-
-export type { GameTabProps };

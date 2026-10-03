@@ -2,26 +2,18 @@
  * The image field's control: a picker over the bucket, and an upload that
  * selects itself.
  *
- * One component, used for both the icon and the banner, because the pieces and
- * the rules behind them are identical.
- *
- * Two routes in, and nothing typed:
+ * One component for both the icon and the banner, because the pieces and the
+ * rules behind them are identical. Two routes in, and nothing typed:
  *
  *   - the picker, which lists the images already on the bucket for this game and
- *     channel - the same listing the Artwork tab shows, read through
- *     useArtworkObjects - and sets the field's URL when one is clicked;
+ *     channel and sets the field's URL when one is clicked;
  *   - the file input, which posts the bytes to /api/art/stage and gets back a real
  *     path, because that is the only way a browser can hand over something the
  *     publisher can upload. See stageArtwork in @lib/artwork.
  *
- * The typed local path that used to sit between them is gone. A browser cannot
- * report an absolute path from a file input, so that box could only ever be right
- * by luck, and its failure mode was publishing this game's art out of the last
- * game's folder. The picker already used the staging route; the box was redundant
- * with it and strictly more error-prone.
- *
- * The URL is still SHOWN, read-only and in mono - it is what ends up in
- * catalog.json and an operator sometimes needs to copy it - but never edited here.
+ * A browser cannot report an absolute path from a file input, so the URL is
+ * SHOWN, read-only and in mono - it is what ends up in catalog.json and an
+ * operator sometimes needs to copy it - but never edited here.
  */
 
 import type { ReactNode } from 'react';

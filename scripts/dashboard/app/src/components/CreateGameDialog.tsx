@@ -1,20 +1,17 @@
 /**
  * Create a catalog entry for a game that has no build yet.
  *
- * This is the "create" of CRUD, and it is deliberately NOT a publish form. The
- * distinction matters: publishing uploads gigabytes of game files, while creating
- * an entry writes one JSON object into catalog.json so the launcher can list a
- * game whose build is not on the bucket yet - an unreleased title, a game being
- * prepared for a playtest, a placeholder so the launcher's channel switching has
- * something to switch between.
+ * This is the "create" of CRUD, and deliberately NOT a publish form: publishing
+ * uploads gigabytes of game files, while creating an entry writes one JSON object
+ * into catalog.json so the launcher can list a game whose build is not on the
+ * bucket yet - an unreleased title, a game being prepared for a playtest, a
+ * placeholder so the launcher's channel switching has something to switch
+ * between.
  *
- * So it POSTs to /api/meta/publish, which is the verb that writes the catalog
- * entry and the manifest for a game with no build. That endpoint creates a
- * catalog entry when none exists (publish-metadata.mjs: "a build with no catalog
- * entry is exactly the state where a game is invisible in the launcher. Adding it
- * is the fix"), and it refuses when there is no manifest at all - which is the
- * honest answer here, and why the dialog says so up front rather than failing
- * after the operator has typed everything.
+ * It POSTs to /api/meta/publish, which writes the catalog entry and the manifest
+ * for a game with no build, and refuses when there is no manifest at all - the
+ * honest answer here, which is why the dialog says so up front rather than
+ * failing after the operator has typed everything.
  *
  * The channel list is the real CHANNELS from the field contract, mirrored once in
  * @types/api, so this form cannot offer a channel the publisher would reject.

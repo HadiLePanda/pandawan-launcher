@@ -1,30 +1,14 @@
 /**
  * The game list, as the Games page's own left column.
  *
- * This is the content that used to live in the rail under Games: the filter
- * box, the rows, the status dot and its word, and New game. Nothing about it
- * changed - it moved from beside the section rail to beside the detail it
- * selects, which is where it belongs. A game is not a section, so it should not
- * have been competing with four sections for the rail's height in the first
- * place.
+ * It is a LIST, not a second navigation system: switching section is the rail's
+ * job and picking a game is this list's, so there is exactly one place to do
+ * each. Nothing is conditional - with no game selected the list still shows and
+ * the detail beside it shows its empty state.
  *
- * It is a LIST, not a second navigation system, and the layout says so without
- * a word of prose: the rows are indented under a guide line, the column carries
- * its own hairline, and it is inside the Games tabpanel rather than beside the
- * rail. Switching section is the rail's job and only the rail's job; picking a
- * game is this list's, and there is exactly one place to do each.
- *
- * IT SCROLLS, AND ONLY IT SCROLLS. The list takes a fixed width, the detail
- * beside it takes the rest, and each scrolls independently inside the page -
- * the page itself never scrolls as one document. That is the same rule the
- * shell has always followed (see styles.css, `#root { overflow: hidden }`), just
- * applied once more inside Games, because a long artwork list must not drag the
- * games out of reach and the games must not scroll away from a form being
- * filled in beside them.
- *
- * Nothing is conditional here. With no game selected the list still shows -
- * that is the point of it being a column rather than a disclosure - and the
- * detail beside it shows its empty state.
+ * The list takes a fixed width and scrolls on its own inside the page; the page
+ * itself never scrolls as one document, so a long artwork list cannot drag the
+ * games out of reach.
  */
 
 import { Plus, Search, TriangleAlert } from 'lucide-react';
@@ -37,8 +21,7 @@ import { ErrorLine } from '@components/ui';
 
 /**
  * The dot's colour per state. Never used without STATUS_TEXT beside it: colour
- * is never the only signal, so a dot that is not readable on its own is a bug
- * rather than a style.
+ * is never the only signal.
  */
 const DOT_CLASS: Record<GameScope['status'], string> = {
   synced: 'bg-accent',
@@ -46,12 +29,7 @@ const DOT_CLASS: Record<GameScope['status'], string> = {
   empty: 'bg-ink-faint',
 };
 
-/**
- * One game.
- *
- * Everything the rail showed survives the move: id, channel, newest version and
- * build, age, and a status dot with its WORD.
- */
+/** One game: id, channel, newest version and build, age, and status with its word. */
 function GameRow({
   scope,
   active,
@@ -75,8 +53,7 @@ function GameRow({
         {/* The id gives way first: it is the only field here that may truncate,
             because a clipped id is still recognisable while a clipped version is
             not. Everything after it is shrink-0, so the version cannot be lost
-            to a long name - which is the whole reason this column can be
-            narrower than the standalone rail was. */}
+            to a long name. */}
         <span className="flex items-baseline gap-1.5">
           <span
             className={`truncate text-[13px] ${active ? 'font-semibold text-ink' : 'font-medium text-ink-muted'}`}
@@ -144,9 +121,6 @@ export function GameListPane({
   const select = useSession((state) => state.select);
   const setCreating = useSession((state) => state.setCreating);
 
-  // The filter box and the list it filters are one component, so the query is
-  // read here rather than passed down: it lives in the session store and is
-  // persisted, and the rail never had a reason to see it.
   const visible = useVisibleScopes(scopes);
 
   return (
@@ -180,12 +154,11 @@ export function GameListPane({
         </div>
       </div>
 
-      {/* The one scrolling region in this column, and the only thing here that
-          scrolls: the header above stays pinned so the filter is always
-          reachable, and the detail beside it has its own scroll region. */}
+      {/* The one scrolling region in this column: the header above stays pinned
+          so the filter is always reachable. */}
       <div className="dw-scroll min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-2">
-        {/* The guide line and the indent are what make this read as the games
-            under Games rather than as a second navigation of its own. */}
+        {/* The guide line and the indent make this read as the games under Games
+            rather than as a second navigation of its own. */}
         <ul className="ml-1 flex flex-col gap-0.5 border-l border-edge pl-2">
           {loading && !scopes.length ? (
             <li>

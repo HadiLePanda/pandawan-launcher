@@ -37,7 +37,7 @@ export const IMAGE_INPUTS = {
   'banner-url': 'bannerFile',
 } as const;
 
-export type ImageFlag = keyof typeof IMAGE_INPUTS;
+type ImageFlag = keyof typeof IMAGE_INPUTS;
 
 /**
  * The field order the form renders in.
@@ -60,21 +60,8 @@ export const FIELD_ORDER = [
   'available-channels',
 ] as const;
 
-export type FieldFlag = (typeof FIELD_ORDER)[number] | string;
-
-export interface MetaState {
-  /** What the server reported, keyed by flag. The diff's baseline. */
-  original: Record<string, MetaField>;
-  /** What is in the inputs now. */
-  values: Record<string, string>;
-  exists: boolean;
-  loading: boolean;
-  error: string | null;
-  payload: MetaPayload | null;
-}
-
 /** Everything the form needs, given the loaded payload. */
-export function initialValues(payload: MetaPayload): Record<string, string> {
+function initialValues(payload: MetaPayload): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [flag, field] of Object.entries(payload.fields ?? {})) {
     values[flag] = String(field.value ?? '');
@@ -191,7 +178,7 @@ export function imagePath(values: Record<string, string>, flag: string): string 
 }
 
 /** A field is changed when its trimmed text differs from what was loaded. */
-export function isFieldDirty(
+function isFieldDirty(
   original: Record<string, MetaField>,
   values: Record<string, string>,
   flag: string
@@ -244,7 +231,7 @@ export function useDirtyFlags(
  * An image field changed only by a staged file has no new URL yet - the upload
  * rewrites it - so showing the unchanged URL as the "after" would be a lie.
  */
-export function afterValue(
+function afterValue(
   original: Record<string, MetaField>,
   values: Record<string, string>,
   flag: string

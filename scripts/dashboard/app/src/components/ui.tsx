@@ -1,9 +1,8 @@
 /**
- * The pieces every panel is built from.
+ * The primitives every panel and tab is built from.
  *
- * Deliberately few. Each one exists because the same decision was being made
- * twice - and in the old client each of those decisions was made by a different
- * rule, so the row you clicked did not look like the row you were looking at.
+ * Deliberately few. Each one exists because the same decision was otherwise being
+ * made twice, and made differently each time.
  */
 
 import type { ReactNode } from 'react';
@@ -43,8 +42,8 @@ export function DataAge({
       {stale && !refreshing && <span>refreshing&hellip;</span>}
       {phrase && <span className="tabular-nums">{phrase}</span>}
       {!phrase && !stale && <span>not loaded</span>}
-      {/* The header is not the only place the cache state has to be readable, so
-          this names it for a screen reader rather than showing a colour. */}
+      {/* Names the cache state for a screen reader, since it is carried visually
+          only by a spinner. */}
       <span className="sr-only">
         {stale ? 'showing data that is being revalidated' : refreshing ? 'refreshing' : ''}
       </span>

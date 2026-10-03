@@ -34,11 +34,7 @@ import type { GameTabProps } from './types';
 
 /**
  * The field labels the server reports, and the fallbacks for `object.field` on a
- * tile. Typed as a lookup because it is indexed with whatever flag is in hand.
- *
- * Exported for the image picker, which names the same fields. That is one more
- * non-component export from a file of components, hence a fast-refresh warning:
- * worth it here, because the alternative is a second copy of these labels.
+ * tile. Exported for the image picker, which names the same fields.
  */
 export const FIELD_LABEL: Record<string, string> = {
   'icon-url': 'Icon URL',
@@ -48,7 +44,7 @@ export const FIELD_LABEL: Record<string, string> = {
 /** The image fields, because the listing is marked against all of them at once. */
 const IMAGE_FLAGS = ['icon-url', 'banner-url'] as const;
 
-export interface ArtworkListing {
+interface ArtworkListing {
   objects: ArtworkObject[];
   /** How old the listing is, from the server's cache headers. */
   ageMs: number | null;
