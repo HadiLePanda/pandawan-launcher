@@ -71,6 +71,8 @@ export const commands = {
     typedError<void, LauncherError>(__TAURI_INVOKE('set_launcher_update_available', { available })),
 
   quitLauncher: () => typedError<void, LauncherError>(__TAURI_INVOKE('quit_launcher')),
+
+  dockToTray: () => typedError<void, LauncherError>(__TAURI_INVOKE('dock_to_tray')),
 };
 
 /** Events */

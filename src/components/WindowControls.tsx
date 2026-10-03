@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useLauncherStore } from '@/lib/store';
+import { logger } from '@/lib/logger';
+import { commands } from '@/lib/commands';
+import { quitLauncher } from '@/lib/updater-service';
 
 export function WindowControls() {
   const { t } = useTranslation();
@@ -29,9 +32,15 @@ export function WindowControls() {
   const handleMinimize = async () => {
     // Docking to the tray is a hide, not a minimize: a minimized frameless
     // window still has no taskbar entry here, so the tray is the only way back.
-    if (minimizeToTray) {
-      await appWindow.hide();
-    } else {
+    if (!minimizeToTray) {
+      await appWindow.minimize();
+      return;
+    }
+    try {
+      await commands.dockToTray();
+    } catch (err) {
+      // A minimize that silently does nothing is worse than a real minimize.
+      logger.warn('Hiding to the tray failed, minimizing instead', { error: String(err) });
       await appWindow.minimize();
     }
   };
@@ -43,7 +52,16 @@ export function WindowControls() {
   };
 
   const handleClose = async () => {
-    await appWindow.close();
+    // Rust's CloseRequested handler owns the decision - dock to the tray, or
+    // exit - and on the exit path it tears the window down before this invoke
+    // can resolve, so the promise rejects. Falling back to a real quit keeps a
+    // rejection from leaving the user with a close button that does nothing.
+    try {
+      await appWindow.close();
+    } catch (err) {
+      logger.warn('Window close did not resolve, quitting outright', { error: String(err) });
+      await quitLauncher();
+    }
   };
 
   return (

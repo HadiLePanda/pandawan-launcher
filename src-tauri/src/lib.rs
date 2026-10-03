@@ -607,6 +607,23 @@ fn quit_launcher(app: AppHandle) -> Result<(), LauncherError> {
     Ok(())
 }
 
+/// Hide the window to the tray.
+///
+/// The single dock entry point for the minimize button, so the dock event is
+/// emitted from one place regardless of how the window was hidden.
+#[tauri::command]
+#[specta::specta]
+async fn dock_to_tray(app: AppHandle) -> Result<(), LauncherError> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| LauncherError::Other("the main window is unavailable".to_string()))?;
+    window
+        .hide()
+        .map_err(|e| LauncherError::Other(e.to_string()))?;
+    let _ = app.emit(tray::EVENT_TRAY_DOCKED, ());
+    Ok(())
+}
+
 async fn load_settings(
     app_data_dir: &std::path::Path,
 ) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
@@ -660,6 +677,7 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             get_app_data_dir,
             set_launcher_update_available,
             quit_launcher,
+            dock_to_tray,
         ])
         .events(collect_events![GameExited])
 }
@@ -731,7 +749,14 @@ pub fn run() {
                 if window_behavior::should_dock_on_close(close_to_tray, game_running) {
                     // Hide rather than exit: the app keeps running in the tray.
                     api.prevent_close();
-                    let _ = window.hide();
+                    if let Err(e) = window.hide() {
+                        // Never let a close leave the launcher in a dead state
+                        // where the window is neither hidden nor exiting.
+                        eprintln!("Failed to hide the window to the tray, exiting instead: {e}");
+                        window.app_handle().exit(0);
+                    } else {
+                        let _ = window.app_handle().emit(tray::EVENT_TRAY_DOCKED, ());
+                    }
                 }
             }
         })

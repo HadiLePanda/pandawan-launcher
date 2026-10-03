@@ -76,6 +76,9 @@ const STOP_PREFIX: &str = "tray-stop:";
 pub const EVENT_CHECK_UPDATES: &str = "tray-check-updates";
 /// Emitted when Quit is chosen while a game runs, so the frontend can confirm.
 pub const EVENT_QUIT_REQUESTED: &str = "tray-quit-requested";
+/// Emitted when the window docks to the tray, so the frontend can show the
+/// one-time tray hint at the moment the user loses the window.
+pub const EVENT_TRAY_DOCKED: &str = "tray-docked";
 
 /// Show, restore and focus the launcher window.
 ///
