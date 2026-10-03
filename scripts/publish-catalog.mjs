@@ -33,34 +33,9 @@ import { fileURLToPath } from 'node:url';
 
 import { fail, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
-import { fetchJson } from './lib/game-metadata.mjs';
+import { fetchJson, fetchOptionalJson } from './lib/game-metadata.mjs';
 import { mergeCatalog, remoteCatalogRefusal, validateCatalog } from './lib/catalog-merge.mjs';
 import { droppedNewsIds, newsRefusal } from './lib/news-merge.mjs';
-
-/**
- * The CDN document's body, or null when it is genuinely absent.
- *
- * Unlike fetchJson this does not fold a read failure into "absent": treating a
- * network blip as an empty document is exactly what lets a publish overwrite
- * something it never managed to read.
- */
-async function fetchOptionalJson(url) {
-  let res;
-  try {
-    res = await fetch(url, { cache: 'no-store' });
-  } catch (err) {
-    fail(`could not read ${url} (${err.message}). Refusing to publish.`);
-  }
-  if (res.status === 404) return null;
-  if (!res.ok) fail(`could not read ${url} (HTTP ${res.status}). Refusing to publish.`);
-  try {
-    return await res.json();
-  } catch {
-    // Present but malformed: there is nothing to protect, and replacing it with a
-    // valid local document is a repair rather than a revert.
-    return null;
-  }
-}
 
 /** One-line rendering of a catalog field value, for the report. */
 function format(value) {
@@ -184,6 +159,44 @@ export async function publishCatalog(argv = []) {
     console.log('   A plain upload would have reverted those edits. Use --force to override.');
   }
 
+  // News is guarded, not merged: the local file may add items to the CDN feed but
+  // may not remove any, which is the one silent revert left in this script.
+  //
+  // Evaluated and uploaded BEFORE the catalog. It used to run after, so a refusal
+  // here exited with catalog.json already rewritten and R2 half-updated.
+  const newsPath = path.join(repoRoot, 'public', 'news.json');
+  if (existsSync(newsPath) && !process.env.SKIP_NEWS) {
+    const newsUrl = `${cdnOrigin}/launcher/news.json`;
+    let localNews;
+    try {
+      localNews = JSON.parse(readFileSync(newsPath, 'utf-8'));
+    } catch (err) {
+      fail(`${newsPath} is not valid JSON: ${err.message}`);
+    }
+
+    const publishedNews = await fetchOptionalJson(newsUrl);
+    const dropped = droppedNewsIds(publishedNews, localNews);
+    if (dropped.length > 0 && !args['force-news']) {
+      fail(newsRefusal(newsUrl, dropped));
+    }
+    if (dropped.length > 0) {
+      console.log(
+        `\n!! --force-news: replacing ${newsUrl} will remove ${dropped.length} ` +
+          `published item(s): ${dropped.join(', ')}`
+      );
+    }
+
+    if (dryRun) {
+      console.log('\nnews.json: not uploaded (dry run).');
+    } else {
+      upload(newsPath, S3.s3Uri(bucket, 'launcher/news.json'), {
+        endpoint,
+        cacheControl: NO_CACHE,
+        contentType: 'application/json',
+      });
+    }
+  }
+
   // --- Upload ---------------------------------------------------------------
 
   if (!changed) {
@@ -217,41 +230,6 @@ export async function publishCatalog(argv = []) {
 
   if (dryRun) {
     console.log('\nDry run. Nothing was uploaded.');
-  }
-
-  // News is guarded, not merged: the local file may add items to the CDN feed but
-  // may not remove any, which is the one silent revert left in this script.
-  const newsPath = path.join(repoRoot, 'public', 'news.json');
-  if (existsSync(newsPath) && !process.env.SKIP_NEWS) {
-    const newsUrl = `${cdnOrigin}/launcher/news.json`;
-    let localNews;
-    try {
-      localNews = JSON.parse(readFileSync(newsPath, 'utf-8'));
-    } catch (err) {
-      fail(`${newsPath} is not valid JSON: ${err.message}`);
-    }
-
-    const publishedNews = await fetchOptionalJson(newsUrl);
-    const dropped = droppedNewsIds(publishedNews, localNews);
-    if (dropped.length > 0 && !args['force-news']) {
-      fail(newsRefusal(newsUrl, dropped));
-    }
-    if (dropped.length > 0) {
-      console.log(
-        `\n!! --force-news: replacing ${newsUrl} will remove ${dropped.length} ` +
-          `published item(s): ${dropped.join(', ')}`
-      );
-    }
-
-    if (dryRun) {
-      console.log('\nnews.json: not uploaded (dry run).');
-    } else {
-      upload(newsPath, S3.s3Uri(bucket, 'launcher/news.json'), {
-        endpoint,
-        cacheControl: NO_CACHE,
-        contentType: 'application/json',
-      });
-    }
   }
 
   console.log(

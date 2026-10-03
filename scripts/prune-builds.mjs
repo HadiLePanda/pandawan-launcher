@@ -43,6 +43,9 @@ if (!gameId) {
 if (!Number.isInteger(keep) || keep < 1) {
   fail(`--keep must be a positive integer (got ${args.keep}).`);
 }
+if (olderThanDays !== null && (!Number.isInteger(olderThanDays) || olderThanDays < 1)) {
+  fail(`--older-than must be a positive number of days (got ${args['older-than']}).`);
+}
 
 const { bucket, endpoint } = r2Config();
 const prefix = `games/${gameId}/${channel}`;
@@ -149,16 +152,23 @@ if (cleanFlat) {
     deletePrefix(S3.s3Uri(bucket, `${prefix}/${version}/`), { endpoint });
   }
   // A key the CLI mangled cannot be deleted by name: the name it printed is not
-  // the name R2 stored. Delete its parent folder instead. That is safe here -
-  // the leftovers sit under the game's own flat layout, the live manifest is a
-  // sibling rather than a child, and the versioned builds this script protects
-  // live under a different prefix entirely.
+  // the name R2 stored. Delete its parent folder instead. That is safe only when
+  // the parent is DEEPER than the channel prefix -- a leftover sitting directly
+  // under `games/<id>/<channel>/` resolves to the prefix itself, and deleting that
+  // recursively would take the live manifest, latest.json and every build with it.
+  // Artwork is written flat into exactly that level, so this is not hypothetical.
   let mangled = 0;
   for (const key of flatLeftovers) {
     if (isMangledKey(key)) {
-      mangled += 1;
       const dir = key.slice(0, key.lastIndexOf('/') + 1);
       if (!dir || !dir.startsWith(prefix)) continue;
+      if (dir === `${prefix}/`) {
+        console.log(
+          `  refusing to delete ${dir}: that is the channel root, not a leftover folder.`
+        );
+        continue;
+      }
+      mangled += 1;
       deletePrefix(S3.s3Uri(bucket, dir), { endpoint });
       continue;
     }

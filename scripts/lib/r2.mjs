@@ -137,8 +137,13 @@ export function uploadDir(sourceDir, keyPrefix, { endpoint, cacheControl } = {})
  * destination to diff it nor re-sends a tree that has not changed.
  */
 export function uploadFiles(sourceDir, relativePaths, keyPrefix, { endpoint, cacheControl } = {}) {
+  // Callers pass a prefix that may or may not end in a slash, and appending one
+  // blindly produced keys like `.../windows//Game.exe`. S3 treats the empty segment
+  // as part of the key, so the manifest's URL and the stored object disagreed and
+  // every per-platform file 404ed. Normalise here rather than at each call site.
+  const base = keyPrefix.endsWith('/') ? keyPrefix.slice(0, -1) : keyPrefix;
   for (const relative of relativePaths) {
-    upload(path.join(sourceDir, relative), `${keyPrefix}/${relative}`, { endpoint, cacheControl });
+    upload(path.join(sourceDir, relative), `${base}/${relative}`, { endpoint, cacheControl });
   }
 }
 

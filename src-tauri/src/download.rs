@@ -144,6 +144,14 @@ impl DownloadManager {
         let status = response.status();
 
         if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
+            // 416 means the local file is already at or past the server's length, so
+            // the resume it asked for is unsatisfiable. Left alone the install is
+            // permanently unrepairable: every retry sends the same Range against the
+            // same too-long file. Deleting it makes the next attempt start from
+            // zero, which is why 416 counts as retryable.
+            if status == reqwest::StatusCode::RANGE_NOT_SATISFIABLE && start_byte > 0 {
+                let _ = fs::remove_file(dest_path);
+            }
             return Err(DownloadError::HttpError(status));
         }
 
@@ -445,7 +453,12 @@ impl DownloadError {
     pub fn is_retryable(&self) -> bool {
         match self {
             DownloadError::HttpError(status) => {
-                status.is_server_error() || *status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                status.is_server_error()
+                                || *status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                                // Retrying a 416 alone cannot help: the local file is the problem,
+                                // and download_file_single_attempt deletes it before returning, so
+                                // the next attempt requests from zero.
+                                || *status == reqwest::StatusCode::RANGE_NOT_SATISFIABLE
             }
             DownloadError::Request(e) => e.is_timeout() || e.is_connect(),
             DownloadError::Io(e) => is_retryable_io(e),
@@ -576,7 +589,12 @@ impl RateLimiter {
             let mut state = self.state.lock().await;
             let now = Instant::now();
             let elapsed = now.duration_since(state.last_update).as_secs_f64();
-            state.tokens = (state.tokens + elapsed * self.limit).min(self.limit);
+            // The bucket holds up to one chunk's worth of burst, not one second's
+            // worth. Capping at `limit` meant a chunk larger than the per-second
+            // budget could never be satisfied: the loop woke, refilled to the same
+            // ceiling, and slept again, so a 16 KB chunk at 500 B/s blocked for
+            // over eight seconds and serialised every concurrent download.
+            state.tokens = (state.tokens + elapsed * self.limit).min(self.limit.max(amount));
             state.last_update = now;
 
             if state.tokens >= amount {

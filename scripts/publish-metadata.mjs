@@ -35,7 +35,7 @@ import {
   parseArgs,
 } from './lib/metadata-fields.mjs';
 import { applyMetadataChanges } from './lib/apply-metadata.mjs';
-import { artworkObjectName } from './lib/artwork.mjs';
+import { artworkObjectName, validateArtwork } from './lib/artwork.mjs';
 import { fetchJson } from './lib/game-metadata.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
@@ -70,8 +70,18 @@ export async function publishMetadata(argv) {
   const changes = [];
   for (const field of FIELDS) {
     if (args[field.flag] === undefined) continue;
-    const value = field.list ? listValue(args[field.flag]) : String(args[field.flag]).trim();
-    changes.push({ ...field, value });
+    // first(): a repeated non-list flag parses as an array, and String(['a','b'])
+    // is the literal "a,b" rather than either value.
+    if (field.list) {
+      const list = listValue(first(args[field.flag]));
+      // An emptied list is not a change: a comma list cannot express "no genres",
+      // and writing [] erases the field. The dashboard filters this too; the
+      // publisher must not depend on every caller pre-filtering.
+      if (list.length === 0) continue;
+      changes.push({ ...field, value: list });
+    } else {
+      changes.push({ ...field, value: String(first(args[field.flag])).trim() });
+    }
   }
 
   // A local file is an upload plus a URL rewrite, so it joins the same change
@@ -83,6 +93,12 @@ export async function publishMetadata(argv) {
     const localPath = path.resolve(String(first(chosen)));
     if (!existsSync(localPath)) fail(`--${file.flag} does not exist: ${localPath}`);
     if (!statSync(localPath).isFile()) fail(`--${file.flag} is not a file: ${localPath}`);
+
+    // The same gate /api/art/stage applies, so the CLI cannot upload what the form
+    // refuses: an SVG carries script when rendered from a remote origin, and the
+    // size limit has to bind here too.
+    const check = validateArtwork({ fileName: localPath, sizeBytes: statSync(localPath).size });
+    if (check.error) fail(`--${file.flag}: ${check.error}`);
 
     // Content-addressed: hashing the bytes puts changed art on a new URL, so the
     // old one stays valid forever under the immutable header. The extension comes

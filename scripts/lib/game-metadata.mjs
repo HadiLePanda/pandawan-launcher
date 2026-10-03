@@ -6,6 +6,7 @@
  */
 
 import { IMAGE_FIELDS } from './metadata-fields.mjs';
+import { fail } from './r2.mjs';
 
 function artPreviewUrl(value, cdnOrigin) {
   const text = (Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '')).trim();
@@ -103,12 +104,46 @@ export async function readGameMetadata(gameId, channel, { cdnOrigin, fields }) {
   };
 }
 
-/** Fetch a JSON document, or null when it is absent or unparseable. */
+/**
+ * Fetch a JSON document, or null when it is absent or unparseable.
+ *
+ * Deliberately folds a read FAILURE into the same null as "absent", so it is safe
+ * for reading a document this script will treat as a default. It is NOT safe for
+ * one it is about to overwrite: a network blip then looks like an empty document
+ * and the publish destroys whatever it never managed to read. Use
+ * `fetchOptionalJson` from publish-catalog.mjs for that.
+ */
 export async function fetchJson(url) {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     return res.ok ? await res.json() : null;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * The CDN document's body, or null when it is genuinely absent.
+ *
+ * Unlike fetchJson this does not fold a read failure into "absent": treating a
+ * network blip as an empty document is exactly what lets a publish overwrite
+ * something it never managed to read. Lives here so every publisher that reads a
+ * document it will rewrite shares one reader.
+ */
+export async function fetchOptionalJson(url) {
+  let res;
+  try {
+    res = await fetch(url, { cache: 'no-store' });
+  } catch (err) {
+    fail(`could not read ${url} (${err.message}). Refusing to publish.`);
+  }
+  if (res.status === 404) return null;
+  if (!res.ok) fail(`could not read ${url} (HTTP ${res.status}). Refusing to publish.`);
+  try {
+    return await res.json();
+  } catch {
+    // Present but malformed: there is nothing to protect, and replacing it with a
+    // valid local document is a repair rather than a revert.
     return null;
   }
 }

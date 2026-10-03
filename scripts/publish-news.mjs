@@ -26,7 +26,7 @@ import {
 } from './lib/news-fields.mjs';
 import { applyNewsOps, newsItemLabel } from './lib/apply-news.mjs';
 import { artworkObjectName } from './lib/artwork.mjs';
-import { fetchJson } from './lib/game-metadata.mjs';
+import { fetchOptionalJson } from './lib/game-metadata.mjs';
 
 const NEWS_KEY = 'launcher/news.json';
 
@@ -183,7 +183,10 @@ export async function publishNews(argv) {
 
   // --- Read what is published today ----------------------------------------
 
-  const published = await fetchJson(newsUrl);
+  // fetchOptionalJson, not fetchJson: a transient CDN failure must not read as an
+  // empty feed, or a --create would publish a one-item document over every
+  // announcement that is already live.
+  const published = await fetchOptionalJson(newsUrl);
   const isNewFeed = !published || !Array.isArray(published.items);
   const feed = isNewFeed ? { items: [] } : published;
 
