@@ -1,15 +1,15 @@
 /**
- * Primitives for the global panels, kept inside panels/ rather than in
- * ../components/ui.
+ * Panel chrome and form controls: Button, Card, Badge, Field, Spinner, TextArea,
+ * TextInput, ErrorNote, GlobalPanel.
  *
- * The shared component library is owned by the shell agent and its export names
- * are not part of the contract handed to this agent - only the names were, not
- * the prop signatures. Importing a component and guessing `variant="danger"`
- * against an unknown API produces a type error in *their* build, which is a
- * worse outcome than having a local one. So this file mirrors the same component
- * names (Button / Card / Field / Badge / EmptyState / Spinner) and is styled
- * from the project's own theme tokens, which makes swapping to the shared
- * library a change of import path rather than a rewrite.
+ * A sibling of ../components/ui, not a copy of it. The two export sets are
+ * disjoint on purpose: components/ui holds what a GAME TAB is built from (Panel,
+ * Section, ActionRow, Log, DirtyBar, DataAge, the status and error lines), and this
+ * holds what a FULL-PAGE PANEL is built from. The single component both needed was
+ * EmptyState, which is re-exported below rather than reimplemented here.
+ *
+ * Styled from the project's own theme tokens, so moving something between the two
+ * modules is a change of import path rather than a rewrite.
  */
 import {
   forwardRef,
@@ -115,6 +115,14 @@ const BADGE_TONE: Record<string, string> = {
   // being quiet, without inventing a hue that would then compete with the
   // channel and platform identities.
   info: 'border-border text-ink-muted bg-surface-light',
+  // Platform identity, keyed by the platform id so a caller can pass the value it
+  // already has. Outlined and lightly tinted rather than filled: the palette's
+  // note beside the tokens says a channel is a filled pill and a platform is a
+  // small outlined chip, which is what keeps the two separable in one row without
+  // relying on hue.
+  windows: 'border-win/50 text-win bg-win/10',
+  macos: 'border-mac/50 text-mac bg-mac/10',
+  linux: 'border-linux/50 text-linux bg-linux/10',
 };
 
 export function Badge({

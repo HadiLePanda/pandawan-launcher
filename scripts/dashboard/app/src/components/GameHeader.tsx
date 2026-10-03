@@ -11,6 +11,7 @@ import { RefreshCw } from 'lucide-react';
 
 import { channelToneClasses } from '@/panels/channel-tone';
 import { ago, STATUS_TEXT } from '@lib/format';
+import { platformDot, platformHue } from '@lib/platform-hue';
 import { behindVersion, type GameScope } from '@lib/games';
 import { DataAge } from '@components/ui';
 import type { CacheState } from '@lib/api';
@@ -40,12 +41,6 @@ function PlatformStrip({ latest, behind }: { latest: GameScope['latest']; behind
     return <span className="text-[12px] text-ink-subtle">nothing published on this channel</span>;
   }
 
-  const hue: Record<Platform, string> = {
-    windows: 'text-win',
-    macos: 'text-mac',
-    linux: 'text-linux',
-  };
-
   return (
     <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
       {all.map((platform) => {
@@ -55,7 +50,7 @@ function PlatformStrip({ latest, behind }: { latest: GameScope['latest']; behind
         return (
           <span key={platform} className="flex items-baseline gap-1.5">
             <span
-              className={`size-1.5 shrink-0 self-center rounded-[1px] ${PLATFORMS.includes(platform as Platform) ? hue[platform as Platform] : 'bg-ink-faint'}`}
+              className={`size-1.5 shrink-0 self-center rounded-[1px] ${platformDot(platform)}`}
               aria-hidden="true"
             />
             <span className="text-[11px] text-ink-subtle">
@@ -67,7 +62,7 @@ function PlatformStrip({ latest, behind }: { latest: GameScope['latest']; behind
                 isBehind
                   ? 'text-ink-faint line-through decoration-warn decoration-[1px]'
                   : PLATFORMS.includes(platform as Platform)
-                    ? hue[platform as Platform]
+                    ? platformHue(platform)
                     : 'text-ink',
               ].join(' ')}
             >

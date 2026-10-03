@@ -58,6 +58,7 @@ import {
   TextInput,
 } from './ui';
 import { channelTone } from './channel-tone';
+import { platformTone } from '@lib/platform-hue';
 import { usePublisherStream, verdictLine } from './usePublisherStream';
 
 type Load =
@@ -356,7 +357,9 @@ function PlatformList({ platforms }: { platforms: string[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {platforms.map((platform) => (
-        <Badge key={platform}>{platform}</Badge>
+        <Badge key={platform} tone={platformTone(platform)}>
+          {platform}
+        </Badge>
       ))}
     </div>
   );

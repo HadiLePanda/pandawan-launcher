@@ -68,6 +68,7 @@ import {
 
 import { apiGet } from '@/lib/api';
 import { ago } from '@/lib/format';
+import { platformHue } from '@lib/platform-hue';
 import { DataAge } from '@components/ui';
 import { usePublisherStream, verdictLine } from '@/panels';
 
@@ -137,17 +138,6 @@ type Load =
   | { state: 'loading' }
   | { state: 'ready'; data: WebsiteStatus; ageMs: number | null }
   | { state: 'error'; message: string };
-
-const PLATFORM_TONE: Record<string, string> = {
-  windows: 'text-win',
-  macos: 'text-mac',
-  linux: 'text-linux',
-};
-
-/** The platform hue, falling back to neutral for an id this build does not know. */
-function toneFor(platform: string): string {
-  return PLATFORM_TONE[platform] ?? 'text-ink-muted';
-}
 
 function str(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -717,7 +707,7 @@ function WhatTheSiteShows({
 
 /** One platform: the artifact its button leads with, and what else is offered. */
 function PlatformRow({ platform }: { platform: SitePlatform }) {
-  const tone = toneFor(platform.platform);
+  const tone = platformHue(platform.platform);
 
   return (
     <div className="flex flex-col gap-1 py-3">
