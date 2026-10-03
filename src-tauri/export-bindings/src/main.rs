@@ -17,11 +17,16 @@
 //! Run with: `cargo run -p export-bindings`
 //!
 //! The output is NOT ready to commit as-is. specta-typescript 0.0.12 emits
-//! snake_case fields, `| null` optionals and Pascal event names, all of which
-//! drift from the frontend's source-of-truth types in `src/types/index.ts`. The
-//! export is therefore a starting point that still needs reconciling; the parity
-//! test in `src/lib/bindings-parity.test.ts` is what proves the command list
-//! survived that reconciliation intact.
+//! snake_case fields and `| null` optionals, which drift from the frontend's
+//! source-of-truth types in `src/types/index.ts`. The export is therefore a
+//! starting point that still needs reconciling; the parity test in
+//! `src/lib/bindings-parity.test.ts` is what proves the command list survived
+//! that reconciliation intact.
+//!
+//! Event tag names are the exception: `DownloadEvent` has no enum-level
+//! rename, so serde emits the variant names as-is (`Started`, `FileComplete`),
+//! and `src/lib/download-channel.ts` matches on those exact strings.
+//! camelCasing them while reconciling silently starves the progress bar.
 
 use std::path::PathBuf;
 

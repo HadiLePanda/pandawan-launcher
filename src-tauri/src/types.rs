@@ -823,6 +823,73 @@ mod tests {
         assert!(json.contains("filePath"));
     }
 
+    #[test]
+    fn download_event_wire_tags_match_the_frontend_handler() {
+        // src/lib/download-channel.ts switches on these exact strings. Serde
+        // serializes the variant names as-is (there is no enum-level
+        // rename_all), so the tags are PascalCase even though the fields are
+        // camelCase. Changing either side of this without the other silently
+        // starves the download progress bar.
+        let events: Vec<(DownloadEvent, &str)> = vec![
+            (
+                DownloadEvent::Started {
+                    file_path: "a.bin".to_string(),
+                    total_size: 1,
+                    file_index: 0,
+                    total_files: 1,
+                    overall_downloaded: Some(0),
+                    overall_total: Some(1),
+                },
+                "Started",
+            ),
+            (
+                DownloadEvent::Progress {
+                    file_path: "a.bin".to_string(),
+                    downloaded: 1,
+                    total: 1,
+                    speed_bps: 0.0,
+                    overall_downloaded: Some(1),
+                    overall_total: Some(1),
+                    completed_files: Some(0),
+                    total_files: Some(1),
+                    current_file: None,
+                },
+                "Progress",
+            ),
+            (
+                DownloadEvent::FileComplete {
+                    file_path: "a.bin".to_string(),
+                    completed_files: Some(1),
+                    total_files: Some(1),
+                    overall_downloaded: Some(1),
+                    overall_total: Some(1),
+                },
+                "FileComplete",
+            ),
+            (
+                DownloadEvent::Complete {
+                    completed_files: 1,
+                    total_files: 1,
+                },
+                "Complete",
+            ),
+            (
+                DownloadEvent::Error {
+                    message: "x".to_string(),
+                },
+                "Error",
+            ),
+        ];
+
+        for (event, tag) in events {
+            let json = serde_json::to_string(&event).expect("Failed to serialize");
+            assert!(
+                json.contains(&format!(r#""event":"{tag}""#)),
+                "expected tag {tag} in {json}"
+            );
+        }
+    }
+
     // =========================================================================
     // PatchProgress Tests
     // =========================================================================

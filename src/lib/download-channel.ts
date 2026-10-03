@@ -39,9 +39,12 @@ export function createDownloadChannel(
   let totalBytes = 0;
   let downloadedBytes = 0;
 
+  // The event tag values (`Started`, `FileComplete`, …) are the serde
+  // serialization of the Rust `DownloadEvent` enum and must match it exactly;
+  // the fields inside `data` are camelCase for the same reason.
   channel.onmessage = (message) => {
     switch (message.event) {
-      case 'started': {
+      case 'Started': {
         if (message.data.overallTotal) totalBytes = message.data.overallTotal;
         else if (totalBytes === 0) totalBytes = message.data.totalSize;
         if (message.data.overallDownloaded !== undefined) {
@@ -62,7 +65,7 @@ export function createDownloadChannel(
         });
         break;
       }
-      case 'progress': {
+      case 'Progress': {
         const currentTotal = message.data.total || totalBytes || 1;
         downloadedBytes = message.data.overallDownloaded ?? message.data.downloaded;
         const overallTotal = message.data.overallTotal || totalBytes || currentTotal;
@@ -79,7 +82,7 @@ export function createDownloadChannel(
         });
         break;
       }
-      case 'fileComplete': {
+      case 'FileComplete': {
         // Also NOT 100. One file finishing is not the whole build; claiming so
         // made the bar jump to the end and sit there.
         if (message.data.overallTotal) totalBytes = message.data.overallTotal;
@@ -98,15 +101,15 @@ export function createDownloadChannel(
         });
         break;
       }
-      case 'complete': {
+      case 'Complete': {
         handlers.onComplete(gameId);
         break;
       }
-      case 'error': {
+      case 'Error': {
         handlers.onError?.(message.data.message);
         break;
       }
-      case 'retry': {
+      case 'Retry': {
         logger.warn('Download retry', {
           attempt: message.data.attempt,
           maxAttempts: message.data.maxAttempts,

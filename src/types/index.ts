@@ -74,7 +74,7 @@ export interface GameInstallation {
 
 export type DownloadEvent =
   | {
-      event: 'started';
+      event: 'Started';
       data: {
         filePath: string;
         totalSize: number;
@@ -87,7 +87,7 @@ export type DownloadEvent =
       };
     }
   | {
-      event: 'progress';
+      event: 'Progress';
       data: {
         filePath: string;
         downloaded: number;
@@ -101,7 +101,7 @@ export type DownloadEvent =
       };
     }
   | {
-      event: 'fileComplete';
+      event: 'FileComplete';
       data: {
         filePath: string;
         completedFiles?: number;
@@ -111,11 +111,11 @@ export type DownloadEvent =
       };
     }
   | {
-      event: 'retry';
+      event: 'Retry';
       data: { filePath: string; attempt: number; maxAttempts: number; error: string };
     }
-  | { event: 'complete'; data: { completedFiles: number; totalFiles: number } }
-  | { event: 'error'; data: { message: string } };
+  | { event: 'Complete'; data: { completedFiles: number; totalFiles: number } }
+  | { event: 'Error'; data: { message: string } };
 
 export interface LaunchResult {
   success: boolean;
