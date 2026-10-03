@@ -21,10 +21,26 @@ import { selectPlatformBuild, type Platform } from './platform';
  */
 const DEFAULT_ORIGIN = 'https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev';
 
-/** Make a possibly-relative CDN asset URL absolute against the current origin. */
+/**
+ * Artwork placeholders that ship inside the app bundle rather than the bucket.
+ *
+ * A catalog says `/placeholder-icon.svg` to mean "no artwork configured". That is
+ * the app's own file, so prefixing the CDN origin asked the bucket for a path it
+ * does not have (404) and a game with no art rendered a bare fallback glyph
+ * instead of the placeholder it asked for.
+ */
+const BUNDLED_ART = new Set(['/placeholder-icon.svg', '/placeholder-banner.svg']);
+
+/**
+ * Make a possibly-relative CDN asset URL absolute against the current origin.
+ *
+ * Anything else beginning with `/` is a bucket-root-relative path and does get the
+ * origin; only the bundled placeholders are app-local.
+ */
 export function resolveCdnUrl(url: string | undefined): string {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
+  if (BUNDLED_ART.has(url)) return url;
   if (url.startsWith('/')) return `${CDN_ORIGIN}${url}`;
   return `${CDN_ORIGIN}/${url}`;
 }
@@ -265,7 +281,14 @@ export function versionedManifestUrl(id: string, channel: string, version: strin
 /** How often to look for new content. */
 export const CATALOG_POLL_MS = 5 * 60 * 1000;
 
-/** Stable string summarizing catalog content; any meaningful change alters it. */
+/**
+ * Stable string summarizing catalog content; any meaningful change alters it.
+ *
+ * Presentation fields are included deliberately. They were left out at first,
+ * which meant a republish that only changed artwork or copy produced an identical
+ * fingerprint: the running launcher saw no change, never offered the refresh, and
+ * kept rendering the old art until the user restarted it by hand.
+ */
 export function fingerprintCatalog(catalog: { games?: Array<Record<string, unknown>> }): string {
   const games = catalog.games ?? [];
   return games
@@ -276,6 +299,10 @@ export function fingerprintCatalog(catalog: { games?: Array<Record<string, unkno
         String(game.version ?? ''),
         String(game.build_number ?? ''),
         String(game.name ?? ''),
+        String(game.iconUrl ?? ''),
+        String(game.bannerUrl ?? ''),
+        String(game.description ?? ''),
+        Array.isArray(game.genre) ? game.genre.join(',') : String(game.genre ?? ''),
       ].join('|')
     )
     .sort()

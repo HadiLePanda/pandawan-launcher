@@ -5,6 +5,7 @@ import {
   handleImageError,
   NEWS_PLACEHOLDER,
   resolveBaseUrl,
+  resolveCdnUrl,
   resolveNewsImage,
 } from './cdn';
 import { startCatalogPoll, CATALOG_POLL_MS } from './cdn';
@@ -133,6 +134,50 @@ describe('fingerprintCatalog', () => {
 
   it('treats a missing games array as empty rather than throwing', () => {
     expect(fingerprintCatalog({})).toBe('');
+  });
+
+  it('changes when only artwork changes', () => {
+    // The bug this exists for: republishing only the icon produced an identical
+    // fingerprint, so a running launcher never offered the refresh and kept the
+    // old art until it was restarted by hand.
+    const before = fingerprintCatalog(
+      catalog([{ id: 'a', version: '1.0.0', iconUrl: '/placeholder-icon.svg' }])
+    );
+    const after = fingerprintCatalog(
+      catalog([
+        { id: 'a', version: '1.0.0', iconUrl: 'https://cdn.test/games/a/icon-1a2b3c4d.png' },
+      ])
+    );
+    expect(after).not.toBe(before);
+  });
+
+  it('changes when only the banner or copy changes', () => {
+    const base = { id: 'a', version: '1.0.0' };
+    const before = fingerprintCatalog(catalog([{ ...base, description: 'old', genre: ['A'] }]));
+    const banner = fingerprintCatalog(catalog([{ ...base, bannerUrl: 'https://cdn.test/b.png' }]));
+    const copy = fingerprintCatalog(catalog([{ ...base, description: 'new', genre: ['A'] }]));
+    const genre = fingerprintCatalog(catalog([{ ...base, description: 'old', genre: ['A', 'B'] }]));
+    for (const next of [banner, copy, genre]) expect(next).not.toBe(before);
+  });
+});
+
+describe('resolveCdnUrl', () => {
+  it('leaves a bundled placeholder app-local', () => {
+    // The placeholder is served out of the app bundle. Prefixing the CDN origin
+    // asked the bucket for a file it does not have, which is why a game with no
+    // artwork showed a bare fallback glyph instead of the placeholder.
+    for (const url of ['/placeholder-icon.svg', '/placeholder-banner.svg']) {
+      expect(resolveCdnUrl(url)).toBe(url);
+    }
+  });
+
+  it('still pins any other root-relative path to the CDN origin', () => {
+    // Regression guard: `/news/hero.png` and friends are bucket paths, and the
+    // news resolver's tests assert this behaviour.
+    expect(resolveCdnUrl('/news/hero.png')).toBe(`${CDN_ORIGIN}/news/hero.png`);
+    expect(resolveCdnUrl('games/a/icon.png')).toBe(`${CDN_ORIGIN}/games/a/icon.png`);
+    expect(resolveCdnUrl('https://elsewhere.test/a.png')).toBe('https://elsewhere.test/a.png');
+    expect(resolveCdnUrl(undefined)).toBe('');
   });
 });
 
