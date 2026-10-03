@@ -68,10 +68,16 @@ fn get_default_games_path() -> PathBuf {
 /// exactly like letting it exit on its own.
 #[tauri::command]
 #[specta::specta]
-async fn close_game(state: State<'_, LauncherState>, game_id: String) -> Result<(), LauncherError> {
+async fn close_game(app: AppHandle, game_id: String) -> Result<(), LauncherError> {
+    stop_game_by_id(&app, &game_id).await
+}
+
+/// The stop path shared by the `close_game` command and the tray's Stop item.
+pub(crate) async fn stop_game_by_id(app: &AppHandle, game_id: &str) -> Result<(), LauncherError> {
+    let state = app.state::<LauncherState>();
     let killer = {
         let mut running = state.running_games.lock().await;
-        running.remove(&game_id)
+        running.remove(game_id)
     };
 
     match killer {
@@ -344,6 +350,7 @@ async fn launch_game(
                     game_id: game_id.clone(),
                     name: game_name.unwrap_or_else(|| game_id.clone()),
                 });
+            tray::refresh(&app);
 
             let app_handle = app.clone();
             let app_data_dir = app_data_dir.clone();
@@ -367,6 +374,7 @@ async fn launch_game(
                 app_handle
                     .state::<tray::TrayState>()
                     .remove_running(&game_id_clone);
+                tray::refresh(&app_handle);
                 let duration_seconds = launched_at.elapsed().as_secs();
                 // Playtime loss must not break the exit event
                 if let Err(e) = record_playtime(&app_data_dir, &game_id_clone, duration_seconds) {
@@ -574,6 +582,31 @@ async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, LauncherError> {
         .map_err(|e| LauncherError::Io(e.to_string()))
 }
 
+/// Tell the tray whether a launcher update is available or being installed.
+///
+/// The update itself is discovered by the JS updater plugin, so the tray state
+/// has to be pushed across rather than derived here. Only the tooltip reads it.
+#[tauri::command]
+#[specta::specta]
+async fn set_launcher_update_available(
+    app: AppHandle,
+    available: bool,
+) -> Result<(), LauncherError> {
+    app.state::<tray::TrayState>()
+        .set_update_available(available);
+    tray::refresh(&app);
+    Ok(())
+}
+
+/// Exit the launcher. The frontend calls this only after confirming, when a
+/// game is running and a quit would drop that session's playtime.
+#[tauri::command]
+#[specta::specta]
+fn quit_launcher(app: AppHandle) -> Result<(), LauncherError> {
+    app.exit(0);
+    Ok(())
+}
+
 async fn load_settings(
     app_data_dir: &std::path::Path,
 ) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
@@ -625,6 +658,8 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             get_default_install_folder,
             cancel_operation,
             get_app_data_dir,
+            set_launcher_update_available,
+            quit_launcher,
         ])
         .events(collect_events![GameExited])
 }

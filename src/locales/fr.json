@@ -279,6 +279,9 @@
     "issueOne": "{{count}} fichier à vérifier",
     "issueMany": "{{count}} fichiers à vérifier"
   },
+  "tray": {
+    "quitWhileGameRunning": "Un jeu est en cours. Quitter maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Quitter quand même\u00a0?"
+  },
   "windowControls": {
     "close": "Fermer",
     "maximize": "Agrandir",

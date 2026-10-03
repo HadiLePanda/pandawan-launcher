@@ -66,6 +66,11 @@ export const commands = {
   cancelOperation: () => typedError<void, LauncherError>(__TAURI_INVOKE('cancel_operation')),
 
   getAppDataDir: () => typedError<string, LauncherError>(__TAURI_INVOKE('get_app_data_dir')),
+
+  setLauncherUpdateAvailable: (available: boolean) =>
+    typedError<void, LauncherError>(__TAURI_INVOKE('set_launcher_update_available', { available })),
+
+  quitLauncher: () => typedError<void, LauncherError>(__TAURI_INVOKE('quit_launcher')),
 };
 
 /** Events */

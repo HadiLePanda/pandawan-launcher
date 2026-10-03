@@ -24,7 +24,14 @@ import { avatarUrl } from '@/lib/avatars';
 import { isGamePinned } from '@/lib/pins';
 import * as gameService from '@/lib/game-service';
 import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/updater-service';
-import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
+import {
+  useUpdaterStore,
+  checkForUpdates,
+  downloadAndInstall,
+  quitLauncher,
+  restartToApplyUpdate,
+} from '@/lib/updater-service';
+import { listen } from '@tauri-apps/api/event';
 import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
 import { startCatalogPoll } from '@/lib/cdn';
 import { applyLanguage } from '@/lib/i18n';
@@ -258,6 +265,26 @@ function App() {
       unlisten.then((fn) => fn());
     };
   }, [updateGameStatus, refreshInstallation]);
+
+  // The tray drives two actions that only exist in the frontend: the update
+  // check lives in the JS updater plugin, and quitting while a game runs needs a
+  // confirmation naming the playtime it will drop. Event names mirror
+  // tray::EVENT_CHECK_UPDATES / EVENT_QUIT_REQUESTED in Rust.
+  useEffect(() => {
+    const quit = listen('tray-quit-requested', () => {
+      if (confirm(t('tray.quitWhileGameRunning'))) {
+        void quitLauncher();
+      }
+    });
+    const check = listen('tray-check-updates', () => {
+      void checkForUpdates({ manual: true });
+    });
+
+    return () => {
+      quit.then((fn) => fn());
+      check.then((fn) => fn());
+    };
+  }, [t]);
 
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 
