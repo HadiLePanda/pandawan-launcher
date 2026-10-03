@@ -47,11 +47,19 @@ const STATES: readonly UpdaterStatus[] = [
 ];
 
 let previewTimer: ReturnType<typeof setInterval> | null = null;
+// A forced "checking" state resolves itself so the preview cannot leave the UI
+// stranded on a spinner - the same guarantee a real check gets from its timeout.
+const CHECKING_PREVIEW_MS = 2500;
+let resolvePreviewTimer: ReturnType<typeof setTimeout> | null = null;
 
 function stopPreview(): void {
   if (previewTimer !== null) {
     clearInterval(previewTimer);
     previewTimer = null;
+  }
+  if (resolvePreviewTimer !== null) {
+    clearTimeout(resolvePreviewTimer);
+    resolvePreviewTimer = null;
   }
 }
 
@@ -59,6 +67,20 @@ export function forceUpdaterState(status: UpdaterStatus): void {
   stopPreview();
 
   switch (status) {
+    case 'checking':
+      useUpdaterStore.setState({
+        status,
+        version: null,
+        downloadedBytes: 0,
+        totalBytes: null,
+        error: null,
+        dismissed: false,
+      });
+      resolvePreviewTimer = setTimeout(() => {
+        resolvePreviewTimer = null;
+        forceUpdaterState('available');
+      }, CHECKING_PREVIEW_MS);
+      break;
     case 'available':
       useUpdaterStore.setState({
         status,
@@ -121,7 +143,7 @@ export function forceUpdaterState(status: UpdaterStatus): void {
   }
 }
 
-let cycleIndex = 0;
+let cycleIndex = -1;
 
 export function cycleUpdaterState(): void {
   cycleIndex = (cycleIndex + 1) % STATES.length;

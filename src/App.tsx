@@ -206,6 +206,12 @@ function App() {
   // session.
   const updaterStatus = useUpdaterStore((s) => s.status);
   const updaterVersion = useUpdaterStore((s) => s.version);
+  const updaterDownloadedBytes = useUpdaterStore((s) => s.downloadedBytes);
+  const updaterTotalBytes = useUpdaterStore((s) => s.totalBytes);
+  const updaterProgress =
+    updaterStatus === 'downloading' && updaterTotalBytes && updaterTotalBytes > 0
+      ? Math.min(100, Math.round((updaterDownloadedBytes / updaterTotalBytes) * 100))
+      : null;
 
   const handleLauncherUpdateClick = useCallback(() => {
     if (updaterStatus === 'ready') {
@@ -506,6 +512,7 @@ function App() {
             : null
         }
         onLauncherUpdateClick={handleLauncherUpdateClick}
+        updateProgress={updaterProgress}
       />
 
       {/* Shown in every view, not just the games grid. News and the store are

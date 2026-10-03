@@ -265,6 +265,7 @@ Component Design System
 }
 
 .main-nav {
+  position: relative;
   height: 54px;
   width: 100%;
   background: var(--canvas-default);

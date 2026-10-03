@@ -92,13 +92,16 @@
   }
 }
 
-/* Reduced motion collapses the whole flow to an instant state change: no
-   spinner, no shimmer, no draw, no pulse. */
+/* Reduced motion strips the decorative parts: no fade/scale entry, no draw-in,
+   no shimmer, no pulse. The spinner and the advancing download bar are
+   functional progress feedback and are deliberately kept. */
 @media (prefers-reduced-motion: reduce) {
-  .update-spinner,
-  .update-check,
+  /* Decorative motion only. The spinner keeps spinning and the download bar
+     keeps advancing: a progress indicator that freezes reads as a hung app,
+     which is worse than no indicator at all. */
   .update-enter,
   .update-restart,
+  .update-check,
   .progress-bar::after {
     animation: none;
   }
@@ -106,8 +109,24 @@
   .update-check {
     stroke-dashoffset: 0;
   }
+}
 
-  .progress-bar {
-    transition: none;
-  }
+/* The full-width download line. Absolutely positioned at the top edge of the
+   content area so it never shifts layout, the way a browser shows a download. */
+.update-progress-line {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.update-progress-line-fill {
+  height: 100%;
+  background: var(--action);
+  transition: width var(--motion-enter) var(--motion-ease-out);
 }

@@ -49,6 +49,18 @@ function replacePendingUpdate(update: Update | null): void {
   }
 }
 
+// A check that never settles would strand the UI on "Checking…" forever, so it
+// is capped and the timeout surfaces as an ordinary error.
+const CHECK_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Update check timed out')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function checkForUpdates(options?: CheckForUpdatesOptions): Promise<UpdaterStatus> {
   const current = useUpdaterStore.getState().status;
   // Keep a downloaded update pending until relaunch; a re-check would leak the
@@ -59,7 +71,7 @@ export async function checkForUpdates(options?: CheckForUpdatesOptions): Promise
 
   useUpdaterStore.setState({ status: 'checking', error: null });
   try {
-    const update = await check();
+    const update = await withTimeout(check(), CHECK_TIMEOUT_MS);
     if (!update) {
       replacePendingUpdate(null);
       useUpdaterStore.setState({ status: 'up-to-date', version: null });

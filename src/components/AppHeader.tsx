@@ -41,6 +41,8 @@ interface MainNavProps {
   /** True when a background catalog poll found new content to load. */
   catalogStale?: boolean;
   onCatalogRefresh: () => void;
+  /** Launcher self-update download progress (0-100), for the line under the bar. */
+  updateProgress?: number | null;
 }
 
 function TopBarButton({
@@ -160,6 +162,7 @@ export function MainNav({
   onLauncherUpdateClick,
   catalogStale,
   onCatalogRefresh,
+  updateProgress,
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -357,6 +360,24 @@ export function MainNav({
           )}
         </div>
       </div>
+
+      {/* Sits at the bar's bottom edge, directly above the content, and is
+          absolutely positioned so the fill never shifts layout. */}
+      {updateProgress != null && (
+        <div
+          className="update-progress-line"
+          role="progressbar"
+          aria-valuenow={updateProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t('updateBanner.downloading', {
+            version: launcherUpdate?.version ?? '',
+            progress: ` ${updateProgress}%`,
+          })}
+        >
+          <div className="update-progress-line-fill" style={{ width: `${updateProgress}%` }} />
+        </div>
+      )}
     </div>
   );
 }

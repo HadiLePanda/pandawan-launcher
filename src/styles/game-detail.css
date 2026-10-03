@@ -442,30 +442,24 @@ input.pin-search {
 }
 
 /* ----- Feedback components ----- */
+/* Informational, not an alarm: the surface background with the green action
+   accent, so an available update does not read as a failure (red is this app's
+   error colour). */
 .banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.625rem 1.25rem;
-  background: var(--ember-muted);
-  border-bottom: 1px solid color-mix(in oklab, var(--ember) 20%, transparent);
-  color: var(--ember);
+  padding: 0.5rem 1.25rem;
+  background: var(--surface-default);
+  border-bottom: 1px solid var(--border-action);
+  color: var(--ink-default);
   font-size: 0.875rem;
 }
 
 .light .banner {
-  background: color-mix(in oklab, var(--ember) 8%, var(--canvas-light));
-  border-color: color-mix(in oklab, var(--ember) 18%, var(--border-default));
-}
-
-.banner .btn-ghost {
-  color: var(--ember);
-}
-
-.banner .btn-ghost:hover {
-  color: var(--ember);
-  background: var(--ember-muted);
+  background: var(--surface-light);
+  border-bottom-color: var(--border-action);
 }
 
 .banner-text {
