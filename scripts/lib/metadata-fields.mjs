@@ -24,6 +24,7 @@ export const FIELDS = [
     catalog: 'description',
     manifest: 'description',
     label: 'Description',
+    long: true,
   },
   { flag: 'developer', catalog: 'developer', manifest: null, label: 'Developer' },
   { flag: 'genre', catalog: 'genre', manifest: null, label: 'Genres', list: true },
@@ -51,6 +52,21 @@ export const IMAGE_FIELDS = {
   'icon-url': { flag: 'icon-file', objectName: 'icon.png' },
   'banner-url': { flag: 'banner-file', objectName: 'banner.png' },
 };
+
+/**
+ * The contract as the dashboard renders it: FIELDS in order, each entry naming
+ * the control it needs. The browser cannot import this module, so this array
+ * travels in the API response - the client builds its form from it and cannot
+ * offer a field the publisher would ignore.
+ */
+export const FIELD_SPEC = FIELDS.map((field) => ({
+  flag: field.flag,
+  catalog: field.catalog,
+  label: field.label,
+  list: Boolean(field.list),
+  image: field.flag in IMAGE_FIELDS,
+  long: Boolean(field.long),
+}));
 
 // Re-exported so existing importers of metadata-fields keep working.
 export { parseArgs, first, listValue } from './args.mjs';

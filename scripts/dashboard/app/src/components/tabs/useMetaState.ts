@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { apiGet } from '@lib/api';
 import { normaliseList } from '@lib/format';
-import type { MetaField, MetaPayload } from '@/types/api';
+import type { MetaField, MetaFieldSpec, MetaPayload } from '@/types/api';
 
 import type { DiffRow } from '@components/DiffReview';
 
@@ -50,27 +50,6 @@ export interface MetaFieldView extends MetaField {
   previewUrl?: string;
 }
 
-/**
- * The field order the form renders in.
- *
- * Mirrors the order of FIELDS in scripts/lib/metadata-fields.mjs. The API
- * returns fields as an object keyed by flag and carries no order, but a form
- * whose fields reshuffle between loads is unusable - so the sequence is pinned
- * here. Labels are NOT hardcoded: each field's own `label` from the response is
- * used, so a rename in the contract shows up without touching this file.
- */
-export const FIELD_ORDER = [
-  'name',
-  'description',
-  'developer',
-  'genre',
-  'icon-url',
-  'banner-url',
-  'screenshots',
-  'supported-platforms',
-  'available-channels',
-] as const;
-
 /** Everything the form needs, given the loaded payload. */
 function initialValues(payload: MetaPayload): Record<string, string> {
   const values: Record<string, string> = {};
@@ -88,6 +67,7 @@ export function useMetaState(gameId: string, channel: string) {
   const [payload, setPayload] = useState<MetaPayload | null>(null);
   const [original, setOriginal] = useState<Record<string, MetaFieldView>>({});
   const [values, setValues] = useState<Record<string, string>>({});
+  const [fieldSpec, setFieldSpec] = useState<MetaFieldSpec[]>([]);
   const [exists, setExists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +81,7 @@ export function useMetaState(gameId: string, channel: string) {
       payload: result.data,
       original: result.data.fields ?? {},
       values: initialValues(result.data),
+      fieldSpec: result.data.fieldSpec ?? [],
       exists: Boolean(result.data.exists),
     };
   }, [gameId, channel]);
@@ -113,12 +94,14 @@ export function useMetaState(gameId: string, channel: string) {
       setPayload(next.payload);
       setOriginal(next.original);
       setValues(next.values);
+      setFieldSpec(next.fieldSpec);
       setExists(next.exists);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPayload(null);
       setOriginal({});
       setValues({});
+      setFieldSpec([]);
       setExists(false);
     } finally {
       setLoading(false);
@@ -170,6 +153,7 @@ export function useMetaState(gameId: string, channel: string) {
     payload,
     original,
     values,
+    fieldSpec,
     exists,
     loading,
     error,

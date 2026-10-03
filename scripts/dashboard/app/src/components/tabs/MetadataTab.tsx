@@ -31,7 +31,7 @@ import { streamScript } from '@lib/api';
 import { previewUrlFor, releasePreviewUrl, stageArtwork } from '@lib/artwork';
 import { plural } from '@lib/format';
 import { DRAFT_KEYS } from '@lib/storage';
-import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject } from '@/types/api';
+import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject, type MetaFieldSpec } from '@/types/api';
 import { draftNoteText, useDraft } from '@/hooks/useDraft';
 
 import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
@@ -44,7 +44,6 @@ import type { GameTabProps } from './types';
 import {
   buildPayload,
   diffRows,
-  FIELD_ORDER,
   IMAGE_INPUTS,
   isImageDirty,
   type MetaFieldView,
@@ -71,16 +70,14 @@ const SUGGESTIONS: Record<string, string[]> = {
 
 const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
-/** The presentational spec FieldControl renders from, derived from the flag. */
-function specFor(flag: string, field: MetaFieldView): FieldSpec {
+/** The presentational spec FieldControl renders from, straight off the served contract. */
+function specFor(spec: MetaFieldSpec): FieldSpec {
   return {
-    flag,
-    label: field.label,
-    list: field.list,
-    image: flag in IMAGE_INPUTS,
-    // The only prose field. The server contract carries no `long`, so the form is
-    // where the single multi-line field is named.
-    long: flag === 'description',
+    flag: spec.flag,
+    label: spec.label,
+    list: spec.list,
+    image: spec.image,
+    long: spec.long,
   };
 }
 
@@ -169,7 +166,7 @@ function ArtworkUpload({
 }
 
 function MetaFieldRow({
-  flag,
+  spec,
   field,
   value,
   artworks,
@@ -178,8 +175,8 @@ function MetaFieldRow({
   onPathChange,
   onRevert,
 }: {
-  /** The metadata flag, e.g. 'icon-url'. */
-  flag: string;
+  /** The served contract entry: names the control and its label. */
+  spec: MetaFieldSpec;
   field: MetaFieldView;
   value: string;
   artworks: ArtworkObject[];
@@ -188,7 +185,8 @@ function MetaFieldRow({
   onPathChange: (next: string) => void;
   onRevert: () => void;
 }) {
-  const isImage = flag in IMAGE_INPUTS;
+  const flag = spec.flag;
+  const isImage = spec.image;
   // The picked file's own blob, held here so the image control can show it in
   // place of the published URL until the upload rewrites that URL on publish.
   const [stagedPreview, setStagedPreview] = useState('');
@@ -237,7 +235,7 @@ function MetaFieldRow({
       </div>
 
       <FieldControl
-        field={specFor(flag, field)}
+        field={specFor(spec)}
         id={`meta-field-${flag}`}
         value={value}
         previewUrl={previewUrl}
@@ -305,6 +303,7 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
     payload,
     original,
     values,
+    fieldSpec,
     exists,
     loading,
     error,
@@ -328,7 +327,8 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
   // gates a one-shot side effect and must not itself cause a render.
   const adopted = useRef('');
 
-  const dirtyFlags = useDirtyFlags(original, values, FIELD_ORDER);
+  const order = useMemo(() => fieldSpec.map((spec) => spec.flag), [fieldSpec]);
+  const dirtyFlags = useDirtyFlags(original, values, order);
   const rows = useMemo(
     () => diffRows(original, values, dirtyFlags),
     [original, values, dirtyFlags]
@@ -436,9 +436,9 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
   }
 
   const stagedFiles = Object.values(IMAGE_INPUTS).filter((key) => String(values[key] ?? '').trim());
-  const inheritedLabels = FIELD_ORDER.filter((flag) => original[flag]?.inherited).map(
-    (flag) => original[flag]?.label ?? flag
-  );
+  const inheritedLabels = fieldSpec
+    .filter((spec) => original[spec.flag]?.inherited)
+    .map((spec) => original[spec.flag]?.label ?? spec.flag);
 
   // The review summary names what happens on publish, which depends on whether
   // preview-only is ticked. The rows below do not change either way.
@@ -484,24 +484,24 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
       />
 
       <div className="mt-3 flex flex-col gap-2">
-        {FIELD_ORDER.map((flag) => {
-          const field = original[flag];
-          // The server merges whatever the contract declares; a flag it does not
-          // know about is skipped rather than rendered as a nameless input.
+        {fieldSpec.map((spec) => {
+          const field = original[spec.flag];
+          // The server ships the contract; a flag it does not also resolve a
+          // current value for is skipped rather than rendered as a nameless input.
           if (!field) return null;
           return (
             <MetaFieldRow
-              key={flag}
-              flag={flag}
+              key={spec.flag}
+              spec={spec}
               field={field}
-              value={values[flag] ?? ''}
+              value={values[spec.flag] ?? ''}
               artworks={artworks.objects}
-              dirty={isImageDirty(original, values, flag)}
-              onChange={(next) => setValue(flag, next)}
+              dirty={isImageDirty(original, values, spec.flag)}
+              onChange={(next) => setValue(spec.flag, next)}
               onPathChange={(next) =>
-                setValue(IMAGE_INPUTS[flag as keyof typeof IMAGE_INPUTS], next)
+                setValue(IMAGE_INPUTS[spec.flag as keyof typeof IMAGE_INPUTS], next)
               }
-              onRevert={() => revert(flag)}
+              onRevert={() => revert(spec.flag)}
             />
           );
         })}

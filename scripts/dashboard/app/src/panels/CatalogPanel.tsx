@@ -29,18 +29,14 @@ import {
 } from 'lucide-react';
 import { apiGet, messageOf } from '@/lib/api';
 import {
-  CATALOG_FIELDS,
-  CHANNELS,
+  KNOWN_CHANNELS as CHANNELS,
   PLATFORMS,
   type CatalogDiff,
-  type CatalogField,
-  type CatalogGame,
+  type CatalogEntry as CatalogGame,
   type CatalogResponse,
-  gameToFields,
-  labelForField,
-  splitList,
-  validateGame,
-} from './catalog-contract';
+  type MetaFieldSpec,
+} from '@/types/api';
+import { splitList } from '@lib/format';
 import { FieldControl, type FieldControlProps } from './FieldControl';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
@@ -117,6 +113,9 @@ export default function CatalogPanel() {
   const localProblem = load.state === 'ready' ? load.data.localError : undefined;
   const diff: CatalogDiff =
     load.state === 'ready' ? load.data.diff : { onlyLive: [], onlyLocal: [], changed: [] };
+  // The served field contract, so the editor and the diff labels both render from
+  // the server's list rather than a hand-typed copy that could drift.
+  const fields = load.state === 'ready' ? (load.data.fieldSpec ?? []) : [];
 
   async function handlePublish() {
     // Dry run is the default, as for every other publish verb: the diff above is
@@ -170,6 +169,7 @@ export default function CatalogPanel() {
       {editing ? (
         <CatalogEditor
           game={editing === 'new' ? null : editing}
+          fields={fields}
           existingIds={liveGames.map((game) => game.id)}
           onCancel={() => setEditing(null)}
           onDone={async () => {
@@ -211,6 +211,7 @@ export default function CatalogPanel() {
             diff={diff}
             liveCount={liveGames.length}
             localCount={load.data.local?.games?.length ?? 0}
+            fields={fields}
           />
 
           {editing ? null : (
@@ -221,6 +222,7 @@ export default function CatalogPanel() {
               dryRun={publishDryRun}
               onDryRunChange={setPublishDryRun}
               onPublish={() => void handlePublish()}
+              fields={fields}
             />
           )}
         </>
@@ -393,10 +395,12 @@ function DiffReport({
   diff,
   liveCount,
   localCount,
+  fields,
 }: {
   diff: CatalogDiff;
   liveCount: number;
   localCount: number;
+  fields: MetaFieldSpec[];
 }) {
   const nothing = !diff.onlyLive.length && !diff.onlyLocal.length && !diff.changed.length;
 
@@ -435,6 +439,7 @@ function DiffReport({
             tone="warn"
             help="A publish does not overwrite these."
             changed={diff.changed}
+            fields={fields}
           />
         </div>
       )}
@@ -448,12 +453,14 @@ function DiffColumn({
   help,
   ids,
   changed,
+  fields,
 }: {
   title: string;
   tone: 'good' | 'warn' | 'info';
   help: string;
   ids?: string[];
   changed?: CatalogDiff['changed'];
+  fields?: MetaFieldSpec[];
 }) {
   const entries = ids ?? [];
   const entriesChanged = changed ?? [];
@@ -488,7 +495,7 @@ function DiffColumn({
               <ul className="mt-1 ml-5 flex flex-wrap gap-1">
                 {entry.fields.map((field) => (
                   <li key={field}>
-                    <Badge tone="warn">{labelForField(field)}</Badge>
+                    <Badge tone="warn">{labelForField(fields ?? [], field)}</Badge>
                   </li>
                 ))}
               </ul>
@@ -517,7 +524,7 @@ function count(n: number, noun: string): string {
  * prospectively - the plan is what pressing the button would do, and a dry run
  * has changed nothing yet.
  */
-function PublishPlanSummary({ plan }: { plan: CatalogPlan }) {
+function PublishPlanSummary({ plan, fields }: { plan: CatalogPlan; fields: MetaFieldSpec[] }) {
   const { added, preserved, cdnWins, changed } = plan;
 
   return (
@@ -547,7 +554,7 @@ function PublishPlanSummary({ plan }: { plan: CatalogPlan }) {
                 <ul className="mt-1 ml-5 flex flex-wrap gap-1">
                   {entry.differs.map((field) => (
                     <li key={field.field}>
-                      <Badge tone="warn">{labelForField(field.field)}</Badge>
+                      <Badge tone="warn">{labelForField(fields, field.field)}</Badge>
                     </li>
                   ))}
                 </ul>
@@ -567,6 +574,7 @@ function PublishCard({
   dryRun,
   onDryRunChange,
   onPublish,
+  fields,
 }: {
   diff: CatalogDiff;
   plan?: CatalogPlan;
@@ -574,6 +582,7 @@ function PublishCard({
   dryRun: boolean;
   onDryRunChange: (value: boolean) => void;
   onPublish: () => void;
+  fields: MetaFieldSpec[];
 }) {
   const willAdd = diff.onlyLocal.length;
   const willKeep = diff.onlyLive.length;
@@ -590,7 +599,7 @@ function PublishCard({
               the plan is phrased prospectively ("would add"), so it cannot read
               as applied - the checkbox below still owns that distinction. */}
           {plan ? (
-            <PublishPlanSummary plan={plan} />
+            <PublishPlanSummary plan={plan} fields={fields} />
           ) : (
             <p className="mt-1 max-w-xl text-xs text-ink-muted">
               Adds {willAdd}, keeps {willKeep}, leaves {willHold} as the CDN has them. Never removes
@@ -644,10 +653,62 @@ function PublishLog({ log, verdict }: { log: string; verdict: Parameters<typeof 
  * The chips offered for a list field. Only platforms and channels have a closed
  * vocabulary in the contract, so genres and screenshots - free text - get none.
  */
-function suggestionsFor(field: CatalogField): string[] | undefined {
+function suggestionsFor(field: MetaFieldSpec): string[] | undefined {
   if (field.flag === 'supported-platforms') return [...PLATFORMS];
   if (field.flag === 'available-channels') return [...CHANNELS];
   return undefined;
+}
+
+/** The label for a diff field name, from the served contract; falls back to the key. */
+function labelForField(fields: MetaFieldSpec[], key: string): string {
+  return fields.find((field) => field.catalog === key)?.label ?? key;
+}
+
+/** A catalog entry rendered as form values keyed by flag, from the served list. */
+function gameToFields(
+  game: CatalogGame | null | undefined,
+  fields: MetaFieldSpec[]
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of fields) {
+    const raw = (game as Record<string, unknown> | null | undefined)?.[field.catalog];
+    out[field.flag] = field.list ? splitList(raw).join(', ') : String(raw ?? '');
+  }
+  return out;
+}
+
+/**
+ * Why a catalog entry cannot be created, or null.
+ *
+ * Mirrors validateCatalog() in catalog-merge.mjs, the rule the publisher enforces
+ * anyway, so the operator reads the constraint against the field they are on.
+ */
+function validateGame(id: string, channel: string, fields: Record<string, string>): string | null {
+  const trimmedId = id.trim();
+  if (!trimmedId)
+    return 'A catalog entry needs an id. It is the key every manifest URL is built from.';
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(trimmedId)) {
+    return 'Use letters, digits, dots, dashes and underscores only, starting with a letter or digit.';
+  }
+  if (!channel.trim())
+    return 'A catalog entry needs a channel; the launcher builds its manifest URL from it.';
+  if (!CHANNELS.includes(channel.trim() as (typeof CHANNELS)[number])) {
+    return `Channel must be one of ${CHANNELS.join(', ')}.`;
+  }
+  if (!String(fields.name ?? '').trim()) {
+    return 'A catalog entry needs a display name. The launcher shows that, not the id.';
+  }
+  for (const platform of splitList(fields['supported-platforms'])) {
+    if (!PLATFORMS.includes(platform as (typeof PLATFORMS)[number])) {
+      return `Platform "${platform}" is not one of ${PLATFORMS.join(', ')}.`;
+    }
+  }
+  for (const name of splitList(fields['available-channels'])) {
+    if (!CHANNELS.includes(name as (typeof CHANNELS)[number])) {
+      return `Available channel "${name}" is not one of ${CHANNELS.join(', ')}.`;
+    }
+  }
+  return null;
 }
 
 /** The catalog entry's URL for one field, or '' when the entry has none. */
@@ -701,11 +762,14 @@ function CatalogImageField({
  */
 function CatalogEditor({
   game,
+  fields,
   existingIds,
   onCancel,
   onDone,
 }: {
   game: CatalogGame | null;
+  /** The served field contract; the form renders from this, in this order. */
+  fields: MetaFieldSpec[];
   existingIds: string[];
   onCancel: () => void;
   onDone: () => Promise<void>;
@@ -713,8 +777,8 @@ function CatalogEditor({
   const isNew = game === null;
   const [id, setId] = useState(game?.id ?? '');
   const [channel, setChannel] = useState(game?.channel ?? 'stable');
-  const [values, setValues] = useState<Record<string, string>>(() => gameToFields(game));
-  const [original] = useState<Record<string, string>>(() => gameToFields(game));
+  const [values, setValues] = useState<Record<string, string>>(() => gameToFields(game, fields));
+  const [original] = useState<Record<string, string>>(() => gameToFields(game, fields));
   const [problem, setProblem] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(true);
   const stream = usePublisherStream();
@@ -730,9 +794,9 @@ function CatalogEditor({
   const blocking =
     constraint ?? (takenElsewhere ? `The id "${id.trim()}" is already in the catalog.` : null);
 
-  const changed = CATALOG_FIELDS.filter(
-    (field) => (values[field.flag] ?? '').trim() !== (original[field.flag] ?? '').trim()
-  ).map((field) => field.flag);
+  const changed = fields
+    .filter((field) => (values[field.flag] ?? '').trim() !== (original[field.flag] ?? '').trim())
+    .map((field) => field.flag);
 
   async function submit() {
     setProblem(null);
@@ -766,7 +830,7 @@ function CatalogEditor({
       channel: channel.trim(),
       dryRun,
     };
-    for (const field of CATALOG_FIELDS) {
+    for (const field of fields) {
       if (!changed.includes(field.flag)) continue;
       const text = (values[field.flag] ?? '').trim();
       // An emptied text field is a real intent - it clears the value. An emptied
@@ -850,7 +914,7 @@ function CatalogEditor({
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {CATALOG_FIELDS.map((field) => {
+        {fields.map((field) => {
           const inputId = `catalog-${field.flag}`;
           const value = values[field.flag] ?? '';
           const isChanged = changed.includes(field.flag);

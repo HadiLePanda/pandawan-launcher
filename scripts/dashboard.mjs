@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { NO_CACHE, S3, listKeysWithMeta, loadDotEnv, r2Config, upload } from './lib/r2.mjs';
 // The field contract is shared with the publisher, so the form cannot offer a
 // field the script would silently ignore.
-import { CHANNELS, FIELDS, IMAGE_FIELDS } from './lib/metadata-fields.mjs';
+import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-fields.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
 // The news contract lives with the publisher for the same reason.
 import {
@@ -49,7 +49,6 @@ import {
 // Catalog read/CRUD decisions are pure and unit-tested: this file holds the R2
 // keys and boots a server, so what a catalog edit *means* cannot be checked here.
 import {
-  CATALOG_GAME_FIELDS,
   catalogDiff,
   catalogDiffIsEmpty,
   catalogEntryFrom,
@@ -1617,9 +1616,9 @@ const server = http.createServer(async (req, res) => {
           // What pressing Publish would do, from the merge the publisher runs, so
           // the panel cannot promise something the script would not do.
           plan: publishPlan(live.catalog, local.catalog),
-          // The field list, so the client cannot offer a column the document
-          // never carries. The publisher is the only writer, so this is its shape.
-          fields: CATALOG_GAME_FIELDS,
+          // The field contract the form renders from, served rather than copied:
+          // a hand-typed client list drifts silently from the publisher's.
+          fieldSpec: FIELD_SPEC,
           url: CATALOG_URL,
         };
       });
@@ -1784,9 +1783,13 @@ const server = http.createServer(async (req, res) => {
     try {
       // Cached per game+channel: the query is part of the key, so one game's
       // metadata is never served under another's name.
-      const read = await cachedRead(url, () =>
-        readGameMetadata(gameId, channel, { cdnOrigin, fields: FIELDS })
-      );
+      const read = await cachedRead(url, async () => ({
+        // The field contract travels with the read, the way /api/news serves its
+        // own: the client cannot import the .mjs module, so it renders from this
+        // and cannot drift into offering a field the publisher ignores.
+        ...(await readGameMetadata(gameId, channel, { cdnOrigin, fields: FIELDS })),
+        fieldSpec: FIELD_SPEC,
+      }));
       res.writeHead(200, {
         'content-type': 'application/json',
         ...cacheHeaders(read.state, read.ageMs),

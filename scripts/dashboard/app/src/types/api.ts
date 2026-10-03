@@ -88,6 +88,58 @@ export interface CatalogPayload {
   lastUpdated?: string | null;
 }
 
+/** A catalog document as the panel reads it; every field may be absent. */
+export interface CatalogDoc {
+  games?: CatalogEntry[];
+  lastUpdated?: string | null;
+  [key: string]: unknown;
+}
+
+/** One game present on both sides with at least one display field differing. */
+export interface CatalogChangedEntry {
+  id: string;
+  fields: string[];
+}
+
+export interface CatalogDiff {
+  onlyLive: string[];
+  onlyLocal: string[];
+  changed: CatalogChangedEntry[];
+}
+
+export interface CatalogResponse {
+  live: CatalogDoc | null;
+  local: CatalogDoc | null;
+  diff: CatalogDiff;
+  /** The served metadata field contract, used for diff field labels. */
+  fieldSpec?: MetaFieldSpec[];
+  /** Present only if the server could not read one side; rendered as a banner. */
+  error?: string;
+  liveError?: string;
+  localError?: string;
+}
+
+/**
+ * One entry of the metadata field contract, as the server sends it.
+ *
+ * This is the server's FIELDS list, so it carries `catalog` (the key the field
+ * lands on) as well as `flag`, and `image` / `long` name the control to render.
+ * The form is built from this array in order; the client never keeps its own.
+ */
+export interface MetaFieldSpec {
+  /** CLI flag, and the key the publish payload uses. */
+  flag: string;
+  /** Key on a catalog game entry. */
+  catalog: string;
+  label: string;
+  /** Stored as an array; edited as a comma list; an emptied one is never sent. */
+  list: boolean;
+  /** Accepts an artwork upload as well as a URL. */
+  image: boolean;
+  /** Renders as a textarea. */
+  long: boolean;
+}
+
 /**
  * What a catalog publish would do, as `GET /api/catalog` reports it.
  *
@@ -150,6 +202,8 @@ export interface MetaPayload {
   channelMismatch?: boolean;
   versions?: Record<string, PlatformRelease> | null;
   fields: Record<string, MetaField>;
+  /** The packed field contract this form renders from, served in this response. */
+  fieldSpec?: MetaFieldSpec[];
   missing: string[];
 }
 

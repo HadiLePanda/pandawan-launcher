@@ -89,3 +89,13 @@ export function normaliseList(value: string | null | undefined): string[] {
     .map((part) => part.trim())
     .filter(Boolean);
 }
+
+/**
+ * A stored list as an array, whether it arrived as an array or as the comma
+ * string the metadata form edits. Used to render a catalog entry's list fields,
+ * whose shape is whichever document they came from.
+ */
+export function splitList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((part) => String(part)).filter(Boolean);
+  return normaliseList(String(value ?? ''));
+}
