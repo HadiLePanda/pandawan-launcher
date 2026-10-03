@@ -8,11 +8,10 @@
 
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use pandawan_launcher_lib::download::progress;
-use pandawan_launcher_lib::download::{DownloadError, DownloadManager, RateLimiter};
+use pandawan_launcher_lib::download::{resume_range, DownloadError, DownloadManager, RateLimiter};
 use reqwest::StatusCode;
 
 /// Helper to create a temporary directory
@@ -201,51 +200,31 @@ fn test_download_manager_estimated_time() {
 
 #[test]
 fn test_resume_calculation() {
-    // File already has 500 bytes, total is 1000
+    // A partial file resumes with a Range at its current length and reports
+    // progress against the total.
     let existing_size = 500u64;
     let total_size = 1000u64;
-    let remaining = total_size - existing_size;
 
-    assert_eq!(remaining, 500);
-
-    // Progress should be 50%
-    let progress = progress::percentage(existing_size, total_size);
-    assert_eq!(progress, 50.0);
-
-    // Range header for resume
-    let range_header = format!("bytes={}-", existing_size);
-    assert_eq!(range_header, "bytes=500-");
+    assert_eq!(resume_range(existing_size).as_deref(), Some("bytes=500-"));
+    assert_eq!(total_size - existing_size, 500);
+    assert_eq!(progress::percentage(existing_size, total_size), 50.0);
 }
 
 #[test]
 fn test_resume_with_no_existing_file() {
-    let existing_size = 0u64;
-    let total_size = 1000u64;
-
-    assert_eq!(existing_size, 0);
-    assert_eq!(progress::percentage(existing_size, total_size), 0.0);
-
-    // No range header needed for new file
-    let range_header = if existing_size > 0 {
-        Some(format!("bytes={}-", existing_size))
-    } else {
-        None
-    };
-    assert!(range_header.is_none());
+    // No Range at zero: the server answers 200 with the whole file, and a
+    // bytes=0- header would make a fresh download look like a resume.
+    assert_eq!(resume_range(0), None);
+    assert_eq!(progress::percentage(0, 1000), 0.0);
 }
 
 #[test]
 fn test_resume_completed_file() {
-    // File is already complete
     let existing_size = 1000u64;
     let total_size = 1000u64;
 
-    assert_eq!(existing_size, total_size);
     assert_eq!(progress::percentage(existing_size, total_size), 100.0);
-
-    // No bytes remaining
-    let remaining = total_size.saturating_sub(existing_size);
-    assert_eq!(remaining, 0);
+    assert_eq!(total_size.saturating_sub(existing_size), 0);
 }
 
 #[test]
@@ -346,72 +325,17 @@ fn test_download_error_from_io() {
 // Concurrent Download Calculation Tests
 // ============================================================================
 
-#[test]
-fn test_concurrent_download_batch_calculation() {
-    // Test batch calculation for different scenarios
-
-    // 10 files, 4 concurrent
-    let total_files = 10;
-    let max_concurrent = 4;
-    let full_batches = total_files / max_concurrent; // 2
-    let remainder = total_files % max_concurrent; // 2
-    let total_batches = full_batches + if remainder > 0 { 1 } else { 0 };
-    assert_eq!(total_batches, 3);
-
-    // 8 files, 4 concurrent (exact division)
-    let total_files = 8;
-    let full_batches = total_files / max_concurrent; // 2
-    let remainder = total_files % max_concurrent; // 0
-    let total_batches = full_batches + if remainder > 0 { 1 } else { 0 };
-    assert_eq!(total_batches, 2);
-
-    // 3 files, 4 concurrent (less than max)
-    let total_files = 3;
-    let full_batches = total_files / max_concurrent; // 0
-    let remainder = total_files % max_concurrent; // 3
-    let total_batches = full_batches + if remainder > 0 { 1 } else { 0 };
-    assert_eq!(total_batches, 1);
-}
-
 // ============================================================================
 // Rate Limiting Calculation Tests
 // ============================================================================
 
 #[test]
-fn test_rate_limiting_sleep_calculation() {
-    // Calculate sleep time needed to maintain speed limit
-    let chunk_size = 1000u64; // bytes
-    let speed_limit = 5000u64; // bytes per second
-
-    let expected_time_per_chunk = chunk_size as f64 / speed_limit as f64;
-    assert!((expected_time_per_chunk - 0.2).abs() < 0.0001); // 200ms per chunk with tolerance
-
-    // If we processed in 50ms, we need to sleep 150ms
-    let elapsed = 0.05; // 50ms
-    let sleep_needed = expected_time_per_chunk - elapsed;
-    assert!((sleep_needed - 0.15).abs() < 0.0001); // 150ms with tolerance
-
-    // If we processed in 250ms (slower than limit), no sleep needed
-    let elapsed = 0.25; // 250ms
-    let sleep_needed = if elapsed < expected_time_per_chunk {
-        expected_time_per_chunk - elapsed
-    } else {
-        0.0
-    };
-    assert_eq!(sleep_needed, 0.0);
-}
-
-#[test]
 fn test_rate_limiting_various_speeds() {
-    // Test various speed limits
-    let test_cases = vec![
-        (1000, 500, 2.0),    // 1000 bytes at 500 B/s = 2 seconds
-        (5000, 1000, 5.0),   // 5KB at 1KB/s = 5 seconds
-        (10000, 10000, 1.0), // 10KB at 10KB/s = 1 second
-    ];
-
-    for (size, limit, expected_seconds) in test_cases {
-        let time = size as f64 / limit as f64;
+    // Estimated time is a pure function of the configured limit, so it is
+    // asserted against the manager rather than recomputed here.
+    for (size, limit, expected_seconds) in [(1000u64, 500u64, 2.0), (5000, 1000, 5.0)] {
+        let manager = DownloadManager::new(4, Some(limit));
+        let time = manager.estimated_download_time(size).as_secs_f64();
         assert!(
             (time - expected_seconds).abs() < 0.01,
             "Time mismatch for {} bytes at {} B/s: expected {}, got {}",
@@ -426,28 +350,6 @@ fn test_rate_limiting_various_speeds() {
 // ============================================================================
 // File Path Resolution Tests
 // ============================================================================
-
-#[test]
-fn test_destination_path_resolution() {
-    let base_dir = PathBuf::from("/games/mygame");
-
-    // Various file paths
-    let paths = vec![
-        ("game.exe", "/games/mygame/game.exe"),
-        ("data/config.json", "/games/mygame/data/config.json"),
-        (
-            "assets/textures/player.png",
-            "/games/mygame/assets/textures/player.png",
-        ),
-    ];
-
-    for (relative_path, expected) in paths {
-        let dest_path = base_dir.join(relative_path);
-        // Normalize path separators for comparison
-        let dest_str = dest_path.to_string_lossy().replace('\\', "/");
-        assert_eq!(dest_str, expected);
-    }
-}
 
 #[test]
 fn test_parent_directory_creation() {

@@ -45,6 +45,18 @@ impl DownloadManager {
         }
     }
 
+    /// Replace the limits a future batch will run under.
+    ///
+    /// A batch in flight captured the old values, so this only decides what the
+    /// next one gets; nothing already running is disturbed.
+    pub fn set_limits(&mut self, max_concurrent: usize, speed_limit: Option<u64>) {
+        self.max_concurrent = max_concurrent;
+        self.speed_limit = speed_limit;
+        self.rate_limiter = speed_limit
+            .filter(|l| *l > 0)
+            .map(|l| Arc::new(RateLimiter::new(l)));
+    }
+
     /// Download a single file with resume support and retries
     pub async fn download_file(
         &self,
@@ -132,8 +144,8 @@ impl DownloadManager {
         }
 
         let mut request = self.client.get(url);
-        if start_byte > 0 {
-            request = request.header("Range", format!("bytes={}-", start_byte));
+        if let Some(range) = resume_range(start_byte) {
+            request = request.header("Range", range);
         }
 
         if self.cancel_token.load(Ordering::Relaxed) {
@@ -504,6 +516,14 @@ impl From<DownloadError> for LauncherError {
             DownloadError::Task(s) => LauncherError::Other(s),
         }
     }
+}
+
+/// The Range header for a resume, or None when starting from zero.
+///
+/// A Range at 0 would make the server answer 200 with the whole file instead of
+/// 206, which is the one case a fresh download must not look like.
+pub fn resume_range(start_byte: u64) -> Option<String> {
+    (start_byte > 0).then(|| format!("bytes={}-", start_byte))
 }
 
 /// Progress calculation utilities
