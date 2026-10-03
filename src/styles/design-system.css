@@ -78,7 +78,11 @@ Component Design System
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25rem;
-  transition: all 0.15s ease;
+  transition:
+    transform var(--motion-press) var(--motion-ease-out),
+    background var(--motion-press) var(--motion-ease-out),
+    border-color var(--motion-press) var(--motion-ease-out),
+    color var(--motion-press) var(--motion-ease-out);
   cursor: pointer;
   border: none;
   background: transparent;
@@ -388,7 +392,14 @@ Component Design System
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    transform var(--motion-press) var(--motion-ease-out),
+    background var(--motion-press) var(--motion-ease-out),
+    color var(--motion-press) var(--motion-ease-out);
+}
+
+.icon-btn:active {
+  transform: scale(0.97);
 }
 
 .icon-btn:hover {
@@ -505,8 +516,13 @@ Component Design System
   justify-content: center;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    transform var(--motion-press) var(--motion-ease-out),
+    background var(--motion-press) var(--motion-ease-out),
+    color var(--motion-press) var(--motion-ease-out);
+}
+
+.topbar-btn:active {
+  transform: scale(0.97);
 }
 
 .topbar-btn-wide {
@@ -623,4 +639,14 @@ Component Design System
 
 .profile-menu-item:hover {
   background: var(--surface-hover);
+}
+
+/* Press feedback is a scale transform; under reduced motion it is dropped
+   outright rather than merely shortened. */
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled),
+  .topbar-btn:active,
+  .icon-btn:active {
+    transform: none;
+  }
 }

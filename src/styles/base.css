@@ -167,6 +167,13 @@
   --status-ok-muted: rgba(52, 211, 153, 0.12);
   --status-warn-muted: rgba(251, 191, 36, 0.12);
   --status-bad-muted: rgba(248, 113, 113, 0.12);
+
+  /* Motion tokens — one press and enter timing shared by every interactive
+     control, so press feedback is consistent and instant rather than a
+     per-component guess. */
+  --motion-press: 120ms;
+  --motion-enter: 220ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Pandawan Corp — Light Mode: Neutral Parchment */
