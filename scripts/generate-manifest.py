@@ -40,8 +40,13 @@ def compute_sha256(path: Path) -> str:
 
 # Path fragments excluded from every build. Unity emits a
 # "<Product>_BackUpThisFolder_ButDontShipItWithYourGame" folder that must never
-# be shipped; leaving it in would download dead weight on every install.
-DEFAULT_EXCLUDES = ("_BackUpThisFolder_ButDontShipItWithYourGame",)
+# be shipped; leaving it in would download dead weight on every install. The build
+# report is Unity's own diagnostics, written beside the build root, and is not part
+# of the game - shipping it puts Unity's internals in every player's install.
+DEFAULT_EXCLUDES = (
+    "_BackUpThisFolder_ButDontShipItWithYourGame",
+    "build-report-",
+)
 
 
 def collect_files(input_dir: Path, excludes: tuple[str, ...] = DEFAULT_EXCLUDES) -> list[tuple[Path, Path]]:
