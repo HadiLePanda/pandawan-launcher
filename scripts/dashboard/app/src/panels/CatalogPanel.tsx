@@ -56,13 +56,22 @@ import {
   TextInput,
 } from './ui';
 import { channelTone } from './channel-tone';
+import type { CatalogPlan } from '@/types/api';
 import { useArtworkObjects } from '@components/tabs/ArtworkTab';
 import { platformTone } from '@lib/platform-hue';
 import { usePublisherStream, verdictLine } from './usePublisherStream';
 
+/**
+ * The catalog response plus the publish plan, which is what makes the merge
+ * decision visible before the button is pressed. `plan` stays optional so a
+ * server that does not send one still renders - the same degrade-gracefully
+ * rule the rest of /api/catalog follows.
+ */
+type CatalogResponseWithPlan = CatalogResponse & { plan?: CatalogPlan };
+
 type Load =
   | { state: 'loading' }
-  | { state: 'ready'; data: CatalogResponse }
+  | { state: 'ready'; data: CatalogResponseWithPlan }
   | { state: 'error'; message: string };
 
 export default function CatalogPanel() {
@@ -79,7 +88,7 @@ export default function CatalogPanel() {
     // A refresh after an edit must not be served from the panel's own cache,
     // or the table would redraw showing the value it was just corrected for.
     // `refresh: true` becomes ?refresh=1, which the server honours.
-    const { data } = await apiGet<CatalogResponse>('/api/catalog', { refresh: true });
+    const { data } = await apiGet<CatalogResponseWithPlan>('/api/catalog', { refresh: true });
     return data;
   }, []);
 
@@ -207,6 +216,7 @@ export default function CatalogPanel() {
           {editing ? null : (
             <PublishCard
               diff={diff}
+              plan={load.data.plan}
               busy={publish.busy}
               dryRun={publishDryRun}
               onDryRunChange={setPublishDryRun}
@@ -492,14 +502,74 @@ function DiffColumn({
 
 // --- Publish --------------------------------------------------------------
 
+/** "1 game" / "2 games" - plain counts, read the way the sentence reads. */
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * The merge decision, above the publish control.
+ *
+ * Summarised from the publisher's own `publishPlan`, so what this says and what
+ * the script does cannot disagree. `cdnWins` is the load-bearing list: it is the
+ * edit that will NOT reach the launcher, because a live catalog entry is
+ * authoritative and only --force lets the local copy win. Everything is phrased
+ * prospectively - the plan is what pressing the button would do, and a dry run
+ * has changed nothing yet.
+ */
+function PublishPlanSummary({ plan }: { plan: CatalogPlan }) {
+  const { added, preserved, cdnWins, changed } = plan;
+
+  return (
+    <div className="mt-1 max-w-xl">
+      <p className="text-[12px] text-ink-subtle">
+        {changed
+          ? `Publish would add ${count(added.length, 'game')}, keep ${count(preserved.length, 'game')}, and ignore ${count(cdnWins.length, 'local edit')}.`
+          : cdnWins.length
+            ? `Publishing would change nothing; ${count(cdnWins.length, 'local edit')} would still be ignored.`
+            : 'Publishing would change nothing.'}
+      </p>
+
+      {cdnWins.length ? (
+        <div className="mt-2 rounded-md border border-border bg-canvas/40 p-2">
+          <p className="text-[12px] text-warn">
+            The live catalog wins for these games, so the local edits below will not reach the
+            launcher. Only <code className="font-mono">--force</code> would apply them, and that
+            overwrites the live values.
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1.5">
+            {cdnWins.map((entry) => (
+              <li key={entry.id} className="text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <FileWarning aria-hidden size={12} className="shrink-0 text-ember" />
+                  <code className="font-mono text-ink-muted">{entry.id}</code>
+                </div>
+                <ul className="mt-1 ml-5 flex flex-wrap gap-1">
+                  {entry.differs.map((field) => (
+                    <li key={field.field}>
+                      <Badge tone="warn">{labelForField(field.field)}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function PublishCard({
   diff,
+  plan,
   busy,
   dryRun,
   onDryRunChange,
   onPublish,
 }: {
   diff: CatalogDiff;
+  plan?: CatalogPlan;
   busy: boolean;
   dryRun: boolean;
   onDryRunChange: (value: boolean) => void;
@@ -514,10 +584,19 @@ function PublishCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-ink">Publish the catalog</h3>
-          <p className="mt-1 max-w-xl text-xs text-ink-muted">
-            Adds {willAdd}, keeps {willKeep}, leaves {willHold} as the CDN has them. Never removes a
-            game.
-          </p>
+          {/* The plan is the publisher's own merge, so it is the trustworthy
+              summary; the diff-derived line is only the fallback for a server
+              that does not send one. A dry run changes nothing server-side, and
+              the plan is phrased prospectively ("would add"), so it cannot read
+              as applied - the checkbox below still owns that distinction. */}
+          {plan ? (
+            <PublishPlanSummary plan={plan} />
+          ) : (
+            <p className="mt-1 max-w-xl text-xs text-ink-muted">
+              Adds {willAdd}, keeps {willKeep}, leaves {willHold} as the CDN has them. Never removes
+              a game.
+            </p>
+          )}
           <label className="mt-3 inline-flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"

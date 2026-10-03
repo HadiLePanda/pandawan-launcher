@@ -88,6 +88,45 @@ export interface CatalogPayload {
   lastUpdated?: string | null;
 }
 
+/**
+ * What a catalog publish would do, as `GET /api/catalog` reports it.
+ *
+ * Computed server-side by the publisher's own `publishPlan` (the same merge the
+ * script runs), so the panel cannot promise something the script would not do.
+ * Optional throughout the same way the rest of /api/catalog is: an older server
+ * that does not send a `plan` must still render.
+ */
+export interface CatalogPlanEntry {
+  id: string;
+  channel: string | null;
+}
+
+/** A field both documents carry with different values, under --force. */
+export interface CatalogPlanFieldDiff {
+  field: string;
+  cdn: unknown;
+  local: unknown;
+}
+
+/** A game the local file edits that the live catalog overrides. */
+export interface CatalogPlanConflict extends CatalogPlanEntry {
+  differs: CatalogPlanFieldDiff[];
+  cdnOnly: string[];
+}
+
+export interface CatalogPlan {
+  /** Games the local file would add to the live catalog. */
+  added: CatalogPlanEntry[];
+  /** Games kept because the local file omits them. */
+  preserved: CatalogPlanEntry[];
+  /** Local edits the live catalog wins, so they will not reach the launcher. */
+  cdnWins: CatalogPlanConflict[];
+  /** Local entries with no usable id; never merged. */
+  unusable: Array<{ id: null; channel: string | null }>;
+  /** Whether the upload would change anything at all. */
+  changed: boolean;
+}
+
 /** One field of a game's presentation, as /api/meta reports it. */
 export interface MetaField {
   label: string;
