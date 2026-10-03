@@ -145,11 +145,6 @@ export const CdnUrl = {
   news(): string {
     return `${CDN_ORIGIN}/launcher/news.json`;
   },
-
-  withCacheBust(url: string, bust: string = Date.now().toString()): string {
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}cb=${bust}`;
-  },
 };
 
 /**
