@@ -50,7 +50,7 @@ import { clearDraft, DRAFT_KEYS, readDraft, saveDraft, type DraftEnvelope } from
 import { parseScopeKey } from '@lib/games';
 import { useSession } from '@store/session';
 import type { StagedFile } from '@/types/api';
-import { ago } from './relativeTime';
+import { savedPhrase } from './relativeTime';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
 import {
@@ -237,7 +237,7 @@ export default function NewsPanel() {
             </p>
 
             {!items.length ? (
-              <EmptyState title="Nothing published yet" body="A new item starts here." />
+              <EmptyState title="Nothing published yet" children="A new item starts here." />
             ) : !shown.length ? (
               <EmptyState title="No item matches that filter" />
             ) : (
@@ -565,7 +565,7 @@ function NewsForm({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-ember/40 bg-ember/10 px-3 py-2 text-xs">
           <span className="text-ink">
             <strong className="font-semibold">Unpublished draft restored</strong> for {draft.target}
-            , saved {ago(draft.savedAt)}. It is not live.
+            , saved {savedPhrase(draft.savedAt)}. It is not live.
           </span>
           <Button
             size="sm"

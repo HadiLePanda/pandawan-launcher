@@ -49,4 +49,3 @@ export {
 } from './catalog-contract';
 export type { DevService } from './ServicesPanel';
 export type { NewsField, NewsItem } from './NewsPanel';
-export { ago } from './relativeTime';

@@ -106,10 +106,10 @@ export function Panel({
 /**
  * A dead end that says what to do next.
  *
- * A blank box is not an empty state. This is what the detail pane shows when
- * nothing is selected, and it names the action rather than only reporting the
- * absence - the old overview's "Nothing published yet" told the reader a fact
- * they already knew and nothing they could do about it.
+ * A blank box is not an empty state: it names the action rather than only
+ * reporting the absence. Recessed, not outlined - a dashed 1px edge was the
+ * loudest thing on a page with nothing on it, and the fill plus the copy already
+ * say "nothing here".
  */
 export function EmptyState({
   title,
@@ -121,10 +121,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-edge-strong px-5 py-10 text-center">
-      <strong className="text-sm font-semibold text-ink">{title}</strong>
-      {children && <p className="m-0 max-w-md text-[12.5px] text-ink-subtle">{children}</p>}
-      {action && <div className="mt-2">{action}</div>}
+    <div className="flex flex-col items-center gap-2 rounded-lg bg-inset/60 px-4 py-8 text-center">
+      <p className="m-0 text-sm font-medium text-ink">{title}</p>
+      {children ? <div className="max-w-prose text-xs text-ink-muted">{children}</div> : null}
+      {action}
     </div>
   );
 }

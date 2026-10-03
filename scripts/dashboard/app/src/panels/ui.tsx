@@ -209,28 +209,10 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
   );
 }
 
-export function EmptyState({
-  title,
-  body,
-  action,
-}: {
-  title: string;
-  body?: ReactNode;
-  action?: ReactNode;
-}) {
-  // Recessed, not outlined. A dashed 1px edge was the loudest thing on a page
-  // that has nothing in it yet, and "there is nothing here" is said by the
-  // recessed fill plus the copy. `--color-inset` is darker than canvas on
-  // purpose - the same treatment as the log well, because an empty state and a
-  // terminal are both places with nothing to show.
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-lg bg-inset/60 px-4 py-8 text-center">
-      <p className="text-sm font-medium text-ink">{title}</p>
-      {body ? <div className="max-w-prose text-xs text-ink-muted">{body}</div> : null}
-      {action}
-    </div>
-  );
-}
+// Re-exported from the shared library rather than kept as a second copy: two
+// empty states that render differently is exactly the drift this file was meant
+// to be a temporary bridge for.
+export { EmptyState } from '@components/ui';
 
 export function ErrorNote({ children }: { children: ReactNode }) {
   return (

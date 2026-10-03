@@ -1,12 +1,12 @@
 /**
  * "3 minutes ago", for the restored-draft banner.
  *
- * One implementation rather than a per-panel copy, because the drafts in this
- * directory have to agree on how they describe their own age: a banner that said
- * "just now" in one panel and a raw timestamp in another would read as two
- * different systems.
+ * Named for that banner rather than `ago`: lib/format.ts also exports an `ago`,
+ * which takes an ISO string and reads "2m ago". Two functions sharing a name
+ * with different inputs and different output is how a timestamp ends up
+ * rendering as "NaNm ago".
  */
-export function ago(epochMs: number): string {
+export function savedPhrase(epochMs: number): string {
   const seconds = Math.max(0, Math.round((Date.now() - epochMs) / 1000));
   if (seconds < 60) return 'just now';
   const minutes = Math.round(seconds / 60);

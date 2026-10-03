@@ -240,7 +240,7 @@ function CatalogTable({
     return (
       <EmptyState
         title="The live catalog has no games"
-        body="Nothing is published for the launcher to list yet. Add an entry, or publish the local catalog.json."
+        children="Nothing is published for the launcher to list yet. Add an entry, or publish the local catalog.json."
       />
     );
   }
