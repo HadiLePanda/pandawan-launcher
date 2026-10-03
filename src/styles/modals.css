@@ -204,11 +204,15 @@
 .install-path-row .install-path-box {
   flex: 1 1 100%;
   min-width: 0;
-  /* One line that scrolls, not one that wraps: a wrapped path in a narrow column
-     grew the row and pushed the controls out of the panel. */
+  /* One line cut with an ellipsis, not scrolled and not wrapped: the full path is
+     in the tooltip and one click from the copy button, and a scrollbar under a
+     path reads as a broken field. */
   white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Sized like the controls in the column beside it. The base rule's 1.5rem side
+     padding made this box taller and wider than the selects below it. */
+  padding: 0.5rem 0.75rem;
   line-height: 1.5;
 }
 
