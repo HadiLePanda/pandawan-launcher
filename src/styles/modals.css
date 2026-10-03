@@ -171,7 +171,11 @@
 
 /* ----- Settings ----- */
 .setting-control {
-  flex: 1;
+  /* A fixed basis, not `flex: 1`: a growing basis lets each control size itself,
+     which is why the path field started further left than the selects below it.
+     One width for the column is what makes every row align. */
+  flex: 0 1 340px;
+  width: 340px;
   max-width: 340px;
   display: flex;
   align-items: center;
