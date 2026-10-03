@@ -64,9 +64,12 @@ echo Press Ctrl+C to stop, or just close this window.
 echo.
 
 REM Open the browser once the server answers instead of after a fixed delay, so
-REM the tab does not land on a connection error on a slow start.
+REM the tab does not land on a connection error on a slow start. The probe is
+REM GATED (if not errorlevel 1) and the exit is inside it: chaining both with a
+REM bare & threw the probe result away, opened the tab on the first iteration and
+REM then exited, so the loop never actually retried.
 start "website browser" /min cmd /c ^
-  "for /l %%n in (1,1,60) do @(ping -n 2 127.0.0.1 >nul ^& netstat -ano ^| findstr :%PORT% ^| findstr LISTENING >nul ^& start "" http://127.0.0.1:%PORT% ^& exit /b)"
+  "for /l %%n in (1,1,60) do @(ping -n 2 127.0.0.1 >nul & netstat -ano ^| findstr :%PORT% ^| findstr LISTENING >nul & if not errorlevel 1 (start "" http://127.0.0.1:%PORT% & exit /b))"
 
 call npm run dev
 

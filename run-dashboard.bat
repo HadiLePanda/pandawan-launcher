@@ -81,9 +81,10 @@ echo.
 
 REM Open the browser once the server answers rather than after a fixed delay: a
 REM sleep races the startup on a slow machine and lands on a connection error.
-REM This runs alongside the server in a window that closes itself when done.
+REM The probe is GATED and the exit sits inside it; chaining both with a bare &
+REM discarded the probe result, opened on iteration 1 and then exited.
 start "dashboard browser" /min cmd /c ^
-  "for /l %%n in (1,1,60) do @(ping -n 2 127.0.0.1 >nul ^& netstat -ano ^| findstr :%PORT% ^| findstr LISTENING >nul ^& start "" http://127.0.0.1:%PORT% ^& exit /b)"
+  "for /l %%n in (1,1,60) do @(ping -n 2 127.0.0.1 >nul & netstat -ano ^| findstr :%PORT% ^| findstr LISTENING >nul & if not errorlevel 1 (start "" http://127.0.0.1:%PORT% & exit /b))"
 
 REM Run node in this window, in the foreground, exactly as run-launcher.bat runs the
 REM launcher. That is what makes closing the window stop the server: node is a
