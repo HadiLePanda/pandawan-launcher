@@ -2,10 +2,10 @@
  * Channel -> colour, in one place.
  *
  * A channel is shown in the catalog table, the game rail and the game header.
- * With the class list hand-written at each of those three call sites there were
- * three chances for alpha to be violet in one place and something else in
- * another, and that drift is invisible until someone notices the same channel
- * wearing two colours on one screen. Nobody hand-writes a colour here any more.
+ * With the class list hand-written at each call site there were three chances
+ * for alpha to be violet in one place and something else in another, and that
+ * drift is invisible until someone notices the same channel wearing two colours
+ * on one screen. Nobody hand-writes a colour here any more.
  *
  * It lives outside ui.tsx for the same reason cx.ts does:
  * eslint-plugin-react-refresh warns on any file exporting both components and
@@ -63,9 +63,4 @@ export function channelTone(channel: string | null | undefined): string {
 /** The classes for a channel, for a plain chip that is not a Badge. */
 export function channelToneClasses(channel: string | null | undefined): string {
   return TONE[channelTone(channel)]!;
-}
-
-/** True when this channel has its own identity colour rather than the fallback. */
-export function isKnownChannel(channel: string | null | undefined): boolean {
-  return channelTone(channel) !== 'unknown';
 }

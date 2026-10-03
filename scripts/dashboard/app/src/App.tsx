@@ -2,11 +2,10 @@
  * The shell.
  *
  * One rail, and it is the navigation: SectionRail holds the brand and the five
- * sections, and nothing else. There is no top bar. What that rail does NOT hold
- * is the game list - the list was under Games in the rail and crowded the five
- * sections out of its own budget, so it now lives on the Games page as a column
- * beside the detail it selects. The rail is always present, so the content to
- * its right never moves, whatever the section is.
+ * sections, and nothing else. There is no top bar. The game list is NOT in the
+ * rail - it lives on the Games page as a column beside the detail it selects, so
+ * the five sections are never crowded out of their own budget. The rail is always
+ * present, so the content to its right never moves.
  *
  * So Games is the only section with more than one column, and the only one that
  * requires a selection:
@@ -14,27 +13,15 @@
  *   [rail] [game list] [detail]     <- Games
  *   [rail] [detail]                 <- every other section, full width
  *
- * Nothing is reserved for the list on the other four. A launcher publish and a
- * website deploy have nothing to do with whichever game happens to be selected,
- * so their pages must not read as though they did.
- *
- * The five sections, and what each one is:
- *
- *   Games    five tabs, all about the game picked in the list on that page. The
- *            only section that requires a selection.
- *   Launcher the app's own releases plus the game catalog it ships with, as two
- *            sub-sections.
- *   Website  the public site, a separate repository.
- *   Services the local dev servers.
- *   Commands the command reference.
+ * A launcher publish and a website deploy have nothing to do with whichever game
+ * happens to be selected, so their pages must not read as though they did.
  *
  * Full height, no page scroll - it is a tool someone stares at while working.
  * The list and the detail scroll independently of each other.
  *
  * Data is loaded once on mount and then only on an explicit Refresh. There is no
- * polling and no background revalidation, and that is a decision rather than an
- * omission: a silent refresh would replace the values someone is halfway through
- * reviewing a diff against, which is the one thing this tool must never do.
+ * polling and no background revalidation: a silent refresh would replace the
+ * values someone is halfway through reviewing a diff against.
  */
 
 import { useCallback, useEffect, useMemo } from 'react';
@@ -58,8 +45,6 @@ export function App() {
   const loadCatalog = useServer((state) => state.loadCatalog);
 
   const section = useSession((state) => state.section);
-  // setSection is no longer read here: the rail calls it, and the only reason the
-  // shell ever needed it was to hand it to the bar it no longer renders.
   const syncSectionFromHash = useSession((state) => state.syncSectionFromHash);
   const reconcile = useSession((state) => state.reconcile);
 

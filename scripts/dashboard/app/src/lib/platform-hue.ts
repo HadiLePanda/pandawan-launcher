@@ -1,10 +1,9 @@
 /**
  * The platform hue, defined once.
  *
- * The same map had been kept privately in the game header, the website panel and
- * (missing entirely) the catalog chips, which is how the catalog's platform column
- * ended up rendering every platform in the neutral chip while the palette note
- * beside the tokens says a platform is an outlined chip carrying its hue.
+ * A platform chip carries its hue, via `platformTone` for a Badge or
+ * `platformHue`/`platformDot` for a plain chip and swatch. Keeping the maps here
+ * is what stops the same platform wearing two colours on one screen.
  *
  * Its own module rather than a component file: a module that exports both
  * components and plain functions stops fast refresh working (the same reason `cx`

@@ -1,10 +1,9 @@
 /**
- * The News editor, ported from the old scripts/dashboard/app.js.
+ * The News editor.
  *
- * Ported behaviour that is load-bearing, and why:
+ * Load-bearing behaviours, and why:
  *
- *   - Master-detail. The id is never typed; items are picked from the list. Typing
- *     an id that does not exist is the failure mode this UI exists to remove - a
+ *   - Master-detail. The id is never typed; items are picked from the list. A
  *     client-chosen id can collide with a published item and merge two
  *     announcements, so ids for a create are derived server-side by
  *     `uniqueNewsId` against the ids actually published.
@@ -13,26 +12,24 @@
  *     `{ items, categories, fields }`; `fields` is an array of
  *     `{ flag, label, long? }` taken from scripts/lib/news-fields.mjs. The form
  *     renders from that array, so a field renamed server-side cannot leave a
- *     stale hand-typed input behind. This is the whole reason the list is not a
- *     local constant.
+ *     stale hand-typed input behind.
  *
  *   - Only changed fields are sent on an update. The publisher reads an absent
  *     field as "leave it alone", so sending the whole form would blank every
  *     optional field nobody touched. A create sends everything.
  *
  *   - The array order IS display order, so reordering is a property of the ITEM,
- *     not of the form: the up/down arrows sit on the list row, and are disabled
- *     at the ends rather than no-opping. They used to live in the form footer,
- *     which made order a property of whichever item happened to be open.
+ *     not of the form: the up/down arrows sit on the list row and are disabled at
+ *     the ends rather than no-opping.
  *
  *   - Category is a select over the categories the response supplies, with an
  *     explicit escape for an invented one: news-service.ts validates an item on
  *     `id` and `title` alone, so rejecting a category the operator made up would
  *     be the dashboard enforcing a rule the launcher does not have.
  *
- *   - Dry run is the default and is never auto-unticked. A dry run KEEPS the
- *     draft; only a real publish consumes it. It lives on the PANEL, because a
- *     reorder from the list has to pass the same gate as a publish from a form.
+ *   - Dry run is the default and is never auto-unticked. It lives on the PANEL,
+ *     because a reorder from the list has to pass the same gate as a publish from
+ *     a form.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -45,12 +42,13 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { apiGet, apiPost } from '@/lib/api';
+import { apiGet, apiPost, messageOf } from '@/lib/api';
 import { clearDraft, DRAFT_KEYS, readDraft, saveDraft, type DraftEnvelope } from '@lib/storage';
 import { parseScopeKey } from '@lib/games';
+import { savedPhrase } from '@lib/format';
+import { fileToBase64 } from '@lib/artwork';
 import { useSession } from '@store/session';
 import type { StagedFile } from '@/types/api';
-import { savedPhrase } from './relativeTime';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
 import {
@@ -425,18 +423,13 @@ function NewsForm({
   const isNew = item === null;
   const draftKey = DRAFT_KEYS.news(item?.id ?? null);
 
-  // Restore a stored draft for exactly this item, read once rather than set
-  // after the first paint. It used to be an effect, which meant the form painted
-  // once showing the published values with no draft note and then painted again
-  // with the draft laid over them - a second render that exists only to undo the
-  // first. Reading it during the first render gives the same result with none of
-  // that: the restored values ARE the initial values.
+  // Restore a stored draft for exactly this item, read once during the first
+  // render rather than set after the first paint: the restored values ARE the
+  // initial values, so there is no second render undoing the first.
   //
   // This is only correct because there is one selection per MOUNT. `key` on the
   // parent is `selected`, so choosing a different item remounts this component and
-  // the read happens again for the new item. That remount is also what makes the
-  // old effect's `draftKey` dependency sound; it is what guarantees `draftKey`
-  // cannot change under a live component here.
+  // the read happens again for the new item.
   const [draft, setDraft] = useState<DraftEnvelope | null>(() => {
     const stored = readDraft(draftKey);
     if (stored?.values && typeof stored.values === 'object') return stored;
@@ -693,9 +686,8 @@ function NewsForm({
           <Save aria-hidden size={13} />
         </Button>
 
-        {/* Delete is the only remaining verb here. Reordering moved to the list
-            rows because order belongs to the item, not to the open form, and
-            there is nothing to "go back" to: the list stays beside this form. */}
+        {/* Delete is the only remaining verb here: order belongs to the item,
+            not to the open form. */}
         <Button
           variant="danger"
           onClick={() =>
@@ -963,29 +955,4 @@ function ImageControl({
       </div>
     </div>
   );
-}
-
-/** A File as base64, without assuming a promise-typed Buffer. */
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onerror = () => resolve('');
-    reader.onload = () => {
-      // ReadAsDataURL yields "data:image/png;base64,...."; the server wants the
-      // payload alone, and trusting a client-supplied MIME type would defeat the
-      // extension check it performs.
-      resolve(String(reader.result ?? '').split(',')[1] ?? '');
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null) {
-    const record = err as { message?: unknown; error?: unknown };
-    if (typeof record.message === 'string') return record.message;
-    if (typeof record.error === 'string') return record.error;
-  }
-  return String(err);
 }

@@ -1,22 +1,19 @@
 /**
  * One publisher stream, one implementation, for every destructive verb here.
  *
- * This is a thin React binding over `streamScript` in @lib/api, which already
- * handles the SSE frame format. It adds the three things a React caller needs
- * and the raw function cannot give it:
+ * A thin React binding over `streamScript` in @lib/api, which handles the SSE
+ * frame format. It adds what a React caller needs and the raw function cannot:
  *
  *   - the log as state, so it re-renders as the publisher writes,
- *   - a verdict that is separate from the log text. `done` carries the child's
- *     exit code and THAT decides success. The old client read only `output`, so a
- *     publisher that exited non-zero rendered a log that simply stopped
- *     mid-sentence and looked identical to a success - which was a real bug,
- *     because every destructive verb in this tool funnels through here,
+ *   - a verdict separate from the log text. `done` carries the child's exit code
+ *     and THAT decides success, so a publisher that exited non-zero can never
+ *     render as a success just because the log happened to stop,
  *   - a refusal of a second concurrent run. Two publishers writing to the same
  *     bucket with interleaved logs would be worse than a disabled button.
  *
- * Note that streamScript already appends its own verdict lines to the output it
- * reports, so the log on screen always ends on an explicit answer. The verdict
- * object here is for the coloured line above it and for the success check.
+ * `streamScript` already appends its own verdict lines to the output, so the log
+ * on screen always ends on an explicit answer. The verdict object here is for the
+ * coloured line above it and for the success check.
  */
 import { useCallback, useRef, useState } from 'react';
 import { streamScript } from '@/lib/api';

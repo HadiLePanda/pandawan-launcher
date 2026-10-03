@@ -1,12 +1,12 @@
 /**
- * Panel chrome and form controls: Button, Card, Badge, Field, Spinner, TextArea,
- * TextInput, ErrorNote, GlobalPanel.
+ * Panel chrome and form controls for FULL-PAGE panels: Button, Card, Badge,
+ * Field, Spinner, TextArea, TextInput, ErrorNote, GlobalPanel.
  *
- * A sibling of ../components/ui, not a copy of it. The two export sets are
- * disjoint on purpose: components/ui holds what a GAME TAB is built from (Panel,
- * Section, ActionRow, Log, DirtyBar, DataAge, the status and error lines), and this
- * holds what a FULL-PAGE PANEL is built from. The single component both needed was
- * EmptyState, which is re-exported below rather than reimplemented here.
+ * A sibling of ../components/ui, not a copy: that module holds what a GAME TAB
+ * is built from, this holds what a full-page panel is built from. The export sets
+ * are disjoint on purpose. The one component both need - EmptyState - is
+ * re-exported below from the shared module rather than reimplemented, so there is
+ * a single empty state.
  *
  * Styled from the project's own theme tokens, so moving something between the two
  * modules is a change of import path rather than a rewrite.
@@ -80,17 +80,14 @@ export function Button({
 /**
  * A large flat panel. Reads by its FILL against the canvas, not by an outline.
  *
- * This is the "services, commands" shape the user was complaining about, and the
- * border was doing the work the fill should have been doing. `surface` against
- * `canvas` is 1.16:1 - a real step, visible without being loud - so the panel
- * separates on its own and the 1px line is not needed to find its edge.
+ * `surface` against `canvas` is a real step, visible without being loud, so the
+ * panel separates on its own and the 1px line is not needed to find its edge.
  *
  * The border stays as a fallback for callers that override className with their
  * own border colour, which is the correct way to say "this boundary means
  * something" (see the danger and editor panels in CatalogPanel). Callers that
- * add a plain `border-*` class here must name a token: an uncoloured
- * `border-border` was the original bug, but any bare `border` inherits
- * currentColor and reintroduces it.
+ * add a plain `border-*` class here must name a token: a bare `border` inherits
+ * currentColor, which renders near-white on this canvas.
  */
 export function Card({
   className,
@@ -217,9 +214,8 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
   );
 }
 
-// Re-exported from the shared library rather than kept as a second copy: two
-// empty states that render differently is exactly the drift this file was meant
-// to be a temporary bridge for.
+// Re-exported from the shared module rather than kept as a second copy, so there
+// is exactly one empty state and it renders the same everywhere.
 export { EmptyState } from '@components/ui';
 
 export function ErrorNote({ children }: { children: ReactNode }) {
@@ -234,7 +230,7 @@ export function ErrorNote({ children }: { children: ReactNode }) {
 }
 
 /**
- * A heading row used to make a global panel read as not-game-scoped.
+ * A heading row that makes a global panel read as not-game-scoped.
  *
  * Every panel in this directory is global: it does not act on the game selected
  * in the rail. That distinction is invisible in markup, so it is stated in the

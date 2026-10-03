@@ -1,16 +1,13 @@
 /**
  * The catalog field contract, mirrored from scripts/lib/metadata-fields.mjs.
  *
- * The browser cannot import the .mjs module (it is served, not bundled from
- * node_modules), so this file is a deliberate copy rather than an invention. It
- * is a copy with the same discipline the news field contract uses, which is why
- * the news one *travels in the response* instead: /api/news returns `fields`
- * because news-fields.mjs is the publisher's contract. For the catalog the
- * endpoints that exist return game documents rather than a field list, so the
- * list is pinned here.
+ * The browser cannot import the .mjs module (it holds R2 credentials and uses
+ * `node:` imports), so this is a deliberate copy rather than an invention. The
+ * news equivalent travels in the /api/news response instead, because that
+ * endpoint returns a field list; the catalog endpoints return game documents, so
+ * the list has to be pinned here.
  *
- * Two properties are asserted by the comment above each entry and must be kept
- * in step with the .mjs file:
+ * Two properties must be kept in step with the .mjs file:
  *
  *   - `flag` is the CLI option (`--icon-url`), the name the publish payload uses,
  *     and `catalog` is the key it lands on in catalog.json. They are not the
@@ -19,15 +16,8 @@
  *     comma-separated string, and the publisher refuses to clear one (an empty
  *     comma list cannot express "no genres").
  *
- * A divergent copy here would offer a field the publisher silently ignores, which
- * is exactly the failure the contract module exists to prevent. If a field is
- * added in metadata-fields.mjs, add it here in the same position.
- *
- * The channel and platform lists are NOT duplicated: they are imported from
- * @types/api, which already carries them as the app-wide source of truth. Only
- * the field list has to be pinned here, because the catalog GET endpoint returns
- * game documents and carries no field list with it (the news endpoint does, which
- * is why the news form renders from the response).
+ * A divergent copy here would offer a field the publisher silently ignores. If a
+ * field is added in metadata-fields.mjs, add it here in the same position.
  */
 import {
   KNOWN_CHANNELS,
@@ -81,10 +71,7 @@ export const PLATFORMS = PLATFORMS_SHARED;
  * One entry in catalog.json.
  *
  * Re-exported from @types/api rather than redeclared, so the panel and the
- * shared wire types cannot disagree about which fields a catalog entry has. The
- * index signature is gone on purpose: the diff reports fields by name and a
- * hand-added CDN key must be renderable, which it is through the `fields`
- * string list, not through an `unknown` catch-all on every entry.
+ * shared wire types cannot disagree about which fields a catalog entry has.
  */
 export type CatalogGame = CatalogEntry;
 
@@ -116,11 +103,6 @@ export interface CatalogResponse {
   localError?: string;
 }
 
-/** The wire name of a catalog field's flag, e.g. `icon-url`. */
-export function fieldByFlag(flag: string): CatalogField | undefined {
-  return CATALOG_FIELDS.find((field) => field.flag === flag);
-}
-
 /** The human label for a diff field name, falling back to the raw key. */
 export function labelForField(key: string): string {
   return CATALOG_FIELDS.find((field) => field.catalog === key)?.label ?? key;
@@ -135,7 +117,7 @@ export function splitList(value: unknown): string[] {
     .filter(Boolean);
 }
 
-export function joinList(value: unknown): string {
+function joinList(value: unknown): string {
   return splitList(value).join(', ');
 }
 
@@ -150,31 +132,6 @@ export function gameToFields(game: CatalogGame | null | undefined): Record<strin
     out[field.flag] = field.list ? joinList(raw) : String(raw ?? '');
   }
   return out;
-}
-
-/**
- * Form values back into a catalog entry, omitting anything emptied.
- *
- * An emptied optional field is dropped rather than written as "": the launcher
- * tests truthiness, and "" would be indistinguishable from absent but larger - the
- * same reasoning fieldsToNewsItem() applies on the news side.
- */
-export function fieldsToGame(
-  id: string,
-  channel: string,
-  values: Record<string, string>
-): CatalogGame {
-  const game: CatalogGame = { id: String(id).trim(), channel: channel.trim() };
-  for (const field of CATALOG_FIELDS) {
-    const text = String(values[field.flag] ?? '').trim();
-    if (!text) continue;
-    // Same narrowing as gameToFields: the write is by contract key, and a key
-    // outside the contract is skipped rather than smuggled onto the entry.
-    (game as unknown as Record<string, unknown>)[field.catalog] = field.list
-      ? splitList(text)
-      : text;
-  }
-  return game;
 }
 
 /**

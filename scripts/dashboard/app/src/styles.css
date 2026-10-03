@@ -128,25 +128,16 @@
   --color-danger: #f87171;
 
   /* ---------------------------------------------------------------------------
-     Aliases for names used in the panel sources but absent from this palette.
+     Aliases for token names the panels use that are not otherwise in this palette.
 
-     These six were invented when the panels were written against a different
-     token set, and nothing here defined them. Because Tailwind v4 only emits a
-     utility when its token exists, every `bg-surface-light`, `text-ink-dim`,
-     `text-status-error`, `text-ember`, `bg-action` and `bg-action-hover` in the
-     panel sources produced NO CSS AT ALL - not a wrong colour, no rule. That
-     silently unstyled whole primitives: the error and success colours vanished,
-     so a FAILED publish and a SUCCESSFUL one both rendered in the default, which
-     is the bug the panels' own comments kept warning about.
+     Tailwind v4 only emits a utility when its token exists, so a class naming a
+     missing token produces NO CSS AT ALL - not a wrong colour, no rule. That is
+     how an unstyled control ships with a clean build: a FAILED publish and a
+     SUCCESSFUL one both render in the default.
 
-     Declared as aliases rather than editing ~100 call sites, so there is one
-     palette and the panels converge on it. Each maps to the token it was clearly
-     reaching for; `ember` and `ink-dim` had no exact counterpart and take the
-     nearest above.
-
-     If you add a colour, add it HERE. A token used in a component but missing
-     from this block fails silently - that is what happened here for however long
-     these panels shipped looking like unstyled slabs.
+     If you add a colour, add it HERE, not in a call site. Each alias maps to the
+     token the call site clearly reaches for; `ember` and `ink-dim` have no exact
+     counterpart and take the nearest above.
      --------------------------------------------------------------------------- */
   --color-action: var(--color-accent);
   --color-action-hover: var(--color-accent-hover);
@@ -156,20 +147,13 @@
   --color-ember: var(--color-danger);
   --color-status-error: var(--color-danger);
 
-  /* `border` was the seventh instance of the same bug, and the reason the panels
-     read as a white outline on a dark canvas. Every `border border-border` in
-     these panels produced `border-width:1px` with NO `border-color` at all, and
-     Tailwind v4's preflight sets `border: 0 solid` - solid with the colour
-     keyword's default, which is currentColor. Inside a panel the colour is
-     inherited from the page, --color-ink #eef1f4, so each of those 1px borders
-     rendered at near-white: a bright outline around a panel that is a fraction
-     lighter than the canvas behind it.
-
-     That is exactly the complaint ("white outline and black, hardly readable")
-     and exactly the failure mode the paragraph above warns about: no error, no
-     warning, a clean build, and a page that looks wrong. It is aliased here
-     rather than rewritten at ~20 call sites so there is one palette and the
-     call sites converge on it.
+  /* `border` is the same failure mode once more, and the reason a panel would read
+     as a white outline on a dark canvas. Every `border border-border` produced
+     `border-width:1px` with NO `border-color`, and Tailwind v4's preflight sets
+     `border: 0 solid` - solid with the colour keyword's default, currentColor.
+     Inside a panel that inherits --color-ink #eef1f4, so a 1px border renders
+     near-white: a bright outline around a panel a fraction lighter than the
+     canvas behind it.
 
      It maps to --color-edge, the same hairline the shared primitives use. If a
      boundary genuinely carries meaning - a danger panel, a focused or selected

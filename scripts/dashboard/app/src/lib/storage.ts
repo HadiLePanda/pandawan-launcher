@@ -1,11 +1,9 @@
 /**
  * Draft persistence.
  *
- * Half-finished edits used to live only in the inputs, so a reload - or a crash,
- * or an accidental tab close - lost them silently. Each editor keeps its
- * in-progress values under a key that names the TARGET being edited, because a
- * draft for one game is a lie on another and one shared key would restore an
- * edit into the wrong form.
+ * Each editor keeps its in-progress values under a key that names the TARGET
+ * being edited, because a draft for one game is a lie on another and one shared
+ * key would restore an edit into the wrong form.
  *
  * The keys are built here and nowhere else, so "what does this page remember" is
  * one grep. Every draft is an envelope (savedAt, target, values) rather than a
@@ -18,12 +16,6 @@
 export const DRAFT_KEYS = {
   meta: (gameId: string, channel: string) => `pandawan.draft.meta.${gameId}.${channel || 'alpha'}`,
   news: (itemId: string | null) => `pandawan.draft.news.${itemId || 'new'}`,
-} as const;
-
-/** Prefixes for the resume scan, which walks every key rather than a known list. */
-export const DRAFT_SCAN = {
-  meta: 'pandawan.draft.meta.',
-  news: 'pandawan.draft.news.',
 } as const;
 
 /** The selection and last-open-tab keys. Session state, not a draft. */
@@ -76,22 +68,6 @@ export function removeRaw(key: string): void {
   }
 }
 
-function keyCount(): number {
-  try {
-    return window.localStorage.length;
-  } catch {
-    return 0;
-  }
-}
-
-function keyAt(index: number): string | null {
-  try {
-    return window.localStorage.key(index);
-  } catch {
-    return null;
-  }
-}
-
 /** Read one draft envelope, or null when absent, unparseable or wrong-shaped. */
 export function readDraft(key: string): DraftEnvelope | null {
   const raw = readRaw(key);
@@ -112,30 +88,6 @@ export function readDraft(key: string): DraftEnvelope | null {
   } catch {
     return null;
   }
-}
-
-/**
- * The most recently saved draft under a prefix.
- *
- * A reload has to land on the edit that was in progress, and which one that was
- * is only knowable by timestamp: there is no "current" key, because the whole
- * point is that a draft for a game nobody has opened yet is still there.
- */
-export function newestDraft(prefix: string): DraftEnvelope | null {
-  let best: DraftEnvelope | null = null;
-  let bestAt = -Infinity;
-  const total = keyCount();
-  for (let i = 0; i < total; i++) {
-    const key = keyAt(i);
-    if (!key || !key.startsWith(prefix)) continue;
-    const draft = readDraft(key);
-    const at = Number(draft?.savedAt ?? 0);
-    if (draft && at > bestAt) {
-      best = draft;
-      bestAt = at;
-    }
-  }
-  return best;
 }
 
 /** Save a draft, or clear it when there is nothing left to remember. */

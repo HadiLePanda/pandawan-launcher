@@ -1,10 +1,9 @@
 /**
- * The copyable command reference, ported from the old app.js COMMANDS array.
+ * The copyable command reference.
  *
  * Held as data rather than prose so each entry stays next to the description of
  * what it does, and each names the npm script the forms in this dashboard mirror.
- * Global, like every panel in this directory: it is a reference, not an action
- * against a selection.
+ * Global: it is a reference, not an action against a selection.
  */
 import { useMemo, useState } from 'react';
 import { Check, Copy, Search } from 'lucide-react';

@@ -1,11 +1,9 @@
 /**
- * The local dev-server list, ported from the old app.js renderServices().
+ * The local dev-server list.
  *
- * The subtlety this panel has to get right, documented in AGENTS.md and load
- * bearing here: a service with a `bat` field is OPENED in its own console window,
- * not spawned. The server captures no output from it, `stop()` cannot kill it (it
- * only stops offering to reopen one), and its log is not on this page - ever. So
- * this panel:
+ * A service with a `bat` field is OPENED in its own console window, not spawned.
+ * The server captures no output from it, `stop()` cannot kill it (it only stops
+ * offering to reopen one), and its log is not on this page - ever. So this panel:
  *
  *   - never renders a log box for one, because it would never receive anything,
  *   - says where the output actually is, rather than leaving a user hunting for a
@@ -17,15 +15,14 @@
  * the port rather than a pid of ours. That is offered separately and labelled as
  * what it is.
  *
- * The poll interval is 10 seconds, not the 3 the old client used: these are dev
- * servers that take minutes to come up, and a 3-second poll was mostly a way of
- * making the dashboard itself feel busy. The poll reads through the server's
- * 30-second cache, so the header shows the AGE of the reading rather than a
- * claim that it was just taken; only a manual Refresh forces a live probe.
+ * The poll interval is 10 seconds: these are dev servers that take minutes to
+ * come up, and the poll reads through the server's 30-second cache, so the header
+ * shows the AGE of the reading rather than a claim that it was just taken. Only a
+ * manual Refresh forces a live probe.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, Play, RefreshCw, Square } from 'lucide-react';
-import { apiGet, type CacheState } from '@/lib/api';
+import { apiGet, messageOf, type CacheState } from '@/lib/api';
 import type { ServiceStatus } from '@/types/api';
 import { DataAge } from '@components/ui';
 import { cx } from './cx';
@@ -211,9 +208,8 @@ function ServiceRow({
   onAct: (endpoint: string) => void;
 }) {
   const state = stateOf(service);
-  // `bg-blue` was an undefined token, so the external dot emitted no CSS at all
-  // and rendered invisible. ink-muted (a step lighter than ink-subtle, which
-  // "stopped" uses) is a token that exists and keeps the two grey states apart.
+  // ink-muted (a step lighter than the ink-subtle "stopped" uses) is a real
+  // token; an undefined colour like `bg-blue` emits no CSS and renders invisible.
   const dot =
     state === 'running'
       ? 'bg-action'
@@ -371,14 +367,4 @@ function ServiceRow({
       </div>
     </li>
   );
-}
-
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null) {
-    const record = err as { message?: unknown; error?: unknown };
-    if (typeof record.message === 'string') return record.message;
-    if (typeof record.error === 'string') return record.error;
-  }
-  return String(err);
 }

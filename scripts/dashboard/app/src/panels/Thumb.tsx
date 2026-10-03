@@ -1,16 +1,14 @@
 /**
  * A thumbnail that renders whether or not the image behind it exists.
  *
- * The user's complaint this panel was built to answer was "the catalog doesn't
- * even show anything". A URL that 404s, or a relative path the dev server does
- * not serve, renders as a torn-image icon and a row that looks empty - which is
- * indistinguishable from the catalog genuinely being empty. So a failure here is
- * a visible placeholder tile with the reason in it, and the row around it always
- * renders its name and id.
+ * A URL that 404s, or a relative path the dev server does not serve, renders as
+ * a torn-image icon and a row that looks empty - indistinguishable from a
+ * genuinely empty catalog. So a failure here is a visible placeholder tile, and
+ * the row around it always renders its name and id.
  *
  * A protocol-relative or relative URL is resolved against the dashboard origin
- * rather than trusted: catalog.json holds `/placeholder-icon.svg` in this repo,
- * which resolves against the CDN in production but means nothing to the panel.
+ * rather than trusted: catalog.json holds `/placeholder-icon.svg`, which resolves
+ * against the CDN in production but means nothing to the panel.
  */
 import { useState } from 'react';
 import { ImageOff } from 'lucide-react';

@@ -149,10 +149,10 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
  *
  * The server answers with server-sent events, and only the `done` frame carries
  * the child's exit code. That distinction is load-bearing: a script that failed
- * to spawn and one that succeeded used to produce an identical page, which
- * matters because every destructive verb in this tool - publish, prune - comes
- * through here. `done` decides success, and a connection that dies before a
- * `done` is reported as a failure rather than silently treated as a no-op.
+ * to spawn and one that succeeded would otherwise produce an identical page, and
+ * every destructive verb in this tool - publish, prune - comes through here.
+ * `done` decides success, and a connection that dies before a `done` is reported
+ * as a failure rather than silently treated as a no-op.
  *
  * A validation error comes back as a plain string on purpose, so the non-SSE
  * branch has to surface that text rather than trying to parse frames from it.
@@ -170,7 +170,7 @@ export async function streamScript(
       body: JSON.stringify(body),
     });
   } catch (err) {
-    onOutput(`Could not reach the dashboard server: ${message(err)}\n`);
+    onOutput(`Could not reach the dashboard server: ${messageOf(err)}\n`);
     onOutput('FAILED - the request never started.\n');
     return null;
   }
@@ -242,6 +242,18 @@ export async function streamScript(
   return exitCode;
 }
 
-function message(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+/**
+ * A thrown value as a readable line.
+ *
+ * Covers the shapes a fetch or an apiPost can raise: an Error, or a plain object
+ * carrying `message`/`error` (the server answers some operator mistakes that way).
+ */
+export function messageOf(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null) {
+    const record = err as { message?: unknown; error?: unknown };
+    if (typeof record.message === 'string') return record.message;
+    if (typeof record.error === 'string') return record.error;
+  }
+  return String(err);
 }

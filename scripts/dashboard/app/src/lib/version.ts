@@ -1,16 +1,13 @@
 /**
  * Version comparison and next-version suggestions.
  *
- * Ported verbatim from app.js's `splitVersion` / `compareVersions` /
- * `newestVersion`, including the comment that explains why: a plain string sort
- * puts 0.4.10 before 0.4.9, so a lexicographic compare once named the OLDER build
- * as the newest one on the page. Everything that asks "which is newer" here goes
- * through these functions, because the metric card and the publish form's
- * suggestion disagreed about the same data when each had a private copy.
+ * A plain string sort puts 0.4.10 before 0.4.9, so a lexicographic compare
+ * silently names the OLDER build as the newest. Everything that asks "which is
+ * newer" goes through these functions.
  */
 
 /** Split a version into its numeric core and its prerelease suffix. */
-export function splitVersion(version: string | null | undefined): [number[], string] {
+function splitVersion(version: string | null | undefined): [number[], string] {
   const parts = String(version ?? '').split('-');
   const core = (parts.shift() ?? '').split('.').map((part) => {
     const n = Number(part);
@@ -54,11 +51,9 @@ export function newestVersion(versions: readonly (string | null | undefined)[]):
  * published yet: suggesting 0.1.0 for a game that has never shipped would be a
  * guess, and the operator's own CI version is the only source of that number.
  *
- * A prerelease is deliberately NOT carried forward. 0.4.0-alpha.2 becomes
- * 0.4.1, not 0.4.0-alpha.3 - the old logic only bumped when the core was
- * exactly three finite components, so a prerelease fell through and left the
- * field blank. That blank read as "nothing to suggest" on exactly the channel
- * where a suggestion is most useful.
+ * A prerelease is deliberately NOT carried forward: 0.4.0-alpha.2 becomes
+ * 0.4.1, because the bump applies to the numeric core. Carrying it would leave
+ * the field blank on exactly the channel where a suggestion is most useful.
  */
 export function suggestNextVersion(current: string | null | undefined): string {
   const [core] = splitVersion(current);

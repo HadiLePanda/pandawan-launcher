@@ -1,14 +1,18 @@
 /**
  * How a value is written, not what it is.
  *
- * The design rule this file exists to serve: show the value, don't label the
- * state. A version is the biggest thing in its cell, the build number is a
- * small qualifier, the age is a footnote - that ranking is set by size and
- * weight so no legend is needed to read the page. These functions return the
- * pieces at those sizes, and the components choose the element.
+ * Show the value, don't label the state: a version is the biggest thing in its
+ * cell, the build number a small qualifier, the age a footnote. These functions
+ * return the pieces at those sizes and the components choose the element.
  */
 
-/** "2m ago". Ported from app.js so ages read identically across both clients. */
+/**
+ * A compact age from an ISO timestamp: "2m ago".
+ *
+ * `savedPhrase` below takes epoch milliseconds and reads "3 minutes ago". The
+ * two are different formats for different places, so the input type is part of
+ * each name's contract - mixing them is how a timestamp renders as "NaNm ago".
+ */
 export function ago(iso: string | null | undefined): string {
   if (!iso) return '—';
   const then = new Date(iso).getTime();
@@ -23,7 +27,7 @@ export function ago(iso: string | null | undefined): string {
 }
 
 /** "2 minutes", for the data-age footnote in the header. */
-export function ageWords(ms: number | null): string | null {
+function ageWords(ms: number | null): string | null {
   if (ms === null || !Number.isFinite(ms)) return null;
   const mins = Math.round(ms / 60000);
   if (mins < 1) return 'just now';
@@ -51,6 +55,18 @@ export function savedAt(iso: number | null | undefined): string {
   return date.toLocaleString();
 }
 
+/** "3 minutes ago", from epoch milliseconds - the restored-draft banner. */
+export function savedPhrase(epochMs: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - epochMs) / 1000));
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
 /** The label a status dot carries. Colour alone fails for a colour-blind reader. */
 export const STATUS_TEXT: Record<'synced' | 'drifted' | 'empty', string> = {
   synced: 'in sync',
@@ -61,14 +77,6 @@ export const STATUS_TEXT: Record<'synced' | 'drifted' | 'empty', string> = {
 /** "3 fields" / "1 field" / "nothing" - a plural that reads correctly. */
 export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : pluralForm}`;
-}
-
-/** Bytes as a short human string, matching scripts/lib/artwork.mjs. */
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**

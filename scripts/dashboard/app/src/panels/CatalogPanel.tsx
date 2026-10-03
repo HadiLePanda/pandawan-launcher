@@ -1,24 +1,20 @@
 /**
  * The Catalog panel: a real CRUD table over the catalog the launcher reads.
  *
- * Why this panel exists in this shape. The complaint that prompted the rewrite was
- * "the catalog doesn't even show anything", and the cause was that the server had
- * a publish button for catalog.json and no GET at all - there was nothing to show.
- * So the first job is display: every game on the CDN, with its real artwork, in a
- * table. The second is safety: `scripts/lib/catalog-merge.mjs` merges additively in
- * one direction only, and the reason that matters is written into the UI next to
- * the publish button rather than in a README:
+ * The first job is display: every game on the CDN, with its real artwork, in a
+ * table. The second is safety: `scripts/lib/catalog-merge.mjs` merges additively
+ * in one direction only, and that reason is stated in the UI next to the publish
+ * button rather than in a README:
  *
  *   - a game the CDN already lists is left byte-identical,
  *   - a game the CDN has never seen is added,
  *   - a game the local file omits is NOT removed.
  *
- * So the diff below the table is the payload of this panel. It answers "what will
- * pressing publish actually do", which is the question the old button could not.
+ * So the diff below the table is the payload of this panel: it answers "what will
+ * pressing publish actually do", which a bare button cannot.
  *
- * Note this panel is GLOBAL, not game-scoped. It edits the catalog document, not
- * the game selected in the rail, and says so in its own header so the two are not
- * confused.
+ * GLOBAL, not game-scoped: it edits the catalog document, not the game selected
+ * in the rail, and says so in its own header.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -31,7 +27,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { apiGet } from '@/lib/api';
+import { apiGet, messageOf } from '@/lib/api';
 import {
   CATALOG_FIELDS,
   CHANNELS,
@@ -314,12 +310,11 @@ function CatalogTable({
                 {game.developer || <span className="text-ink-subtle">not set</span>}
               </td>
               <td className="px-3 py-2 align-middle">
-                {/* Icon-only. The word beside the icon repeated it once per game,
-                    and eleven copies of "Edit"/"Delete" is exactly the attention
-                    load worth cutting. What is NOT cut is the name: the
-                    aria-label below is the accessible name, `title` is the hover
-                    tooltip for a mouse, and the trash icon plus the danger tint
-                    keep the destructive one legible - colour never alone. */}
+                {/* Icon-only. The word beside the icon would repeat once per game,
+                    which is attention load worth cutting. What is NOT cut is the
+                    name: the aria-label below is the accessible name, `title` is
+                    the hover tooltip, and the trash icon plus the danger tint keep
+                    the destructive one legible - colour never alone. */}
                 <div className="flex items-center justify-end gap-1">
                   <Button
                     size="sm"
@@ -902,14 +897,4 @@ function DeleteConfirmation({
       </div>
     </Card>
   );
-}
-
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null) {
-    const record = err as { message?: unknown; error?: unknown };
-    if (typeof record.message === 'string') return record.message;
-    if (typeof record.error === 'string') return record.error;
-  }
-  return String(err);
 }

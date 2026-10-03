@@ -1,13 +1,6 @@
 /**
  * The Launcher's own version ladder and its release verbs.
  *
- * One header and one form. That is the whole panel, and the arrangement is
- * deliberate: the previous version wrapped this in a GlobalPanel, added a page
- * heading, a scope paragraph and a sub-tab strip above it, then a heading INSIDE
- * the panel - four levels of framing for a header and a form. Games has none of
- * that and reads in one glance, so this is measured against Games (see
- * docs/DASHBOARD_DESIGN.md, "Consistency is a constraint").
- *
  * The header IS the ladder. repo, live, the waiting tags and the two tallies sit
  * on one row beside Refresh, because the one question this page answers is
  * whether those two versions differ - and an answer split across two stacked
@@ -16,26 +9,22 @@
  *
  * PUBLISHING IS ONE CLICK. The common case - publish the newest waiting tag - is
  * the primary button, with the tag it will send printed on the button face. The
- * manual tag field is NOT on screen by default: a visible field, even pre-filled,
- * reads as a form to fill in, which is what made this page feel like manual work.
- * "or a specific tag" reveals the field for the rare case. Nothing about the
- * safety changes with that arrangement - dry run is still the default and is
- * never auto-unticked, publishing without "Upload for real" is still a dry run,
- * and a real publish still fires a confirm first.
+ * manual tag field is hidden behind "or a specific tag": a visible field, even
+ * pre-filled, reads as a form to fill in. Nothing about the safety changes - dry
+ * run is still the default and is never auto-unticked, publishing without "Upload
+ * for real" is still a dry run, and a real publish still fires a confirm first.
  *
  * The actions are one panel of three hairline-separated rows: publish, bump the
  * release, check the signing key. Each row names its own verb, so the form needs
  * no section headings inside it.
  *
  * Global, not game-scoped: the launcher is the app itself, not a game, and
- * nothing here acts on the selection in the rail. It ships through a different
- * pipeline than games - CI builds and signs, and only then is there anything to
- * publish - so these verbs are deliberately narrower than the game ones.
+ * nothing here acts on the selection in the rail.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, KeyRound, Loader2, RefreshCw, Rocket, Tag } from 'lucide-react';
 
-import { apiGet } from '@/lib/api';
+import { apiGet, messageOf } from '@/lib/api';
 import { compareVersions } from '@lib/version';
 import { DataAge } from '@components/ui';
 import { cx } from './cx';
@@ -188,9 +177,7 @@ export default function LauncherPanel() {
 
   // The panel owns three streams, so no two of them may run at once: two
   // publishers writing to the same bucket with interleaved logs is worse than a
-  // disabled button. The key check used to share the publish stream, so its
-  // output landed under the publish form and its button was blocked while a
-  // publish ran.
+  // disabled button.
   const busy = publish.busy || release.busy || keys.busy;
 
   return (
@@ -578,9 +565,9 @@ function Stream({
 /**
  * Real @theme tokens for the verdict line.
  *
- * verdictLine names its tones against the panel primitives' palette, which is not
- * the one in styles.css, so its colour was being dropped. The words were always
- * there; this is only the colour that pairs with them.
+ * verdictLine names its tones against a different palette, so its colour would be
+ * dropped; the words were always there, this is only the colour that pairs with
+ * them.
  */
 function verdictTone(verdict: StreamVerdict): string {
   switch (verdict.state) {
@@ -593,14 +580,4 @@ function verdictTone(verdict: StreamVerdict): string {
     default:
       return 'text-danger';
   }
-}
-
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null) {
-    const record = err as { message?: unknown; error?: unknown };
-    if (typeof record.message === 'string') return record.message;
-    if (typeof record.error === 'string') return record.error;
-  }
-  return String(err);
 }
