@@ -11,16 +11,17 @@ The dashboard is **not** a games app. Games is one section of it.
 ```
 Games | Launcher | Website | Services | Commands     ← top level
 
-Games    → [game rail] + Metadata · Artwork · Builds · News · Prune
+Games    → [game list column] + Metadata · Artwork · Builds · News · Prune
 Launcher → launcher releases + catalog CRUD
 Website  → what the site renders, git state, verify, deploy
 Services → local dev servers
 Commands → copyable command reference
 ```
 
-Games keeps the rail and requires a selection. The other four are full-page and
-the rail is hidden entirely, so a stale game selection can never imply it affects
-what you are looking at.
+All five sections are permanent rail entries. Only Games needs a selection, so only
+Games shows the game list column; the other four render full-page and the rail keeps
+all five sections visible, so "not everything revolves around a game" is visible
+rather than inferred from a hidden control.
 
 Launcher owns the catalog because the catalog _is_ the launcher's game index —
 both answer "what does the launcher show".
@@ -114,14 +115,23 @@ the same weight. The fix is surface contrast and type hierarchy, not more colour
 
 ### One rail, and it is the navigation
 
-There is a single permanent left rail: brand, then the five sections with icons,
-then the game list indented beneath Games. Nothing reflows when the section
-changes — the games expand and collapse in place. A section bar across the top plus
-a separate game rail was tried and rejected: it splits navigation across two
-places and makes the whole page jump on every section switch.
+There is a single permanent left rail: brand, then the five sections with icons.
+The section is the only thing the rail carries, and nothing reflows when it changes.
+A section bar across the top plus a separate game rail was tried and rejected: it
+splits navigation across two places and makes the whole page jump on every section
+switch.
 
-The rail is also the game picker, so a section and the thing it acts on sit in one
-visual column and the relationship is obvious without a label explaining it.
+The rail is never hidden and never changes with the selection — switching to
+Launcher or Website must not make the sections you came from disappear, which is
+what "the rail is the navigation" means. The game list is **the Games page's own
+left column**, not a rail: it is the master list of the section that owns it, so it
+appears only while Games is active and nothing is reserved for it elsewhere. Adding
+the list into the rail is the crowding this decision exists to avoid.
+
+The relationship between a section and the thing it acts on is carried by the page
+header instead of by a shared column: the header names the selection ("Games ›
+Misspell · alpha"), so a full-page section never has to explain why it is not
+showing a game.
 
 ### Show, don't tell — stated as a budget
 
