@@ -96,10 +96,13 @@ jobs:
           - platform: macos-latest
             targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
             args: '--target universal-apple-darwin'
-          # AppImage bundler downloads tools from GitHub and often hits 429 rate limits,
-          # so stick to the reliable .deb and .rpm packages for now.
+          # One installer per platform, and the updater decides which one: Windows
+          # ships NSIS only (the updater installs through it, so the .msi is a
+          # second WiX pass for a format nothing here uses), and Linux the .deb.
+          # The AppImage bundler downloads tools from GitHub that often hit 429
+          # rate limits, so it stays out.
           - platform: ubuntu-latest
-            args: '--bundles deb,rpm'
+            args: '--bundles deb'
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
