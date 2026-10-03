@@ -199,26 +199,14 @@ async fn fetch_remote_text(url: String) -> Result<String, LauncherError> {
 #[tauri::command]
 #[specta::specta]
 async fn fetch_game_manifest(url: String) -> Result<GameManifest, LauncherError> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| LauncherError::Network(format!("Failed to fetch manifest: {e}")))?;
-
-    if !response.status().is_success() {
-        return Err(LauncherError::Network(format!(
-            "HTTP error: {}",
-            response.status()
-        )));
-    }
-
-    let manifest = response
-        .json::<GameManifest>()
-        .await
-        .map_err(|e| LauncherError::ManifestParse(e.to_string()))?;
-
-    Ok(manifest)
+    // Through fetch_remote_text rather than its own client: that path already
+    // enforces the scheme allowlist, a 30s timeout and a size cap, and a manifest
+    // is a remote document exactly like the catalog is. Its own Client::new() had
+    // none of the three, so a slow or hostile host hung the command indefinitely
+    // and the body was read without limit.
+    let body = fetch_remote_text(url).await?;
+    serde_json::from_str::<GameManifest>(&body)
+        .map_err(|e| LauncherError::ManifestParse(e.to_string()))
 }
 
 /// Install or update a game
@@ -670,6 +658,19 @@ async fn load_settings(
     let json = std::fs::read_to_string(settings_path)?;
     let settings: LauncherSettings = serde_json::from_str(&json)?;
 
+    // A hand-edited or half-written file can hold a value the runtime cannot use -
+    // max_concurrent_downloads of 0 builds Semaphore::new(0) and every install
+    // then blocks in acquire_owned forever. Default the whole struct, then repair
+    // the fields that are individually recoverable so one bad value does not
+    // silently reset every setting the operator ever chose.
+    if let Err(errors) = settings.validate() {
+        eprintln!(
+            "settings.json has invalid values ({}); using defaults",
+            errors.join(", ")
+        );
+        return Ok(LauncherSettings::default());
+    }
+
     Ok(settings)
 }
 
@@ -681,7 +682,13 @@ fn save_settings_to_disk(
 
     let settings_path = app_data_dir.join("settings.json");
     let json = serde_json::to_string_pretty(settings)?;
-    std::fs::write(settings_path, json)?;
+
+    // Written to a sibling and renamed into place. Truncating the real file first
+    // means a crash or a full disk mid-write leaves unparseable JSON that load
+    // then rejects forever, losing every setting with no way back.
+    let tmp_path = app_data_dir.join("settings.json.tmp");
+    std::fs::write(&tmp_path, json)?;
+    std::fs::rename(&tmp_path, &settings_path)?;
 
     Ok(())
 }

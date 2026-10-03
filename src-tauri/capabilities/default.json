@@ -42,12 +42,7 @@
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [
-        { "path": "$APPLOG" },
-        { "path": "$APPLOG/**" },
-        { "path": "$APPDATA" },
-        { "path": "$APPDATA/**" }
-      ]
+      "allow": [{ "path": "$APPLOG" }, { "path": "$APPLOG/**" }]
     },
     "shell:allow-open"
   ]

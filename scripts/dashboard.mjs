@@ -772,10 +772,52 @@ function runSiteScript(script, args, res) {
 
 function rejectRebinding(req, res) {
   const host = (req.headers.host ?? '').split(':')[0].replace(/^\[|\]$/g, '');
-  if (LOOPBACK.has(host)) return false;
-  res.writeHead(403, { 'content-type': 'text/plain' });
-  res.end('This dashboard only answers requests from localhost.');
-  return true;
+  if (!LOOPBACK.has(host)) {
+    res.writeHead(403, { 'content-type': 'text/plain' });
+    res.end('This dashboard only answers requests from localhost.');
+    return true;
+  }
+  return rejectCrossOrigin(req, res);
+}
+
+/**
+ * Refuse a mutating request that some other page caused.
+ *
+ * The Host check above stops DNS rebinding; it does not stop CSRF, because a page
+ * on any origin can send a simple POST (form or text/plain) to a loopback URL and
+ * the browser will attach no Origin this server is entitled to trust. Every write
+ * here touches R2 with real credentials, so a cross-origin write is refused and
+ * application/json is required: both together force a CORS preflight that a
+ * foreign page cannot pass.
+ */
+function rejectCrossOrigin(req, res) {
+  if (req.method === 'GET' || req.method === 'HEAD') return false;
+
+  const origin = req.headers.origin;
+  if (origin) {
+    let host = '';
+    try {
+      host = new URL(origin).hostname;
+    } catch {
+      res.writeHead(403, { 'content-type': 'text/plain' });
+      res.end('Malformed Origin.');
+      return true;
+    }
+    if (!LOOPBACK.has(host)) {
+      res.writeHead(403, { 'content-type': 'text/plain' });
+      res.end('Cross-origin writes are refused; this dashboard is local-only.');
+      return true;
+    }
+  }
+
+  const type = (req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (type && type !== 'application/json') {
+    res.writeHead(415, { 'content-type': 'text/plain' });
+    res.end(`Send application/json, not ${type}.`);
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -1465,6 +1507,33 @@ function forceStop(id) {
   return { ok: true, pid };
 }
 
+/**
+ * Resolve an operator-supplied local artwork path, refusing anything that did not
+ * come from `/api/art/stage`.
+ *
+ * The only legitimate producer of these paths is the stage route, which writes
+ * under `artStagingDir` and hands back an absolute path for the existing
+ * `--icon-file` flow. Checking only that a path exists let a request name any file
+ * on the machine -- `.env` included -- and the publisher would hash its bytes and
+ * `aws s3 cp` them to a public content-addressed URL. One check, at the only two
+ * call sites, closes it.
+ */
+function resolveStagedArtwork(res, raw) {
+  const localPath = path.resolve(String(raw).trim());
+  const stage = path.resolve(artStagingDir) + path.sep;
+  if (!localPath.startsWith(stage)) {
+    res.writeHead(400, { 'content-type': 'text/plain' });
+    res.end('Only artwork staged by /api/art/stage can be uploaded.');
+    return null;
+  }
+  if (!existsSync(localPath)) {
+    res.writeHead(400, { 'content-type': 'text/plain' });
+    res.end(`No such staged file: ${raw}`);
+    return null;
+  }
+  return localPath;
+}
+
 const server = http.createServer(async (req, res) => {
   if (rejectRebinding(req, res)) return;
 
@@ -1848,11 +1917,8 @@ const server = http.createServer(async (req, res) => {
     ]) {
       const file = payload[key];
       if (typeof file !== 'string' || !file.trim()) continue;
-      const localPath = path.resolve(file.trim());
-      if (!existsSync(localPath)) {
-        res.writeHead(400).end(`No such file: ${file}`);
-        return;
-      }
+      const localPath = resolveStagedArtwork(res, file);
+      if (!localPath) return;
       argv.push(`--${flag}`, localPath);
     }
 
@@ -2287,7 +2353,14 @@ const server = http.createServer(async (req, res) => {
         if (payload[field.flag] !== undefined) values[field.flag] = payload[field.flag];
       }
       if (!id) {
-        const feed = await readNewsFeed(cdnOrigin);
+        let feed;
+        try {
+          feed = await readNewsFeed(cdnOrigin);
+        } catch (err) {
+          res.writeHead(409, { 'content-type': 'text/plain' });
+          res.end(String(err));
+          return;
+        }
         id = uniqueNewsId(
           values.title ?? 'new-item',
           (feed.items ?? []).map((i) => i.id)
@@ -2336,11 +2409,8 @@ const server = http.createServer(async (req, res) => {
         argv.push(`--${field.flag}`, String(values[field.flag]));
       }
       if (typeof payload.imageFile === 'string' && payload.imageFile.trim()) {
-        const localPath = path.resolve(payload.imageFile.trim());
-        if (!existsSync(localPath)) {
-          res.writeHead(400).end(`No such file: ${payload.imageFile}`);
-          return;
-        }
+        const localPath = resolveStagedArtwork(res, payload.imageFile);
+        if (!localPath) return;
         argv.push('--image-file', localPath);
       }
     }

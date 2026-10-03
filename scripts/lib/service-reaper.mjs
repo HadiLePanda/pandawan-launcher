@@ -19,6 +19,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
  * unverifiable pid must never be killed later.
  */
 export function processStartedAt(pid, attempts = 5) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
   const script =
     'try { $p = Get-Process -Id ' +
     pid +
@@ -71,7 +72,8 @@ export function reapManifest(manifestPath) {
   if (!stale.length) return 0;
   let killed = 0;
   for (const entry of stale) {
-    if (!entry.pid || !entry.startedAt) continue;
+    if (!Number.isInteger(entry.pid) || entry.pid <= 0) continue;
+    if (!entry.startedAt) continue;
     const startedAt = processStartedAt(entry.pid);
     if (startedAt === null) continue; // already gone
     if (startedAt !== entry.startedAt) continue; // pid was reused
