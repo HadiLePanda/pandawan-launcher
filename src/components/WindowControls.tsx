@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useLauncherStore } from '@/lib/store';
 
 export function WindowControls() {
   const { t } = useTranslation();
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
+  const minimizeToTray = useLauncherStore((s) => s.settings?.minimizeToTray ?? true);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -25,7 +27,13 @@ export function WindowControls() {
   }, [appWindow]);
 
   const handleMinimize = async () => {
-    await appWindow.minimize();
+    // Docking to the tray is a hide, not a minimize: a minimized frameless
+    // window still has no taskbar entry here, so the tray is the only way back.
+    if (minimizeToTray) {
+      await appWindow.hide();
+    } else {
+      await appWindow.minimize();
+    }
   };
 
   const handleMaximize = async () => {

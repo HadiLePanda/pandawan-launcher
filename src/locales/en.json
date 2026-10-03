@@ -201,6 +201,14 @@
         "dark": "Dark",
         "light": "Light",
         "title": "Theme"
+      },
+      "minimizeToTray": {
+        "title": "Minimize to tray",
+        "description": "Keep the launcher running in the tray when you minimize it"
+      },
+      "closeToTray": {
+        "title": "Close to tray",
+        "description": "Keep the launcher running in the tray when you close the window. Turn this off to quit when closing — unless a game is running"
       }
     },
     "notifications": {

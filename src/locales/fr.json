@@ -201,6 +201,14 @@
         "dark": "Sombre",
         "light": "Clair",
         "title": "Thème"
+      },
+      "minimizeToTray": {
+        "title": "Réduire dans la barre d'état",
+        "description": "Garder le launcher en arrière-plan dans la barre d'état quand tu le réduis"
+      },
+      "closeToTray": {
+        "title": "Fermer dans la barre d'état",
+        "description": "Garder le launcher en arrière-plan dans la barre d'état quand tu fermes la fenêtre. Désactive-le pour quitter à la fermeture — sauf si un jeu tourne"
       }
     },
     "notifications": {

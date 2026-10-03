@@ -331,6 +331,19 @@ function GeneralSettings({ settings, onChange }: TabProps) {
           <option value="light">{t('settings.general.theme.light')}</option>
         </select>
       </SettingItem>
+
+      <ToggleSetting
+        title={t('settings.general.minimizeToTray.title')}
+        description={t('settings.general.minimizeToTray.description')}
+        checked={settings.minimizeToTray}
+        onChange={(checked) => onChange({ minimizeToTray: checked })}
+      />
+      <ToggleSetting
+        title={t('settings.general.closeToTray.title')}
+        description={t('settings.general.closeToTray.description')}
+        checked={settings.closeToTray}
+        onChange={(checked) => onChange({ closeToTray: checked })}
+      />
     </div>
   );
 }

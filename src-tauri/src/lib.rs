@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 pub mod download;
 pub mod patch;
 pub mod path_utils;
+pub mod tray;
 pub mod types;
 
 #[cfg(test)]
@@ -485,7 +486,14 @@ async fn save_settings(
         .map_err(|e| LauncherError::Validation(e.to_string()))?;
 
     let mut settings = state.settings.lock().await;
-    *settings = new_settings;
+    *settings = new_settings.clone();
+
+    // Keep the synchronous close handler's copy of the close policy current.
+    app.state::<tray::TrayState>()
+        .0
+        .lock()
+        .unwrap()
+        .close_to_tray = new_settings.close_to_tray;
 
     Ok(())
 }
@@ -643,7 +651,38 @@ pub fn run() {
                 handle.manage(state);
             });
 
+            // Seed the synchronous close policy from the loaded settings, then
+            // create the tray. The tray must exist even on the first run, when
+            // the settings file is absent and the defaults apply.
+            let close_to_tray = {
+                let state = app.state::<LauncherState>();
+                tauri::async_runtime::block_on(async { state.settings.lock().await.close_to_tray })
+            };
+            app.manage(tray::TrayState::new(close_to_tray));
+            if let Err(e) = tray::init(app.handle()) {
+                eprintln!("Failed to create the system tray: {e}");
+            }
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() != "main" {
+                    return;
+                }
+                let close_to_tray = window
+                    .app_handle()
+                    .state::<tray::TrayState>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .close_to_tray;
+                if close_to_tray {
+                    // Hide rather than exit: the app keeps running in the tray.
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(invoke_handler)
         .run(tauri::generate_context!())
