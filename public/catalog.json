@@ -19,7 +19,8 @@
       "bannerUrl": "games/misspell/alpha/banner-db45f64a.png",
       "screenshots": [],
       "supportedPlatforms": [
-        "windows"
+        "windows",
+        "macos"
       ]
     },
     {
