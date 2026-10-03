@@ -250,52 +250,57 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         title={t('settings.general.installLocation.title')}
         description={t('settings.general.installLocation.description')}
       >
-        <div className="install-path-row">
-          {/* Full path, wrapped across lines rather than clipped: a path you
-              cannot read in full is a path you cannot copy or report. */}
-          <div className="install-path-box" title={resolvedPath}>
-            {resolvedPath}
-          </div>
-          <div className="cluster cluster-sm">
-            {/* These act on the folder in use, which exists even on the default,
+        {/* Stacked rather than side by side: the setting's control column is a row
+            for a single control, which put the note beside the path and squeezed
+            it to a few words. */}
+        <div className="install-path-stack">
+          <div className="install-path-row">
+            {/* One line that scrolls rather than wraps: a wrapped path grew the
+                row and pushed the controls out of the panel. */}
+            <div className="install-path-box" title={resolvedPath}>
+              {resolvedPath}
+            </div>
+            <div className="cluster cluster-sm">
+              {/* These act on the folder in use, which exists even on the default,
                 so they are available either way. */}
-            <button
-              onClick={handleOpenFolder}
-              className="btn btn-secondary btn-sm"
-              title={t('settings.general.installLocation.openFolder')}
-              aria-label={t('settings.general.installLocation.openFolder')}
-            >
-              <Folder className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleCopy}
-              className="btn btn-secondary btn-sm"
-              title={t('settings.general.installLocation.copyPath')}
-              aria-label={t('settings.general.installLocation.copyPath')}
-            >
-              {copied ? <Check className="w-4 h-4 text-action" /> : <Copy className="w-4 h-4" />}
-            </button>
-            <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
-              {t('settings.general.installLocation.browse')}
-            </button>
-            {/* Only meaningful once a custom path is set: there is nothing to
-                reset back to otherwise. */}
-            {installPath && (
               <button
-                onClick={handleReset}
-                className="btn btn-ghost btn-sm"
-                title={t('settings.general.installLocation.reset')}
+                onClick={handleOpenFolder}
+                className="btn btn-secondary btn-sm"
+                title={t('settings.general.installLocation.openFolder')}
+                aria-label={t('settings.general.installLocation.openFolder')}
               >
-                {t('settings.general.installLocation.reset')}
+                <Folder className="w-4 h-4" />
               </button>
-            )}
+              <button
+                onClick={handleCopy}
+                className="btn btn-secondary btn-sm"
+                title={t('settings.general.installLocation.copyPath')}
+                aria-label={t('settings.general.installLocation.copyPath')}
+              >
+                {copied ? <Check className="w-4 h-4 text-action" /> : <Copy className="w-4 h-4" />}
+              </button>
+              <button onClick={handleBrowse} className="btn btn-secondary btn-sm">
+                {t('settings.general.installLocation.browse')}
+              </button>
+              {/* Only meaningful once a custom path is set: there is nothing to
+                reset back to otherwise. */}
+              {installPath && (
+                <button
+                  onClick={handleReset}
+                  className="btn btn-ghost btn-sm"
+                  title={t('settings.general.installLocation.reset')}
+                >
+                  {t('settings.general.installLocation.reset')}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-        {/* Say where the path came from, so an unchanged field does not read as
+          {/* Say where the path came from, so an unchanged field does not read as
             "never configured". */}
-        {usingDefault && (
-          <p className="caption mt-1">{t('settings.general.installLocation.usingDefault')}</p>
-        )}
+          {usingDefault && (
+            <p className="caption">{t('settings.general.installLocation.usingDefault')}</p>
+          )}
+        </div>
       </SettingItem>
 
       <SettingItem icon={Globe} title={t('settings.general.language.title')}>
