@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
@@ -58,6 +58,8 @@ function App() {
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyRows, setVerifyRows] = useState<VerifyProgress[]>([]);
+  /** Bumped to abandon an in-flight verification; see `closeVerify`. */
+  const verifyRunRef = useRef(0);
   const [trayHintPending, setTrayHintPending] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
@@ -96,7 +98,6 @@ function App() {
     loadSettings,
     clearError,
     settings,
-    setSettings,
     catalogSource,
     catalogUnreachable,
     gameFilters,
@@ -107,7 +108,7 @@ function App() {
     avatarId,
     unpinnedGameIds,
     toggleGamePinned,
-    channelOverrides,
+    channelFor,
     setGameChannel,
   } = useLauncherStore();
 
@@ -183,6 +184,11 @@ function App() {
   // desktop app has no push channel from the CDN, so this polls a cheap
   // fingerprint every few minutes and only flags a change once something
   // actually moved. Polling pauses while a download or game run is in progress.
+  //
+  // The busy check reads the store directly instead of closing over `games`:
+  // depending on the array here tore the poller down and rebuilt it on every
+  // status change, which discarded the fingerprint baseline mid-transfer and
+  // made the next tick report the content the launcher already shows as new.
   useEffect(() => {
     const handle = startCatalogPoll({
       loadCatalog: async () => {
@@ -190,10 +196,13 @@ function App() {
         return { catalog };
       },
       onChange: () => setIsCatalogStale(true),
-      isBusy: () => activeDownloads.size > 0 || games.some((g) => g.status === 'running'),
+      isBusy: () => {
+        const { activeDownloads, games } = useLauncherStore.getState();
+        return activeDownloads.size > 0 || games.some((g) => g.status === 'running');
+      },
     });
     return () => handle.stop();
-  }, [activeDownloads.size, games]);
+  }, []);
 
   // The flag is only meaningful until the user acts on it: either they refresh
   // and get the new content, or they keep working. Clearing it on view change
@@ -213,6 +222,16 @@ function App() {
     setIsCatalogStale(false);
     await loadCatalog();
   }, [loadCatalog]);
+
+  // Mark the hint delivered without reverting a settings change made in the
+  // meantime. `save_settings` replaces the whole object, so writing the object
+  // this render captured would put back every field the user has changed since.
+  // There is no field-level settings command to narrow this further.
+  const markTrayHintShown = useCallback(async () => {
+    const { settings: current, setSettings: save } = useLauncherStore.getState();
+    if (!current || current.trayHintShown) return;
+    await save({ ...current, trayHintShown: true });
+  }, []);
 
   // The one-time tray hint fires on the first real dock, not on first run: it
   // only means anything to someone who just lost the window. A notification is
@@ -237,7 +256,7 @@ function App() {
           title: t('trayHint.notificationTitle'),
           body: t('trayHint.notificationBody'),
         });
-        await setSettings({ ...settings, trayHintShown: true });
+        await markTrayHintShown();
         return;
       } catch (err) {
         logger.warn('Tray hint notification failed, falling back to the popover', {
@@ -246,7 +265,7 @@ function App() {
       }
     }
     setTrayHintPending(true);
-  }, [settings, setSettings, t]);
+  }, [settings, markTrayHintShown, t]);
 
   useEffect(() => {
     const unlisten = listen('tray-docked', () => {
@@ -260,9 +279,8 @@ function App() {
 
   const dismissTrayHint = useCallback(() => {
     setTrayHintPending(false);
-    if (!settings || settings.trayHintShown) return;
-    void setSettings({ ...settings, trayHintShown: true });
-  }, [settings, setSettings]);
+    void markTrayHintShown();
+  }, [markTrayHintShown]);
 
   // The nav button and the banner are two views of the same updater state. The
   // button is the persistent affordance; the banner is the launch-time prompt
@@ -394,20 +412,19 @@ function App() {
 
   // The channel the player chose, falling back to the catalog's. Install and
   // update must resolve against this, not game.info.channel, or picking a
-  // channel would change the label and nothing else.
-  const effectiveChannel = (gameId: string, catalogChannel: string) =>
-    channelOverrides[gameId] ?? catalogChannel;
+  // channel would change the label and nothing else. The resolver itself lives
+  // in the store (`channelFor`), which is where the overrides are kept.
 
   const handleInstallGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    await installGame(gameId, effectiveChannel(gameId, game.info.channel));
+    await installGame(gameId, channelFor(gameId, game.info.channel));
   };
 
   const handleUpdateGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
-    await updateGame(gameId, effectiveChannel(gameId, game.info.channel));
+    await updateGame(gameId, channelFor(gameId, game.info.channel));
   };
 
   const handleUninstallGame = async (gameId: string) => {
@@ -417,19 +434,54 @@ function App() {
     }
   };
 
+  // The game a menu or details panel was opened for. Both read `game.status`
+  // several lines into their component, so an id that no longer resolves - the
+  // game was uninstalled, or a catalog refresh dropped it - must render nothing
+  // rather than pass an undefined game down as if it were there.
+  const contextMenuGame = contextMenu
+    ? games.find((g) => g.info.id === contextMenu.gameId)
+    : undefined;
+  const detailsModalGame = detailsModal
+    ? games.find((g) => g.info.id === detailsModal.gameId)
+    : undefined;
+
+  // Closing the modal abandons the scan. `verifyGame` hashes every file of the
+  // install, so it resolves long after a user who opened it on a hunch has
+  // closed it again; without this the abandoned run's rows and verdict landed in
+  // state nobody was showing and popped up on the next open. The run id is what
+  // tells an abandoned run's callbacks from the current one's.
+  const closeVerify = useCallback(() => {
+    verifyRunRef.current += 1;
+    setVerifyTarget(null);
+    setVerifyResult(null);
+    setVerifyError(null);
+    setVerifyRows([]);
+  }, []);
+
+  useEffect(
+    () => () => {
+      verifyRunRef.current += 1;
+    },
+    []
+  );
+
   const handleVerifyGame = async (gameId: string) => {
     const game = games.find((g) => g.info.id === gameId);
     if (!game) return;
+    const run = ++verifyRunRef.current;
     setVerifyTarget(game);
     setVerifyResult(null);
     setVerifyError(null);
     setVerifyRows([]);
     try {
-      const result = await gameService.verifyGame(gameId, game.info.channel, (row) =>
-        setVerifyRows((prev) => [...prev, row])
-      );
+      const result = await gameService.verifyGame(gameId, game.info.channel, (row) => {
+        if (verifyRunRef.current !== run) return;
+        setVerifyRows((prev) => [...prev, row]);
+      });
+      if (verifyRunRef.current !== run) return;
       setVerifyResult(result);
     } catch (err) {
+      if (verifyRunRef.current !== run) return;
       setVerifyError(err instanceof Error ? err.message : String(err));
     }
   };
@@ -520,7 +572,7 @@ function App() {
             onUpdate={() => handleUpdateGame(selectedGame.info.id)}
             onUninstall={() => handleUninstallGame(selectedGame.info.id)}
             onVerify={() => handleVerifyGame(selectedGame.info.id)}
-            channel={effectiveChannel(selectedGame.info.id, selectedGame.info.channel)}
+            channel={channelFor(selectedGame.info.id, selectedGame.info.channel)}
             catalogChannel={selectedGame.info.channel}
             onChannelChange={(channel) => {
               setGameChannel(selectedGame.info.id, channel);
@@ -672,18 +724,18 @@ function App() {
           <main className="flex-1 overflow-hidden flex flex-col">{renderContent()}</main>
         </div>
       </div>
-      {contextMenu && (
+      {contextMenu && contextMenuGame && (
         <GameContextMenu
-          game={games.find((g) => g.info.id === contextMenu.gameId)!}
+          game={contextMenuGame}
           anchor={{ x: contextMenu.x, y: contextMenu.y }}
           onClose={() => setContextMenu(null)}
           onAction={(action) => handleMenuAction(action, contextMenu.gameId)}
         />
       )}
 
-      {detailsModal && (
+      {detailsModalGame && detailsModal && (
         <GameDetailsModal
-          game={games.find((g) => g.info.id === detailsModal.gameId)!}
+          game={detailsModalGame}
           news={news.filter((n) => n.gameId === detailsModal.gameId)}
           view={detailsModal.view}
           onClose={() => setDetailsModal(null)}
@@ -738,12 +790,7 @@ function App() {
         result={verifyResult}
         error={verifyError}
         rows={verifyRows}
-        onClose={() => {
-          setVerifyTarget(null);
-          setVerifyResult(null);
-          setVerifyError(null);
-          setVerifyRows([]);
-        }}
+        onClose={closeVerify}
       />
     </div>
   );

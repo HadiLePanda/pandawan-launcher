@@ -5,9 +5,13 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { logger } from '@/lib/logger';
 import { quitLauncher } from '@/lib/updater-service';
 
+/** One instance per module, not one per render: the resize listener is keyed on
+ * it, so building a new `Window` each render tore the subscription down and set
+ * it up again on every render of the title bar. */
+const appWindow = getCurrentWindow();
+
 export function WindowControls() {
   const { t } = useTranslation();
-  const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
@@ -24,7 +28,7 @@ export function WindowControls() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [appWindow]);
+  }, []);
 
   const handleMinimize = async () => {
     // Minimizing always goes to the taskbar. Close-to-tray is the only tray

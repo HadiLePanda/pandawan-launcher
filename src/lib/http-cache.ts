@@ -52,13 +52,27 @@ async function load(): Promise<Store> {
   }
 }
 
-async function save(next: Store): Promise<void> {
-  try {
-    await writeTextFile(CACHE_FILE, JSON.stringify(next), { baseDir: BaseDirectory.AppLog });
-  } catch (err) {
-    // The cache is an optimisation: losing it costs a refetch, never correctness.
-    logger.warn('Could not persist the HTTP cache', { error: String(err) });
-  }
+// Serializes writes so two concurrent refreshes cannot each write a snapshot
+// taken before the other's entry landed, and the second write silently dropped
+// the first one's document from the file. The mutation runs against a read taken
+// inside the queue, not against the map the caller captured, because that map is
+// a snapshot from before any other refresh finished.
+let writeChain: Promise<void> = Promise.resolve();
+
+function commit(mutate: (current: Store) => Store): Promise<void> {
+  const run = writeChain.then(async () => {
+    try {
+      const merged = mutate(await load());
+      await writeTextFile(CACHE_FILE, JSON.stringify(merged), { baseDir: BaseDirectory.AppLog });
+    } catch (err) {
+      // The cache is an optimisation: losing it costs a refetch, never correctness.
+      logger.warn('Could not persist the HTTP cache', { error: String(err) });
+    }
+  });
+  // Keep the chain alive after a rejection so one failed write does not wedge
+  // every write queued behind it.
+  writeChain = run.catch(() => undefined);
+  return run;
 }
 
 /**
@@ -83,7 +97,9 @@ export async function fetchCachedText(
   try {
     const body = await fetchText(url);
     lastSource.set(url, 'network');
-    await save({ ...current, [url]: { fetchedAt: Date.now(), body } });
+    // Re-read inside the write queue: `current` was read before the network call
+    // and would drop an entry another refresh landed in the meantime.
+    await commit((disk) => ({ ...disk, [url]: { fetchedAt: Date.now(), body } }));
     return body;
   } catch (err) {
     if (entry) {
@@ -98,5 +114,5 @@ export async function fetchCachedText(
 /** Drop every entry, in memory and on disk. */
 export async function clearCache(): Promise<void> {
   lastSource.clear();
-  await save({});
+  await commit(() => ({}));
 }

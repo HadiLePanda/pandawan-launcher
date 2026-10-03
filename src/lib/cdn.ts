@@ -348,6 +348,10 @@ export function startCatalogPoll(options: {
 
     try {
       const result = await options.loadCatalog();
+      // The load is a network round trip, so `stop()` can land while it is in
+      // flight. Reporting the change after that would raise the stale dot on a
+      // component that is already gone, or one a later poller already replaced.
+      if (stopped) return;
       const next = fingerprintCatalog(result.catalog as never);
       if (baseline === null) {
         baseline = next;
