@@ -11,6 +11,7 @@ import {
   User,
   Check,
   Copy,
+  Loader2,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import { appLogDir } from '@tauri-apps/api/path';
@@ -540,21 +541,37 @@ function AboutSettings() {
               disabled={busy}
               className="btn btn-secondary btn-sm"
             >
+              {updaterStatus === 'checking' && <Loader2 className="update-spinner w-3.5 h-3.5" />}
               {t('settings.about.updates.checkButton')}
             </button>
             {/* The update is found here, so installing it belongs here too:
                 sending the user to the top-right button to act on what this
                 panel just told them was the wrong place to look. */}
             {updaterStatus === 'available' && (
-              <button onClick={() => void downloadAndInstall()} className="btn btn-primary btn-sm">
+              <button
+                onClick={() => void downloadAndInstall()}
+                className="btn btn-primary btn-sm update-enter"
+              >
                 {t('settings.about.updates.installButton')}
               </button>
             )}
             {updaterStatus === 'ready' && (
               <button
                 onClick={() => void restartToApplyUpdate()}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm update-restart"
               >
+                <svg
+                  className="update-check w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 12.5l5 5L20 6.5" />
+                </svg>
                 {t('settings.about.updates.restartButton')}
               </button>
             )}

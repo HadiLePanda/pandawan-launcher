@@ -1,0 +1,113 @@
+/* ---------------------------------------------------------------------------
+   Update flow - the launcher's self-update check / download / apply motion.
+   Imported last so these animation classes win over the base button and banner
+   rules; index.css's import order is otherwise untouched.
+   --------------------------------------------------------------------------- */
+
+/* A check has no other visible in-progress state, so the button that triggered
+   it carries a spinner. */
+.update-spinner {
+  animation: update-spin 0.8s linear infinite;
+}
+
+@keyframes update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Download bar. The width easing uses the shared enter token so the fill moves
+   instead of jumping between reported chunks, and ::after sweeps a soft
+   highlight while data is arriving. */
+.progress-bar {
+  position: relative;
+  overflow: hidden;
+  transition: width var(--motion-enter) var(--motion-ease-out);
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.34) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: update-shimmer 1.4s linear infinite;
+}
+
+@keyframes update-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Self-drawing checkmark: the stroke runs from its full length to zero. */
+.update-check {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: update-check-draw var(--motion-enter) var(--motion-ease-out) forwards;
+}
+
+@keyframes update-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Scale-and-fade for an element that appears with a state, e.g. Install. */
+.update-enter {
+  animation: update-enter var(--motion-enter) var(--motion-ease-out) both;
+}
+
+@keyframes update-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Restart to apply: enters with scale-and-fade, then pulses twice and stops -
+   enough to draw the eye, not a permanent distraction. */
+.update-restart {
+  animation:
+    update-enter var(--motion-enter) var(--motion-ease-out) both,
+    update-attention var(--motion-enter) ease-out 2 500ms;
+}
+
+@keyframes update-attention {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--action-muted);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--action-muted);
+  }
+}
+
+/* Reduced motion collapses the whole flow to an instant state change: no
+   spinner, no shimmer, no draw, no pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .update-spinner,
+  .update-check,
+  .update-enter,
+  .update-restart,
+  .progress-bar::after {
+    animation: none;
+  }
+
+  .update-check {
+    stroke-dashoffset: 0;
+  }
+
+  .progress-bar {
+    transition: none;
+  }
+}

@@ -259,7 +259,10 @@ export function MainNav({
         {launcherUpdate && (
           <button
             type="button"
-            className="topbar-btn topbar-btn-update"
+            className={cn(
+              'topbar-btn topbar-btn-update',
+              launcherUpdate.ready ? 'update-restart' : 'update-enter'
+            )}
             onClick={onLauncherUpdateClick}
             aria-label={
               launcherUpdate.ready

@@ -18,7 +18,23 @@ export function UpdateBanner() {
   return (
     <div className="banner shrink-0">
       <div className="banner-text truncate">
-        <ArrowUpCircle className="w-4 h-4 shrink-0" />
+        {status === 'ready' ? (
+          // A drawn checkmark marks completion; stroke-dashoffset animates it in.
+          <svg
+            className="update-check w-4 h-4 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 12.5l5 5L20 6.5" />
+          </svg>
+        ) : (
+          <ArrowUpCircle className="w-4 h-4 shrink-0" />
+        )}
         <span className="truncate">
           {status === 'available' && t('updateBanner.available', { version })}
           {status === 'downloading' &&
@@ -50,7 +66,10 @@ export function UpdateBanner() {
           </button>
         )}
         {status === 'ready' && (
-          <button onClick={() => void restartToApplyUpdate()} className="btn btn-sm btn-ghost">
+          <button
+            onClick={() => void restartToApplyUpdate()}
+            className="btn btn-sm btn-ghost update-restart"
+          >
             {t('updateBanner.restart')}
           </button>
         )}
