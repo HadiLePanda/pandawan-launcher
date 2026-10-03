@@ -85,7 +85,11 @@ The few things worth knowing without looking:
     - **Launcher** owns the launcher app's own releases AND the game catalog, since
       the catalog is the launcher's game index — publishing a launcher build and
       registering a game are both "what the launcher shows". It has no game
-      selection: it is about the app, not about one game.
+      selection: it is about the app, not about one game. Its **Catalog** sub-section
+      only **registers** games (id and channel) and lists each one's display facts
+      read-only, with a link that selects the game and opens its Metadata tab — the
+      display fields have exactly one editable home, on the game page, and a second
+      editable copy in the catalog is how the two drift apart.
     - **Website** owns `pandawan-launcher-site`, a **separate repository** deployed
       to Cloudflare Pages. It is a sibling checkout, not a subfolder of this one,
       and it must never be edited from here. Its content comes from R2
@@ -129,8 +133,8 @@ The few things worth knowing without looking:
   in `scripts/dashboard/app/src/` and must not import from `src/` (that is the
   launcher) or from `scripts/lib/*.mjs` (those are Node modules holding R2
   credentials and use `node:` imports). Contracts that both sides need travel in
-  the API response instead — the news and catalog field lists are served, never
-  hand-copied.
+  API response instead — the news and metadata field lists are served
+  (`NEWS_FIELDS` / `FIELD_SPEC`), never hand-copied.
 - A dashboard service with a `bat` field is **opened**, not spawned: `start ""` gives it its own console
   window and the dashboard captures no output from it. A service with `command`/`args` is spawned with
   piped output and keeps a 1500-char `tail`. Do not convert a `bat` service back to a spawn because its
@@ -316,6 +320,9 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
 - **An `aws` probe against R2 must pass `--endpoint-url`.** The endpoint is derived from `R2_ACCOUNT_ID` (`https://<account>.r2.cloudflarestorage.com`) and is not in `.env`. Without it the CLI talks to real AWS S3, which answers `AccessDenied` for a bucket these credentials can in fact list — a wrong endpoint and a missing permission are indistinguishable from the output.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.
   - The shared field contract is `scripts/lib/metadata-fields.mjs` (`FIELDS`, `CHANNELS`, `IMAGE_FIELDS`); the form, the publisher and the tests all import it so they cannot drift apart. `scripts/lib/apply-metadata.mjs` holds the write decision and `scripts/lib/game-metadata.mjs` the read/merge, both extracted so they are testable without R2 credentials.
+  - The field contract is **served** in the API response, the way `/api/news` serves `NEWS_FIELDS`: `FIELD_SPEC` (flag/catalog/label/list/image/long, derived from `FIELDS` + `IMAGE_FIELDS`) travels on both `/api/meta` and `/api/catalog`, and the forms render from it in order. The old client-side copy `scripts/dashboard/app/src/panels/catalog-contract.ts` was deleted — a hand-typed field list drifts silently from the publisher's, which is exactly what the "do not hand-copy a contract" rule above forbids.
+  - Display fields have exactly **one editable home**: Games → Metadata. The Launcher → Catalog page only **registers** games (id and channel) and shows each one's display facts read-only, with a link that selects the game and opens its Metadata tab; it must never offer a second editable copy of name/description/developer/genres/icon/banner/screenshots.
+  - Screenshots are catalog-only (`manifest: null` in the contract, so they are never written to the manifest) and edited as an **ordered library picker** over the artwork listing (`artwork.mjs` owns the listing, drag-to-reorder is the UI's job). The value stays the comma-joined URL list `catalog-edit.mjs` and the publisher already split, so no new format is needed. A new image reaches the library through the existing artwork upload (`/api/art/stage`); do not add a second upload path.
   - A field is written when _either_ document differs from the requested value. Comparing only the catalog is a real bug: the catalog gets fixed by hand, the manifest keeps the stale name, and every client resolving a build without the catalog renders the old one.
   - Artwork is **content-addressed**: `icon-<hash8>.<ext>`, not `icon.png`. A stable name cannot be cached for long (a client holding it can never learn the file changed), which forced `NO_CACHE` and re-downloaded megabytes of art on every launch; hashing the bytes puts a changed image on a new URL so the old one stays valid forever under the immutable header. Consequences to respect: replacing art never overwrites, superseded objects **accumulate** and cost storage, and the bucket records no mapping from object to field — so the dashboard derives that from the URLs the form loaded. `scripts/lib/artwork.mjs` owns the naming, the extension rules, the upload validation and the listing; `publish-metadata.mjs` imports `artworkObjectName` from it rather than keeping its own copy.
   - The dashboard's artwork picker posts the bytes to `/api/art/stage` and the server writes them to `dist/artwork-staging/`, handing back an absolute path that the **existing** `--icon-file` flow then uploads. Do not add a second upload path. The declared `sizeBytes` is only a pre-filter; the limit is enforced against the decoded bytes, and `safeLocalName` strips everything but the basename so a chosen filename cannot escape the staging directory. SVG is rejected: artwork renders through `<img>` from a remote origin, where an SVG can carry script — the SVG placeholders are safe only because they ship inside the app bundle.
