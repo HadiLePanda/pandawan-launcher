@@ -99,6 +99,12 @@ if (dryRun) {
   process.exit(0);
 }
 
+// The push is the one step that can fail for a reason outside this repository - an
+// expired credential, a network that cannot reach the remote - and it is the last
+// thing here. A dry-run push exercises the credential while the tree is still
+// clean, so that failure cannot leave a version bump committed but untagged.
+git(['push', '--dry-run']);
+
 try {
   writeVersion(to);
 } catch (error) {

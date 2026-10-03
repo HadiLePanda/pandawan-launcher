@@ -81,6 +81,19 @@ export default function LauncherPanel() {
   const [releaseLevel, setReleaseLevel] = useState<'patch' | 'minor' | 'major'>('patch');
   const [releaseDryRun, setReleaseDryRun] = useState(true);
 
+  // Display only - the release script computes the version it writes. It is here so
+  // the level's effect is on screen: "minor" with nothing saying 0.2.0 reads the
+  // same as "patch", which would quietly produce 0.1.1.
+  function nextVersion(version: string, level: 'patch' | 'minor' | 'major') {
+    const parts = version.split('.').map((part) => parseInt(part, 10) || 0);
+    const major = parts[0] ?? 0;
+    const minor = parts[1] ?? 0;
+    const patch = parts[2] ?? 0;
+    if (level === 'major') return `${major + 1}.0.0`;
+    if (level === 'minor') return `${major}.${minor + 1}.0`;
+    return `${major}.${minor}.${patch + 1}`;
+  }
+
   const publish = usePublisherStream();
   const release = usePublisherStream();
   const keys = usePublisherStream();
@@ -171,7 +184,12 @@ export default function LauncherPanel() {
     ) {
       return;
     }
-    await release.start('/api/launcher/release', { level: releaseLevel, dryRun: releaseDryRun });
+    // `confirm` is what makes it real. The server treats a payload without it as a
+    // preview, so a click that loses the flag cannot commit, tag and push.
+    await release.start('/api/launcher/release', {
+      level: releaseLevel,
+      confirm: !releaseDryRun,
+    });
     await refresh();
   }
 
@@ -390,6 +408,12 @@ export default function LauncherPanel() {
                 {level}
               </button>
             ))}
+
+            {liveVersion ? (
+              <span className="text-[12px] text-ink-muted">
+                {liveVersion} &rarr; {nextVersion(liveVersion, releaseLevel)}
+              </span>
+            ) : null}
 
             <label className="flex items-center gap-2 text-[12.5px] text-ink">
               <input

@@ -2158,7 +2158,10 @@ const server = http.createServer(async (req, res) => {
     if (!payload) return;
     const level = ['patch', 'minor', 'major'].includes(payload.level) ? payload.level : 'patch';
     const argv = [level];
-    if (payload.dryRun) argv.push('--dry-run');
+    // A dry run is the default, as for every other publish verb here. A real
+    // release commits, tags and pushes, so it has to be asked for by name rather
+    // than arrive as the absence of a flag.
+    if (!payload.confirm) argv.push('--dry-run');
 
     // A release bumps the version a later publish ships, so the inventory's
     // picture of the launcher is about to move.
