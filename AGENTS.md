@@ -142,6 +142,15 @@ The few things worth knowing without looking:
   window. The consequence to respect: an opened service has `pid: null`, so `persist()` filters it out of
   the reap manifest and `stop()` cannot kill it (it only stops offering to reopen one). `forceStop` still
   works because it kills whatever holds the port.
+- **Closing the dashboard window stops what it started.** Nothing inside the process runs on an X-close —
+  Windows delivers no signal and no `exit` event — so `scripts/dashboard-watchdog.mjs` does the killing: it
+  is spawned detached and windowless, holds the write end of the dashboard's stdin, and reaps the manifest
+  the moment that pipe closes. The manifest (`%TEMP%\pandawan-dashboard-services.json`, each pid with its
+  process start time) also carries **in-flight publish scripts**, so a dashboard that dies mid-upload does
+  not leave the upload running with nothing on screen to stop it; the next launch reaps the same file for
+  whatever a hard kill stranded, and `run-dashboard.bat stop` reaps it on the spot with `--now` because a
+  stranded tree holds no port to find it by. The kill/manifest rules live once in
+  `scripts/lib/service-reaper.mjs`, shared by the dashboard and the watchdog.
 - The dashboard has two invariants that broke silently once and are now guarded by tests. Respect them
   rather than working around them.
   - **No CSS rule may be nested inside another rule.** A missing `}` in a hand-written stylesheet once
