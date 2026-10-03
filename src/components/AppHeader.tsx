@@ -320,12 +320,6 @@ export function MainNav({
           wide
           onClick={onNotificationsClick}
         />
-        <TopBarButton
-          icon={<Settings className="w-4 h-4" />}
-          label={t('topBar.settings')}
-          trigger="settings"
-          onClick={onSettingsClick}
-        />
         <div className="relative" ref={profileMenuRef}>
           <button
             type="button"
