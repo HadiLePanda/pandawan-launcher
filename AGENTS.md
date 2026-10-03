@@ -156,11 +156,19 @@ The few things worth knowing without looking:
     matched only `output`, a publisher that exited non-zero rendered identically to one that succeeded —
     the log just stopped mid-sentence. `scripts/dashboard/app/client-contract.test.ts` asserts the event
     sets match and that every `/api/...` path the client calls exists in `dashboard.mjs`.
-- The Games tab is four sub-tabs (`builds` / `metadata` / `prune` / `catalog`) because it was doing four
-  unrelated jobs on one scrolling page. The choice lives in `localStorage` under `pandawan.subtab.games`,
-  deliberately **not** in `location.hash`, so it cannot collide with the top-level tab scheme. When adding
-  a section, add a `.subtab` plus a `.subpanel` and remember `.subpanel[hidden]` needs an explicit
-  `display: none` — any component that sets `display` outranks the UA's `[hidden]` rule.
+- **Dashboard design rules.** Every page is the same skeleton and one reference page fixes the look.
+  - **The reference is Launcher → Catalog.** Match its structure and styling; when a page looks off, compare it to Catalog rather than inventing a variant.
+  - **Skeleton: header → tabs → content.** The header is the title, its facts and refresh; then the tab strip; then content. Exactly **one heading per page**, and no wrapper that restates context — a panel wrapper plus a page heading plus a scope paragraph plus an inner heading is four levels of framing for one header and a form. A page with "News" in its tab and "News" above the form says it twice.
+  - **One control kit.** Use the primitives in `app/src/panels/ui.tsx` (`Button`/`Card`/`Field`/`TextInput`/`Select`/`TextArea`) and the ladder pieces in `panels/ladder.tsx`; do not hand-write `dw-button`/`dw-input` markup per page. A change to a control must be one edit, not one per tab.
+  - **One media picker.** Icon, banner and screenshots all go through `panels/MediaPicker.tsx`; **no form prints a picture grid inline**. A new media slot is a prop, not a new component (`multiple` only where the field is a list). Upload stays on the single `/api/art/stage` path — never add a second.
+  - **Artwork delete refuses while in use.** Artwork is content-addressed and its URLs are referenced by `catalog.json`/`manifest.json`, so deleting a referenced object breaks a live store page. Before offering delete the server re-derives references and either refuses with the field names that hold it or the entry is labelled in-use; deletion is opt-in and its `window.confirm` names the object. Never delete something in use silently.
+  - **Prose budget.** Count the on-screen words and treat the count as a ceiling. **Delete** paragraphs, do not shorten them; what survives is labels, values, status words, and exactly one line where a sentence prevents a real mistake. Explanations move behind the info icon so the form scans.
+  - **Drawing rules.** Mono only for literal identifiers (versions, build numbers, SHAs, paths, commands, URLs), never ordinary labels; an icon-only control carries an `aria-label` naming its target plus a `title`; colour is never the only signal (pair it with a word or glyph); large surfaces read by fill, not a 1px outline; every action whose effect leaves the machine is opt-in and confirmed by name. An undefined Tailwind v4 token emits no CSS at all, so run the repo's token check before restyling — a missing token presents as a taste complaint.
+- The Games section has five sub-tabs (`metadata` / `artwork` / `builds` / `news` / `prune`), declared once in
+  `GAME_TABS` (`components/tabs/registry.tsx`) and `GAME_TAB_IDS` (`store/session.ts`) so a tab cannot be
+  reachable in one list and unreachable in the other. Metadata is first (the editor people live in) and Prune
+  last (the only tab that deletes builds). The open tab persists through the session store and a stale
+  persisted id is re-validated against the ids rather than trusted.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
   is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
   `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen
