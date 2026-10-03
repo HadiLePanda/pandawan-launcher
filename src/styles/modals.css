@@ -274,7 +274,7 @@
   padding: 1rem 1.125rem;
   /* A bordered surface needs air on all four sides. Without it the card touched the
      app identity above and the rows below, which is what read as cramped. */
-  margin-block: 0.5rem;
+  margin-block: 1rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-default);
   background: var(--surface-default);
