@@ -17,7 +17,7 @@ import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -42,6 +42,9 @@ import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-field
 // proposes cannot drift from the version a release writes.
 import { bumpVersion } from './lib/version.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
+// Killing a tree and reading the manifest are shared with the watchdog, so what
+// the dashboard records and what cleans up after it cannot drift apart.
+import { killTree, processStartedAt, reapManifest, writeManifest } from './lib/service-reaper.mjs';
 // The news contract lives with the publisher for the same reason.
 import {
   NEWS_ART_PREFIX,
@@ -1125,10 +1128,18 @@ function runScript(name, args, res, { onExit } = {}) {
     env: process.env,
   });
 
+  // Recorded so a dashboard that dies mid-publish does not leave the upload
+  // running behind it, with no window on screen to stop it.
+  const script = { pid: child.pid, startedAt: processStartedAt(child.pid), id: name };
+  runningScripts.add(script);
+  persist();
+
   child.stdout.on('data', (chunk) => send('output', String(chunk)));
   child.stderr.on('data', (chunk) => send('output', String(chunk)));
   child.on('error', (err) => send('error', String(err)));
   child.on('close', (code) => {
+    runningScripts.delete(script);
+    persist();
     send('done', JSON.stringify({ code }));
     res.end();
     // After the stream is closed, so the hook cannot interleave output into an
@@ -1191,80 +1202,53 @@ const SERVICES = [
  * does not reliably deliver SIGINT or SIGTERM, and process.on('exit') does not
  * run when the window is closed with X - exactly how run-dashboard.bat ends - so
  * the reap-on-exit handler is best effort and a hard kill would strand every tree
- * it started. The on-disk manifest is the real guarantee: each started pid is
- * written with its process start time, and the next launch reaps anything still
- * alive. The start time is what makes that safe - a recycled pid will not match,
- * so it is never killed.
+ * it started. The on-disk manifest is the real guarantee, and two cleaners read
+ * it: the watchdog the moment this process dies, and the next launch for anything
+ * a hard kill stranded. Each pid is written with its process start time, which is
+ * what makes killing it later safe - a recycled pid will not match, so it is
+ * never killed.
  */
 const manifestPath = path.join(os.tmpdir(), 'pandawan-dashboard-services.json');
 
 /**
- * Read a process's start time, or null if it is gone. Retries, because a
- * process spawned a moment ago is not always visible to Get-Process yet; an
- * unverifiable pid must never be killed later.
+ * Mirror the live map to disk so the watchdog and the next launch can clean up
+ * after this one.
  */
-function processStartedAt(pid, attempts = 5) {
-  const script =
-    'try { $p = Get-Process -Id ' +
-    pid +
-    ' -ErrorAction Stop; ' +
-    'Write-Output $p.StartTime.ToUniversalTime().ToString("o") } catch { Write-Output "" }';
-  for (let i = 0; i < attempts; i++) {
-    const out = spawnSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
-    const value = (out.stdout ?? '').trim();
-    if (value) return value;
-    spawnSync('ping', ['-n', '2', '127.0.0.1'], { stdio: 'ignore' });
-  }
-  return null;
-}
-
-function readManifest() {
-  try {
-    return JSON.parse(readFileSync(manifestPath, 'utf8'));
-  } catch {
-    return [];
-  }
-}
-
-function writeManifest(entries) {
-  try {
-    writeFileSync(manifestPath, JSON.stringify(entries, null, 2));
-  } catch {
-    // A missing manifest costs a possible orphan on a hard kill; it must never
-    // stop the dashboard from starting.
-  }
-}
-
-/** Mirror the live map to disk so the next launch can clean up after this one. */
 function persist() {
   writeManifest(
-    // `pid` is null for a service opened in its own window: there is no process
-    // of ours to remember, so it is left out rather than persisted as "unknown
-    // pid" on the next launch.
-    [...started.values()]
-      .filter((e) => e.pid)
-      .map((e) => ({ pid: e.pid, startedAt: e.startedAt, id: e.service.id }))
+    manifestPath,
+    [
+      // `pid` is null for a service opened in its own window: there is no process
+      // of ours to remember, so it is left out rather than persisted as "unknown
+      // pid" on the next launch.
+      ...[...started.values()].map((e) => ({
+        pid: e.pid,
+        startedAt: e.startedAt,
+        id: e.service.id,
+      })),
+      ...[...runningScripts].map((e) => ({ pid: e.pid, startedAt: e.startedAt, id: e.id })),
+    ].filter((e) => e.pid)
   );
 }
 
-/** Kill anything a previous hub run left behind, ignoring pids that were reused. */
-function reapPreviousRun() {
-  const stale = readManifest();
-  if (!stale.length) return 0;
-  let killed = 0;
-  for (const entry of stale) {
-    if (!entry.pid) continue;
-    const startedAt = processStartedAt(entry.pid);
-    if (startedAt === null) continue; // already gone
-    // No recorded identity means the pid cannot be proven ours; a recycled pid
-    // would kill an unrelated program, so skip rather than guess.
-    if (!entry.startedAt) continue;
-    if (startedAt !== entry.startedAt) continue;
-    killTree(entry.pid);
-    killed++;
-  }
-  writeManifest([]);
-  return killed;
+/**
+ * Nothing inside this process runs when its window is closed with X, so when the
+ * killing has to happen the process doing it must outlive us. The watchdog holds
+ * the write end of our stdin and is never sent a byte: the pipe closing is the
+ * death notice, so the manifest is reaped the moment this process goes, whether
+ * that was a window close, a crash or a kill from outside.
+ */
+function startWatchdog() {
+  const child = spawn(process.execPath, [path.join(here, 'dashboard-watchdog.mjs'), manifestPath], {
+    detached: true,
+    // A background reaper, not a service: it opens no console window of its own.
+    windowsHide: true,
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  // The pipe is the signal and stays open; unref only releases the event loop,
+  // which is what lets a dashboard that finishes on its own still exit.
+  child.stdin?.unref?.();
+  child.unref();
 }
 
 /**
@@ -1300,6 +1284,14 @@ function buildEnv() {
  */
 const started = new Map();
 
+/**
+ * Publishing scripts currently running, as `{ pid, startedAt, id }`. They are
+ * not services and have no SERVICES entry, but an in-flight upload is exactly
+ * the thing that must not be left running with nothing on screen to stop it, so
+ * they are recorded the same way.
+ */
+const runningScripts = new Set();
+
 /** True when something is accepting connections on the port. */
 function portInUse(port) {
   return new Promise((resolve) => {
@@ -1315,16 +1307,6 @@ function portInUse(port) {
     socket.once('timeout', () => finish(false));
     socket.once('error', () => finish(false));
   });
-}
-
-/**
- * Kill a process and everything it started. `/T` is the whole point: `npm run
- * tauri:dev` puts node, cargo and the built exe several levels below the pid we
- * spawned, and killing only that pid strands them holding ports. `/F` because
- * these trees do not respond to a polite close.
- */
-function killTree(pid) {
-  spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
 }
 
 function start(service) {
@@ -2557,13 +2539,17 @@ const server = http.createServer(async (req, res) => {
 for (const signal of ['exit', 'SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     for (const entry of started.values()) killTree(entry.pid);
+    for (const entry of runningScripts) killTree(entry.pid);
     started.clear();
-    writeManifest([]);
+    runningScripts.clear();
+    writeManifest(manifestPath, []);
     if (signal !== 'exit') process.exit(0);
   });
 }
 
-const reaped = reapPreviousRun();
+startWatchdog();
+
+const reaped = reapManifest(manifestPath);
 
 server.listen(PORT, '127.0.0.1', () => {
   if (reaped) console.log(`Stopped ${reaped} leftover service tree(s) from a previous run`);

@@ -104,6 +104,11 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENI
   echo Stopping PID %%p...
   taskkill /PID %%p /T /F >nul 2>&1
 )
+
+REM A tree a hard kill stranded holds no port to be found by, so the manifest the
+REM dashboard wrote is what names it. Quiet: it usually finds nothing.
+node scripts\dashboard-watchdog.mjs "%TEMP%\pandawan-dashboard-services.json" --now >nul 2>&1
+
 echo Done.
 goto :done
 
