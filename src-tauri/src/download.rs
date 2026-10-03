@@ -1,15 +1,13 @@
 use crate::types::{DownloadEvent, DownloadStats, LauncherError};
 use futures_util::StreamExt;
 use reqwest::Client;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::ipc::Channel;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Semaphore;
 use tokio::time::sleep;
 
@@ -130,13 +128,13 @@ impl DownloadManager {
         stats: Option<Arc<DownloadStats>>,
     ) -> Result<(), DownloadError> {
         if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
-        let start_byte = if dest_path.exists() {
-            fs::metadata(dest_path)?.len()
-        } else {
-            0
+        let start_byte = match tokio::fs::metadata(dest_path).await {
+            Ok(meta) => meta.len(),
+            Err(e) if e.kind() == ErrorKind::NotFound => 0,
+            Err(e) => return Err(e.into()),
         };
 
         if self.cancel_token.load(Ordering::Relaxed) {
@@ -162,7 +160,7 @@ impl DownloadManager {
             // same too-long file. Deleting it makes the next attempt start from
             // zero, which is why 416 counts as retryable.
             if status == reqwest::StatusCode::RANGE_NOT_SATISFIABLE && start_byte > 0 {
-                let _ = fs::remove_file(dest_path);
+                let _ = tokio::fs::remove_file(dest_path).await;
             }
             return Err(DownloadError::HttpError(status));
         }
@@ -171,13 +169,17 @@ impl DownloadManager {
 
         // Open the destination: truncate for a full response, append only for a real partial response
         let mut file = if is_partial && start_byte > 0 {
-            OpenOptions::new().append(true).open(dest_path)?
+            tokio::fs::OpenOptions::new()
+                .append(true)
+                .open(dest_path)
+                .await?
         } else {
-            OpenOptions::new()
+            tokio::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(dest_path)?
+                .open(dest_path)
+                .await?
         };
 
         // Unix builds need the executable bit before the game can be spawned at
@@ -189,9 +191,9 @@ impl DownloadManager {
         // compiled until a macOS or Linux runner builds it.
         #[cfg(unix)]
         {
-            let mut perms = std::fs::metadata(dest_path)?.permissions();
+            let mut perms = tokio::fs::metadata(dest_path).await?.permissions();
             perms.set_mode(perms.mode() | 0o755);
-            std::fs::set_permissions(dest_path, perms)?;
+            tokio::fs::set_permissions(dest_path, perms).await?;
         }
 
         let total_size = if is_partial {
@@ -233,7 +235,7 @@ impl DownloadManager {
                 limiter.consume(chunk_len).await;
             }
 
-            file.write_all(&chunk)?;
+            file.write_all(&chunk).await?;
             downloaded += chunk_len;
             bytes_since_update += chunk_len;
 
@@ -262,15 +264,15 @@ impl DownloadManager {
             }
         }
 
-        file.flush()?;
-        drop(file);
+        file.flush().await?;
+        file.sync_all().await?;
 
         if let Some(expected) = expected_hash {
             let actual_hash = crate::patch::compute_file_hash(dest_path)
                 .await
                 .map_err(|e| DownloadError::Patch(e.to_string()))?;
             if actual_hash != expected {
-                let _ = fs::remove_file(dest_path);
+                let _ = tokio::fs::remove_file(dest_path).await;
                 return Err(DownloadError::HashMismatch {
                     expected: expected.to_string(),
                     actual: actual_hash,
