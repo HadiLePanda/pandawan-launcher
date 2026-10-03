@@ -267,10 +267,15 @@ jobs:
           set -euo pipefail
           # Immutable, long-lived caching for the versioned bundles: their names
           # include the version, so the bytes at a given URL never change.
+          # --recursive is required: a directory source aborts with "Is a
+          # directory" without it, and --exclude only applies to recursive runs.
+          # assets-compact.json is the build's asset map, not a download.
           aws s3 cp bundles/ "s3://$R2_BUCKET/launcher/" \
+            --recursive \
             --endpoint-url "$AWS_ENDPOINT_URL" \
             --no-progress \
             --exclude 'latest.json' \
+            --exclude 'assets-compact.json' \
             --cache-control 'public, max-age=31536000, immutable'
           # latest.json is the one mutable file, and it must never be cached or
           # clients keep polling a stale version and miss new releases.
