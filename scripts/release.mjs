@@ -12,8 +12,8 @@
  * and signs the bundles and publishes them plus latest.json to R2. Nothing is
  * uploaded from this machine.
  *
- * The version lives in three files that CI requires to match, so all three are
- * written here rather than by hand.
+ * The version lives in VERSION_FILES (four files) that CI requires to match, so
+ * all of them are written here rather than by hand.
  */
 
 import { spawnSync } from 'node:child_process';

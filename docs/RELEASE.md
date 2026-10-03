@@ -33,7 +33,9 @@ formats are not interchangeable. Use `npm run keys:generate` (which wraps
 
 1. **Make sure `main` is green** (CI passes).
 
-2. **Bump the version** in the three files above to the same semver value, e.g. `0.2.0`.
+2. **Bump the version** with `npm run version:set -- 0.2.0`, which writes every file in
+   `VERSION_FILES` (`package.json`, `tauri.conf.json`, `Cargo.toml`, `Cargo.lock`) from
+   one value. `npm run version:check` proves they agree.
 
 3. **Cut a release branch** from latest `main`:
 
@@ -65,12 +67,14 @@ formats are not interchangeable. Use `npm run keys:generate` (which wraps
    - Builds Windows, macOS (universal), and Linux bundles.
    - Drafts a GitHub Release and generates `latest.json` for the auto-updater.
 
-8. **Publish** the drafted GitHub Release.
-
-9. **Upload `latest.json`** to your CDN endpoint (`https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/updates.json`) so installed launchers can find the update.
+8. **Nothing further is needed from you.** The workflow's `publish-updater` job
+   already uploads `latest.json` to
+   `https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/latest.json` (the
+   path `tauri.conf.json` polls), and the GitHub Release stays a draft on purpose:
+   its asset URLs point at R2, so nothing needs the GitHub copy public.
 
 ## Notes
 
 - Tags must match `v*.*.*` (e.g. `v0.2.0`) to trigger the workflow.
-- The release is drafted, not published automatically.
+- The release stays a draft; it is the build record, not the download source.
 - If `TAURI_SIGNING_PRIVATE_KEY` is missing, the build will fail — the workflow checks the public key exists first, but the secret itself must be set in GitHub.
