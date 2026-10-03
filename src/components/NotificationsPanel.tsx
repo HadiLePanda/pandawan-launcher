@@ -22,7 +22,10 @@ export function NotificationsPanel({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if ((e.target as Element).closest('[data-panel-trigger]')) return;
+      // Only the bell re-toggles this panel; clicking any other panel trigger
+      // (the profile button) must close it, or two popovers end up stacked in
+      // the same corner.
+      if ((e.target as Element).closest('[data-panel-trigger="notifications"]')) return;
       if (!panelRef.current?.contains(e.target as Node)) {
         onClose();
       }
@@ -44,7 +47,6 @@ export function NotificationsPanel({
       ref={panelRef}
       className="notifications-panel"
       role="dialog"
-      aria-modal="true"
       aria-labelledby="notifications-panel-title"
     >
       <div className="notifications-panel-header">
