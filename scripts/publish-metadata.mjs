@@ -215,6 +215,14 @@ export async function publishMetadata(argv) {
       cacheControl: NO_CACHE,
       contentType: 'application/json',
     });
+
+    // The embedded fallback ships inside the app and is what a launcher with no
+    // network reads. Only publish:catalog used to write it, so a metadata or
+    // artwork edit never reached it and a fresh checkout's copy drifted.
+    writeFileSync(
+      path.join(repoRoot, 'public', 'catalog.json'),
+      `${JSON.stringify(catalog, null, 2)}\n`
+    );
   } finally {
     // Transport detail, not state. A stale manifest left in dist/ could be
     // picked up by a later build.
