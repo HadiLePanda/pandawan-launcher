@@ -113,10 +113,17 @@ export interface CatalogResponse {
   diff: CatalogDiff;
   /** The served metadata field contract, used for diff field labels. */
   fieldSpec?: MetaFieldSpec[];
-  /** Present only if the server could not read one side; rendered as a banner. */
-  error?: string;
-  liveError?: string;
-  localError?: string;
+  /**
+   * Per side, how the read went. The server reports a status plus a detail rather
+   * than one error string, because a side can be absent (nothing published yet,
+   * which is normal) separately from unreadable, which is a problem to explain.
+   */
+  liveStatus?: string;
+  liveDetail?: string;
+  localStatus?: string;
+  localDetail?: string;
+  /** Where the local copy was read from, so the operator can open it. */
+  localPath?: string;
 }
 
 /**

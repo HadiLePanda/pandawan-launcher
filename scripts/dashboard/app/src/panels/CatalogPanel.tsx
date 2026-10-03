@@ -122,8 +122,11 @@ export default function CatalogPanel() {
     [load]
   );
 
-  const liveProblem = load.state === 'ready' ? load.data.liveError : undefined;
-  const localProblem = load.state === 'ready' ? load.data.localError : undefined;
+  // The server reports a per-side status and detail, not a single error string:
+  // "absent" is normal on a fresh bucket while "unreadable" needs explaining, and
+  // the banner is only true when the side could not be read at all.
+  const liveProblem = load.state === 'ready' ? problemDetail(load.data) : undefined;
+  const localProblem = load.state === 'ready' ? localProblemDetail(load.data) : undefined;
   const diff: CatalogDiff =
     load.state === 'ready' ? load.data.diff : { onlyLive: [], onlyLocal: [], changed: [] };
   // The served field contract, so the editor and the diff labels both render from
@@ -244,6 +247,25 @@ export default function CatalogPanel() {
       ) : null}
     </GlobalPanel>
   );
+}
+
+/**
+ * A side's read failure, or undefined when there is nothing to report.
+ *
+ * `absent` is not a problem: an unpublished catalog or an empty local file is a
+ * normal first-run state, and the diff below explains it without a banner. Only a
+ * side that exists but could not be read or parsed blocks a publish.
+ */
+function sideProblem(status: string | undefined, detail: string | undefined): string | undefined {
+  return status === 'unreadable' || status === 'invalid' ? detail || status : undefined;
+}
+
+function problemDetail(data: CatalogResponse): string | undefined {
+  return sideProblem(data.liveStatus, data.liveDetail);
+}
+
+function localProblemDetail(data: CatalogResponse): string | undefined {
+  return sideProblem(data.localStatus, data.localDetail);
 }
 
 // --- The table ------------------------------------------------------------

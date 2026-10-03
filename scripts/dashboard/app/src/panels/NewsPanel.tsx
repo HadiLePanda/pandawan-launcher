@@ -48,7 +48,7 @@ import { parseScopeKey } from '@lib/games';
 import { savedPhrase } from '@lib/format';
 import { fileToBase64 } from '@lib/artwork';
 import { useSession } from '@store/session';
-import type { StagedFile } from '@/types/api';
+import type { CatalogResponse, StagedFile } from '@/types/api';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
 import { Badge, Button, Card, EmptyState, ErrorNote, Spinner, TextArea, TextInput } from './ui';
@@ -453,18 +453,19 @@ function NewsForm({
   const [gameArt, setGameArt] = useState<Record<string, string>>({});
   useEffect(() => {
     let cancelled = false;
-    apiGet<unknown>('/api/catalog')
+    apiGet<CatalogResponse>('/api/catalog')
       .then(({ data }) => {
         if (cancelled) return;
-        const record = data as {
-          games?: { id: string; bannerUrl?: string; iconUrl?: string }[];
-          catalog?: { games?: { id: string; bannerUrl?: string; iconUrl?: string }[] };
-        };
-        const games = record?.games ?? record?.catalog?.games ?? [];
+        // The games hang off each side of the response, not off the top level:
+        // reading a top-level `games` found nothing, so the map stayed empty and
+        // the borrow-an-art affordance never rendered.
+        const sides = [data.live, data.local];
         const map: Record<string, string> = {};
-        for (const game of games) {
-          const art = game.bannerUrl?.trim() || game.iconUrl?.trim();
-          if (art) map[game.id] = art;
+        for (const side of sides) {
+          for (const game of side?.games ?? []) {
+            const art = game.bannerUrl?.trim() || game.iconUrl?.trim();
+            if (art && !map[game.id]) map[game.id] = art;
+          }
         }
         setGameArt(map);
       })
