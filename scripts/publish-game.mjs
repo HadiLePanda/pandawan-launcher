@@ -20,7 +20,7 @@ import {
   r2Config,
   run,
   S3,
-  sync,
+  uploadDir,
   upload,
 } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
@@ -119,14 +119,14 @@ for (const spec of platformSpecs) {
     fail(`--platform ${platform} directory does not exist: ${dir}`);
   }
   console.log(`  ${platform}: ${path.relative(repoRoot, dir) || '.'}`);
-  sync(dir, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
+  uploadDir(dir, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
     endpoint,
     cacheControl: IMMUTABLE,
   });
 }
 
 if (inputDir) {
-  sync(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
+  uploadDir(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
     endpoint,
     cacheControl: IMMUTABLE,
   });

@@ -108,10 +108,26 @@ export function upload(source, key, { endpoint, cacheControl, contentType, throw
   run('aws', args, `Uploading ${path.basename(source)} -> ${key}`, { throwOnFailure });
 }
 
-export function sync(sourceDir, keyPrefix, { endpoint, cacheControl } = {}) {
-  const args = ['s3', 'sync', sourceDir, keyPrefix, '--endpoint-url', endpoint, '--no-progress'];
+/**
+ * Upload a directory tree to a key prefix.
+ *
+ * `cp --recursive` and deliberately not `sync`: sync lists the destination to
+ * decide what to skip, which needs ListObjects. Uploading what it is given needs
+ * only PutObject, so a publishing token can stay narrow.
+ */
+export function uploadDir(sourceDir, keyPrefix, { endpoint, cacheControl } = {}) {
+  const args = [
+    's3',
+    'cp',
+    sourceDir,
+    keyPrefix,
+    '--recursive',
+    '--endpoint-url',
+    endpoint,
+    '--no-progress',
+  ];
   if (cacheControl) args.push('--cache-control', cacheControl);
-  run('aws', args, `Syncing ${path.basename(sourceDir)}/ -> ${keyPrefix}/`);
+  run('aws', args, `Uploading ${path.basename(sourceDir)}/ -> ${keyPrefix}/`);
 }
 
 export const NO_CACHE = 'no-cache, no-store, must-revalidate';
