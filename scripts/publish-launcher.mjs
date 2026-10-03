@@ -3,6 +3,7 @@
  * Publish the launcher release to R2 from this machine.
  *
  *   npm run release:publish -- --tag v0.1.0 --confirm
+ *   npm run release:publish -- --index-only --from bundles --confirm
  *
  * A dry run is the default: nothing is written to the bucket unless --confirm is
  * passed. An upload is what makes a release visible to every player, so making it
@@ -15,6 +16,15 @@
  * seconds, so when only publishing is broken - bad credentials, a botocore
  * regression, a wrong cache header - there is no reason to spend 25 minutes
  * rediscovering that. This script does the publish half on its own.
+ *
+ * `--index-only` does a narrower job still: it rebuilds and uploads only
+ * launcher/downloads.json - the index the public website reads - from a
+ * directory of already-downloaded bundles (`--from <dir>`, normally `bundles`).
+ * The release workflow runs it after it has mirrored the bundles, because the
+ * step that uploads them never regenerates the website index; without it the
+ * offers on the download page fall a version behind on every release. It does
+ * not re-upload the bundles and never touches latest.json, which the workflow
+ * owns.
  *
  * It reads the already-built, already-signed assets off the draft GitHub release,
  * so it does not need macOS or Linux: this works from a plain Windows machine.
@@ -36,7 +46,17 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
+import { buildDownloadsIndex } from './lib/downloads-index.mjs';
+import {
+  fail,
+  IMMUTABLE,
+  loadDotEnv,
+  NO_CACHE,
+  repoRoot,
+  r2Config,
+  S3,
+  upload,
+} from './lib/r2.mjs';
 
 const REPO = 'HadiLePanda/pandawan-launcher';
 const PREFIX = 'launcher';
@@ -45,12 +65,20 @@ const argv = process.argv.slice(2);
 const tagIndex = argv.indexOf('--tag');
 const tag = tagIndex !== -1 ? argv[tagIndex + 1] : null;
 const dryRun = !argv.includes('--confirm') || argv.includes('--dry-run');
+// Index-only mode rebuilds and uploads downloads.json alone, from a directory of
+// already-downloaded bundles. CI runs it because its R2 upload step ships the
+// bundles and latest.json but never regenerates the website index.
+const indexOnly = argv.includes('--index-only');
+const fromIndex = argv.indexOf('--from');
+const fromDir = fromIndex !== -1 ? argv[fromIndex + 1] : null;
 
-if (!tag || !/^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/.test(tag)) {
+// The full publish needs a tag to fetch a release; the index-only mode works
+// from a local directory and needs no tag at all.
+if (!indexOnly && (!tag || !/^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/.test(tag))) {
   fail('--tag is required, like --tag v0.1.0');
 }
 
-const staging = path.join(repoRoot, '.publish', tag);
+const staging = indexOnly ? null : path.join(repoRoot, '.publish', tag);
 
 // The updater manifest plus every artifact and signature a latest.json can point
 // at. A release whose latest.json references a missing file is worse than no
@@ -130,6 +158,23 @@ function fetchAssets() {
 }
 
 /**
+ * The public directory the downloads live under, derived from the committed
+ * updater endpoint (which points at the manifest itself). Strip the filename so
+ * joining it with an artifact name yields a per-asset URL, not
+ * `.../launcher/latest.json/<file>`.
+ */
+function publicBase() {
+  const config = JSON.parse(
+    readFileSync(path.join(repoRoot, 'src-tauri', 'tauri.conf.json'), 'utf-8')
+  );
+  const endpoints = config?.plugins?.updater?.endpoints;
+  if (!Array.isArray(endpoints) || endpoints.length !== 1) {
+    fail('Expected exactly one plugins.updater.endpoints entry in tauri.conf.json.');
+  }
+  return endpoints[0].split(/[?#]/)[0].replace(/\/[^/]*$/, '');
+}
+
+/**
  * Point latest.json at the public bucket.
  *
  * tauri-action writes two different URL shapes, and both have to be handled:
@@ -149,14 +194,7 @@ function rewriteManifestUrls(release) {
   const src = path.join(staging, 'latest.json');
   if (!existsSync(src)) fail(`latest.json missing from the ${tag} release.`);
 
-  const config = JSON.parse(
-    readFileSync(path.join(repoRoot, 'src-tauri', 'tauri.conf.json'), 'utf-8')
-  );
-  const endpoints = config?.plugins?.updater?.endpoints;
-  if (!Array.isArray(endpoints) || endpoints.length !== 1) {
-    fail('Expected exactly one plugins.updater.endpoints entry in tauri.conf.json.');
-  }
-  const base = endpoints[0].split(/[?#]/)[0].replace(/\/[^/]*$/, '');
+  const base = publicBase();
 
   const byId = new Map(release.assets.map((asset) => [String(asset.id), asset.name]));
   const manifest = JSON.parse(readFileSync(src, 'utf-8'));
@@ -188,84 +226,78 @@ function rewriteManifestUrls(release) {
 }
 
 /**
- * Build downloads.json: what a person should download, by platform.
+ * Bucket and endpoint for an upload.
  *
- * latest.json is the *updater's* manifest, so it only lists updater artifacts.
- * That omits the macOS .dmg, which is what a human actually wants to click -
- * the .app.tar.gz is an updater format nobody installs by hand. Deriving the
- * list from the release assets instead means the download page can offer the
- * .dmg as well, and cannot drift from what was really published.
+ * CI exports the AWS_* variables the CLI reads (endpoint, bucket, credentials);
+ * a local run supplies the R2_* names through .env. Accept either shape so the
+ * same command works in both. Unlike r2Config this does not require
+ * R2_CDN_ORIGIN, which only exists to print a URL.
  */
-function buildDownloadsIndex(release, base) {
-  const groups = { windows: [], macos: [], linux: [] };
-
-  const classify = (name) => {
-    if (/\.msi$/.test(name) || /-setup\.exe$/.test(name)) return 'windows';
-    if (/\.dmg$/.test(name) || /\.app\.tar\.gz$/.test(name)) return 'macos';
-    if (/\.deb$/.test(name) || /\.rpm$/.test(name)) return 'linux';
-    return null;
-  };
-
-  const label = (name) => {
-    if (/\.msi$/.test(name)) return 'MSI installer';
-    if (/-setup\.exe$/.test(name)) return 'EXE installer';
-    if (/\.dmg$/.test(name)) return 'Disk image';
-    if (/\.app\.tar\.gz$/.test(name)) return 'App archive';
-    if (/\.deb$/.test(name)) return 'Debian / Ubuntu';
-    if (/\.rpm$/.test(name)) return 'Fedora / RHEL';
-    return name;
-  };
-
-  for (const asset of release.assets) {
-    // Signatures are consumed by the updater, never clicked by a person.
-    if (asset.name.endsWith('.sig') || asset.name === 'latest.json') continue;
-    const platform = classify(asset.name);
-    if (!platform) continue;
-    if (!existsSync(path.join(staging, asset.name))) continue;
-
-    groups[platform].push({
-      label: label(asset.name),
-      url: `${base}/${encodeURIComponent(asset.name)}`,
-    });
+function r2Target() {
+  loadDotEnv();
+  const bucket = process.env.R2_BUCKET;
+  const endpoint =
+    process.env.AWS_ENDPOINT_URL ||
+    (process.env.R2_ACCOUNT_ID
+      ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+      : null);
+  if (!bucket) fail('R2_BUCKET is not set.');
+  if (!endpoint) fail('AWS_ENDPOINT_URL or R2_ACCOUNT_ID must be set.');
+  if (!process.env.AWS_ACCESS_KEY_ID && process.env.R2_ACCESS_KEY_ID) {
+    process.env.AWS_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+    process.env.AWS_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
   }
+  return { bucket, endpoint };
+}
 
-  // The page leads with the first entry in each group, so this decides what a
-  // person actually downloads. It must name every platform: an unlisted one
-  // falls through to alphabetical order, which silently leads macOS with the
-  // .app.tar.gz updater format instead of the .dmg a human wants.
-  const order = {
-    windows: ['MSI installer', 'EXE installer'],
-    macos: ['Disk image', 'App archive'],
-    linux: ['Debian / Ubuntu', 'Fedora / RHEL'],
-  };
-  for (const [platform, items] of Object.entries(groups)) {
-    const preferred = order[platform];
-    items.sort((a, b) => {
-      const ai = preferred?.indexOf(a.label) ?? 99;
-      const bi = preferred?.indexOf(b.label) ?? 99;
-      return ai - bi || a.label.localeCompare(b.label);
-    });
-  }
+/**
+ * Rebuild and upload the website index, and nothing else.
+ *
+ * The bundles and latest.json are already in the bucket - CI's recursive upload
+ * put them there - and this deliberately touches neither. The version comes from
+ * the latest.json in the source directory, which the workflow has just
+ * published, so the index can never describe a release other than the one on
+ * offer.
+ */
+function publishIndexOnly() {
+  if (!fromDir) fail('--index-only needs --from <dir>, like --from bundles');
 
-  // Any label this version does not know about still needs a defined position;
-  // without the assertion a new artifact type sorts alphabetically and can
-  // displace the format we meant to lead with.
-  for (const [platform, items] of Object.entries(groups)) {
-    const known = new Set(order[platform]);
-    for (const item of items) {
-      if (!known.has(item.label)) {
-        throw new Error(
-          `downloads.json: unexpected "${item.label}" on ${platform}. ` +
-            `Add it to the order map in buildDownloadsIndex so its position is deliberate.`
-        );
-      }
+  const manifestPath = path.join(fromDir, 'latest.json');
+  if (!existsSync(manifestPath)) fail(`No latest.json in ${fromDir}.`);
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  if (!manifest.version) fail(`${manifestPath} has no "version".`);
+
+  const downloads = buildDownloadsIndex({
+    version: manifest.version,
+    // Every file present is a candidate; the builder drops the signatures,
+    // latest.json and the CI-only asset map, none of which is a download.
+    files: readdirSync(fromDir),
+    base: publicBase(),
+  });
+
+  if (dryRun) {
+    console.log(`\nIndex-only dry run from ${fromDir} (version ${manifest.version}).`);
+    console.log(`Would upload ${PREFIX}/downloads.json (no-cache):`);
+    for (const [platform, items] of Object.entries(downloads.platforms)) {
+      console.log(`  ${platform}: ${items.map((i) => i.label).join(', ') || 'none'}`);
     }
+    process.exit(0);
   }
 
-  return {
-    version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version,
-    platforms: groups,
-  };
+  const { bucket, endpoint } = r2Target();
+  const indexPath = path.join(fromDir, 'downloads.json');
+  writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
+  upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+    contentType: 'application/json',
+  });
+  console.log(`\nRefreshed ${PREFIX}/downloads.json (version ${manifest.version}).`);
+}
+
+if (indexOnly) {
+  publishIndexOnly();
+  process.exit(0);
 }
 
 const { bucket, endpoint } = r2Config();
@@ -279,7 +311,15 @@ const base = JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')
   .platforms[Object.keys(manifest.platforms)[0]].url.split('/')
   .slice(0, -1)
   .join('/');
-const downloads = buildDownloadsIndex(release, base);
+const downloads = buildDownloadsIndex({
+  version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version,
+  // Only the files the publisher actually staged: a name listed on the release
+  // whose bytes never made it here would produce a link that 404s.
+  files: release.assets
+    .map((asset) => asset.name)
+    .filter((name) => existsSync(path.join(staging, name))),
+  base,
+});
 
 if (dryRun) {
   console.log('\nDry run. Would upload:');

@@ -181,6 +181,17 @@ jobs:
           # ref_name is the branch, so the input tag is used instead.
           ref: ${{ inputs.tag || github.ref_name }}
 
+      - name: Checkout publisher scripts from the workflow's own ref
+        # The checkout above follows the release tag, and for a publish-only
+        # rerun of an older release that tag predates the --index-only mode of
+        # publish-launcher.mjs. GitHub reads this workflow file from the ref it
+        # was dispatched on, so the scripts must come from that same ref, not
+        # from the tag whose assets are being re-published.
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          path: ci
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -285,3 +296,25 @@ jobs:
             --cache-control 'no-cache, no-store, must-revalidate' \
             --content-type 'application/json'
           echo "Published to s3://$R2_BUCKET/launcher/"
+
+      - name: Refresh the website download index
+        # The recursive upload above ships the bundles and latest.json but never
+        # regenerates launcher/downloads.json, which is what the public download
+        # page renders - so without this the page keeps offering the previous
+        # version. --index-only builds and uploads that one file from the
+        # bundles already downloaded above, and touches nothing else.
+        #
+        # Run from ./ci (the workflow's own ref), not the tag checkout, so the
+        # mode exists even when re-publishing an older release.
+        env:
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          AWS_ENDPOINT_URL: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # Same aws-cli 2.33.x checksum regression as the upload step above:
+          # without this a cp that streams aborts with "stream is not seekable".
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+        run: |
+          set -euo pipefail
+          node ci/scripts/publish-launcher.mjs --index-only --from bundles --confirm
