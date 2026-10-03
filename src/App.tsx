@@ -355,19 +355,28 @@ function App() {
   const renderContent = () => {
     // The article view wins over the tab underneath it, which means navigating to
     // another tab has to close it explicitly or it stays on screen - the store
-    // looked like it was rendering the news article. Scoping it to the news tab
-    // makes the invariant structural: there is no state combination where an
-    // article is showing while the store is.
-    if (activeView === 'news' && newsArticle) {
+    // looked like it was rendering the news article.
+    //
+    // It shows on the news tab, and on the game page it was opened from: a news
+    // card on a game page set the state and rendered nothing at all, because the
+    // game page is not the news tab. Those two cases are what keep an article from
+    // outliving the surface it was opened on.
+    const articleFromGame =
+      newsArticle !== null && activeView === 'games' && newsArticle.gameId === selectedGameId;
+    if (newsArticle && (activeView === 'news' || articleFromGame)) {
       const article = news.find((n) => n.id === newsArticle.articleId);
-      const articleGame = games.find((g) => g.info.id === newsArticle.gameId);
-      if (article && articleGame) {
+      // An item that belongs to no game is still readable; it just has no game to
+      // name beside it. Requiring a game meant such an item could not be opened.
+      const articleGame = newsArticle.gameId
+        ? games.find((g) => g.info.id === newsArticle.gameId)
+        : undefined;
+      if (article) {
         return (
           <NewsArticleView
             article={article}
-            gameName={articleGame.info.name}
-            gameIconUrl={articleGame.info.iconUrl}
-            gameBannerUrl={articleGame.info.bannerUrl}
+            gameName={articleGame?.info.name}
+            gameIconUrl={articleGame?.info.iconUrl}
+            gameBannerUrl={articleGame?.info.bannerUrl}
             onBack={() => setNewsArticle(null)}
             onClose={() => setNewsArticle(null)}
           />
@@ -380,8 +389,7 @@ function App() {
       return (
         <News
           onSelectArticle={(article) => {
-            if (!article.gameId) return;
-            setNewsArticle({ articleId: article.id, gameId: article.gameId });
+            setNewsArticle({ articleId: article.id, gameId: article.gameId ?? '' });
           }}
         />
       );

@@ -6,7 +6,8 @@ import type { NewsItem } from '@/types';
 
 interface NewsArticleViewProps {
   article: NewsItem;
-  gameName: string;
+  /** Absent for an item that belongs to no game. */
+  gameName?: string;
   gameIconUrl?: string | null;
   /** The game's banner, used as the article image when the item has none of its own. */
   gameBannerUrl?: string | null;
@@ -72,7 +73,7 @@ export function NewsArticleView({
           ) : (
             <div className="news-article-game-icon fallback" />
           )}
-          <span className="news-article-game-name">{gameName}</span>
+          {gameName ? <span className="news-article-game-name">{gameName}</span> : null}
         </div>
 
         <h1 className="news-article-title">{article.title}</h1>
