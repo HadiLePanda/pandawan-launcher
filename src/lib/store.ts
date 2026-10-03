@@ -169,7 +169,12 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     set((state) => {
       const newDownloads = new Map(state.activeDownloads);
       newDownloads.delete(gameId);
-      return { activeDownloads: newDownloads };
+      return {
+        activeDownloads: newDownloads,
+        // reset here too: it is only cleared in cancelOperation's catch, so a
+        // cancel that succeeded left every cancel button spinning forever.
+        cancelling: false,
+      };
     });
   },
 
@@ -183,7 +188,10 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       await gameService.saveSettings(settings);
       set({ settings, error: null });
     } catch (err) {
+      // Rethrown: Settings.tsx closes its dialog on success, so swallowing this
+      // made a failed save look like it worked and the catch there was dead code.
       handleStoreError(err, set, 'setSettings');
+      throw err;
     }
   },
 
@@ -201,16 +209,22 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     set({ error: null, catalogSource: null, catalogUnreachable: false });
     try {
       const { games, source, unreachable } = await catalogService.loadCatalog();
-      const gamesState: Game[] = games.map((gameInfo) => ({
-        info: gameInfo,
-        installation: null,
-        status: 'not_installed',
-        hasUpdate: false,
-      }));
-      set({
-        games: gamesState,
-        catalogSource: source,
-        catalogUnreachable: !!unreachable,
+      // The catalog names games; it says nothing about what is installed. Rebuilding
+      // every entry as not_installed wiped install state, playtime and a running
+      // game's status on every stale-refresh or retry, so carry what the store
+      // already knows for each id and only take the fresh info from the catalog.
+      set((state) => {
+        const existing = new Map(state.games.map((game) => [game.info.id, game]));
+        return {
+          games: games.map((info) => {
+            const previous = existing.get(info.id);
+            return previous
+              ? { ...previous, info }
+              : { info, installation: null, status: 'not_installed', hasUpdate: false };
+          }),
+          catalogSource: source,
+          catalogUnreachable: !!unreachable,
+        };
       });
     } catch (err) {
       handleStoreError(err, set, 'loadCatalog');
