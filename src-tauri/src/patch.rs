@@ -125,6 +125,13 @@ impl PatchManager {
         // Validate game id before touching disk
         validate_game_id(&manifest.game_id)?;
 
+        // And the manifest itself, for the same reason. An empty file list would
+        // otherwise reach the branch below, report Complete, and leave install_game
+        // writing a record that claims a build with no files is installed.
+        manifest
+            .validate()
+            .map_err(|e| PatchError::Other(format!("invalid manifest: {}", e)))?;
+
         // Ensure base_url behaves as a directory when joining file URLs
         let base_url = if base_url.ends_with('/') {
             base_url

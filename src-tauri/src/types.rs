@@ -462,6 +462,33 @@ impl LauncherSettings {
     }
 }
 
+impl GameManifest {
+    pub fn total_size(&self) -> u64 {
+        self.files.iter().map(|f| f.size).sum()
+    }
+
+    /// Reject a manifest that could not produce a working install.
+    ///
+    /// Not test-only: an empty `files` list short-circuits patch_game's download
+    /// loop to Complete, and install_game then writes a record claiming that build
+    /// is installed - for a build with no files in it.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.game_id.is_empty() {
+            return Err("game_id cannot be empty".to_string());
+        }
+        if self.version.is_empty() {
+            return Err("version cannot be empty".to_string());
+        }
+        if self.executable.is_empty() {
+            return Err("executable cannot be empty".to_string());
+        }
+        if self.files.is_empty() {
+            return Err("files cannot be empty".to_string());
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 impl GameManifest {
     pub fn test_manifest() -> Self {
@@ -480,26 +507,6 @@ impl GameManifest {
             platforms: None,
             size_bytes: None,
         }
-    }
-
-    pub fn total_size(&self) -> u64 {
-        self.files.iter().map(|f| f.size).sum()
-    }
-
-    pub fn validate(&self) -> Result<(), String> {
-        if self.game_id.is_empty() {
-            return Err("game_id cannot be empty".to_string());
-        }
-        if self.version.is_empty() {
-            return Err("version cannot be empty".to_string());
-        }
-        if self.executable.is_empty() {
-            return Err("executable cannot be empty".to_string());
-        }
-        if self.files.is_empty() {
-            return Err("files cannot be empty".to_string());
-        }
-        Ok(())
     }
 }
 
