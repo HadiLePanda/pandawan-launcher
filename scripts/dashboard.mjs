@@ -58,7 +58,7 @@ import {
 } from './lib/catalog-edit.mjs';
 // Creating an entry IS an add, so it runs through catalog-merge.mjs rather than
 // growing a second, subtly different add rule that could drift.
-import { mergeCatalog } from './lib/catalog-merge.mjs';
+import { mergeCatalog, publishPlan } from './lib/catalog-merge.mjs';
 // Website-panel decisions are pure and unit-tested for the same reason as
 // catalog-edit.mjs.
 import {
@@ -1614,6 +1614,9 @@ const server = http.createServer(async (req, res) => {
           localPath: local.path,
           diff: catalogDiff(live.catalog, local.catalog),
           inSync: catalogDiffIsEmpty(catalogDiff(live.catalog, local.catalog)),
+          // What pressing Publish would do, from the merge the publisher runs, so
+          // the panel cannot promise something the script would not do.
+          plan: publishPlan(live.catalog, local.catalog),
           // The field list, so the client cannot offer a column the document
           // never carries. The publisher is the only writer, so this is its shape.
           fields: CATALOG_GAME_FIELDS,

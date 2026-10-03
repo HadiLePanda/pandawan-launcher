@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { mergeCatalog, remoteCatalogRefusal, validateCatalog } from './catalog-merge.mjs';
+import {
+  mergeCatalog,
+  publishPlan,
+  remoteCatalogRefusal,
+  validateCatalog,
+} from './catalog-merge.mjs';
 
 // The published copy, as publish-metadata.mjs would have left it after someone
 // fixed the display name in the dashboard. The local copy still carries the typo
@@ -319,5 +324,39 @@ describe('refusing to publish from an unreadable remote catalog', () => {
     expect(result.catalog.games).toEqual([LOCAL_MISSPELL]);
     expect(result.added).toHaveLength(1);
     expect(remoteCatalogRefusal('https://cdn.test/launcher/catalog.json')).toMatch(/Refusing/);
+  });
+});
+
+describe('publishPlan', () => {
+  const entry = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    channel: 'alpha',
+    ...extra,
+  });
+
+  it('separates what would be added from what is kept', () => {
+    const plan = publishPlan({ games: [entry('kept')] }, { games: [entry('kept'), entry('new')] });
+    expect(plan.added.map((one) => one.id)).toEqual(['new']);
+    expect(plan.preserved).toEqual([]);
+    expect(plan.cdnWins).toEqual([]);
+    expect(plan.changed).toBe(true);
+  });
+
+  it('names a local edit the live catalog would override', () => {
+    const plan = publishPlan(
+      { games: [entry('misspell', { name: 'Live' })] },
+      { games: [entry('misspell', { name: 'Local' })] }
+    );
+    // The overriding case is the one that must not be silent: nothing changes,
+    // and the operator would otherwise believe their edit had been published.
+    expect(plan.changed).toBe(false);
+    expect(plan.cdnWins.map((one) => one.id)).toEqual(['misspell']);
+    expect(plan.cdnWins[0].differs.map((one) => one.field)).toEqual(['name']);
+  });
+
+  it('keeps a game the local file omits instead of deleting it', () => {
+    const plan = publishPlan({ games: [entry('only-live')] }, { games: [] });
+    expect(plan.preserved.map((one) => one.id)).toEqual(['only-live']);
+    expect(plan.added).toEqual([]);
   });
 });

@@ -203,3 +203,21 @@ export function mergeCatalog(remote, local, { force = false, now = Date.now() } 
 
   return { catalog, added, skipped, preserved, changed };
 }
+
+/**
+ * What a publish would do, in the terms an operator needs before pressing it.
+ *
+ * The same merge the publisher runs, summarized rather than re-derived: a second
+ * opinion about the diff could disagree with what actually happens. `cdnWins` is
+ * the only list that means "this local edit will not reach the launcher".
+ */
+export function publishPlan(remote, local) {
+  const { added, preserved, skipped, changed } = mergeCatalog(remote, local);
+  return {
+    added,
+    preserved,
+    cdnWins: skipped.filter((one) => one.differs.length > 0 || one.cdnOnly.length > 0),
+    unusable: skipped.filter((one) => one.id === null),
+    changed,
+  };
+}
