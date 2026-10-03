@@ -86,8 +86,9 @@ if (dryRun) {
   for (const file of VERSION_FILES) console.log(`  ${file} -> ${to}`);
   console.log();
   console.log(`Would run: git commit -m "chore: release ${tag}"`);
+  console.log(`Would run: git push`);
   console.log(`Would run: git tag ${tag}`);
-  console.log(`Would run: git push && git push origin ${tag}`);
+  console.log(`Would run: git push origin ${tag}`);
   process.exit(0);
 }
 
@@ -107,8 +108,12 @@ try {
 // nothing else, whatever else happens to be modified in the tree.
 git(['add', ...VERSION_FILES]);
 git(['commit', '-m', `chore: release ${tag}`]);
-git(['tag', tag]);
 git(['push']);
+
+// Tagged AFTER the branch push, not before: a tag left behind by a failed push
+// makes the next attempt refuse with "tag v0.2.2 already exists", so the retry
+// cannot recover without hand-deleting the tag it did not mean to create.
+git(['tag', tag]);
 git(['push', 'origin', tag]);
 
 console.log(`\nPushed tag ${tag}. The release workflow will build and publish it to R2.`);

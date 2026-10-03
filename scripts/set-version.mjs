@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Set the launcher version, or prove the three copies agree.
+ * Set the launcher version, or prove the four copies agree.
  *
  *   npm run version:set -- 0.2.0
  *   npm run version:check
  *
- * package.json is the source and the other two are written from it. They are
+ * package.json is the source and the other three are written from it. They are
  * separate fields in separate formats, and a mismatch ships an app whose About
  * panel and updater document both disagree with the binary.
  */
