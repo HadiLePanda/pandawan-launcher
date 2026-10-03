@@ -1,0 +1,334 @@
+/* ---------------------------------------------------------------------------
+   base - split out of index.css.
+   Order matters: index.css imports these in the order they were written, and the
+   cascade depends on it. Move a block, keep its place.
+   --------------------------------------------------------------------------- */
+@theme {
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-canvas: var(--canvas-default);
+  --color-canvas-light: var(--canvas-light);
+  --color-canvas-elevated: var(--canvas-elevated);
+  --color-surface: var(--surface-default);
+  --color-surface-light: var(--surface-light);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-ink: var(--ink-default);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-light: var(--action-light);
+  --color-action-muted: var(--action-muted);
+  --color-action-glow: var(--action-glow);
+
+  --color-blue: var(--blue);
+  --color-blue-hover: var(--blue-hover);
+  --color-blue-muted: var(--blue-muted);
+
+  --color-selection: var(--selection);
+
+  /* Legacy accent aliases — re-pointed at the blue palette */
+  --color-accent: var(--blue);
+  --color-accent-hover: var(--blue-hover);
+  --color-accent-light: var(--blue-hover);
+  --color-accent-muted: var(--blue-muted);
+  --color-accent-glow: var(--accent-glow);
+
+  --color-ember: var(--ember);
+  --color-ember-muted: var(--ember-muted);
+
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-accent: var(--border-accent);
+  --color-border-action: var(--border-action);
+
+  --color-status-ready: #22c55e;
+  --color-status-downloading: #3b82f6;
+  --color-status-installing: #60a5fa;
+  --color-status-updating: #34d67a;
+  --color-status-error: #ef4444;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-in: fadeIn 0.15s ease-out;
+  --animate-slide-up: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+
+  --shadow-premium: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-premium-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25);
+  --shadow-glow-lg: 0 0 40px rgba(59, 130, 246, 0.35);
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+:root {
+  font-family: 'Geist', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+
+  /* Pandawan Corp — Dark Mode: Neutral Slate */
+  --canvas-default: #0e1013;
+  --canvas-light: #14171b;
+  --canvas-elevated: #1a1d22;
+  --surface-default: #16191d;
+  --surface-light: #1e2125;
+  --surface-hover: #24282e;
+  --surface-elevated: rgba(22, 25, 29, 0.95);
+  --ink-default: #f4f4f5;
+  --ink-muted: #9ca3af;
+  --ink-dim: #6b7280;
+  --ink-subtle: #4b5563;
+
+  /* Primary Action — Green */
+  --action: #22c55e;
+  --action-hover: #34d67a;
+  --action-light: #6ee7a0;
+  --action-muted: rgba(34, 197, 94, 0.14);
+  --action-glow: rgba(34, 197, 94, 0.32);
+
+  /* Secondary — Blue */
+  --blue: #3b82f6;
+  --blue-hover: #60a5fa;
+  --blue-muted: rgba(59, 130, 246, 0.14);
+
+  --selection: #f4f4f5;
+
+  /* Legacy accent aliases — re-pointed at the blue palette */
+  --accent: var(--blue);
+  --accent-hover: var(--blue-hover);
+  --accent-light: var(--blue-hover);
+  --accent-muted: var(--blue-muted);
+  --accent-glow: rgba(59, 130, 246, 0.32);
+
+  /* Tech / Structure — Cool Silver */
+  --silver: #9ca3b0;
+  --silver-muted: rgba(156, 163, 176, 0.1);
+  --silver-glow: rgba(156, 163, 176, 0.16);
+
+  /* Maroon / Shadow — deep navy maroon */
+  --shadow: #3a1f2a;
+  --shadow-muted: rgba(58, 31, 42, 0.14);
+
+  /* Semantic — Ember Red */
+  --ember: #ef4444;
+  --ember-muted: rgba(239, 68, 68, 0.14);
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-selection: rgba(244, 244, 245, 0.6);
+  --border-accent: rgba(59, 130, 246, 0.32);
+  --border-action: rgba(34, 197, 94, 0.32);
+  --bg-gradient: none;
+
+  --status-ok: #34d399;
+  --status-warn: #fbbf24;
+  --status-bad: #f87171;
+  --status-ok-muted: rgba(52, 211, 153, 0.12);
+  --status-warn-muted: rgba(251, 191, 36, 0.12);
+  --status-bad-muted: rgba(248, 113, 113, 0.12);
+}
+
+/* Pandawan Corp — Light Mode: Neutral Parchment */
+.light {
+  color-scheme: light;
+  --canvas-default: #f7f5f0;
+  --canvas-light: #ffffff;
+  --canvas-elevated: #efebe3;
+  --surface-default: #ffffff;
+  --surface-light: #f3f1ec;
+  --surface-hover: #e9e5dd;
+  --surface-elevated: rgba(255, 255, 255, 0.94);
+  --ink-default: #1c1917;
+  --ink-muted: #78716c;
+  --ink-dim: #a8a29e;
+  --ink-subtle: #d6d3d1;
+
+  /* Primary Action — Green */
+  --action: #16a34a;
+  --action-hover: #15803d;
+  --action-light: #22c55e;
+  --action-muted: rgba(22, 163, 74, 0.12);
+  --action-glow: rgba(22, 163, 74, 0.22);
+
+  /* Secondary — Blue */
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-muted: rgba(37, 99, 235, 0.12);
+
+  --selection: #1c1917;
+
+  /* Legacy accent aliases — re-pointed at the blue palette */
+  --accent: var(--blue);
+  --accent-hover: var(--blue-hover);
+  --accent-light: #3b82f6;
+  --accent-muted: var(--blue-muted);
+  --accent-glow: rgba(37, 99, 235, 0.22);
+
+  /* Tech / Structure — Cool Steel */
+  --silver: #6e7480;
+  --silver-muted: rgba(110, 116, 128, 0.12);
+  --silver-glow: rgba(110, 116, 128, 0.14);
+
+  /* Shadow — warm stone depth */
+  --shadow: #5a3a2a;
+  --shadow-muted: rgba(90, 58, 42, 0.1);
+
+  /* Semantic — Ember Red */
+  --ember: #dc2626;
+  --ember-muted: rgba(220, 38, 38, 0.1);
+
+  --border-default: rgba(28, 27, 25, 0.08);
+  --border-strong: rgba(28, 27, 25, 0.14);
+  --border-selection: rgba(28, 27, 25, 0.6);
+  --border-accent: rgba(37, 99, 235, 0.32);
+  --border-action: rgba(22, 163, 74, 0.28);
+  --bg-gradient: none;
+
+  --status-ok: #059669;
+  --status-warn: #b45309;
+  --status-bad: #dc2626;
+  --status-ok-muted: rgba(5, 150, 105, 0.1);
+  --status-warn-muted: rgba(180, 83, 9, 0.1);
+  --status-bad-muted: rgba(220, 38, 38, 0.1);
+}
+
+.light .toggle {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.light .toggle-active {
+  background: var(--action);
+  border-color: var(--action);
+}
+
+.light .toggle-active .toggle-thumb {
+  background: #ffffff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--canvas-default);
+  color: var(--ink-default);
+}
+
+#root {
+  height: 100%;
+}
+
+/* Premium scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-subtle);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-dim);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(30, 29, 26, 0.18);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 29, 26, 0.28);
+}
+
+/*
+ * "+N" badge on the manage-pins button, for pins past the cap.
+ *
+ * Absolutely positioned into the corner so it does not widen the button and shift
+ * every icon to its left when it appears or disappears.
+ */
+.games-bar-overflow {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  /* --surface-elevated: the badge must sit above the bar's own
+     --surface-default and read as a chip on top of it. */
+  background: var(--surface-elevated);
+  color: var(--ink-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--border-default);
+}
+
+.sidebar-separator {
+  height: 1px;
+  background: var(--border-default);
+  margin: 10px 0;
+}

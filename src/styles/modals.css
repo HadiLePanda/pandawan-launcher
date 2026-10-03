@@ -1,0 +1,487 @@
+/* ---------------------------------------------------------------------------
+   modals - split out of index.css.
+   Order matters: index.css imports these in the order they were written, and the
+   cascade depends on it. Move a block, keep its place.
+   --------------------------------------------------------------------------- */
+/* ----- Modals ----- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: color-mix(in oklab, var(--canvas-default) 70%, transparent);
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 48rem;
+  height: 37.5rem;
+  background: var(--canvas-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  overflow: hidden;
+}
+
+/* Dialogs whose content is shorter than the default 37.5rem. Without this the
+   header is pinned to the top, the footer to the bottom, and a short message
+   floats alone in the gap between them.
+
+   The width is set here rather than with a max-w-* utility: .modal is
+   unlayered CSS and beats Tailwind's layered utilities, so max-w-md on the
+   element was silently ignored and every "small" dialog rendered at 48rem.
+
+   .modal is display:flex with no flex-direction, i.e. a row — the settings
+   dialog relies on that for its sidebar-plus-content layout. Simple dialogs
+   have header/body/footer as direct children, which then end up side by side,
+   so they need column. */
+.modal-auto {
+  height: auto;
+  max-height: 37.5rem;
+  max-width: 23rem;
+  flex-direction: column;
+}
+
+.modal-sidebar {
+  width: 14rem;
+  padding: 1.25rem;
+  border-right: 1px solid var(--border-default);
+  background: var(--canvas-light);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.modal-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.modal-nav-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.modal-nav-item:hover {
+  color: var(--ink-default);
+  background: var(--surface-light);
+}
+
+.modal-nav-item-active,
+.modal-nav-item-active:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
+}
+
+.light .modal-nav-item:hover:not(.modal-nav-item-active) {
+  background: var(--surface-hover);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-top: 1px solid var(--border-default);
+}
+
+.settings-modal .modal-header {
+  border-bottom: none;
+}
+
+.settings-modal .modal-footer {
+  border-top: none;
+}
+
+.settings-modal {
+  width: 58rem;
+  max-width: calc(100vw - 3rem);
+  height: 42rem;
+  max-height: calc(100vh - 3rem);
+}
+
+.settings-modal .modal-sidebar {
+  width: 15rem;
+}
+
+.settings-modal .stack-sm > * + * {
+  margin-top: 0.375rem;
+}
+
+.settings-modal .modal-nav-item {
+  padding: 0.5rem 0.75rem;
+}
+
+.setting-header > div:last-child {
+  min-width: 0;
+}
+
+.settings-error-toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 5rem;
+  z-index: 10;
+  max-width: 34rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--ember-muted) 60%, var(--canvas-elevated));
+  border: 1px solid color-mix(in oklab, var(--ember) 40%, var(--border-strong));
+  color: var(--ink-default);
+  font-size: 0.875rem;
+  text-align: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+/* ----- Settings ----- */
+.setting-control {
+  flex: 1;
+  max-width: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Path and its controls share a row: the path takes the remaining width and
+   wraps across lines rather than clipping, because a path you cannot read in
+   full is a path you cannot copy or report in a bug. */
+.install-path-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.install-path-row .install-path-box {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.install-path-row .cluster {
+  flex-shrink: 0;
+}
+
+.install-path-box {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--ink-default);
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* About panel ---------------------------------------------------------- */
+
+/* The real app mark at the size the letter-in-a-box used to occupy, so the
+   header does not change height when the artwork replaces the "P". */
+.about-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+  border-radius: 0.75rem;
+  object-fit: contain;
+}
+
+/* One panel for the update status and the log folder, instead of two rows that
+   each carried an icon and a one-line caption for a single button. */
+.about-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-default);
+  background: var(--surface-default);
+}
+
+.about-actions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* The status can be a long sentence, so it wraps under the heading instead of
+   squeezing it. */
+.about-actions-head .caption {
+  text-align: right;
+}
+
+.about-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+}
+
+.setting-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+  background: var(--surface-default);
+}
+
+.setting-title {
+  font-weight: 500;
+  color: var(--ink-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-desc {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+}
+
+/* Account avatar picker */
+.avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.avatar-option {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+/* No hover scale: a row of avatars that grows under the cursor shifts its
+   neighbours and makes the target move. Selection is shown by the ring below. */
+.avatar-option:hover {
+  filter: brightness(1.1);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  display: block;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.avatar-option-selected .avatar-image {
+  border-color: var(--action);
+}
+
+.toggle {
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggle-active {
+  background: var(--action);
+  border-color: var(--action);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: #9ca3af;
+  transition: transform 0.15s ease;
+}
+
+.toggle-active .toggle-thumb {
+  background: #ffffff;
+  transform: translateX(1.125rem);
+}
+
+.games-home {
+  padding: 24px;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  justify-content: start;
+  align-content: start;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1280px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+
+.game-card-uninstalled {
+  opacity: 0.55;
+  filter: grayscale(60%);
+}
+
+.game-card:hover {
+  opacity: 1;
+  filter: none;
+}
+
+.game-card-art {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+}
+
+.game-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    transform 0.25s ease,
+    filter 0.2s ease;
+}
+
+/* Hover brightens only. The image used to scale to 1.04, which made cards jump
+   under the pointer and meant the row you were aiming at was no longer the row
+   under your cursor by the time you clicked. Press feedback still exists, on
+   :active. */
+.game-card:hover .game-card-image {
+  filter: brightness(1.08);
+}
+
+.game-card-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.game-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.game-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-card-genre {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

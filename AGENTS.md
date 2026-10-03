@@ -213,8 +213,17 @@ The few things worth knowing without looking:
 ### Components
 
 - Cards: `rounded-2xl bg-surface border border-border`
-- Buttons: `btn-press` class for tactile feedback
 - Glass: `glass` or `glass-strong` for backdrop blur
+
+### Stylesheet layout
+
+- `src/index.css` is the Tailwind entry and nothing else: the import plus six `@import` lines.
+  The stylesheet itself is `src/styles/*.css`, and the imports are in the order the blocks were
+  written because the cascade depends on it - move a block between files and you change what wins.
+- `src/lib/styles.test.ts` guards it: it fails on a rule nested inside another rule, on a class no
+  markup file uses, and on a file under `src/styles/` that `index.css` never imports. A mention of a
+  class in a doc or a comment does **not** count as usage, which is how 74 dead classes once stayed
+  alive here.
 
 ## Tauri Commands
 

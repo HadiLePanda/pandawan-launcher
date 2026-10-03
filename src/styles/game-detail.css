@@ -1,0 +1,1082 @@
+/* ---------------------------------------------------------------------------
+   game detail - split out of index.css.
+   Order matters: index.css imports these in the order they were written, and the
+   cascade depends on it. Move a block, keep its place.
+   --------------------------------------------------------------------------- */
+/* ----- Game detail page ----- */
+.patch-note-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--surface-elevated);
+}
+
+.patch-note-version {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-default);
+}
+
+.patch-note-date {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.patch-note-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.patch-note-bullet {
+  font-size: 0.875rem;
+  color: color-mix(in oklab, var(--ink-default) 80%, transparent);
+}
+
+.game-news-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  scrollbar-width: thin;
+}
+
+.game-news-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-news-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.game-news-list::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+
+.game-news-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--surface-elevated);
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.game-news-card:hover {
+  background: var(--surface-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.game-news-thumb {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-light);
+}
+
+.game-news-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-news-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.game-news-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.game-news-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink-default);
+  line-height: 1.35;
+}
+
+.game-news-card-excerpt {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-details-modal {
+  position: relative;
+  width: 100%;
+  max-width: 40rem;
+  max-height: min(80vh, 50rem);
+  background: var(--canvas-default);
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.game-details-modal .modal-header {
+  border-bottom: none;
+}
+
+/* The generic body uses 1.5rem while the header uses 1.25rem, so the content
+   sat 4px further in than the title above it and the first row read as
+   misaligned. Here both share the header's rhythm, and the body's own top
+   padding is dropped so it does not open a second gap under the title. */
+.game-details-modal .modal-body {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.game-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.game-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface-elevated);
+}
+
+.game-info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+
+.game-info-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+}
+
+.game-page-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.game-page-logo {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.75rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.game-page-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-page-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-page-developer {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+.game-page-desc {
+  font-size: 1rem;
+  line-height: 1.625;
+  color: color-mix(in oklab, var(--ink-default) 90%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.25rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+/* ----- News ----- */
+.news-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.news-card {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.news-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.news-thumb {
+  /* 9rem x 6rem rather than the previous 12rem x 8rem. The list is scanned,
+     not studied: a thumbnail exists to identify the item, and at 12rem it was the
+     loudest thing on a row that is otherwise text. */
+  width: 9rem;
+  height: 6rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-light);
+}
+
+.news-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.news-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.news-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.news-excerpt {
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ----- Pin manager modal ----- */
+.pin-search-wrap {
+  position: relative;
+}
+
+.pin-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+
+input.pin-search {
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.75rem;
+  border-radius: 0.75rem;
+}
+
+.pin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.pin-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: var(--surface-elevated);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pin-card:hover {
+  background: var(--surface-hover);
+}
+
+.pin-card-pinned {
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  opacity: 1;
+}
+
+.pin-card-unpinned {
+  opacity: 0.55;
+}
+
+.pin-card-unpinned .pin-card-icon img,
+.pin-card-unpinned .pin-card-icon-fallback {
+  filter: grayscale(70%);
+}
+
+.pin-card-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--surface-default);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-card-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pin-card-icon-fallback {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.pin-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pin-card-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pin-card-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pin-card-toggle-pinned {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--accent);
+  fill: currentColor;
+}
+
+.pin-card-toggle-off {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--ink-dim);
+}
+
+/* ----- Feedback components ----- */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--ember-muted);
+  border-bottom: 1px solid color-mix(in oklab, var(--ember) 20%, transparent);
+  color: var(--ember);
+  font-size: 0.875rem;
+}
+
+.light .banner {
+  background: color-mix(in oklab, var(--ember) 8%, var(--canvas-light));
+  border-color: color-mix(in oklab, var(--ember) 18%, var(--border-default));
+}
+
+.banner .btn-ghost {
+  color: var(--ember);
+}
+
+.banner .btn-ghost:hover {
+  color: var(--ember);
+  background: var(--ember-muted);
+}
+
+.banner-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  z-index: 50;
+  max-width: 24rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--ink-default);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.toast-error {
+  background: color-mix(in oklab, var(--ember-muted) 60%, var(--canvas-elevated));
+  border-color: color-mix(in oklab, var(--ember) 40%, var(--border-strong));
+  color: var(--ink-default);
+}
+
+.toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.toast-dismiss {
+  font-size: 0.75rem;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.toast-dismiss:hover {
+  color: var(--red-300);
+}
+
+/* Empty library. Fills the area and centres within it, so the message sits on the
+   true middle of the panel rather than in a padded box that is merely near it. */
+.games-page-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  background: var(--surface-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.empty-state-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-desc {
+  color: var(--ink-muted);
+}
+
+/* ----- Progress ----- */
+.progress {
+  height: 0.5rem;
+  background: var(--surface-default);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--action);
+  transition: width 0.3s ease-out;
+}
+
+/* ----- Utility helpers ----- */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----- Game detail redesign ----- */
+.game-detail {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 32px;
+  padding: 24px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.game-detail-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  overflow: hidden;
+  background: var(--surface-default);
+}
+
+.game-detail-banner-image,
+.game-detail-banner-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-detail-banner-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.2) 50%,
+    transparent 100%
+  );
+}
+
+.game-detail-banner-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+}
+
+.game-detail-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin-bottom: 4px;
+}
+
+.game-detail-action-panel {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+  background: var(--surface-default);
+}
+
+.game-detail-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.game-detail-play-btn,
+.game-detail-menu-btn {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+/* Full pill on its own now. It was the left half of a split button whose right
+   half (the options button) moved to the banner, which left the right edge
+   square and visibly cut. */
+.game-detail-play-btn {
+  min-width: 160px;
+  border-radius: 6px;
+}
+
+/* Banner-corner tools: channel settings and the options menu. Both are "what
+   else can I do with this game", so they live together away from the primary
+   action rather than split between the banner and the action pill.
+
+   The offset is 12px, not 16px: the banner is overflow-hidden with border-radius,
+   so a 16px inset measured from the border box put the rightmost button flush
+   against the rounded corner and clipped it. */
+.game-detail-banner-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Prerelease channel mark, top-left of the banner. Sized and weighted to read
+   as a stamp on the artwork rather than part of the title. */
+.game-channel-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+}
+
+/* Channel picker. Anchored to the tools row, not the viewport, so it always
+   opens under the button that opened it. */
+.game-channel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 4;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--surface, #16191d);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.game-channel-menu-title {
+  margin: 0;
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.game-channel-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-default);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.game-channel-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.game-channel-menu-item-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.game-channel-menu-default {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+.game-channel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Facts on the left, version pinned to the right. Two groups rather than one row
+   so the version lands at the far edge instead of sitting next to the size. */
+.game-detail-meta-facts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.game-detail-meta-facts .game-detail-chip + .game-detail-chip {
+  margin-left: 0;
+}
+
+.game-detail-version {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--ink-default);
+  font-weight: 500;
+}
+
+/* Label above value. Stacked pairs read as a small table, which is easier to
+   take in at a glance than a run of unlabelled values separated by dots. */
+.game-detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.game-detail-stat + .game-detail-stat {
+  margin-left: 18px;
+}
+
+.game-detail-stat-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  opacity: 0.75;
+}
+
+.game-detail-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  color: var(--ink-default);
+  white-space: nowrap;
+}
+
+.game-detail-stat-value svg {
+  opacity: 0.6;
+}
+
+/* Icon-led metadata chips. No labels: the icon carries the meaning. */
+.game-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.game-detail-chip + .game-detail-chip {
+  margin-left: 14px;
+}
+
+.game-detail-chip svg {
+  opacity: 0.7;
+}
+
+.game-detail-menu-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  /* Translucent dark chip: legible over any banner artwork without competing
+     with the primary action below. */
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.game-detail-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.62);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* The button no longer sits beside the play button, so it must not inherit the
+   primary action's colour states. Neutralising them keeps a download or update in
+   progress from bleeding a green or blue into unrelated chrome. */
+.game-detail-menu-btn.action-green,
+.game-detail-menu-btn.action-blue,
+.game-detail-menu-btn.action-green:hover,
+.game-detail-menu-btn.action-blue:hover {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.game-detail-menu-btn.action-green:hover,
+.game-detail-menu-btn.action-blue:hover {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.game-detail-play-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.game-detail-play-btn.action-green,
+.game-detail-menu-btn.action-green {
+  background: var(--action);
+}
+
+.game-detail-play-btn.action-green:hover:not(:disabled),
+.game-detail-menu-btn.action-green:hover {
+  background: var(--action-hover);
+}
+
+.game-detail-play-btn.action-blue,
+.game-detail-menu-btn.action-blue {
+  background: var(--blue);
+}
+
+/* No build for this OS: the button states a fact rather than offering an action. */
+.game-detail-play-btn.action-muted {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.game-detail-play-btn.action-blue:hover:not(:disabled),
+.game-detail-menu-btn.action-blue:hover {
+  background: var(--blue-hover);
+}
+
+.game-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  /* Grows to fill the panel so .game-detail-version's margin-left:auto has room
+     to push it to the edge. Without it the row shrinks to its content and the
+     version sits directly beside "Last played". */
+  flex: 1;
+  min-width: 0;
+}
+
+.game-detail-download {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  background: var(--surface-default);
+}
+
+.game-detail-download-bar {
+  height: 4px;
+  background: var(--surface-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.game-detail-download-fill {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.2s ease;
+}
+
+.game-detail-download-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.game-detail-download-cancel {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.game-detail-download-cancel:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
+}
+
+.game-detail-news {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+/* Top-aligned, not centred. The column runs the full height of the page, so
+   centring pushed the message into the middle of empty space and left a large
+   void above it. */
+.game-detail-news-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 8px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+.game-detail-news-empty svg {
+  opacity: 0.35;
+}
+
+.game-detail-news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* No card background. The aside sits beside the game's own content, and a filled
+   panel per article made it read as a fourth surface competing with the banner.
+   The image carries the shape; a hairline and a hover tint carry the click. */
+.game-detail-news-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.15s ease;
+}
+
+.game-detail-news-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.game-detail-news-card:hover {
+  opacity: 0.75;
+}
+
+.game-detail-news-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-light);
+}
+
+.game-detail-news-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-detail-news-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-default);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-detail-news-card-excerpt {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-detail-news-empty {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 1024px) {
+  .game-detail {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .game-detail-news {
+    width: 100%;
+  }
+}

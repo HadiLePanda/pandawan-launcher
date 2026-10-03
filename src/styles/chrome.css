@@ -1,0 +1,475 @@
+/* ---------------------------------------------------------------------------
+   chrome - split out of index.css.
+   Order matters: index.css imports these in the order they were written, and the
+   cascade depends on it. Move a block, keep its place.
+   --------------------------------------------------------------------------- */
+/* Games bar — horizontal global library rail, floating panel (Battle.net style) */
+.games-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 62px;
+  margin: 10px 14px 2px;
+  padding: 0 12px;
+  background: var(--surface-default);
+  border-radius: 10px;
+  flex-shrink: 0;
+  /*
+   * No scrolling. The bar is a fixed-height strip of shortcuts, and a horizontal
+   * scroller in it is close to invisible, steals the wheel from the page, and
+   * hides the fact that anything is pinned past the edge. The number of pins is
+   * capped in GamesBar instead, with the overflow shown as a count on the
+   * manage-pins button.
+   */
+  overflow: hidden;
+  /* min-width: 0 so the strip can shrink inside its flex parent instead of
+     forcing the parent wider and reintroducing a page-level scrollbar. */
+  min-width: 0;
+}
+
+.games-bar-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.games-bar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-default);
+  flex-shrink: 0;
+}
+
+.games-bar-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-light);
+  border: 2px solid transparent;
+  opacity: 0.55;
+  filter: grayscale(60%);
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease,
+    background 0.15s ease;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.games-bar-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Rail icons are too small for a visible chain: a dead URL hides the image and
+ * reveals the glyph. data-art-failed is the only thing that shows it. */
+.games-bar-icon-fallback {
+  display: none;
+}
+
+.games-bar-icon[data-art-failed='true'] img {
+  display: none;
+}
+
+.games-bar-icon[data-art-failed='true'] .games-bar-icon-fallback {
+  display: flex;
+}
+
+.games-bar-icon.installed {
+  opacity: 1;
+  filter: none;
+}
+
+.games-bar-icon.selected,
+.games-bar-icon.selected:hover {
+  background: var(--surface-hover);
+  opacity: 1;
+  filter: none;
+}
+
+.games-bar-icon.selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--blue);
+  border-radius: 0 0 8px 8px;
+}
+
+.games-bar-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--ink-default);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease 0s;
+  z-index: 40;
+}
+
+.games-bar-item:hover .games-bar-tip {
+  opacity: 1;
+  transition-delay: 1s;
+}
+
+.games-bar-add {
+  /* Anchors .games-bar-overflow. Without it the badge positions against the
+     nearest positioned ancestor instead, landing somewhere across the bar. */
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink-dim);
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.games-bar-add:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+/* Filters panel — left sidebar on games overview */
+.filters-panel {
+  width: 200px;
+  padding: 16px 12px;
+  background: var(--canvas-default);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+/* No build for this OS. Dimmed and desaturated so the row is still legible and
+   still present - a Mac player should be able to see that Misspell exists and
+   read why they cannot install it, not find it silently missing. */
+.game-card-unavailable {
+  opacity: 0.42;
+  filter: saturate(0.35);
+}
+
+.game-card-unavailable:hover {
+  opacity: 0.62;
+}
+
+.filter-search-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter-search {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--ink-default);
+  outline: none;
+}
+
+.filter-search::placeholder {
+  color: var(--ink-dim);
+}
+
+.filter-search:focus {
+  border-color: var(--ink-muted);
+}
+
+.filter-reset {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  opacity: 0.5;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+
+.filter-reset.active {
+  color: var(--ember);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.filter-reset.active:hover {
+  background: var(--surface-hover);
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filter-option {
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.filter-option:hover {
+  color: var(--ink-default);
+}
+
+.filter-option.selected {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Progress bar smooth transition */
+
+/* Focus styles - accent glow */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Enhanced focus ring */
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Selection highlight — ink-tinted wash using the --selection token */
+::selection {
+  background: color-mix(in oklab, var(--selection) 25%, transparent);
+  color: var(--ink-default);
+}
+
+.light ::selection {
+  background: color-mix(in oklab, var(--selection) 20%, transparent);
+  color: var(--ink-default);
+}
+
+/* Toggle switch */
+
+.toggle-thumb {
+  background: #fafafa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.light .toggle-thumb {
+  background: #9ca3af;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Smooth transitions for all interactive elements */
+button,
+a,
+input {
+  transition: all 0.15s ease;
+}
+
+/* Custom range slider styling */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  background: var(--silver-muted);
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  background-color: var(--accent);
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--canvas-default);
+  box-shadow: 0 0 0 2px transparent;
+  transition: all 0.2s ease;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  /* Brightness rather than scale, for the same reason as the cards: a thumb that
+     grows under the pointer moves the value it is about to set. */
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+input[type='range']:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+/* Custom select styling */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 0.625rem 2.5rem 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+select option,
+select optgroup {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+}
+
+.light select,
+.light select option,
+.light select optgroup {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+}
+
+.light select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+input[type='text'],
+input[type='number'],
+input[type='password'],
+input[type='email'],
+input[type='search'] {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+input[type='text']:focus,
+input[type='number']:focus,
+input[type='password']:focus,
+input[type='email']:focus,
+input[type='search']:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+input[type='text']::placeholder,
+input[type='number']::placeholder,
+input[type='password']::placeholder,
+input[type='email']::placeholder,
+input[type='search']::placeholder {
+  color: var(--ink-dim);
+}
+
+.light input[type='text'],
+.light input[type='number'],
+.light input[type='password'],
+.light input[type='email'],
+.light input[type='search'] {
+  background-color: var(--surface-default);
+  color: var(--ink-default);
+  border-color: var(--border-default);
+}
+
+/* Animations */
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
