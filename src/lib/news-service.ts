@@ -1,4 +1,5 @@
 import type { NewsItem } from '@/types';
+import { fetchRemoteText } from './catalog-service';
 import { CdnUrl } from './cdn';
 import { logger } from './logger';
 
@@ -18,9 +19,6 @@ export interface NewsFeed {
  */
 export async function loadNews(): Promise<NewsItem[]> {
   try {
-    // Imported lazily to keep this module free of a hard dependency on the
-    // catalog service; both share the same Rust-backed fetch.
-    const { fetchRemoteText } = await import('./catalog-service');
     const feed = JSON.parse(await fetchRemoteText(CdnUrl.news()));
     return validateNewsFeed(feed).items;
   } catch (err) {
