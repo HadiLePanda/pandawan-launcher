@@ -1,0 +1,154 @@
+/**
+ * The shapes the dashboard server sends.
+ *
+ * Declared by hand rather than generated: dashboard.mjs is a plain .mjs file
+ * with no types, and these four interfaces are the whole contract the client
+ * depends on. Anything optional here is optional because the SERVER makes it
+ * optional - not to avoid writing a type.
+ *
+ * GET /api/catalog is treated as optional throughout. Another agent is adding
+ * it, so every consumer must degrade gracefully when it 404s: the inventory is
+ * the only source of games that is guaranteed to exist today.
+ */
+
+/** The platforms the launcher can install on, in the order the grid shows them. */
+export const PLATFORMS = ['windows', 'macos', 'linux'] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+/**
+ * The channels the launcher knows.
+ *
+ * Mirrors CHANNELS in scripts/lib/metadata-fields.mjs. The browser cannot
+ * import that module, so this is the one hand-maintained copy - and it is
+ * deliberate that it cannot drift silently: `KNOWN_CHANNELS` is exported and
+ * every select in the app renders from it, so a divergence shows up as an
+ * extra or missing option rather than as a form that offers an invalid value.
+ * See scripts/dashboard/app/README-channels.md.
+ */
+export const KNOWN_CHANNELS = ['stable', 'beta', 'alpha'] as const;
+export type KnownChannel = (typeof KNOWN_CHANNELS)[number];
+
+/** Anything the server sent us that we have not validated as a KnownChannel. */
+export function asChannel(value: string | null | undefined): KnownChannel | null {
+  if (!value) return null;
+  return (KNOWN_CHANNELS as readonly string[]).includes(value) ? (value as KnownChannel) : null;
+}
+
+/** One platform's entry in latest.json. */
+export interface PlatformRelease {
+  version: string;
+  build: number;
+}
+
+/** A game and the channels it is published on. */
+export interface InventoryChannel {
+  channel: string;
+  /** Version + build per platform. Absent platforms are simply not keys. */
+  latest: Record<string, PlatformRelease> | null;
+  /** Every version on the bucket for this channel, newest first. */
+  published: { version: string; platforms: string[] }[];
+  /** Ship time per platform, from the bucket listing. */
+  updated: Record<string, string | null> | null;
+  platforms: string[];
+}
+
+export interface InventoryGame {
+  id: string;
+  channels: InventoryChannel[];
+}
+
+export interface DriftEntry {
+  gameId: string;
+  channel: string;
+  versions: Record<string, PlatformRelease> | null;
+}
+
+export interface InventoryPayload {
+  inventory: InventoryGame[];
+  drift: DriftEntry[];
+}
+
+/** One catalog entry. GET /api/catalog is optional, so every field may be absent. */
+export interface CatalogEntry {
+  id: string;
+  channel?: string | null;
+  name?: string | null;
+  description?: string | null;
+  developer?: string | null;
+  genre?: string[];
+  iconUrl?: string | null;
+  bannerUrl?: string | null;
+  screenshots?: string[];
+  supportedPlatforms?: string[];
+  availableChannels?: string[];
+}
+
+export interface CatalogPayload {
+  games: CatalogEntry[];
+  lastUpdated?: string | null;
+}
+
+/** One field of a game's presentation, as /api/meta reports it. */
+export interface MetaField {
+  label: string;
+  list: boolean;
+  /** Already joined for editing when `list` is true. */
+  value: string;
+  /** 'catalog' | 'manifest' | 'empty' */
+  source: string;
+  /** True when the launcher renders it but the catalog does not own it. */
+  inherited: boolean;
+}
+
+export interface MetaPayload {
+  exists: boolean;
+  hasManifest: boolean;
+  hasCatalogEntry: boolean;
+  gameId: string;
+  channel: string;
+  /** The channel the catalog entry actually points at, when it disagrees. */
+  publishedChannel?: string | null;
+  channelMismatch?: boolean;
+  versions?: Record<string, PlatformRelease> | null;
+  fields: Record<string, MetaField>;
+  missing: string[];
+}
+
+/** One published artwork object. */
+export interface ArtworkObject {
+  key: string;
+  name: string;
+  url: string;
+  sizeBytes: number;
+  size: string;
+  lastModified: string | null;
+  /** The metadata flag pointing at this object, when one does. */
+  field: string | null;
+  inUse: boolean;
+}
+
+export interface ArtworkPayload {
+  scope: 'game' | 'news';
+  prefix: string;
+  objects: ArtworkObject[];
+}
+
+/** The response from POST /api/art/stage. */
+export interface StagedFile {
+  localPath: string;
+  name: string;
+  sizeBytes: number;
+}
+
+/** One entry of POST /api/services. Owned by another agent's screen. */
+export interface ServiceStatus {
+  id: string;
+  name: string;
+  note: string;
+  port: number;
+  url: string | null;
+  up: boolean;
+  ours: boolean;
+  opened: boolean;
+  log: string | null;
+}

@@ -1,0 +1,395 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   TWO FONTS, WITH ONE RULE  (see docs/DASHBOARD_DESIGN.md)
+   ==========================================================================
+
+   Sans for all UI text and labels. Mono ONLY for things that are literally code
+   or identifiers: version strings, build numbers, SHAs, file paths, command
+   lines, URLs.
+
+   A sentence set in mono is not "code-like", it is inconsistent - that is why
+   status words like "in sync" must not carry font-mono. When adding one, ask
+   "is this a literal token a machine reads?" A version yes. "Dry run" no.
+
+   NOTE that .dw-input below sets mono, which is right for most of its uses
+   (tags, paths, numbers) but wrong for a field holding prose - a game's display
+   name or description. Those call sites override it with `font-sans`. Utilities
+   beat components in Tailwind's cascade, so the override works.
+   ========================================================================== */
+
+/* ==========================================================================
+   Pandawan publishing dashboard - design tokens
+   ==========================================================================
+
+   This is Tailwind v4, so the theme is CSS, not a tailwind.config.js: every
+   token below becomes a utility (bg-canvas, text-ink-subtle, border-edge...)
+   and there is nowhere else for a colour to be declared.
+
+   The palette is the one style.css documents, carried over unchanged. The
+   reasoning behind the ink ramp matters and is not obvious from the hex
+   values:
+
+   - ink-subtle (#8e949c) carries every 11px label. It is the step deliberately
+     held at or above 4.5:1 on EVERY surface it lands on, including surface-3
+     (4.6:1) which is what a hovered rail row sits on. An earlier value managed
+     4.4:1 there, which is under WCAG AA for 11px text. Do not darken it.
+   - ink-faint (#626a74) is one step below, for qualifiers a reader can skip -
+     a build number, an age, a footnote. Never for a label or a word carrying
+     state, where it is 3.2:1 and therefore unreadable.
+   - ink-muted (#a2aab4) is body text inside a panel.
+
+   One accent, green rather than blue: this is a terminal. The platform hues
+   are the only other colour on the page, and they exist to identify platforms,
+   not to decorate. Body text stays neutral because colour-carrying body text
+   is the fastest way to make a dense tool unreadable.
+
+   Surfaces form a ramp so depth comes from value rather than shadow. inset is
+   DARKER than canvas on purpose: it is for recessed wells - command output,
+   the published column of a diff - so a well reads as a well and not as one
+   more panel.
+
+   surface is deliberately the biggest single step in the ramp (1.16:1 against
+   canvas, against 1.11:1 before). A large flat panel is separated from the page
+   by its FILL, not by an outline, and that only works if the fill difference is
+   real enough to see. It is still far below the 3:1 a UI boundary needs, which
+   is the point: a panel here is a region of the page, not a control, and
+   reaching for an outline to make it visible is what produced the "white
+   outline and black" complaint. Where a boundary does carry meaning - danger,
+   focus, selection, a nested inset - it is drawn explicitly.
+
+   surface-3 is FROZEN. ink-subtle lands on it as 4.60:1, which is the last
+   step above the 4.5:1 floor for 11px text; lighten it and every 11px label
+   sitting on a hovered row or a raised control silently fails AA. That is why
+   the ramp above stops at surface-2 rather than continuing upward.
+   ========================================================================== */
+
+@theme {
+  --color-canvas: #0d0f12;
+  --color-side: #141821;
+  --color-surface: #1a1f26;
+  --color-surface-2: #1e232a;
+  --color-surface-3: #262c35;
+  --color-inset: #090b0e;
+
+  /* Hairlines, not outlines. Two strengths only. */
+  --color-edge: rgba(255, 255, 255, 0.065);
+  --color-edge-strong: rgba(255, 255, 255, 0.12);
+
+  --color-ink: #eef1f4;
+  --color-ink-muted: #a2aab4;
+  --color-ink-subtle: #8e949c;
+  --color-ink-faint: #626a74;
+
+  --color-accent: #3ecf8e;
+  --color-accent-hover: #55dd9f;
+  --color-accent-ink: #052b18;
+
+  /* Platform identity. Distinguished by lightness as well as hue, so a reader
+     still separates blue from violet from amber without reading the header. */
+  --color-win: #5aa9f7;
+  --color-mac: #c08cf5;
+  --color-linux: #e8b04b;
+
+  /* Channel identity, so a column of channels is scannable without reading.
+
+     Semantics drive the hues: `stable` is green because green is the app's own
+     action colour and stable means "what ships"; `beta` is a warm rose for the
+     middle; `alpha` is indigo for the earliest.
+
+     Deliberately NOT gold for beta, which was the first attempt. Gold is the
+     `linux` platform hue, and a catalog row shows a channel badge beside its
+     platform chips - gold landed 3.5 degrees from linux on the hue wheel, i.e.
+     two different meanings on the same colour in the same row. Rose clears linux
+     by 64 degrees.
+
+     Measured contrast, worst case being the token composited at 10% over
+     surface-3 (the badge tint lightens the ground the text sits on):
+       stable #4fd79b  7.71:1 bare, 6.27:1 tinted
+       beta   #e879a8  5.17:1 bare, 4.61:1 tinted   <- the tightest, and it passes
+       alpha  #8b9df5  5.51:1 bare, 5.02:1 tinted
+     Do not darken any of them for a "calmer" look - that is how this palette
+     previously lost an 11px label to 4.4:1.
+
+     Known limit, stated rather than hidden: the hue wheel is crowded, because the
+     three platform hues (win ~210, mac ~270, linux ~40) already occupy it, and
+     `alpha` at 230 degrees sits 20 degrees from `win`. Shape and text cover that
+     gap: a channel is a FILLED pill carrying its name, a platform is a small
+     outlined chip, and the channel name is always written - so the two are
+     separable without relying on hue, which is also what makes the encoding
+     accessible rather than merely pretty. */
+  --color-channel-stable: #4fd79b;
+  --color-channel-beta: #e879a8;
+  --color-channel-alpha: #8b9df5;
+
+  /* Reserved for state, never for identity. */
+  --color-warn: #f0b429;
+  --color-warn-ink: #1a1200;
+  --color-danger: #f87171;
+
+  /* ---------------------------------------------------------------------------
+     Aliases for names used in the panel sources but absent from this palette.
+
+     These six were invented when the panels were written against a different
+     token set, and nothing here defined them. Because Tailwind v4 only emits a
+     utility when its token exists, every `bg-surface-light`, `text-ink-dim`,
+     `text-status-error`, `text-ember`, `bg-action` and `bg-action-hover` in the
+     panel sources produced NO CSS AT ALL - not a wrong colour, no rule. That
+     silently unstyled whole primitives: the error and success colours vanished,
+     so a FAILED publish and a SUCCESSFUL one both rendered in the default, which
+     is the bug the panels' own comments kept warning about.
+
+     Declared as aliases rather than editing ~100 call sites, so there is one
+     palette and the panels converge on it. Each maps to the token it was clearly
+     reaching for; `ember` and `ink-dim` had no exact counterpart and take the
+     nearest above.
+
+     If you add a colour, add it HERE. A token used in a component but missing
+     from this block fails silently - that is what happened here for however long
+     these panels shipped looking like unstyled slabs.
+     --------------------------------------------------------------------------- */
+  --color-action: var(--color-accent);
+  --color-action-hover: var(--color-accent-hover);
+  --color-surface-light: var(--color-surface-2);
+  --color-surface-hover: var(--color-surface-3);
+  --color-ink-dim: var(--color-ink-muted);
+  --color-ember: var(--color-danger);
+  --color-status-error: var(--color-danger);
+
+  /* `border` was the seventh instance of the same bug, and the reason the panels
+     read as a white outline on a dark canvas. Every `border border-border` in
+     these panels produced `border-width:1px` with NO `border-color` at all, and
+     Tailwind v4's preflight sets `border: 0 solid` - solid with the colour
+     keyword's default, which is currentColor. Inside a panel the colour is
+     inherited from the page, --color-ink #eef1f4, so each of those 1px borders
+     rendered at near-white: a bright outline around a panel that is a fraction
+     lighter than the canvas behind it.
+
+     That is exactly the complaint ("white outline and black, hardly readable")
+     and exactly the failure mode the paragraph above warns about: no error, no
+     warning, a clean build, and a page that looks wrong. It is aliased here
+     rather than rewritten at ~20 call sites so there is one palette and the
+     call sites converge on it.
+
+     It maps to --color-edge, the same hairline the shared primitives use. If a
+     boundary genuinely carries meaning - a danger panel, a focused or selected
+     state, a nested inset - that code should say so with an explicit
+     stronger/colour token, which is how a border earns its place. */
+  --color-border: var(--color-edge);
+
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --font-sans: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  /* One duration and one curve, so the page moves as one system. */
+  --ease-ui: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    /* Tabular figures everywhere: version strings, build numbers and tallies
+       sit in columns, and proportional digits make those columns ragged. */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The shell owns its own scrolling: the rail and the detail pane each scroll
+     independently and the page never does. */
+  #root {
+    overflow: hidden;
+  }
+
+  /* One visible focus ring for every control. Each used to rely on its own or
+     on :focus, which gave a keyboard user no consistent indicator. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}
+
+/* ==========================================================================
+   Small shared primitives.
+
+   These exist as plain class names rather than utilities composed at every
+   call site because the values below are load-bearing: two rules for what
+   must be one thing is how a control ends up two pixels out of alignment with
+   the row it sits in.
+   ========================================================================== */
+
+@layer components {
+  /* Inputs sit a step above the canvas so they read as interactive wells
+     rather than as holes punched in the panel. */
+  .dw-input {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-sm);
+    padding: 8px 11px;
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    width: 100%;
+    min-width: 0;
+    transition:
+      border-color 130ms var(--ease-ui),
+      background 130ms var(--ease-ui);
+  }
+
+  .dw-input:hover {
+    border-color: var(--color-edge-strong);
+  }
+
+  .dw-input:focus-visible {
+    border-color: var(--color-accent);
+    background: var(--color-surface-3);
+    outline-offset: -1px;
+  }
+
+  .dw-input::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  .dw-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Buttons share one height and one radius so a row of them reads as a set
+     rather than as several unrelated controls. */
+  .dw-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--color-edge);
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    /* A two-word button that wraps reads as two stacked buttons, so labels
+       stay on one line and the row wraps instead. */
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background 130ms var(--ease-ui),
+      border-color 130ms var(--ease-ui),
+      color 130ms var(--ease-ui),
+      opacity 130ms var(--ease-ui);
+  }
+
+  .dw-button:hover:not(:disabled) {
+    background: var(--color-surface-3);
+    border-color: var(--color-edge-strong);
+  }
+
+  .dw-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* The one filled button per panel. Weight marks the primary action, not
+     size, so it never competes with the value beside it. */
+  .dw-button-primary {
+    background: var(--color-accent);
+    border-color: transparent;
+    color: var(--color-accent-ink);
+    font-weight: 600;
+  }
+
+  .dw-button-primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  /* A destructive button is deliberately NOT filled: it sits beside a
+     preview-only toggle, and filling it red would give it the same weight as
+     the primary button it outranks the moment the toggle is ticked - which is
+     exactly when the two have to stay distinguishable. */
+  .dw-button-danger {
+    color: var(--color-ink-muted);
+  }
+
+  .dw-button-danger:hover:not(:disabled) {
+    color: var(--color-danger);
+    border-color: rgba(248, 113, 113, 0.45);
+  }
+
+  /* Command output, recessed like a terminal and quiet enough that the numbers
+     in it stay the thing you look at. */
+  .dw-log {
+    background: var(--color-inset);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-top: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--color-ink-muted);
+    white-space: pre-wrap;
+    max-height: 320px;
+    overflow: auto;
+  }
+
+  /* Uppercase micro-label. One style for every section heading, so the page
+     reads as a set of named sections rather than as loose text. */
+  .dw-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-ink-subtle);
+  }
+
+  /* The section rail's selection edge and the game row's marker are the only
+     places the accent appears as a bare mark rather than as text or a fill.
+     Both are 2px so the two read as the same rule. */
+  .dw-rule {
+    background: var(--color-accent);
+  }
+
+  .dw-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* A quiet scrollbar. The default one is a bright bar down the edge of a
+       dark tool. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-3) transparent;
+  }
+}
+
+/* Animate only opacity and colour. Honouring the preference costs one block
+   and avoids a visible transition for anyone who asked for none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
