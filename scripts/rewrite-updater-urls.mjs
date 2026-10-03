@@ -114,6 +114,7 @@ const assetsIndex = argv.indexOf('--assets');
 let jsonPath;
 let publicBase;
 let outPath;
+let assetsFile;
 let assetNames = new Map();
 
 // `--assets <file>` is a JSON array of `{ "id": <number>, "name": <string> }`,
@@ -121,7 +122,7 @@ let assetNames = new Map();
 // URLs cannot be rewritten and the script fails loudly rather than publishing a
 // broken manifest.
 if (assetsIndex !== -1) {
-  const assetsFile = argv[assetsIndex + 1];
+  assetsFile = argv[assetsIndex + 1];
   if (!assetsFile) {
     console.error('--assets needs a path to the release assets JSON.');
     process.exit(1);
