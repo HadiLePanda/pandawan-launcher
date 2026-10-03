@@ -137,6 +137,8 @@ function MetaFieldRow({
   field,
   value,
   artworks,
+  artworksLoading,
+  artworksError,
   dirty,
   showInherited,
   onChange,
@@ -148,6 +150,9 @@ function MetaFieldRow({
   field: MetaFieldView;
   value: string;
   artworks: ArtworkObject[];
+  /** Whether the library listing is still loading, and its error when it failed. */
+  artworksLoading: boolean;
+  artworksError: string | null;
   dirty: boolean;
   /** True only when the value is inherited from the manifest under a catalog entry. */
   showInherited: boolean;
@@ -250,6 +255,8 @@ function MetaFieldRow({
             previewUrl={previewUrl}
             stagedName={stagedName}
             onUpload={isImage ? handleUpload : undefined}
+            objectsLoading={artworksLoading}
+            objectsError={artworksError}
           />
         </Field>
       ) : (
@@ -467,6 +474,8 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
         field={field}
         value={values[spec.flag] ?? ''}
         artworks={artworks.objects}
+        artworksLoading={artworks.loading}
+        artworksError={artworks.error}
         dirty={isImageDirty(original, values, spec.flag)}
         showInherited={Boolean(payload?.hasCatalogEntry) && field.source === 'manifest'}
         onChange={(next) => setValue(spec.flag, next)}

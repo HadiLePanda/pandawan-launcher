@@ -34,7 +34,8 @@ import type { GameTabProps } from './types';
 
 /**
  * The field labels the server reports, and the fallbacks for `object.field` on a
- * tile. Exported for the image picker, which names the same fields.
+ * tile. Spelled here because the listing's `field` is the metadata flag
+ * ("icon-url"), which is not what a reader should be shown.
  */
 export const FIELD_LABEL: Record<string, string> = {
   'icon-url': 'Icon URL',

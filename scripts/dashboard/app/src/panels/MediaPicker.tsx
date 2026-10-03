@@ -39,6 +39,14 @@ export interface MediaPickerProps {
   stagedName?: string;
   /** The one upload path. Absent means this slot accepts no file upload. */
   onUpload?: (file: File) => Promise<void>;
+  /** True while the library listing is still being read. */
+  objectsLoading?: boolean;
+  /**
+   * The listing's failure, when it could not be read. Distinct from an empty
+   * library on purpose: a read that failed renders no objects either, and the
+   * popup must not report that as "nothing is on the bucket".
+   */
+  objectsError?: string | null;
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
@@ -63,6 +71,8 @@ export function MediaPicker({
   previewUrl,
   stagedName,
   onUpload,
+  objectsLoading = false,
+  objectsError = null,
 }: MediaPickerProps) {
   const [open, setOpen] = useState(false);
   // The index being dragged, so the row can dim while it is in flight. A ref
@@ -73,7 +83,11 @@ export function MediaPicker({
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const selected = multiple ? splitList(value) : value.trim() ? [value.trim()] : [];
-  const staged = !multiple && !selected.length && Boolean(previewUrl);
+  // Keyed on the STAGED FILE, not on previewUrl. previewUrl is also the display
+  // preview of the current selection (MetadataTab passes the published URL for a
+  // value the listing cannot resolve), so deriving this from it made a field the
+  // operator just cleared render the old image again as "uploads on publish".
+  const staged = !multiple && !selected.length && Boolean(stagedName);
 
   const commit = (next: string[]) => onChange(multiple ? next.join(', ') : (next[0] ?? ''));
 
@@ -318,7 +332,13 @@ export function MediaPicker({
               </Button>
             </div>
 
-            {objects.length ? (
+            {objectsError ? (
+              <p className="text-[11.5px] text-status-error">
+                Could not read the artwork library: {objectsError}
+              </p>
+            ) : objectsLoading ? (
+              <p className="text-[11.5px] text-ink-subtle">Reading the artwork library&hellip;</p>
+            ) : objects.length ? (
               <div className="dw-art-grid">
                 {objects.map((object) => {
                   const chosen = isChosen(object);
