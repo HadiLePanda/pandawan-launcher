@@ -4,8 +4,21 @@ import { fileURLToPath } from 'node:url';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// package.json is the source of truth; the other two are written from it.
-export const VERSION_FILES = ['package.json', 'src-tauri/tauri.conf.json', 'src-tauri/Cargo.toml'];
+// package.json is the source of truth; the rest are written from it.
+export const VERSION_FILES = [
+  'package.json',
+  'src-tauri/tauri.conf.json',
+  'src-tauri/Cargo.toml',
+  'src-tauri/Cargo.lock',
+];
+
+const LOCK_PACKAGE = 'pandawan-launcher';
+
+/** Our own crate's block in the lock. Hundreds of dependencies carry a version too. */
+function cargoLockPackageSection(text) {
+  const name = new RegExp(`^name\\s*=\\s*"${LOCK_PACKAGE}"$`, 'm');
+  return text.split(/\n(?=\[\[package\]\])/).find((block) => name.test(block)) ?? null;
+}
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
 const JSON_VERSION = /"version"\s*:\s*"([^"]*)"/;
@@ -19,6 +32,10 @@ function cargoPackageSection(text) {
 }
 
 export function readVersion(file, text) {
+  if (file.endsWith('.lock')) {
+    const match = cargoLockPackageSection(text)?.match(/^version\s*=\s*"([^"]*)"/m);
+    return match ? match[1] : null;
+  }
   if (file.endsWith('.toml')) {
     const match = cargoPackageSection(text)?.match(/^version\s*=\s*"([^"]*)"/m);
     return match ? match[1] : null;
@@ -56,7 +73,14 @@ export function writeVersion(next, root = repoRoot) {
     if (current === next) continue;
 
     let updated;
-    if (file.endsWith('.toml')) {
+    if (file.endsWith('.lock')) {
+      const section = cargoLockPackageSection(text);
+      if (!section) throw new Error(`${file} has no ${LOCK_PACKAGE} package block`);
+      updated = text.replace(
+        section,
+        section.replace(/^(version\s*=\s*")([^"]*)(")/m, `$1${next}$3`)
+      );
+    } else if (file.endsWith('.toml')) {
       const section = cargoPackageSection(text);
       updated = text.replace(
         section,
