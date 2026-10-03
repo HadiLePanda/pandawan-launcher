@@ -16,34 +16,9 @@
   }
 }
 
-/* Download bar. The width easing uses the shared enter token so the fill moves
-   instead of jumping between reported chunks, and ::after sweeps a soft
-   highlight while data is arriving. */
-.progress-bar {
-  position: relative;
-  overflow: hidden;
-  transition: width var(--motion-enter) var(--motion-ease-out);
-}
-
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.34) 50%,
-    transparent 100%
-  );
-  transform: translateX(-100%);
-  animation: update-shimmer 1.4s linear infinite;
-}
-
-@keyframes update-shimmer {
-  to {
-    transform: translateX(100%);
-  }
-}
+/* Download progress moved to the single full-width line at the top of the app
+   (.update-progress-line); the boxed .progress / .progress-bar rules that lived
+   here were left with no markup and were removed. */
 
 /* Self-drawing checkmark: the stroke runs from its full length to zero. */
 .update-check {
@@ -93,16 +68,15 @@
 }
 
 /* Reduced motion strips the decorative parts: no fade/scale entry, no draw-in,
-   no shimmer, no pulse. The spinner and the advancing download bar are
-   functional progress feedback and are deliberately kept. */
+   no pulse. The spinner and the advancing progress line are functional progress
+   feedback and are deliberately kept. */
 @media (prefers-reduced-motion: reduce) {
-  /* Decorative motion only. The spinner keeps spinning and the download bar
+  /* Decorative motion only. The spinner keeps spinning and the progress line
      keeps advancing: a progress indicator that freezes reads as a hung app,
      which is worse than no indicator at all. */
   .update-enter,
   .update-restart,
-  .update-check,
-  .progress-bar::after {
+  .update-check {
     animation: none;
   }
 
@@ -111,11 +85,13 @@
   }
 }
 
-/* The full-width download line. Absolutely positioned at the top edge of the
-   content area so it never shifts layout, the way a browser shows a download. */
+/* The full-width update line. Pinned to the very top edge of the app, above the
+   title bar, so it reads as app chrome rather than a border of the nav it sits
+   under. Absolutely positioned and pointer-events:none so it never shifts layout
+   and cannot swallow the window drag region. */
 .update-progress-line {
   position: absolute;
-  top: 100%;
+  top: 0;
   left: 0;
   right: 0;
   height: 3px;
@@ -125,8 +101,56 @@
   z-index: 30;
 }
 
+/* Green while bytes are arriving, blue once the update is staged. The colour is
+   never the only signal: the banner and the chip always carry the label and the
+   percentage. */
 .update-progress-line-fill {
   height: 100%;
   background: var(--action);
   transition: width var(--motion-enter) var(--motion-ease-out);
+}
+
+.update-progress-line-fill-ready {
+  background: var(--blue);
+}
+
+/* Compact update detail, opened from the top-bar chip. */
+.update-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  animation: update-enter var(--motion-enter) var(--motion-ease-out) both;
+}
+
+.update-popover-title {
+  font-size: 12px;
+  color: var(--ink-default);
+}
+
+.update-popover-percent {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-default);
+}
+
+.update-popover-detail {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.update-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
 }

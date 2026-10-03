@@ -1,7 +1,15 @@
 import { ArrowUpCircle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
+import { useUpdaterStore, downloadAndInstall } from '@/lib/updater-service';
 
+/**
+ * Informational only: an update exists, or is downloading.
+ *
+ * The progress bar moved to the full-width line at the top of the app, and the
+ * ready-to-install action lives on the top-bar chip, so the banner never
+ * duplicates either. It keeps the label and the percentage so the state never
+ * rides on colour alone.
+ */
 export function UpdateBanner() {
   const { t } = useTranslation();
   const { status, version, downloadedBytes, totalBytes, dismissed, error, dismissBanner } =
@@ -47,18 +55,6 @@ export function UpdateBanner() {
         </span>
       </div>
 
-      {status === 'downloading' && pct !== null && (
-        <div
-          className="progress flex-1 max-w-xs shrink"
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div className="progress-bar" style={{ width: `${pct}%` }} />
-        </div>
-      )}
-
       <div className="flex items-center gap-1 shrink-0">
         {status === 'available' && (
           <button
@@ -66,14 +62,6 @@ export function UpdateBanner() {
             className="btn btn-sm btn-primary update-enter"
           >
             {t('updateBanner.update')}
-          </button>
-        )}
-        {status === 'ready' && (
-          <button
-            onClick={() => void restartToApplyUpdate()}
-            className="btn btn-sm btn-primary update-restart"
-          >
-            {t('updateBanner.restart')}
           </button>
         )}
         <button

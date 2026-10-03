@@ -252,9 +252,12 @@
     "profileSettings": "Paramètres",
     "store": "Boutique",
     "update": "Mettre à jour",
-    "updateAvailable": "La version {{version}} est disponible",
-    "restart": "Redémarrer",
-    "restartToUpdate": "Redémarrer pour appliquer la mise à jour",
+    "downloading": "Téléchargement…",
+    "updateTo": "Mettre à jour vers {{version}}",
+    "updateTooltip": "Pandawan Launcher {{version}}",
+    "restartToUpdate": "Redémarrer pour mettre à jour",
+    "updating": "Mise à jour…",
+    "restartWhileGameRunning": "Un jeu est en cours. Redémarrer maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Redémarrer quand même\u00a0?",
     "catalogStale": "De nouveaux jeux ou mises à jour sont disponibles — actualise pour les charger"
   },
   "updateBanner": {
@@ -263,8 +266,17 @@
     "downloadFailed": "échec du téléchargement, réessaie",
     "downloading": "Téléchargement de la mise à jour v{{version}}…{{progress}}",
     "ready": "La mise à jour v{{version}} est prête à être installée",
-    "restart": "Redémarrer pour mettre à jour",
     "update": "Mettre à jour"
+  },
+  "updatePopover": {
+    "title": "Détails de la mise à jour",
+    "downloadingTitle": "Téléchargement de la v{{version}}",
+    "readyTitle": "La mise à jour v{{version}} est prête",
+    "bytes": "{{done}} sur {{total}}",
+    "readyBody": "Redémarre maintenant, ou la mise à jour s'appliquera la prochaine fois que tu quittes le launcher.",
+    "restart": "Redémarrer pour mettre à jour",
+    "update": "Mettre à jour",
+    "later": "Plus tard"
   },
   "verifyGameModal": {
     "progress": "{{checked}} / {{total}}",

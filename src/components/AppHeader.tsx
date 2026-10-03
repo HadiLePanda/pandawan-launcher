@@ -9,10 +9,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpCircle,
+  Loader2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { WindowControls } from './WindowControls';
+import { UpdatePopover } from './UpdatePopover';
+import { restartToApplyUpdate } from '@/lib/updater-service';
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 
 interface TitleBarProps {
@@ -36,13 +39,18 @@ interface MainNavProps {
   notificationsBadge?: number;
   avatarUrl?: string;
   /** Launcher self-update: an available version, and whether it is downloaded. */
-  launcherUpdate?: { version: string | null; ready: boolean } | null;
+  launcherUpdate?: {
+    version: string | null;
+    ready: boolean;
+    downloading: boolean;
+    errored: boolean;
+  } | null;
   onLauncherUpdateClick: () => void;
+  /** True while a game is running; a restart would kill its playtime recorder. */
+  gameRunning?: boolean;
   /** True when a background catalog poll found new content to load. */
   catalogStale?: boolean;
   onCatalogRefresh: () => void;
-  /** Launcher self-update download progress (0-100), for the line under the bar. */
-  updateProgress?: number | null;
 }
 
 function TopBarButton({
@@ -162,11 +170,16 @@ export function MainNav({
   onLauncherUpdateClick,
   catalogStale,
   onCatalogRefresh,
-  updateProgress,
+  gameRunning,
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isUpdatePopoverOpen, setIsUpdatePopoverOpen] = useState(false);
+  // Covers the gap between "Restart" being chosen and the process actually
+  // relaunching, which previously showed nothing at all.
+  const [isRestarting, setIsRestarting] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const updateMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -192,7 +205,75 @@ export function MainNav({
     };
   }, [isProfileMenuOpen]);
 
+  useEffect(() => {
+    if (!isUpdatePopoverOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (updateMenuRef.current && !updateMenuRef.current.contains(event.target as Node)) {
+        setIsUpdatePopoverOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUpdatePopoverOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isUpdatePopoverOpen]);
+
   const downloadsBadge = activeDownloads.size;
+
+  const handleRestartUpdate = () => {
+    // Relaunch replaces the process, so the waiter that records playtime dies
+    // with it: the same hazard as quitting mid-game, and the same rule. Not
+    // restarting is the safe default - the staged update applies the next time
+    // the launcher really exits.
+    if (gameRunning && !confirm(t('topBar.restartWhileGameRunning'))) return;
+    setIsUpdatePopoverOpen(false);
+    setIsRestarting(true);
+    void restartToApplyUpdate();
+  };
+
+  // The chip is the one place the update state and its action live. Restart is a
+  // single click there; downloading opens the detail popover instead, since
+  // there is nothing to act on mid-download.
+  const handleUpdateChipClick = () => {
+    if (isRestarting) return;
+    if (launcherUpdate?.ready) {
+      handleRestartUpdate();
+      return;
+    }
+    if (launcherUpdate?.downloading) {
+      setIsUpdatePopoverOpen((open) => !open);
+      return;
+    }
+    onLauncherUpdateClick();
+  };
+
+  const updateChipText = isRestarting
+    ? t('topBar.updating')
+    : launcherUpdate?.ready
+      ? t('topBar.restartToUpdate')
+      : launcherUpdate?.downloading
+        ? t('topBar.downloading')
+        : launcherUpdate?.version
+          ? t('topBar.updateTo', { version: launcherUpdate.version })
+          : t('topBar.update');
+
+  // The version is the tooltip's job in every state where it is known; the label
+  // stays short so the chip does not grow.
+  const updateChipTitle = launcherUpdate?.version
+    ? t('topBar.updateTooltip', { version: launcherUpdate.version })
+    : updateChipText;
+
   return (
     // data-tauri-drag-region makes the empty parts of the nav drag the window.
     // The interactive clusters opt out with .no-drag, so this only widens the
@@ -259,31 +340,37 @@ export function MainNav({
         {/* Blue, and only present when there is something to act on. The banner
             handled this before; a button next to Notifications is reachable from
             every view and does not compete for vertical space. */}
-        {launcherUpdate && (
-          <button
-            type="button"
-            className={cn(
-              'topbar-btn topbar-btn-update',
-              launcherUpdate.ready ? 'update-restart' : 'update-enter'
-            )}
-            onClick={onLauncherUpdateClick}
-            aria-label={
-              launcherUpdate.ready
-                ? t('topBar.restartToUpdate')
-                : t('topBar.updateAvailable', { version: launcherUpdate.version ?? '' })
-            }
-            title={
-              launcherUpdate.ready
-                ? t('topBar.restartToUpdate')
-                : t('topBar.updateAvailable', { version: launcherUpdate.version ?? '' })
-            }
-            data-testid="launcher-update"
-          >
-            <ArrowUpCircle className="w-4 h-4" />
-            <span className="topbar-btn-update-label">
-              {launcherUpdate.ready ? t('topBar.restart') : t('topBar.update')}
-            </span>
-          </button>
+        {(launcherUpdate || isRestarting) && (
+          <div className="relative" ref={updateMenuRef}>
+            <button
+              type="button"
+              className={cn(
+                'topbar-btn topbar-btn-update',
+                launcherUpdate?.ready && !isRestarting
+                  ? 'topbar-btn-update-ready update-restart'
+                  : launcherUpdate?.errored && !isRestarting
+                    ? 'topbar-btn-update-error update-enter'
+                    : 'update-enter'
+              )}
+              onClick={handleUpdateChipClick}
+              disabled={isRestarting}
+              aria-label={updateChipTitle}
+              title={updateChipTitle}
+              data-testid="launcher-update"
+            >
+              {isRestarting ? (
+                <Loader2 className="w-4 h-4 update-spinner" />
+              ) : (
+                <ArrowUpCircle className="w-4 h-4" />
+              )}
+              <span className="topbar-btn-update-label">{updateChipText}</span>
+            </button>
+            <UpdatePopover
+              open={isUpdatePopoverOpen}
+              onClose={() => setIsUpdatePopoverOpen(false)}
+              onRestart={handleRestartUpdate}
+            />
+          </div>
         )}
         {/* Downloads goes to its own page rather than opening the dropdown. The
             dropdown duplicated the page and had no keyboard path; the icon form
@@ -360,24 +447,6 @@ export function MainNav({
           )}
         </div>
       </div>
-
-      {/* Sits at the bar's bottom edge, directly above the content, and is
-          absolutely positioned so the fill never shifts layout. */}
-      {updateProgress != null && (
-        <div
-          className="update-progress-line"
-          role="progressbar"
-          aria-valuenow={updateProgress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={t('updateBanner.downloading', {
-            version: launcherUpdate?.version ?? '',
-            progress: ` ${updateProgress}%`,
-          })}
-        >
-          <div className="update-progress-line-fill" style={{ width: `${updateProgress}%` }} />
-        </div>
-      )}
     </div>
   );
 }

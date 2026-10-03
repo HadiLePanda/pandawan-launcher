@@ -430,6 +430,21 @@ Component Design System
   color: #ffffff;
 }
 
+/* Staged and waiting on the user: blue, "it is your turn now", distinct from the
+   green states where the launcher is the one working. The label always states
+   the state, so the colour is never the only signal. */
+.topbar-btn-update-ready {
+  background: var(--blue);
+}
+
+.topbar-btn-update-ready:hover {
+  background: var(--blue-hover);
+}
+
+.topbar-btn-update-error {
+  background: var(--color-status-error);
+}
+
 .topbar-btn-update-label {
   font-size: 12px;
   font-weight: 600;

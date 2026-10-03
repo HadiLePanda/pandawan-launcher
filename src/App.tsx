@@ -273,10 +273,16 @@ function App() {
   const updaterVersion = useUpdaterStore((s) => s.version);
   const updaterDownloadedBytes = useUpdaterStore((s) => s.downloadedBytes);
   const updaterTotalBytes = useUpdaterStore((s) => s.totalBytes);
+  const updaterError = useUpdaterStore((s) => s.error);
+  // A game in flight owns a playtime recorder inside this process; restarting to
+  // apply an update would kill it, so the chip confirms first.
+  const isGameRunning = useMemo(() => games.some((g) => g.status === 'running'), [games]);
   const updaterProgress =
-    updaterStatus === 'downloading' && updaterTotalBytes && updaterTotalBytes > 0
-      ? Math.min(100, Math.round((updaterDownloadedBytes / updaterTotalBytes) * 100))
-      : null;
+    updaterStatus === 'ready'
+      ? 100
+      : updaterStatus === 'downloading' && updaterTotalBytes && updaterTotalBytes > 0
+        ? Math.min(100, Math.round((updaterDownloadedBytes / updaterTotalBytes) * 100))
+        : null;
 
   const handleLauncherUpdateClick = useCallback(() => {
     if (updaterStatus === 'ready') {
@@ -541,7 +547,31 @@ function App() {
   };
 
   return (
-    <div className="h-screen max-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+    <div className="relative h-screen max-h-screen flex flex-col bg-transparent text-ink overflow-hidden">
+      {/* The only progress bar. Full width at the very top edge of the app, above
+          the title bar, so it reads as chrome rather than a border of the nav and
+          never fights the games list. Tinted by state, but never colour alone:
+          the banner and the chip always carry the label and the percentage. */}
+      {updaterProgress != null && (
+        <div
+          className="update-progress-line"
+          role="progressbar"
+          aria-valuenow={updaterProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t('updateBanner.downloading', {
+            version: updaterVersion ?? '',
+            progress: ` ${updaterProgress}%`,
+          })}
+        >
+          <div
+            className={`update-progress-line-fill${
+              updaterStatus === 'ready' ? ' update-progress-line-fill-ready' : ''
+            }`}
+            style={{ width: `${updaterProgress}%` }}
+          />
+        </div>
+      )}
       <TitleBar
         catalogUnreachable={catalogUnreachable}
         catalogSource={catalogSource}
@@ -593,11 +623,16 @@ function App() {
           updaterStatus === 'available' ||
           updaterStatus === 'downloading' ||
           updaterStatus === 'ready'
-            ? { version: updaterVersion, ready: updaterStatus === 'ready' }
+            ? {
+                version: updaterVersion,
+                ready: updaterStatus === 'ready',
+                downloading: updaterStatus === 'downloading',
+                errored: updaterStatus === 'available' && Boolean(updaterError),
+              }
             : null
         }
         onLauncherUpdateClick={handleLauncherUpdateClick}
-        updateProgress={updaterProgress}
+        gameRunning={isGameRunning}
       />
 
       {/* Shown in every view, not just the games grid. News and the store are

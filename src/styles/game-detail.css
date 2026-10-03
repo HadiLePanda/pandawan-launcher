@@ -551,20 +551,6 @@ input.pin-search {
   color: var(--ink-muted);
 }
 
-/* ----- Progress ----- */
-.progress {
-  height: 0.5rem;
-  background: var(--surface-default);
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  background: var(--action);
-  transition: width 0.3s ease-out;
-}
-
 /* ----- Utility helpers ----- */
 .truncate {
   white-space: nowrap;

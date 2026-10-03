@@ -252,9 +252,12 @@
     "profileSettings": "Settings",
     "store": "Store",
     "update": "Update",
-    "updateAvailable": "Version {{version}} is available",
-    "restart": "Restart",
-    "restartToUpdate": "Restart to apply the update",
+    "downloading": "Downloading…",
+    "updateTo": "Update to {{version}}",
+    "updateTooltip": "Pandawan Launcher {{version}}",
+    "restartToUpdate": "Restart to update",
+    "updating": "Updating…",
+    "restartWhileGameRunning": "A game is running. Restarting now stops tracking this session — its playtime will not be recorded. Restart anyway?",
     "catalogStale": "New games or updates are available — refresh to load"
   },
   "updateBanner": {
@@ -263,8 +266,17 @@
     "downloadFailed": "download failed, try again",
     "downloading": "Downloading update v{{version}}…{{progress}}",
     "ready": "Update v{{version}} is ready to install",
-    "restart": "Restart to update",
     "update": "Update"
+  },
+  "updatePopover": {
+    "title": "Update details",
+    "downloadingTitle": "Downloading v{{version}}",
+    "readyTitle": "Update v{{version}} is ready",
+    "bytes": "{{done}} of {{total}}",
+    "readyBody": "Restart now, or it applies the next time you quit the launcher.",
+    "restart": "Restart to update",
+    "update": "Update",
+    "later": "Later"
   },
   "verifyGameModal": {
     "progress": "{{checked}} / {{total}}",
