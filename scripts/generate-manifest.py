@@ -42,10 +42,15 @@ def compute_sha256(path: Path) -> str:
 # "<Product>_BackUpThisFolder_ButDontShipItWithYourGame" folder that must never
 # be shipped; leaving it in would download dead weight on every install. The build
 # report is Unity's own diagnostics, written beside the build root, and is not part
-# of the game - shipping it puts Unity's internals in every player's install.
+# of the game - shipping it puts Unity's internals in every player's install. The
+# zip beside a Mac export duplicates the app bundle it was made from.
+#
+# Matching is a substring test, so a pattern is a fragment ("build-report-"), never
+# a glob: "*.zip" matches nothing and silently lets the zip through.
 DEFAULT_EXCLUDES = (
     "_BackUpThisFolder_ButDontShipItWithYourGame",
     "build-report-",
+    ".zip",
 )
 
 

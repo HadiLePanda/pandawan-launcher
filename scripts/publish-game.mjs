@@ -98,9 +98,9 @@ for (const spec of asList(args.platform)) {
   manifestArgs.push('--platform', spec);
 }
 
-// Unity's Mac export sits next to a .zip of the same bundle. Uploading it would
-// double the platform's size for no benefit, and unlike the backup folder it is
-// not in the generator's default excludes.
+// Extra exclude patterns from the caller. The backup folder, Unity's build report
+// and the zip beside a Mac export are already excluded by the generator's
+// defaults.
 for (const pattern of asList(args.exclude)) {
   manifestArgs.push('--exclude', pattern);
 }
