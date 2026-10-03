@@ -1,34 +1,43 @@
 /**
- * The Launcher's own version ladder and its release verbs.
+ * The launcher's own release ladder and its release verbs.
  *
- * The header IS the ladder. repo, live, the waiting tags and the two tallies sit
- * on one row beside Refresh, because the one question this page answers is
- * whether those two versions differ - and an answer split across two stacked
- * cards is an answer the reader has to assemble. Waiting tags are CHIPS and
- * clickable: one click picks that specific tag and reveals the manual field.
+ * The header answers one question - do players have the same version the repo is
+ * at - as value-then-label facts rather than a row of chips to decode. A live
+ * version that could not be read says so, instead of rendering as an empty bucket.
  *
- * PUBLISHING IS ONE CLICK. The common case - publish the newest waiting tag - is
- * the primary button, with the tag it will send printed on the button face. The
- * manual tag field is hidden behind "or a specific tag": a visible field, even
- * pre-filled, reads as a form to fill in. Nothing about the safety changes - dry
- * run is still the default and is never auto-unticked, publishing without "Upload
- * for real" is still a dry run, and a real publish still fires a confirm first.
+ * Only a tag NEWER than the live version is waiting to publish. Older tags are
+ * history and are never listed under a waiting affordance; comparing as strings
+ * would name v0.1.10 newer than v0.1.9, so every "which is newer" ask goes through
+ * compareVersions.
  *
- * The actions are one panel of three hairline-separated rows: publish, bump the
- * release, check the signing key. Each row names its own verb, so the form needs
- * no section headings inside it.
+ * PUBLISHING IS ONE CLICK: the primary button sends the newest waiting tag, with
+ * that tag named on its face. Nothing is typed - the tag is derived, never entered.
  *
- * Global, not game-scoped: the launcher is the app itself, not a game, and
- * nothing here acts on the selection in the rail.
+ * BUMP is the only way a version moves: it proposes what release.mjs would write
+ * (the server computes it with that script's rule) and derives the tag from it.
+ * Dry run is the default, and a real run still confirms by tag name.
+ *
+ * Global, not game-scoped: the launcher is the app itself, and nothing here acts
+ * on the selection in the rail.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, KeyRound, Loader2, RefreshCw, Rocket, Tag } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  RefreshCw,
+  Rocket,
+  Tag,
+} from 'lucide-react';
 
 import { apiGet, messageOf } from '@/lib/api';
-import { compareVersions, nextVersion } from '@lib/version';
-import { DataAge } from '@components/ui';
+import { compareVersions } from '@lib/version';
 import { cx } from './cx';
-import { Rung, StatusWord, Tally } from './ladder';
+import { Fact, StatusWord, Tally } from './ladder';
+import { Button, ErrorNote } from './ui';
 import { usePublisherStream, verdictLine, type StreamVerdict } from './usePublisherStream';
 
 /** `GET /api/launcher/status`. */
@@ -38,13 +47,18 @@ interface LauncherStatus {
     targets: string[];
     artifactCount: number;
   } | null;
+  /** Set when latest.json could not be read, distinct from an empty bucket. */
+  publishedError?: string | null;
   releases?: Array<{ tagName: string; isDraft?: boolean }>;
   packageVersion?: string;
+  /** What each bump level produces, computed with release.mjs's own rule. */
+  nextVersions?: Record<'patch' | 'minor' | 'major', string>;
   cdnOrigin?: string;
   error?: string;
 }
 
-const TAG_PATTERN = /^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/;
+const LEVELS = ['patch', 'minor', 'major'] as const;
+type Level = (typeof LEVELS)[number];
 
 /**
  * `v` stripped, so a tag compares as numbers.
@@ -56,13 +70,22 @@ function bare(tag: string): string {
   return tag.startsWith('v') ? tag.slice(1) : tag;
 }
 
-/** The newest release that is not live, by numeric version rather than order. */
+/**
+ * The tags newer than the live version: the only things a publish can be waiting
+ * on. A tag at or below the live version has been passed and is history.
+ */
+function waitingTags(releases: LauncherStatus['releases'], live: string | null): string[] {
+  return (releases ?? [])
+    .map((release) => release.tagName)
+    .filter((tag) => !live || compareVersions(bare(tag), live) > 0);
+}
+
+/** The newest waiting tag by numeric version rather than list order. */
 function newestWaiting(releases: LauncherStatus['releases'], live: string | null): string | null {
-  return (releases ?? []).reduce<string | null>((best, release) => {
-    if (live && release.tagName === `v${live}`) return best;
-    if (!best) return release.tagName;
-    return compareVersions(bare(release.tagName), bare(best)) > 0 ? release.tagName : best;
-  }, null);
+  return waitingTags(releases, live).reduce<string | null>(
+    (best, tag) => (!best || compareVersions(bare(tag), bare(best)) > 0 ? tag : best),
+    null
+  );
 }
 
 export default function LauncherPanel() {
@@ -71,15 +94,9 @@ export default function LauncherPanel() {
     | { state: 'ready'; data: LauncherStatus; ageMs: number | null }
     | { state: 'error'; message: string }
   >({ state: 'loading' });
-  const [tag, setTag] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
-  // Whether the manual tag field is shown. FALSE by default, and that is the
-  // whole point: a pre-filled field sitting on screen reads as a form to fill in,
-  // which is what made this read as manual work. The common case - publish the
-  // newest waiting tag - is one button with nothing to type.
-  const [manualTag, setManualTag] = useState(false);
-  const [releaseLevel, setReleaseLevel] = useState<'patch' | 'minor' | 'major'>('patch');
+  const [releaseLevel, setReleaseLevel] = useState<Level>('patch');
   const [releaseDryRun, setReleaseDryRun] = useState(true);
 
   const publish = usePublisherStream();
@@ -108,13 +125,6 @@ export default function LauncherPanel() {
     try {
       const result = await request();
       setLoad({ state: 'ready', data: result.data, ageMs: result.ageMs });
-      // Only when the operator has not typed anything: a tag they chose is never
-      // overwritten.
-      setTag((current) => {
-        if (current) return current;
-        const live = result.data.published?.version ?? null;
-        return newestWaiting(result.data.releases, live) ?? '';
-      });
     } catch (err) {
       setLoad({ state: 'error', message: messageOf(err) });
     } finally {
@@ -124,41 +134,31 @@ export default function LauncherPanel() {
 
   // Started through a resolved promise rather than called directly, so the state
   // updates land in a callback after the effect body instead of synchronously
-  // inside it. Same fetch, same tag defaulting, same error path - only the render
-  // it lands on differs.
+  // inside it. Same fetch, same error path - only the render it lands on differs.
   useEffect(() => {
     void Promise.resolve().then(() => refresh());
   }, [refresh]);
 
   const data = load.state === 'ready' ? load.data : null;
+  const loaded = load.state === 'ready';
   const liveVersion = data?.published?.version ?? null;
+  const liveError = data?.publishedError ?? null;
   const repoVersion = data?.packageVersion ?? null;
-  // The releases that exist and are NOT live: exactly the things waiting for a
-  // publish, which is also what the tag datalist offers.
-  const waiting = (data?.releases ?? []).filter(
-    (r) => !liveVersion || r.tagName !== `v${liveVersion}`
-  );
-  // What Publish next sends. Recomputed from the releases rather than read from
-  // `tag`, so it is always the newest waiting tag even after the operator has
-  // typed something else into the manual field. Numeric-per-component, via
-  // newestWaiting - a string sort would name the OLDER tag as the newest.
+  // What Publish sends: the newest tag newer than live, or nothing.
   const nextTag = newestWaiting(data?.releases, liveVersion);
+  // What a bump would produce, from the server's copy of release.mjs's rule.
+  const proposedVersion = repoVersion ? (data?.nextVersions?.[releaseLevel] ?? null) : null;
+  const proposedTag = proposedVersion ? `v${proposedVersion}` : null;
 
-  async function doPublish(tagToPublish: string) {
-    const trimmed = tagToPublish.trim();
-    // The server validates the tag against the release pattern and refuses
-    // anything else, so this is a friendlier copy of a rule it enforces anyway.
-    if (!TAG_PATTERN.test(trimmed)) {
-      await publish.start('/api/launcher/publish', { tag: trimmed, confirm: false });
-      return;
-    }
+  async function doPublish() {
+    if (!nextTag) return;
     if (
       confirmPublish &&
-      !window.confirm('Upload this launcher to R2? Players will see it immediately.')
+      !window.confirm(`Upload ${nextTag} to R2? Players will see it immediately.`)
     ) {
       return;
     }
-    await publish.start('/api/launcher/publish', { tag: trimmed, confirm: confirmPublish });
+    await publish.start('/api/launcher/publish', { tag: nextTag, confirm: confirmPublish });
     // Never left armed: a real publish is a one-off, and a box that stays ticked
     // would make the next click upload a different tag without asking.
     setConfirmPublish(false);
@@ -166,9 +166,10 @@ export default function LauncherPanel() {
   }
 
   async function doRelease() {
+    if (!proposedTag) return;
     if (
       !releaseDryRun &&
-      !window.confirm('Bump the version, commit and push a tag? This triggers CI.')
+      !window.confirm(`Bump to ${proposedVersion} and push ${proposedTag}? This triggers CI.`)
     ) {
       return;
     }
@@ -188,64 +189,62 @@ export default function LauncherPanel() {
 
   return (
     <div className="flex flex-col">
-      {/* The header IS the ladder: repo, live, waiting, the verdict word, the two
-          tallies and Refresh on one row, in the Games header's arrangement. */}
+      {/* The header, as facts rather than chips: what players have, what the repo
+          is at, and whether they agree. The endpoint is uncached, so Refresh is
+          always a real read of all three. */}
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-edge pb-3">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1">
-          <Rung
-            label="repo"
-            value={repoVersion ? `v${bare(repoVersion)}` : 'unknown'}
-            dot="bg-ink-faint"
-            tone="text-ink"
-          />
-          <Rung
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-6 gap-y-2">
+          <Fact
             label="live"
-            value={liveVersion ? `v${bare(liveVersion)}` : 'none'}
-            dot="bg-accent"
-            tone={liveVersion ? 'text-accent' : 'text-ink-subtle'}
+            value={
+              liveVersion
+                ? `v${bare(liveVersion)}`
+                : !loaded
+                  ? '—'
+                  : liveError
+                    ? 'unreachable'
+                    : 'none'
+            }
+            tone={
+              liveVersion
+                ? 'text-accent'
+                : !loaded
+                  ? 'text-ink-faint'
+                  : liveError
+                    ? 'text-warn'
+                    : 'text-ink-subtle'
+            }
           />
-          <WaitingChips
-            tags={waiting.map((r) => r.tagName)}
-            selected={tag}
-            onPick={(picked) => {
-              setTag(picked);
-              // A chip IS the specific-tag case, so picking one reveals the field
-              // and the choice lands in it.
-              setManualTag(true);
-            }}
+          <Fact
+            label="repo"
+            value={repoVersion ? `v${bare(repoVersion)}` : loaded ? 'unknown' : '—'}
+            tone={repoVersion ? 'text-ink' : 'text-ink-faint'}
           />
-
-          {liveVersion === null ? (
-            <StatusWord tone="text-warn">not published</StatusWord>
-          ) : !repoVersion ? null : compareVersions(repoVersion, liveVersion) === 0 ? (
-            <StatusWord tone="text-accent">in sync</StatusWord>
-          ) : compareVersions(repoVersion, liveVersion) > 0 ? (
-            <StatusWord tone="text-warn">unshipped</StatusWord>
-          ) : (
-            <StatusWord tone="text-warn">repo behind</StatusWord>
-          )}
+          {loaded ? (
+            <Verdict
+              live={liveVersion}
+              repo={repoVersion}
+              unreachable={!liveVersion && !!liveError}
+            />
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-4">
           <Tally value={data?.published?.targets.length ?? 0} label="targets" />
           <Tally value={data?.published?.artifactCount ?? 0} label="installers" />
-          {load.state === 'ready' ? (
-            <DataAge ageMs={load.ageMs} cache={null} refreshing={refreshing} />
-          ) : null}
-          <button
-            type="button"
+          <Button
             onClick={() => void refresh()}
             disabled={load.state === 'loading' || refreshing || busy}
             aria-label="Re-read the launcher status, the live release and the GitHub releases"
             title="Re-read the launcher status. Nothing here refreshes on its own."
-            className="dw-button"
           >
             <RefreshCw
-              className={cx('size-3.5', (refreshing || load.state === 'loading') && 'animate-spin')}
-              aria-hidden="true"
+              aria-hidden
+              size={14}
+              className={cx((refreshing || load.state === 'loading') && 'animate-spin')}
             />
             Refresh
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -258,14 +257,12 @@ export default function LauncherPanel() {
         ) : null}
 
         {load.state === 'error' ? (
-          <p
-            role="alert"
-            className="m-0 flex items-start gap-2 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-[12.5px] text-danger"
-          >
-            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            <span>Could not read the launcher status: {load.message}</span>
-          </p>
+          <ErrorNote>Could not read the launcher status: {load.message}</ErrorNote>
         ) : null}
+
+        {/* The bucket answered but latest.json could not be read. Without this the
+            live version reads as "none", i.e. as safe, when it is unknown. */}
+        {liveError ? <ErrorNote>The live release could not be read: {liveError}</ErrorNote> : null}
 
         {data && !data.releases?.length ? (
           <p className="m-0 text-[12px] text-ink-subtle">
@@ -274,38 +271,23 @@ export default function LauncherPanel() {
         ) : null}
 
         <div className="mt-4 rounded-lg border border-edge bg-surface">
-          {/* Row 1: publish. The COMMON CASE IS ONE CLICK: Publish next sends the
-              newest waiting tag with nothing typed, and it is the primary
-              button. The manual tag field is hidden behind a small toggle, so the
-              field that made this feel like manual work is not on screen at all.
-
-              Every gate below is unchanged and still load-bearing: dry run is the
-              DEFAULT (the server's own default, never auto-unticked here),
-              publishing without "Upload for real" is a dry run, and a real publish
-              fires window.confirm before anything is sent. */}
+          {/* Row 1: publish. The newest waiting tag is one click, with the tag it
+              will send printed on the button. A real upload confirms by tag name. */}
           <div className="flex flex-wrap items-center gap-3 px-6 py-4">
-            <button
-              type="button"
-              onClick={() => void doPublish(nextTag ?? '')}
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => void doPublish()}
               disabled={busy || !nextTag}
+              busy={publish.busy}
               title={
-                nextTag
-                  ? `Publish ${nextTag}`
-                  : 'No waiting tags. Bump and tag to make a release first.'
+                nextTag ? `Publish ${nextTag}` : 'No built release is newer than the live version.'
               }
-              className="dw-button dw-button-primary"
             >
-              {publish.busy ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Rocket className="size-3.5" aria-hidden="true" />
-              )}
-              Publish next
-              {/* The tag the button will publish, named on the button itself, so
-                  the operator can see what one click will do without opening
-                  anything. */}
+              {!publish.busy ? <Rocket aria-hidden size={14} /> : null}
+              Publish
               {nextTag ? <span className="font-mono text-[12px]">{nextTag}</span> : null}
-            </button>
+            </Button>
 
             {!nextTag && !busy ? (
               // Said plainly rather than silently falling back to a disabled
@@ -323,54 +305,7 @@ export default function LauncherPanel() {
               />
               Upload for real
             </label>
-
-            {/* The rare case, revealed rather than shown. */}
-            <button
-              type="button"
-              onClick={() => setManualTag((on) => !on)}
-              aria-expanded={manualTag}
-              className="border-none bg-none p-0 text-[12px] text-ink-subtle underline underline-offset-2 hover:text-ink"
-            >
-              {manualTag ? 'hide specific tag' : 'or a specific tag'}
-            </button>
           </div>
-
-          {manualTag ? (
-            <div className="flex flex-wrap items-end gap-3 border-t border-edge px-6 py-4">
-              <label className="flex min-w-52 flex-1 flex-col gap-1.5 text-[12px] text-ink-muted">
-                Tag
-                <input
-                  id="launcher-tag"
-                  type="text"
-                  list="launcher-tag-options"
-                  value={tag}
-                  onChange={(event) => setTag(event.target.value)}
-                  placeholder="v0.1.0"
-                  autoComplete="off"
-                  className="dw-input font-mono"
-                />
-                <datalist id="launcher-tag-options">
-                  {waiting.map((one) => (
-                    <option key={one.tagName} value={one.tagName} />
-                  ))}
-                </datalist>
-              </label>
-
-              <button
-                type="button"
-                onClick={() => void doPublish(tag)}
-                disabled={busy || !tag.trim()}
-                className="dw-button"
-              >
-                {publish.busy ? (
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Rocket className="size-3.5" aria-hidden="true" />
-                )}
-                {confirmPublish ? 'Upload to R2' : 'Dry run'}
-              </button>
-            </div>
-          ) : null}
 
           {/* The one line on this page that stops a mistake: a real upload has no
               other warning except a checkbox and a native confirm. */}
@@ -381,29 +316,27 @@ export default function LauncherPanel() {
           ) : null}
           <Stream stream={publish} label="Launcher publish output" />
 
-          {/* Row 2: bump. Preview only starts ticked and is never unticked by the
-              panel; only the operator's own hand does that. */}
+          {/* Row 2: bump. The level proposes the next version; the tag is derived
+              from it and named on the button. Preview only starts ticked and is
+              never unticked by the panel. */}
           <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
             <span className="text-[12px] text-ink-muted">Bump</span>
-            {(['patch', 'minor', 'major'] as const).map((level) => (
-              <button
+            {LEVELS.map((level) => (
+              <Button
                 key={level}
-                type="button"
+                size="sm"
+                variant={releaseLevel === level ? 'primary' : 'secondary'}
                 aria-pressed={releaseLevel === level}
                 onClick={() => setReleaseLevel(level)}
-                className={cx('dw-button', releaseLevel === level && 'dw-button-primary')}
+                disabled={busy}
               >
                 {level}
-              </button>
+              </Button>
             ))}
 
-            {liveVersion ? (
-              <span className="text-[12px] text-ink-muted">
-                {/* Derived from the repo version: the release bumps package.json,
-                    so previewing from the live version names a number the release
-                    will never write. */}
-                {data?.packageVersion ?? liveVersion} &rarr;{' '}
-                {nextVersion(data?.packageVersion ?? liveVersion, releaseLevel)}
+            {repoVersion && proposedVersion ? (
+              <span className="font-mono text-[12px] text-ink-muted">
+                v{bare(repoVersion)} &rarr; v{proposedVersion}
               </span>
             ) : null}
 
@@ -418,38 +351,35 @@ export default function LauncherPanel() {
               Preview only
             </label>
 
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => void doRelease()}
-              disabled={busy}
-              className="dw-button dw-button-primary"
+              disabled={busy || !proposedTag}
+              busy={release.busy}
+              title={
+                proposedTag
+                  ? `Bump the version files to ${proposedVersion} and push ${proposedTag}`
+                  : 'The repo version could not be read.'
+              }
             >
-              {release.busy ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Tag className="size-3.5" aria-hidden="true" />
-              )}
-              Bump and tag
-            </button>
+              {!release.busy ? <Tag aria-hidden size={14} /> : null}
+              Bump &amp; tag
+              {proposedTag ? <span className="font-mono text-[12px]">{proposedTag}</span> : null}
+            </Button>
           </div>
           <Stream stream={release} label="Release output" />
 
           {/* Row 3: the signing key. Always safe: it signs a throwaway file. */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge px-6 py-4">
             <span className="text-[12.5px] text-ink">Signing key</span>
-            <button
-              type="button"
+            <Button
               onClick={() => void keys.start('/api/launcher/keys', {})}
               disabled={busy}
-              className="dw-button"
+              busy={keys.busy}
             >
-              {keys.busy ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <KeyRound className="size-3.5" aria-hidden="true" />
-              )}
+              {!keys.busy ? <KeyRound aria-hidden size={14} /> : null}
               Check keys
-            </button>
+            </Button>
           </div>
           <Stream stream={keys} label="Signing key check output" />
         </div>
@@ -459,49 +389,50 @@ export default function LauncherPanel() {
 }
 
 /**
- * Releases built and not yet published, as amber chips.
+ * The header's verdict, as a word with a matching glyph.
  *
- * Amber plus the word "waiting", so the state survives being read without the
- * colour. Each chip is a button: it fills the manual tag field and reveals it,
- * which is how a chip becomes the rare specific-tag case without that case
- * costing a visible field on every load.
+ * Never a sentence comparing two versions, and never colour alone - the word and
+ * the icon both carry it. "live unread" wins over a comparison, because a version
+ * that could not be read must not be compared as if it were a value.
  */
-function WaitingChips({
-  tags,
-  selected,
-  onPick,
+function Verdict({
+  live,
+  repo,
+  unreachable,
 }: {
-  tags: string[];
-  selected: string;
-  onPick: (tag: string) => void;
+  live: string | null;
+  repo: string | null;
+  unreachable: boolean;
 }) {
+  if (unreachable) {
+    return (
+      <span className="flex items-center gap-1.5">
+        <AlertTriangle className="size-3.5 text-warn" aria-hidden="true" />
+        <StatusWord tone="text-warn">live unread</StatusWord>
+      </span>
+    );
+  }
+  if (live === null) {
+    return <StatusWord tone="text-warn">not published</StatusWord>;
+  }
+  if (!repo) return null;
+  const comparison = compareVersions(repo, live);
+  if (comparison === 0) {
+    return (
+      <span className="flex items-center gap-1.5">
+        <CheckCircle2 className="size-3.5 text-accent" aria-hidden="true" />
+        <StatusWord tone="text-accent">in sync</StatusWord>
+      </span>
+    );
+  }
   return (
-    <span className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] text-ink-subtle">waiting</span>
-      {tags.length === 0 ? (
-        <span className="text-[11px] text-ink-faint">none</span>
+    <span className="flex items-center gap-1.5">
+      {comparison > 0 ? (
+        <ArrowUp className="size-3.5 text-warn" aria-hidden="true" />
       ) : (
-        tags.map((tagName) => {
-          const active = tagName === selected;
-          return (
-            <button
-              key={tagName}
-              type="button"
-              onClick={() => onPick(tagName)}
-              aria-pressed={active}
-              title={`Publish ${tagName}`}
-              className={cx(
-                'rounded-sm border px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap',
-                active
-                  ? 'border-warn bg-warn/25 text-warn'
-                  : 'border-warn/40 bg-warn/10 text-warn hover:bg-warn/20'
-              )}
-            >
-              {tagName}
-            </button>
-          );
-        })
+        <ArrowDown className="size-3.5 text-warn" aria-hidden="true" />
       )}
+      <StatusWord tone="text-warn">{comparison > 0 ? 'repo ahead' : 'repo behind'}</StatusWord>
     </span>
   );
 }

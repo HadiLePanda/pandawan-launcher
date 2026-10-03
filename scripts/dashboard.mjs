@@ -38,6 +38,9 @@ import {
 // The field contract is shared with the publisher, so the form cannot offer a
 // field the script would silently ignore.
 import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-fields.mjs';
+// The one semver bump rule, shared with release.mjs so the version the panel
+// proposes cannot drift from the version a release writes.
+import { bumpVersion } from './lib/version.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
 // The news contract lives with the publisher for the same reason.
 import {
@@ -780,9 +783,12 @@ function rejectRebinding(req, res) {
  */
 async function launcherStatus() {
   // Fetched over HTTP so this reflects exactly what an updater would see.
+  // no-store because the live version is a live fact: a version just published
+  // must not read as the previous one from a cache.
   let published = null;
+  let publishedError = null;
   try {
-    const response = await fetch(`${cdnOrigin}/launcher/latest.json`);
+    const response = await fetch(`${cdnOrigin}/launcher/latest.json`, { cache: 'no-store' });
     if (response.ok) {
       const manifest = await response.json();
       const targets = Object.keys(manifest.platforms ?? {});
@@ -792,9 +798,14 @@ async function launcherStatus() {
         artifactCount: new Set(Object.values(manifest.platforms ?? {}).map((entry) => entry.url))
           .size,
       };
+    } else if (response.status !== 404) {
+      // 404 is "nothing published yet"; anything else is "could not read", which
+      // must not render as an empty bucket.
+      publishedError = `latest.json answered HTTP ${response.status}`;
     }
-  } catch {
-    // Nothing published, or the network is down: both show as "not published".
+  } catch (err) {
+    // Unreachable is not the same fact as not published, so it is reported.
+    publishedError = String(err?.message ?? err);
   }
 
   // Which releases exist, newest first.
@@ -814,7 +825,15 @@ async function launcherStatus() {
     await readFile(path.join(repoRoot, 'package.json'), 'utf-8')
   ).version;
 
-  return { published, releases, packageVersion, cdnOrigin };
+  // What each bump level would produce from the repo's version, computed with
+  // release.mjs's own rule so the preview and the release cannot disagree.
+  const nextVersions = {
+    patch: bumpVersion(packageVersion, 'patch'),
+    minor: bumpVersion(packageVersion, 'minor'),
+    major: bumpVersion(packageVersion, 'major'),
+  };
+
+  return { published, publishedError, releases, packageVersion, nextVersions, cdnOrigin };
 }
 
 /**

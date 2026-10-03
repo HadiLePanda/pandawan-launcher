@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { releaseChecks } from './lib/release-checks.mjs';
-import { repoRoot, VERSION_FILES, writeVersion } from './lib/version.mjs';
+import { bumpVersion, repoRoot, VERSION_FILES, writeVersion } from './lib/version.mjs';
 
 function fail(message) {
   console.error(message);
@@ -46,20 +46,12 @@ function currentVersion() {
   return JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf-8')).version;
 }
 
-/** The next version for a bump level, patch by default. */
-function bump(version, level) {
-  const [major, minor, patch] = version.split('.').map((n) => parseInt(n, 10) || 0);
-  if (level === 'major') return `${major + 1}.0.0`;
-  if (level === 'minor') return `${major}.${minor + 1}.0`;
-  return `${major}.${minor}.${patch + 1}`;
-}
-
 const argv = process.argv.slice(2);
 const dryRun = !argv.includes('--confirm') || argv.includes('--dry-run');
 const level = argv.find((a) => a === 'major' || a === 'minor' || a === 'patch');
 
 const from = currentVersion();
-const to = argv.find((a) => /^\d+\.\d+\.\d+/.test(a)) ?? bump(from, level ?? 'patch');
+const to = argv.find((a) => /^\d+\.\d+\.\d+/.test(a)) ?? bumpVersion(from, level ?? 'patch');
 const tag = `v${to}`;
 
 const branch = git(['branch', '--show-current'], { capture: true });

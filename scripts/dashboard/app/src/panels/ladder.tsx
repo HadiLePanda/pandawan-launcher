@@ -44,6 +44,33 @@ export function Tally({ value, label }: { value: number; label: string }) {
   );
 }
 
+/**
+ * One version fact, read as its value and then its label.
+ *
+ * The Releases header is a row of these, so the value is the biggest thing and
+ * the label names it beside the value rather than a chip a reader has to pair
+ * up across the row. (Rung is the same fact inline, label-first, for the build
+ * header.)
+ */
+export function Fact({
+  label,
+  value,
+  tone = 'text-ink',
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className={cx('font-mono text-[17px] tracking-[-0.01em] whitespace-nowrap', tone)}>
+        {value}
+      </span>
+      <span className="text-[11px] text-ink-subtle">{label}</span>
+    </span>
+  );
+}
+
 /** The ladder's verdict, as a word. Never a sentence comparing two versions. */
 export function StatusWord({ tone, children }: { tone: string; children: string }) {
   return (

@@ -62,6 +62,22 @@ export function checkVersions(root = repoRoot) {
   return { ok: distinct.size === 1 && !distinct.has(null), versions };
 }
 
+/**
+ * The next version for a bump level, patch by default.
+ *
+ * The ONE bump rule. release.mjs writes the version files with it and the
+ * dashboard previews the same result, so the number on the button cannot drift
+ * from the number the release writes.
+ */
+export function bumpVersion(version, level = 'patch') {
+  const [major, minor, patch] = String(version ?? '')
+    .split('.')
+    .map((n) => parseInt(n, 10) || 0);
+  if (level === 'major') return `${major + 1}.0.0`;
+  if (level === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
 export function writeVersion(next, root = repoRoot) {
   if (!SEMVER.test(next)) throw new Error(`not a semver version: ${next}`);
   const changed = [];

@@ -297,19 +297,6 @@
     cursor: not-allowed;
   }
 
-  /* The one filled button per panel. Weight marks the primary action, not
-     size, so it never competes with the value beside it. */
-  .dw-button-primary {
-    background: var(--color-accent);
-    border-color: transparent;
-    color: var(--color-accent-ink);
-    font-weight: 600;
-  }
-
-  .dw-button-primary:hover:not(:disabled) {
-    background: var(--color-accent-hover);
-  }
-
   /* Command output, recessed like a terminal and quiet enough that the numbers
      in it stay the thing you look at. */
   .dw-log {
