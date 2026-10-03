@@ -8,7 +8,7 @@
  * Credentials come from .env (gitignored) or the environment.
  */
 
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -21,9 +21,11 @@ import {
   run,
   S3,
   uploadDir,
+  uploadFiles,
   upload,
 } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
+import { manifestFiles, planUpload } from './lib/upload-plan.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
 
@@ -105,6 +107,26 @@ for (const pattern of asList(args.exclude)) {
 
 run('python', manifestArgs, 'Generating manifest');
 
+const localManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
+// What this version already has, read rather than listed. The manifest is
+// uploaded last, so a version it describes is a version whose files are all
+// there - and a 404 only means nothing has been published yet.
+let publishedManifest = null;
+try {
+  const res = await fetch(`${cdnOrigin}/${versionPrefix}/manifest.json`);
+  if (res.ok) publishedManifest = await res.json();
+  else if (res.status !== 404) {
+    fail(
+      `could not read ${versionPrefix}/manifest.json (HTTP ${res.status}); refusing to guess which files are already published.`
+    );
+  }
+} catch (err) {
+  fail(
+    `could not read ${versionPrefix}/manifest.json (${err.message}); refusing to guess which files are already published.`
+  );
+}
+
 // Files first, manifest last: the manifest is what tells a client a build
 // exists, so publishing it first would let someone resolve a manifest whose
 // files are not there yet.
@@ -118,14 +140,27 @@ for (const spec of platformSpecs) {
   if (!existsSync(dir)) {
     fail(`--platform ${platform} directory does not exist: ${dir}`);
   }
-  console.log(`  ${platform}: ${path.relative(repoRoot, dir) || '.'}`);
-  uploadDir(dir, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
+  const local = manifestFiles(localManifest, platform);
+  if (local.length === 0) {
+    fail(
+      `the generated manifest lists no files for ${platform}; refusing to publish an empty build.`
+    );
+  }
+  const { upload: changed, skipped } = planUpload(
+    local,
+    manifestFiles(publishedManifest, platform)
+  );
+  console.log(
+    `  ${platform}: ${path.relative(repoRoot, dir) || '.'} - ${changed.length} to upload, ${skipped.length} already published`
+  );
+  uploadFiles(dir, changed, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
     endpoint,
     cacheControl: IMMUTABLE,
   });
 }
 
 if (inputDir) {
+  // A flat publish has no per-platform list to compare, so the tree goes up whole.
   uploadDir(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
     endpoint,
     cacheControl: IMMUTABLE,

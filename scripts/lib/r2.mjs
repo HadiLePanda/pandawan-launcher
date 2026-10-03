@@ -130,6 +130,18 @@ export function uploadDir(sourceDir, keyPrefix, { endpoint, cacheControl } = {})
   run('aws', args, `Uploading ${path.basename(sourceDir)}/ -> ${keyPrefix}/`);
 }
 
+/**
+ * Upload the named files from a directory, one object at a time.
+ *
+ * The caller decides what to send (the manifest does), so this neither lists the
+ * destination to diff it nor re-sends a tree that has not changed.
+ */
+export function uploadFiles(sourceDir, relativePaths, keyPrefix, { endpoint, cacheControl } = {}) {
+  for (const relative of relativePaths) {
+    upload(path.join(sourceDir, relative), `${keyPrefix}/${relative}`, { endpoint, cacheControl });
+  }
+}
+
 export const NO_CACHE = 'no-cache, no-store, must-revalidate';
 export const IMMUTABLE = 'public, max-age=31536000, immutable';
 
