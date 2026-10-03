@@ -178,14 +178,13 @@ fn test_published_installer_signature_verifies_against_embedded_pubkey() {
         .collect::<Vec<_>>()
         .join("/");
 
-    let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(
-        &fetch(&format!("{base}/latest.json")).unwrap_or_else(|| {
-            println!("skipping: latest.json not reachable at {base}/latest.json");
-            std::process::exit(0);
-        }),
-    ) else {
+    let Some(bytes) = fetch(&format!("{base}/latest.json")) else {
+        println!("skipping: latest.json not reachable at {base}/latest.json");
+        return;
+    };
+    let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
         println!("skipping: latest.json is not valid JSON");
-        std::process::exit(0);
+        return;
     };
 
     let platforms = &manifest["platforms"];
@@ -197,16 +196,17 @@ fn test_published_installer_signature_verifies_against_embedded_pubkey() {
         .collect();
     assert!(!targets.is_empty(), "published manifest has no platforms");
 
-    // The Windows MSI is the one artifact this test can fully check end to end.
-    let Some(entry) = platforms.get("windows-x86_64-msi") else {
-        println!("skipping: no windows-x86_64-msi entry in the published manifest");
-        std::process::exit(0);
+    // NSIS is the only Windows artifact: the updater installs through the NSIS
+    // setup, so an msi entry is not published and asking for one skipped every run.
+    let Some(entry) = platforms.get("windows-x86_64-nsis") else {
+        println!("skipping: no windows-x86_64-nsis entry in the published manifest");
+        return;
     };
     let url = entry["url"].as_str().expect("entry has a url");
 
     let Some(artifact) = fetch(url) else {
         println!("skipping: artifact not reachable at {url}");
-        std::process::exit(0);
+        return;
     };
     assert!(!artifact.is_empty(), "downloaded artifact is empty");
 
@@ -242,7 +242,7 @@ fn test_published_installer_signature_verifies_against_embedded_pubkey() {
         .expect("published artifact does not verify against the embedded pubkey");
 
     println!(
-        "verified published windows-x86_64-msi ({} bytes)",
+        "verified published windows-x86_64-nsis ({} bytes)",
         artifact.len()
     );
 }
