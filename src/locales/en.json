@@ -253,8 +253,9 @@
     "store": "Store",
     "update": "Update",
     "downloading": "Downloading…",
-    "updateTo": "Update to {{version}}",
-    "updateTooltip": "Pandawan Launcher {{version}}",
+    "updateFailed": "Update failed — retry",
+    "updateTo": "Update to v{{version}}",
+    "updateTooltip": "Pandawan Launcher v{{version}}",
     "restartToUpdate": "Restart to update",
     "updating": "Updating…",
     "restartWhileGameRunning": "A game is running. Restarting now stops tracking this session — its playtime will not be recorded. Restart anyway?",
@@ -274,9 +275,9 @@
     "readyTitle": "Update v{{version}} is ready",
     "bytes": "{{done}} of {{total}}",
     "readyBody": "Restart now, or it applies the next time you quit the launcher.",
+    "gameRunningNote": "A game is running. Restarting now would not record this session's playtime — the update applies the next time you quit.",
     "restart": "Restart to update",
-    "update": "Update",
-    "later": "Later"
+    "update": "Update"
   },
   "verifyGameModal": {
     "progress": "{{checked}} / {{total}}",

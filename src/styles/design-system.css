@@ -413,36 +413,79 @@ Component Design System
   background: var(--canvas-elevated);
 }
 
-/* Launcher self-update. The green action colour, like the primary buttons
-   elsewhere: the tinted blue chip read as a status indicator rather than as a
-   button, which is why an available update was easy to miss. */
+.topbar-btn {
+  position: relative;
+  height: 38px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform var(--motion-press) var(--motion-ease-out),
+    background var(--motion-press) var(--motion-ease-out),
+    color var(--motion-press) var(--motion-ease-out);
+}
+
+.topbar-btn:active {
+  transform: scale(0.97);
+}
+
+.topbar-btn-wide {
+  min-width: 52px;
+}
+
+.topbar-btn:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+/* Launcher self-update chip. Neutral surface so it reads as a button rather
+   than a status light: the state colour rides on the icon alone, mirroring the
+   full-width progress line, and the label always names the state. Declared
+   after the .topbar-btn base rule on purpose - both are one-class selectors, so
+   only source order decides the background, and the base rule sets
+   `transparent`. Placed above it, the state colour silently lost. */
 .topbar-btn-update {
   gap: 6px;
   padding: 0 14px 0 12px;
   border-radius: 999px;
   border: none;
-  background: var(--action);
-  color: #ffffff;
+  background: var(--surface-default);
+  color: var(--ink-default);
 }
 
 .topbar-btn-update:hover {
-  background: var(--action-hover);
-  color: #ffffff;
+  background: var(--surface-hover);
+  color: var(--ink-default);
 }
 
-/* Staged and waiting on the user: blue, "it is your turn now", distinct from the
-   green states where the launcher is the one working. The label always states
-   the state, so the colour is never the only signal. */
-.topbar-btn-update-ready {
-  background: var(--blue);
+/* Green while the launcher is the one working (available, downloading), blue
+   once it is the user's turn, the error colour on failure. */
+.topbar-btn-update-icon {
+  color: var(--action);
 }
 
-.topbar-btn-update-ready:hover {
-  background: var(--blue-hover);
+.topbar-btn-update-icon-ready {
+  color: var(--blue);
 }
 
-.topbar-btn-update-error {
-  background: var(--color-status-error);
+/* A failed check or download is not this app's red failure state: neutral chip,
+   a muted icon, and the label says what happened and what to do ("Update failed
+   - retry"). Green and blue stay the only update state colours. */
+.topbar-btn-update-icon-error {
+  color: var(--ink-muted);
+}
+
+/* The ready chip is blue, so its attention pulse must be too - the default
+   ring is the green action colour. */
+.topbar-btn-update.update-restart {
+  --update-attention: var(--blue-muted);
 }
 
 .topbar-btn-update-label {
@@ -516,38 +559,6 @@ Component Design System
 .topbar-btn-refresh:hover {
   background: #60a5fa;
   color: #fff;
-}
-
-.topbar-btn {
-  position: relative;
-  height: 38px;
-  min-width: 44px;
-  padding: 0 10px;
-  border-radius: 6px;
-  background: transparent;
-  border: none;
-  color: var(--ink-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition:
-    transform var(--motion-press) var(--motion-ease-out),
-    background var(--motion-press) var(--motion-ease-out),
-    color var(--motion-press) var(--motion-ease-out);
-}
-
-.topbar-btn:active {
-  transform: scale(0.97);
-}
-
-.topbar-btn-wide {
-  min-width: 52px;
-}
-
-.topbar-btn:hover {
-  background: var(--surface-hover);
-  color: var(--ink-default);
 }
 
 .topbar-btn-active {

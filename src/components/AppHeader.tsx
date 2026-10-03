@@ -233,9 +233,10 @@ export function MainNav({
 
   const handleRestartUpdate = () => {
     // Relaunch replaces the process, so the waiter that records playtime dies
-    // with it: the same hazard as quitting mid-game, and the same rule. Not
-    // restarting is the safe default - the staged update applies the next time
-    // the launcher really exits.
+    // with it: the same hazard as quitting mid-game, and the same rule that
+    // makes a running game dock instead of quit (should_dock_on_close's
+    // game_running term). Declining defers - the staged update still applies the
+    // next time the launcher really exits, so waiting loses nothing.
     if (gameRunning && !confirm(t('topBar.restartWhileGameRunning'))) return;
     setIsUpdatePopoverOpen(false);
     setIsRestarting(true);
@@ -264,15 +265,29 @@ export function MainNav({
       ? t('topBar.restartToUpdate')
       : launcherUpdate?.downloading
         ? t('topBar.downloading')
-        : launcherUpdate?.version
-          ? t('topBar.updateTo', { version: launcherUpdate.version })
-          : t('topBar.update');
+        : launcherUpdate?.errored
+          ? t('topBar.updateFailed')
+          : launcherUpdate?.version
+            ? t('topBar.updateTo', { version: launcherUpdate.version })
+            : t('topBar.update');
+
+  // The chip stays neutral; only the icon carries the state colour, matching
+  // the top progress line. Green while the launcher works (available,
+  // downloading), blue once it is the user's turn, the error colour on failure.
+  const updateChipIconClass = cn(
+    'w-4 h-4 topbar-btn-update-icon',
+    launcherUpdate?.ready && 'topbar-btn-update-icon-ready',
+    launcherUpdate?.errored && 'topbar-btn-update-icon-error'
+  );
 
   // The version is the tooltip's job in every state where it is known; the label
-  // stays short so the chip does not grow.
-  const updateChipTitle = launcherUpdate?.version
-    ? t('topBar.updateTooltip', { version: launcherUpdate.version })
-    : updateChipText;
+  // stays short so the chip does not grow. A failure states itself instead, so
+  // the tooltip does not promise a version the download never delivered.
+  const updateChipTitle = launcherUpdate?.errored
+    ? updateChipText
+    : launcherUpdate?.version
+      ? t('topBar.updateTooltip', { version: launcherUpdate.version })
+      : updateChipText;
 
   return (
     // data-tauri-drag-region makes the empty parts of the nav drag the window.
@@ -346,11 +361,7 @@ export function MainNav({
               type="button"
               className={cn(
                 'topbar-btn topbar-btn-update',
-                launcherUpdate?.ready && !isRestarting
-                  ? 'topbar-btn-update-ready update-restart'
-                  : launcherUpdate?.errored && !isRestarting
-                    ? 'topbar-btn-update-error update-enter'
-                    : 'update-enter'
+                launcherUpdate?.ready && !isRestarting ? 'update-restart' : 'update-enter'
               )}
               onClick={handleUpdateChipClick}
               disabled={isRestarting}
@@ -359,16 +370,16 @@ export function MainNav({
               data-testid="launcher-update"
             >
               {isRestarting ? (
-                <Loader2 className="w-4 h-4 update-spinner" />
+                <Loader2 className="w-4 h-4 topbar-btn-update-icon update-spinner" />
               ) : (
-                <ArrowUpCircle className="w-4 h-4" />
+                <ArrowUpCircle className={updateChipIconClass} />
               )}
               <span className="topbar-btn-update-label">{updateChipText}</span>
             </button>
             <UpdatePopover
               open={isUpdatePopoverOpen}
-              onClose={() => setIsUpdatePopoverOpen(false)}
               onRestart={handleRestartUpdate}
+              gameRunning={gameRunning ?? false}
             />
           </div>
         )}

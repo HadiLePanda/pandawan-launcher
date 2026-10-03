@@ -57,13 +57,15 @@
     update-attention var(--motion-enter) ease-out 2 500ms;
 }
 
+/* The ring colour is overridable so a caller whose state colour differs from
+   the green action (the blue ready chip) does not pulse the wrong hue. */
 @keyframes update-attention {
   0%,
   100% {
-    box-shadow: 0 0 0 0 var(--action-muted);
+    box-shadow: 0 0 0 0 var(--update-attention, var(--action-muted));
   }
   50% {
-    box-shadow: 0 0 0 4px var(--action-muted);
+    box-shadow: 0 0 0 4px var(--update-attention, var(--action-muted));
   }
 }
 
