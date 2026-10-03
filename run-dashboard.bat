@@ -56,6 +56,22 @@ REM Give the port a moment to free. ping rather than timeout, because timeout
 REM fails when this window's stdin is not a real console.
 ping -n 2 127.0.0.1 >nul 2>&1
 
+REM ------------------------------------------------------------------- build
+REM The dashboard UI is a separate Vite build, served from scripts\dashboard\app\dist.
+REM Nothing rebuilt it on start, so the browser showed whatever was built last time -
+REM a current server against a stale UI, which reads as a bug in the dashboard.
+REM run-launcher.bat gets freshness from Vite's dev server; for a static build the
+REM equivalent is to build first. It typechecks before it bundles, so a type error
+REM fails here rather than as a blank panel in the browser.
+echo.
+echo Building the dashboard UI...
+call npm run dashboard:build
+if errorlevel 1 (
+  echo.
+  echo ERROR: the dashboard UI failed to build. Fix the error above and retry.
+  goto :fail
+)
+
 REM ------------------------------------------------------------------- run
 echo.
 echo === Pandawan dashboard ===
