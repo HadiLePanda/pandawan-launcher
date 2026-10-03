@@ -6,10 +6,17 @@
  * from the server. See scripts/lib/metadata-fields.mjs (FIELDS, IMAGE_FIELDS)
  * and scripts/lib/game-metadata.mjs (readGameMetadata), which backs /api/meta.
  *
+ * Each field is rendered by the shared FieldControl, which picks the control from
+ * the contract's own flags (list / image / long) - so this tab and the Catalog
+ * panel can no longer disagree about how a field behaves. The tab keeps the three
+ * things FieldControl has no opinion about: where each value came from, the
+ * per-field undo, and the artwork FILE upload, which is the one route a browser
+ * cannot express as a value and so cannot live in a presentational control.
+ *
  * The hard requirement is that a pending change is unmistakable. An operator
  * about to overwrite a published display name has to see, without reading
  * anything, which fields are about to change - so a changed field gets an accent
- * left border, a tinted surface, a tinted control, and the word "changed". The
+ * left border, a tinted surface, and the word "changed" beside its label. The
  * word is not decoration: colour alone would leave the state invisible to a
  * colour-blind reader.
  *
@@ -21,23 +28,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Undo2 } from 'lucide-react';
 
 import { streamScript } from '@lib/api';
+import { previewUrlFor, releasePreviewUrl, stageArtwork } from '@lib/artwork';
 import { plural } from '@lib/format';
 import { DRAFT_KEYS } from '@lib/storage';
+import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject } from '@/types/api';
 import { draftNoteText, useDraft } from '@/hooks/useDraft';
-import type { MetaField } from '@/types/api';
+
+import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
 
 import { DiffReview } from '@components/DiffReview';
-import { ActionRow, DirtyBadge, DirtyBar, ErrorLine, Log, WarnLine } from '@components/ui';
+import { ActionRow, DirtyBar, ErrorLine, Log, WarnLine } from '@components/ui';
 
-import { ImageFieldControl } from './ImageFieldControl';
+import { useArtworkObjects } from './ArtworkTab';
 import type { GameTabProps } from './types';
 import {
   buildPayload,
   diffRows,
   FIELD_ORDER,
   IMAGE_INPUTS,
-  imagePath,
   isImageDirty,
+  type MetaFieldView,
   useDirtyFlags,
   useMetaState,
 } from './useMetaState';
@@ -49,33 +59,158 @@ const SOURCE_TEXT: Record<string, string> = {
   empty: 'not set',
 };
 
+/**
+ * The chips the contract offers for its two enumerated list fields. Genre and
+ * screenshots are free-form, so they get none. The values mirror
+ * scripts/lib/metadata-fields.mjs (CHANNELS) and the launcher's platform set.
+ */
+const SUGGESTIONS: Record<string, string[]> = {
+  'supported-platforms': [...PLATFORMS],
+  'available-channels': [...KNOWN_CHANNELS],
+};
+
+const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
+
+/** The presentational spec FieldControl renders from, derived from the flag. */
+function specFor(flag: string, field: MetaFieldView): FieldSpec {
+  return {
+    flag,
+    label: field.label,
+    list: field.list,
+    image: flag in IMAGE_INPUTS,
+    // The only prose field. The server contract carries no `long`, so the form is
+    // where the single multi-line field is named.
+    long: flag === 'description',
+  };
+}
+
+/**
+ * The file-upload half of an image field.
+ *
+ * FieldControl owns the bucket picker; this is the route the picker cannot offer,
+ * because a browser cannot hand the publisher an absolute path. The bytes go to
+ * the one staging endpoint the publisher already reads from (/api/art/stage) and
+ * come back as a path; there is deliberately no second upload path.
+ */
+function ArtworkUpload({
+  noun,
+  onPathChange,
+  onPreview,
+}: {
+  noun: string;
+  onPathChange: (next: string) => void;
+  /** The picked file's own blob URL, so the field can preview it before publish. */
+  onPreview: (blob: string) => void;
+}) {
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [staging, setStaging] = useState(false);
+  const previewRef = useRef('');
+
+  // Release the blob when the picker goes away. A picked file is already held by
+  // the browser, so keeping the handle alive for the life of the form leaks.
+  useEffect(() => {
+    const ref = previewRef;
+    return () => {
+      if (ref.current) releasePreviewUrl(ref.current);
+    };
+  }, []);
+
+  const onPick = async (file: File) => {
+    if (previewRef.current) releasePreviewUrl(previewRef.current);
+    const blob = previewUrlFor(file);
+    previewRef.current = blob;
+    onPreview(blob);
+
+    setError('');
+    setStatus('staging…');
+    setStaging(true);
+    try {
+      const staged = await stageArtwork(file);
+      // No second step: staging the file IS choosing it. The staged path makes
+      // the field dirty, and the publish uploads it and rewrites the URL.
+      onPathChange(staged.localPath);
+      setStatus(`${staged.name} uploads on publish`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus('');
+    } finally {
+      setStaging(false);
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="file"
+          accept={ACCEPT}
+          aria-label={`Choose a ${noun} image to upload and use it`}
+          disabled={staging}
+          onChange={(event) => {
+            const input = event.currentTarget;
+            const file = input.files?.[0];
+            // Cleared so choosing the same file twice still fires: this input is
+            // uncontrolled and a browser does not re-report an unchanged pick.
+            input.value = '';
+            if (file) void onPick(file);
+          }}
+          className="max-w-[210px] text-[11.5px] text-ink-subtle file:mr-2 file:rounded-sm file:border file:border-edge file:bg-surface-2 file:px-2 file:py-1 file:text-[11.5px] file:text-ink-muted hover:file:bg-surface-3"
+        />
+        {staging && <span className="text-[11.5px] text-ink-subtle">staging…</span>}
+        {status && !staging && (
+          <span className="truncate text-[11.5px] text-ink-muted">{status}</span>
+        )}
+      </div>
+
+      {error && <ErrorLine>{error}</ErrorLine>}
+    </div>
+  );
+}
+
 function MetaFieldRow({
-  gameId,
-  channel,
   flag,
   field,
   value,
+  artworks,
   dirty,
-  isImage,
-  path,
   onChange,
   onPathChange,
   onRevert,
 }: {
-  gameId: string;
-  channel: string;
   /** The metadata flag, e.g. 'icon-url'. */
   flag: string;
-  field: MetaField;
+  field: MetaFieldView;
   value: string;
+  artworks: ArtworkObject[];
   dirty: boolean;
-  /** True for the two fields that also accept an upload. */
-  isImage: boolean;
-  path: string;
   onChange: (next: string) => void;
   onPathChange: (next: string) => void;
   onRevert: () => void;
 }) {
+  const isImage = flag in IMAGE_INPUTS;
+  // The picked file's own blob, held here so the image control can show it in
+  // place of the published URL until the upload rewrites that URL on publish.
+  const [stagedPreview, setStagedPreview] = useState('');
+
+  // A value that is a bucket key resolves to its object's URL for display; the
+  // saved value stays the raw key. Falls back to the server's preview for a
+  // published URL the listing cannot name.
+  const picked = artworks.find((object) => object.key === value.trim());
+  const previewUrl = isImage ? stagedPreview || picked?.url || field.previewUrl : undefined;
+  const noun = field.label.replace(/\s*URL$/i, '').toLowerCase();
+
+  const handleChange = (next: string) => {
+    // Choosing a URL - a picker tile or a pasted one - supersedes a staged
+    // upload, which would otherwise win on publish and make the visible choice a
+    // lie. Same rule the old picker applied when a tile was clicked.
+    if (isImage) {
+      setStagedPreview('');
+      onPathChange('');
+    }
+    onChange(next);
+  };
+
   return (
     <div
       className={[
@@ -83,13 +218,9 @@ function MetaFieldRow({
         dirty ? 'border-accent/30 border-l-accent bg-accent/[0.07]' : 'border-edge bg-surface-2',
       ].join(' ')}
     >
-      <div className="mb-1 flex min-h-[22px] items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-row items-center gap-2 text-[12px] font-semibold text-ink-muted">
-          <span className="truncate">{field.label}</span>
-          <DirtyBadge count={dirty ? 1 : 0} />
-        </div>
+      <div className="mb-1 flex min-h-[22px] items-center justify-between gap-3 text-[11px] font-normal text-ink-subtle">
         {/* Where the value came from: the catalog, the manifest, or nothing. */}
-        <span className="shrink-0 whitespace-nowrap text-[11px] font-normal text-ink-subtle">
+        <span className="shrink-0 whitespace-nowrap">
           {SOURCE_TEXT[field.source] ?? field.source}
         </span>
         {dirty && (
@@ -105,51 +236,20 @@ function MetaFieldRow({
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <input
-          type="text"
-          value={value}
-          // An image field's URL is chosen from the bucket picker below, never
-          // typed: a URL box invites a paste that the bucket cannot vouch for,
-          // and the picker is already showing every object that URL could name.
-          // It stays on screen because it is what the launcher resolves, but
-          // read-only - and the picker reports a value the bucket does not list.
-          onChange={
-            isImage
-              ? undefined
-              : (event) => {
-                  onChange(event.target.value);
-                }
-          }
-          readOnly={isImage}
-          placeholder={
-            isImage ? 'not set - pick an image below' : field.list ? 'comma separated' : undefined
-          }
-          aria-label={isImage ? `${field.label} (set by picking an image below)` : field.label}
-          // The control itself takes the accent: the row is tinted, but the thing
-          // being edited is a box, and a tinted box is what the eye lands on.
-          //
-          // dw-input is mono, which is right for the two URL fields but wrong for
-          // the rest: a display name and a description are prose, and prose set in
-          // mono is the inconsistency this overrides.
-          className={`dw-input ${isImage ? 'font-mono' : 'font-sans'} ${
-            dirty ? 'border-accent/45' : ''
-          } ${isImage ? 'cursor-default text-ink-muted' : ''}`}
-        />
+      <FieldControl
+        field={specFor(flag, field)}
+        id={`meta-field-${flag}`}
+        value={value}
+        previewUrl={previewUrl}
+        onChange={handleChange}
+        artworks={isImage ? artworks : undefined}
+        suggestions={SUGGESTIONS[flag]}
+        changed={dirty}
+      />
 
-        {isImage && (
-          <ImageFieldControl
-            gameId={gameId}
-            channel={channel}
-            flag={flag}
-            label={field.label}
-            value={value}
-            onChange={onChange}
-            path={path}
-            onPathChange={onPathChange}
-          />
-        )}
-      </div>
+      {isImage && (
+        <ArtworkUpload noun={noun} onPathChange={onPathChange} onPreview={setStagedPreview} />
+      )}
     </div>
   );
 }
@@ -214,6 +314,11 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
     applyDraft,
     reload,
   } = useMetaState(gameId, channel);
+
+  // One listing for both image fields. The shared control marks the chosen tile
+  // itself, so a single bucket read is enough and the two pickers cannot drift
+  // into offering different sets of images.
+  const artworks = useArtworkObjects({ gameId, channel });
 
   const [dryRun, setDryRun] = useState(true);
   const [log, setLog] = useState('');
@@ -387,14 +492,11 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
           return (
             <MetaFieldRow
               key={flag}
-              gameId={gameId}
-              channel={channel}
               flag={flag}
               field={field}
               value={values[flag] ?? ''}
+              artworks={artworks.objects}
               dirty={isImageDirty(original, values, flag)}
-              isImage={flag in IMAGE_INPUTS}
-              path={imagePath(values, flag)}
               onChange={(next) => setValue(flag, next)}
               onPathChange={(next) =>
                 setValue(IMAGE_INPUTS[flag as keyof typeof IMAGE_INPUTS], next)

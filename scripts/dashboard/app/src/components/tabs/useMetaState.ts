@@ -40,6 +40,17 @@ export const IMAGE_INPUTS = {
 type ImageFlag = keyof typeof IMAGE_INPUTS;
 
 /**
+ * A metadata field plus the display-only preview URL the server adds for the two
+ * image fields (`readGameMetadata` sets it; `value` is what gets saved).
+ *
+ * Declared here rather than in types/api.ts because it is the server's extra
+ * field, not part of the shared `MetaField` shape the panel was typed against.
+ */
+export interface MetaFieldView extends MetaField {
+  previewUrl?: string;
+}
+
+/**
  * The field order the form renders in.
  *
  * Mirrors the order of FIELDS in scripts/lib/metadata-fields.mjs. The API
@@ -75,7 +86,7 @@ function initialValues(payload: MetaPayload): Record<string, string> {
 
 export function useMetaState(gameId: string, channel: string) {
   const [payload, setPayload] = useState<MetaPayload | null>(null);
-  const [original, setOriginal] = useState<Record<string, MetaField>>({});
+  const [original, setOriginal] = useState<Record<string, MetaFieldView>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [exists, setExists] = useState(false);
   const [loading, setLoading] = useState(true);
