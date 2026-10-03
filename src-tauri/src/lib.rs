@@ -26,7 +26,9 @@ use types::*;
 struct LauncherState {
     patch_manager: Arc<PatchManager>,
     settings: Arc<Mutex<LauncherSettings>>,
-    running_games: Arc<Mutex<HashMap<String, tokio::process::Child>>>,
+    // Oneshot senders, not child handles: the waiter task owns the process and
+    // must record playtime whether the game exits or the launcher closes it.
+    running_games: Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>,
 }
 
 impl LauncherState {
@@ -62,26 +64,21 @@ fn get_default_games_path() -> PathBuf {
 
 /// Stop a running game.
 ///
-/// The child handle is taken out of `running_games` and killed. The waiter task
-/// that was blocked on `child.wait()` owns its own handle, so removing this one
-/// does not orphan the process: it still gets reaped, and the exit event and
-/// playtime recording still fire as they would on a normal exit.
+/// Signals the waiter task, which owns the process: it kills and reaps the
+/// child, records playtime and emits the exit event, so stopping a game behaves
+/// exactly like letting it exit on its own.
 #[tauri::command]
 #[specta::specta]
 async fn close_game(state: State<'_, LauncherState>, game_id: String) -> Result<(), LauncherError> {
-    let child = {
+    let killer = {
         let mut running = state.running_games.lock().await;
         running.remove(&game_id)
     };
 
-    match child {
-        Some(mut child) => {
-            // start_kill asks the process to terminate; it is not awaited here
-            // because the waiter task is the one that reaps it and emits the
-            // exit event. Awaiting here too would be a double wait.
-            child
-                .start_kill()
-                .map_err(|e| LauncherError::Io(format!("Failed to stop game: {e}")))?;
+    match killer {
+        Some(killer) => {
+            // The waiter reaps the process; awaiting it here too would be a double wait.
+            let _ = killer.send(());
             Ok(())
         }
         None => Err(LauncherError::NotRunning),
@@ -336,14 +333,14 @@ async fn launch_game(
         .stderr(Stdio::inherit());
 
     match command.spawn() {
-        Ok(child) => {
+        Ok(mut child) => {
             let pid = child.id();
             let launched_at = Instant::now();
+            let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
 
-            // Store process handle
             {
                 let mut running = state.running_games.lock().await;
-                running.insert(game_id.clone(), child);
+                running.insert(game_id.clone(), kill_tx);
             }
 
             // Spawn a task to wait for process exit
@@ -352,26 +349,32 @@ async fn launch_game(
             let running_games = Arc::clone(&state.running_games);
             let game_id_clone = game_id.clone();
             tauri::async_runtime::spawn(async move {
-                let child = {
-                    let mut running = running_games.lock().await;
-                    running.remove(&game_id_clone)
-                };
-                if let Some(mut child) = child {
-                    let _ = child.wait().await;
-                    let duration_seconds = launched_at.elapsed().as_secs();
-                    // Playtime loss must not break the exit event
-                    if let Err(e) = record_playtime(&app_data_dir, &game_id_clone, duration_seconds)
-                    {
-                        eprintln!("Failed to record playtime for '{}': {}", game_id_clone, e);
+                // The waiter owns the child, so both exits land on one path.
+                // Taking the handle back out of the map here would race
+                // close_game and skip playtime and the exit event.
+                tokio::select! {
+                    _ = kill_rx => {
+                        let _ = child.start_kill();
+                        let _ = child.wait().await;
                     }
-                    let _ = app_handle.emit(
-                        "game-exited",
-                        GameExited {
-                            game_id: game_id_clone,
-                            duration_seconds,
-                        },
-                    );
+                    _ = child.wait() => {}
                 }
+                {
+                    let mut running = running_games.lock().await;
+                    running.remove(&game_id_clone);
+                }
+                let duration_seconds = launched_at.elapsed().as_secs();
+                // Playtime loss must not break the exit event
+                if let Err(e) = record_playtime(&app_data_dir, &game_id_clone, duration_seconds) {
+                    eprintln!("Failed to record playtime for '{}': {}", game_id_clone, e);
+                }
+                let _ = app_handle.emit(
+                    "game-exited",
+                    GameExited {
+                        game_id: game_id_clone,
+                        duration_seconds,
+                    },
+                );
             });
 
             Ok(LaunchResult {
