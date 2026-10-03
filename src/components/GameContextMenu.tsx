@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { deriveMenuItems, type GameContextAction } from '@/lib/game-context';
@@ -51,9 +51,22 @@ interface GameContextMenuProps {
   anchor: MenuAnchor | null;
   onClose: () => void;
   onAction: (action: GameContextAction) => void;
+  /**
+   * The control that opens this menu, when there is one. A mousedown on it is
+   * not a click-away: without this the trigger's own click reopens the menu it
+   * just closed, so it could never be dismissed by pressing the button again.
+   * Same fix the channel picker applies to its trigger.
+   */
+  triggerRef?: RefObject<HTMLElement | null>;
 }
 
-export function GameContextMenu({ game, anchor, onClose, onAction }: GameContextMenuProps) {
+export function GameContextMenu({
+  game,
+  anchor,
+  onClose,
+  onAction,
+  triggerRef,
+}: GameContextMenuProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const items = deriveMenuItems(game);
@@ -61,8 +74,12 @@ export function GameContextMenu({ game, anchor, onClose, onAction }: GameContext
   useEffect(() => {
     if (!anchor) return;
 
+    const isInside = (target: EventTarget | null) =>
+      Boolean(menuRef.current?.contains(target as Node)) ||
+      Boolean(triggerRef?.current?.contains(target as Node));
+
     const handleClick = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) {
+      if (!isInside(e.target)) {
         onClose();
       }
     };
@@ -77,7 +94,7 @@ export function GameContextMenu({ game, anchor, onClose, onAction }: GameContext
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleKey);
     };
-  }, [anchor, onClose]);
+  }, [anchor, onClose, triggerRef]);
 
   if (!anchor) return null;
 

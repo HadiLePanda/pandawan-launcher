@@ -359,6 +359,7 @@ export function GamePage({
               title={t('gamePage.moreOptions')}
               aria-label={t('gamePage.moreOptions')}
               aria-haspopup="menu"
+              aria-expanded={menuAnchor !== null}
             >
               <MoreVertical className="w-5 h-5" />
             </button>
@@ -405,6 +406,7 @@ export function GamePage({
             <GameContextMenu
               game={game}
               anchor={menuAnchor}
+              triggerRef={menuTriggerRef}
               onClose={() => setMenuAnchor(null)}
               onAction={handleMenuAction}
             />
