@@ -220,11 +220,14 @@ export function MainNav({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    // Capture phase: a click-away that listens only while bubbling is defeated
+    // by any subtree that stops propagation, leaving the popover open until the
+    // chip is clicked again.
+    document.addEventListener('mousedown', handleClickOutside, true);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside, true);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isUpdatePopoverOpen]);
