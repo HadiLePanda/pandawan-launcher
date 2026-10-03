@@ -5,15 +5,22 @@
     {
       "id": "misspell",
       "channel": "alpha",
-      "availableChannels": ["alpha"],
+      "availableChannels": [
+        "alpha"
+      ],
       "name": "Misspell",
       "description": "A local multiplayer word game. Alpha playtest build.",
       "developer": "Pandawan Corp",
-      "genre": ["Multiplayer", "Party"],
-      "iconUrl": "/placeholder-icon.svg",
-      "bannerUrl": "/placeholder-banner.svg",
+      "genre": [
+        "Multiplayer",
+        "Party"
+      ],
+      "iconUrl": "games/misspell/alpha/icon-f9fc90b2.png",
+      "bannerUrl": "games/misspell/alpha/banner-db45f64a.png",
       "screenshots": [],
-      "supportedPlatforms": ["windows"]
+      "supportedPlatforms": [
+        "windows"
+      ]
     },
     {
       "id": "pandawan-test-game",
@@ -21,11 +28,15 @@
       "name": "Pandawan Test Game",
       "description": "Internal test game used to verify install, update, and channel switching.",
       "developer": "Pandawan Corp",
-      "genre": ["Test"],
+      "genre": [
+        "Test"
+      ],
       "iconUrl": "/placeholder-icon.svg",
       "bannerUrl": "/placeholder-banner.svg",
       "screenshots": [],
-      "supportedPlatforms": ["windows"]
+      "supportedPlatforms": [
+        "windows"
+      ]
     }
   ]
 }
