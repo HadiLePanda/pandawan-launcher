@@ -205,6 +205,12 @@
   min-width: 0;
 }
 
+/* Top-aligned, so the setting's title sits level with the path box rather than
+   centred against a block three times its height. */
+.setting-item:has(.install-path-stack) {
+  align-items: flex-start;
+}
+
 .install-path-row .install-path-box {
   flex: 1 1 100%;
   min-width: 0;
@@ -276,15 +282,9 @@
 
 .about-actions-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-}
-
-/* The status can be a long sentence, so it wraps under the heading instead of
-   squeezing it. */
-.about-actions-head .caption {
-  text-align: right;
 }
 
 .about-actions-row {

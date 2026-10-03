@@ -520,27 +520,29 @@ function AboutSettings() {
           belongs to the update action, and the log folder is a support action
           that does not warrant a row of its own. */}
       <div className="about-actions">
+        {/* Heading and action on one line: the buttons are the point of this card,
+            and stacking them under the title left the right half empty. */}
         <div className="about-actions-head">
           <span className="body">{t('settings.about.updates.title')}</span>
-          {statusText && <span className="caption">{statusText}</span>}
+          <div className="about-actions-row">
+            <button
+              onClick={() => void checkForUpdates({ manual: true })}
+              disabled={busy}
+              className="btn btn-secondary btn-sm"
+            >
+              {t('settings.about.updates.checkButton')}
+            </button>
+            <button
+              onClick={() => void handleOpenLogs()}
+              disabled={openingLogs}
+              className="btn btn-ghost btn-sm"
+            >
+              {t('settings.about.logs.openButton')}
+            </button>
+          </div>
         </div>
+        {statusText && <p className="caption">{statusText}</p>}
         {logsError && <p className="caption text-red-400">{logsError}</p>}
-        <div className="about-actions-row">
-          <button
-            onClick={() => void checkForUpdates({ manual: true })}
-            disabled={busy}
-            className="btn btn-secondary btn-sm"
-          >
-            {t('settings.about.updates.checkButton')}
-          </button>
-          <button
-            onClick={() => void handleOpenLogs()}
-            disabled={openingLogs}
-            className="btn btn-ghost btn-sm"
-          >
-            {t('settings.about.logs.openButton')}
-          </button>
-        </div>
       </div>
 
       <div className="stack-md">
