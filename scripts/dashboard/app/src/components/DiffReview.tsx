@@ -49,7 +49,7 @@ export function DiffReview({
         <h3 className="m-0 text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">
           Review - {plural(rows.length, 'field')} on {target}
         </h3>
-        <p className="m-0 mt-1 text-[12px] text-ink-subtle">{summary}</p>
+        {summary ? <p className="m-0 mt-1 text-[12px] text-ink-subtle">{summary}</p> : null}
       </div>
 
       <div>

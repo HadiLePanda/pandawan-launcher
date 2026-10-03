@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Info, Undo2 } from 'lucide-react';
+import { AlertTriangle, Info, Undo2 } from 'lucide-react';
 
 import { streamScript } from '@lib/api';
 import { previewUrlFor, releasePreviewUrl, stageArtwork } from '@lib/artwork';
@@ -38,7 +38,7 @@ import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
 import { Badge, Field } from '@/panels/ui';
 
 import { DiffReview } from '@components/DiffReview';
-import { ActionRow, DirtyBar, ErrorLine, Log, WarnLine } from '@components/ui';
+import { ActionRow, DirtyBar, EmptyState, ErrorLine, Log } from '@components/ui';
 
 import { useArtworkObjects } from './ArtworkTab';
 import { ScreenshotPicker } from './ScreenshotPicker';
@@ -53,12 +53,14 @@ import {
   useMetaState,
 } from './useMetaState';
 
-/** Where each displayed value came from. The answer to "why is this filled in?" */
-const SOURCE_TEXT: Record<string, string> = {
-  catalog: 'from catalog',
-  manifest: 'inherited from manifest',
-  empty: 'not set',
-};
+/**
+ * The one provenance worth stamping on a field: the catalog exists but this
+ * value came from the manifest instead, so an edit here does not reach a
+ * published catalog entry. "from catalog" is the default and "not set" is
+ * already visible in the empty control, so neither is rendered - an always-on
+ * badge on every field is noise that hides the exception.
+ */
+const INHERITED_TEXT = 'from manifest';
 
 /**
  * The chips the contract offers for its two enumerated list fields. Genre and
@@ -207,35 +209,11 @@ function InfoNote({ note }: { note: string }) {
   );
 }
 
-/** A value the operator cannot type here, shown as a fact rather than an input. */
-function FixedFact({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="rounded-sm border border-edge bg-surface-2 px-3 py-2">
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] text-ink-subtle">
-        {label}
-        <InfoNote note={note} />
-      </div>
-      <code className="font-mono text-[12px] text-ink">{value || '—'}</code>
-    </div>
-  );
-}
-
 /** One labelled column of the form. The heading is what makes the grouping scan. */
-function MetadataGroup({
-  title,
-  help,
-  children,
-}: {
-  title: string;
-  help: string;
-  children: ReactNode;
-}) {
+function MetadataGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <div>
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        <p className="mt-0.5 text-[11.5px] text-ink-subtle">{help}</p>
-      </div>
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
       {children}
     </section>
   );
@@ -247,6 +225,7 @@ function MetaFieldRow({
   value,
   artworks,
   dirty,
+  showInherited,
   onChange,
   onPathChange,
   onRevert,
@@ -257,6 +236,8 @@ function MetaFieldRow({
   value: string;
   artworks: ArtworkObject[];
   dirty: boolean;
+  /** True only when the value is inherited from the manifest under a catalog entry. */
+  showInherited: boolean;
   onChange: (next: string) => void;
   onPathChange: (next: string) => void;
   onRevert: () => void;
@@ -292,11 +273,8 @@ function MetaFieldRow({
         dirty ? 'border-accent/30 border-l-accent bg-accent/[0.07]' : 'border-edge bg-surface-2',
       ].join(' ')}
     >
-      <div className="mb-1 flex min-h-[22px] items-center justify-between gap-3 text-[11px] font-normal text-ink-subtle">
-        {/* Where the value came from: the catalog, the manifest, or nothing. */}
-        <span className="shrink-0 whitespace-nowrap">
-          {SOURCE_TEXT[field.source] ?? field.source}
-        </span>
+      <div className="mb-1 flex min-h-[22px] items-center justify-between gap-3">
+        {showInherited ? <Badge tone="warn">{INHERITED_TEXT}</Badge> : <span />}
         {dirty && (
           <button
             type="button"
@@ -342,7 +320,11 @@ function MetaFieldRow({
   );
 }
 
-/** Show what would confuse the operator, before they publish rather than after. */
+/**
+ * The conditions that stop an edit from reaching a catalog entry, collapsed to
+ * a word each. The sentence that explains *why* lives behind the info icon, so
+ * the form scans as fields rather than as prose.
+ */
 function MetaWarnings({
   hasManifest,
   channelMismatch,
@@ -358,33 +340,33 @@ function MetaWarnings({
   hasCatalogEntry: boolean;
   inheritedLabels: string[];
 }) {
-  const warnings: string[] = [];
+  const words: string[] = [];
+  const notes: string[] = [];
 
   if (!hasManifest) {
-    warnings.push(
-      'No manifest for this channel. The launcher will only see what the catalog says, so a value that exists only in a manifest cannot be recovered here.'
-    );
+    words.push('no manifest');
+    notes.push('No manifest for this channel: the launcher sees only what the catalog says.');
   }
   if (channelMismatch) {
-    warnings.push(
-      `The catalog entry is on "${publishedChannel}", not "${channel}". The launcher reads the entry's own channel, so this edit will not appear until that channel is resolved.`
+    words.push('channel mismatch');
+    notes.push(
+      `The catalog entry is on "${publishedChannel}", not "${channel}", so this edit will not appear until that channel is resolved.`
     );
   }
-  if (inheritedLabels.length) {
-    warnings.push(
-      hasCatalogEntry
-        ? `Inherited from the manifest, so the catalog does not own them yet: ${inheritedLabels.join(', ')}.`
-        : `No catalog entry, so every value below is inherited from the manifest: ${inheritedLabels.join(', ')}.`
+  if (inheritedLabels.length && !hasCatalogEntry) {
+    words.push('manifest only');
+    notes.push(
+      `No catalog entry, so every value below is inherited from the manifest: ${inheritedLabels.join(', ')}.`
     );
   }
 
-  if (!warnings.length) return null;
+  if (!words.length) return null;
   return (
-    <div>
-      {warnings.map((text) => (
-        <WarnLine key={text}>{text}</WarnLine>
-      ))}
-    </div>
+    <p className="mb-3 flex items-center gap-2 text-[11.5px] text-warn">
+      <AlertTriangle aria-hidden size={13} className="shrink-0" />
+      <span className="font-medium">{words.join(' · ')}</span>
+      <InfoNote note={notes.join(' ')} />
+    </p>
   );
 }
 
@@ -513,15 +495,9 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
 
   if (!exists) {
     return (
-      <div className="rounded-lg border border-dashed border-edge-strong px-5 py-8">
-        <strong className="text-sm font-semibold">
-          {target} is not published yet, so there is nothing to edit.
-        </strong>
-        <p className="mx-0 mt-1 max-w-lg text-[12.5px] text-ink-subtle">
-          Nothing is published for this game on this channel. Publish a build from the Builds tab to
-          create the catalog entry and the manifest.
-        </p>
-      </div>
+      <EmptyState title={`${target} is not published yet`}>
+        Publish a build from the Builds tab to create the catalog entry and the manifest.
+      </EmptyState>
     );
   }
 
@@ -546,6 +522,7 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
         value={values[spec.flag] ?? ''}
         artworks={artworks.objects}
         dirty={isImageDirty(original, values, spec.flag)}
+        showInherited={Boolean(payload?.hasCatalogEntry) && field.source === 'manifest'}
         onChange={(next) => setValue(spec.flag, next)}
         onPathChange={(next) =>
           setValue(IMAGE_INPUTS[spec.flag as keyof typeof IMAGE_INPUTS], next)
@@ -555,18 +532,12 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
     );
   };
 
-  // The review summary names what happens on publish, which depends on whether
-  // preview-only is ticked. The rows below do not change either way.
-  const summary = [
-    dryRun
-      ? `${plural(rows.length, 'field')} would be sent in preview only. Nothing is published until you untick Preview only.`
-      : `${plural(rows.length, 'field')} will be published to ${target}. Unticking Preview only and publishing writes to the bucket.`,
-    stagedFiles.length
-      ? `${plural(stagedFiles.length, 'artwork file')} will upload on publish.`
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  // Only what the summary cannot already read off the review: which staged
+  // files upload, and that publishing is a preview. The review header already
+  // names the target and the count, and the Preview toggle sits below it.
+  const summary = stagedFiles.length
+    ? `${plural(stagedFiles.length, 'artwork file')} will upload on publish.`
+    : '';
 
   return (
     <>
@@ -599,24 +570,9 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
       />
 
       <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
-        <MetadataGroup
-          title="Identity"
-          help="What the game is called and who made it. These display values live here alone."
-        >
-          <FixedFact
-            label="Id"
-            value={gameId}
-            note="Fixed. It is the key every manifest URL and artwork object name is built from, so renaming it in place would orphan both."
-          />
-          <FixedFact
-            label="Channel"
-            value={channel}
-            note="Fixed by the game you picked in the rail. An edit writes this channel only."
-          />
-          {identityFields.map(renderField)}
-        </MetadataGroup>
+        <MetadataGroup title="Identity">{identityFields.map(renderField)}</MetadataGroup>
 
-        <MetadataGroup title="Media" help="The images the launcher shows for this game.">
+        <MetadataGroup title="Media">
           {mediaFields.length ? (
             mediaFields.map(renderField)
           ) : (
