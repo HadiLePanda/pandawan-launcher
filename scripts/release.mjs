@@ -17,19 +17,16 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { fail, repoRoot } from './lib/r2.mjs';
+import { releaseChecks } from './lib/release-checks.mjs';
+import { repoRoot, VERSION_FILES, writeVersion } from './lib/version.mjs';
 
-const VERSION_FILES = [
-  'package.json',
-  path.join('src-tauri', 'Cargo.toml'),
-  path.join('src-tauri', 'tauri.conf.json'),
-];
-
-/** Matches the tag pattern that triggers the release workflow. */
-const TAG_PATTERN = /^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/;
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
 
 function git(args, { capture = false } = {}) {
   const res = spawnSync('git', args, {
@@ -49,32 +46,12 @@ function currentVersion() {
   return JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf-8')).version;
 }
 
+/** The next version for a bump level, patch by default. */
 function bump(version, level) {
   const [major, minor, patch] = version.split('.').map((n) => parseInt(n, 10) || 0);
   if (level === 'major') return `${major + 1}.0.0`;
   if (level === 'minor') return `${major}.${minor + 1}.0`;
   return `${major}.${minor}.${patch + 1}`;
-}
-
-function writeVersion(version, { preview = false } = {}) {
-  for (const file of VERSION_FILES) {
-    const full = path.join(repoRoot, file);
-    const original = readFileSync(full, 'utf-8');
-
-    let updated;
-    if (file.endsWith('.json')) {
-      updated = original.replace(/("version"\s*:\s*")[^"]+(")/, `$1${version}$2`);
-    } else {
-      // Cargo.toml has exactly one version field, in [package].
-      updated = original.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
-    }
-
-    if (updated === original) {
-      fail(`Could not find a version field to update in ${file}.`);
-    }
-    if (!preview) writeFileSync(full, updated);
-    console.log(`  ${file} -> ${version}`);
-  }
 }
 
 const argv = process.argv.slice(2);
@@ -83,19 +60,28 @@ const level = argv.find((a) => a === 'major' || a === 'minor' || a === 'patch');
 
 const from = currentVersion();
 const to = argv.find((a) => /^\d+\.\d+\.\d+/.test(a)) ?? bump(from, level ?? 'patch');
-
-if (!TAG_PATTERN.test(`v${to}`)) {
-  fail(`"${to}" is not a version the release tag accepts. Expected like 0.2.0 or 0.2.0-beta.1.`);
-}
+const tag = `v${to}`;
 
 const branch = git(['branch', '--show-current'], { capture: true });
-const dirty = git(['status', '--porcelain'], { capture: true });
+const checks = releaseChecks({
+  version: to,
+  branch,
+  // `--untracked-files=no` is the point: `git commit` cannot include an untracked
+  // file, so a scratch note in the tree has nothing to do with the release commit.
+  // Counting them made this refuse every real release while the dry run read the
+  // same tree as clean.
+  dirty: git(['status', '--porcelain', '--untracked-files=no'], { capture: true }) !== '',
+  tagExists:
+    spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], { cwd: repoRoot })
+      .status === 0,
+});
 
-if (dirty && !dryRun) {
-  fail(
-    'Working tree has uncommitted changes. Commit or stash them first so the\n' +
-      'release commit only contains the version bump.'
-  );
+if (!checks.ok) {
+  const lines = checks.errors.map((error) => `  ${error}`).join('\n');
+  // A dry run reports the same problems rather than pretending they are not there:
+  // it previews the real run, and the real run refuses.
+  if (!dryRun) fail(`cannot release ${tag}:\n${lines}`);
+  console.log(`Would refuse this release:\n${lines}\n`);
 }
 
 console.log(`Branch:   ${branch}`);
@@ -105,20 +91,27 @@ console.log();
 
 if (dryRun) {
   console.log('Dry run. Would write:');
-  writeVersion(to, { preview: true });
+  for (const file of VERSION_FILES) console.log(`  ${file} -> ${to}`);
   console.log();
-  console.log(`Would run: git commit -am "chore: release v${to}"`);
-  console.log(`Would run: git tag v${to}`);
-  console.log(`Would run: git push && git push origin v${to}`);
+  console.log(`Would run: git commit -m "chore: release ${tag}"`);
+  console.log(`Would run: git tag ${tag}`);
+  console.log(`Would run: git push && git push origin ${tag}`);
   process.exit(0);
 }
 
-writeVersion(to);
+try {
+  writeVersion(to);
+} catch (error) {
+  fail(error.message);
+}
 
-git(['commit', '-am', `chore: release v${to}`]);
-git(['tag', `v${to}`]);
+// The version files by name, not `commit -a`: the release commit is the bump and
+// nothing else, whatever else happens to be modified in the tree.
+git(['add', ...VERSION_FILES]);
+git(['commit', '-m', `chore: release ${tag}`]);
+git(['tag', tag]);
 git(['push']);
-git(['push', 'origin', `v${to}`]);
+git(['push', 'origin', tag]);
 
-console.log(`\nPushed tag v${to}. The release workflow will build and publish it to R2.`);
+console.log(`\nPushed tag ${tag}. The release workflow will build and publish it to R2.`);
 console.log('Watch it at: https://github.com/HadiLePanda/pandawan-launcher/actions');
