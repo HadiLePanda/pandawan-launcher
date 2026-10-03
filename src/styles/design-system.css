@@ -205,13 +205,10 @@ Component Design System
   flex-shrink: 0;
 }
 
-.title-bar-status-line.status-ok {
-  box-shadow: inset 0 2px 0 0 transparent;
-}
-
-.title-bar-status-line.status-error {
-  box-shadow: inset 0 2px 0 0 var(--ember);
-}
+/* The status row already carries an icon and a sentence, so a colour-only stripe
+   told screen readers nothing and colourblind users nothing. It also owned the
+   same top 2px as the update progress line, which is why dragging the window
+   showed a red edge: the stripe was always there, not a drag artefact. */
 
 .title-bar-status {
   display: flex;
