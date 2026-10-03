@@ -401,20 +401,21 @@ Component Design System
   background: var(--canvas-elevated);
 }
 
-/* Launcher self-update. Blue rather than the green action colour so it reads as
-   "about the launcher", not "act on the highlighted game". */
+/* Launcher self-update. The green action colour, like the primary buttons
+   elsewhere: the tinted blue chip read as a status indicator rather than as a
+   button, which is why an available update was easy to miss. */
 .topbar-btn-update {
   gap: 6px;
-  padding: 0 12px 0 10px;
+  padding: 0 14px 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  background: rgba(59, 130, 246, 0.12);
-  color: #60a5fa;
+  border: none;
+  background: var(--action);
+  color: #ffffff;
 }
 
 .topbar-btn-update:hover {
-  background: rgba(59, 130, 246, 0.26);
-  color: #fff;
+  background: var(--action-hover);
+  color: #ffffff;
 }
 
 .topbar-btn-update-label {
