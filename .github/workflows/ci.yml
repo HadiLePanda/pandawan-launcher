@@ -46,6 +46,13 @@ jobs:
       - name: Test
         run: npm test
 
+      # The Dependency Policy says production hits are real and the count stays 0.
+      # Without this step nothing enforces it and a new production CVE reaches a
+      # tagged release unnoticed. --omit=dev so an advisory in a build-time package
+      # cannot fail the build on its own.
+      - name: Audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
   rust:
     name: Rust
     runs-on: ubuntu-latest
@@ -80,6 +87,12 @@ jobs:
       - name: Test
         run: cargo test --all-targets
 
+      # cargo test in the root package selects the root package only, so the
+      # export-bindings member - the documented way src/lib/bindings.ts is
+      # regenerated - was never compiled and could rot behind a green build.
+      - name: Check export-bindings
+        run: cargo check -p export-bindings
+
       # `#[cfg(unix)]` blocks are skipped entirely by a Windows build, so a
       # mistake in one can sit in a green CI run for as long as nobody tags a
       # release. This type-checks the Unix path on every push, and needs no
@@ -107,6 +120,23 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+
+      # bundle_contents_tests.rs returns early when dist/ is absent, so with no
+      # frontend build on this runner the one check that no developer files ship
+      # into a bundle inspects nothing at all. working-directory is the repo root,
+      # not this job's src-tauri default.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}
+
+      - name: Build the frontend
+        run: npm run build
+        working-directory: ${{ github.workspace }}
 
       # Each integration suite is named explicitly rather than using
       # cargo test --tests, because that flag also builds and runs the lib

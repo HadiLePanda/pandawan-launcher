@@ -101,3 +101,6 @@ COMMIT_MSG.txt
 # needed to build, test or publish.
 .agents/
 .hermes/
+
+# tsc -b / composite project output
+*.tsbuildinfo
