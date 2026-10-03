@@ -16,6 +16,7 @@ import {
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
+  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -204,6 +205,22 @@ export const TextArea = forwardRef<
     />
   );
 });
+
+/**
+ * A dropdown wired to the same control styling as TextInput.
+ *
+ * Set in sans by default: a channel is a categorical word, not an identifier, so
+ * it must not inherit the mono the other controls use.
+ */
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
+  function Select({ className, children, ...rest }, ref) {
+    return (
+      <select ref={ref} className={cx(CONTROL, 'font-sans', className)} {...rest}>
+        {children}
+      </select>
+    );
+  }
+);
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (

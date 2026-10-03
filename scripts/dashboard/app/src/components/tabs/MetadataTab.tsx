@@ -36,7 +36,7 @@ import { draftNoteText, useDraft } from '@/hooks/useDraft';
 
 import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
 import { MediaPicker } from '@/panels/MediaPicker';
-import { Badge, Field } from '@/panels/ui';
+import { Badge, Button, Field } from '@/panels/ui';
 
 import { DiffReview } from '@components/DiffReview';
 import { ActionRow, DirtyBar, EmptyState, ErrorLine, Log } from '@components/ui';
@@ -540,18 +540,16 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
           Preview only
         </label>
 
-        <button type="button" onClick={discardDraft} className="dw-button">
-          Revert all
-        </button>
+        <Button onClick={discardDraft}>Revert all</Button>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
           onClick={() => void doPublish()}
           disabled={!dirtyFlags.length || publishing}
-          className="dw-button dw-button-primary"
+          busy={publishing}
         >
-          {publishing ? 'publishing…' : 'Publish metadata'}
-        </button>
+          Publish metadata
+        </Button>
       </ActionRow>
 
       {publishError && <ErrorLine>{publishError}</ErrorLine>}

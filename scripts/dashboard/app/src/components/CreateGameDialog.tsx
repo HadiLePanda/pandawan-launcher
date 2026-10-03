@@ -23,7 +23,8 @@ import { streamScript } from '@lib/api';
 import { KNOWN_CHANNELS, type KnownChannel } from '@/types/api';
 import { scopeKey } from '@lib/games';
 
-import { ActionRow, ErrorLine, Log, Panel } from '@components/ui';
+import { ActionRow, ErrorLine, Log } from '@components/ui';
+import { Button, Card, Field, Select, TextArea, TextInput } from '@/panels/ui';
 import { useSession } from '@store/session';
 
 /** What the dialog needs from the shell after a successful create. */
@@ -95,102 +96,96 @@ export function CreateGameDialog({
   };
 
   return (
-    <Panel>
+    <Card>
       <h2 className="dw-eyebrow m-0">New game</h2>
-      <p className="mt-2 max-w-2xl text-[12.5px] leading-[1.6] text-ink-muted">
-        Creates a catalog entry so the launcher can list a game. It does not upload a build and does
-        not create the channel directory on the bucket - publish a build from its Builds tab once
-        the binaries exist.
+      <p className="mt-2 max-w-2xl text-[12px] text-ink-subtle">
+        Creates a catalog entry so the launcher can list a game whose build is not on the bucket
+        yet.
       </p>
       <p className="mt-2 max-w-2xl rounded-sm border-l-[3px] border-warn bg-warn/10 px-3 py-2 text-[12px] leading-[1.5] text-warn">
-        The publisher refuses a game with no manifest, so if this reports a missing manifest that
-        means the entry already has a build on the bucket and you should edit its metadata instead.
+        The publisher refuses a game with no manifest, so if this reports a missing manifest the
+        entry already has a build on the bucket - edit its metadata instead.
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Game id
-          <input
-            type="text"
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Field
+          label="Game id"
+          required
+          htmlFor="create-id"
+          error={gameId.trim() ? idError : undefined}
+        >
+          <TextInput
+            id="create-id"
+            className="font-mono"
             value={gameId}
-            onChange={(event) => setGameId(event.target.value)}
             placeholder="pandawan-rising"
             aria-invalid={idError ? true : undefined}
-            className="dw-input"
+            onChange={(event) => setGameId(event.target.value)}
           />
-        </label>
+        </Field>
 
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Channel
-          <select
+        <Field label="Channel" required htmlFor="create-channel">
+          {/* The real contract list, not a hand-typed copy: this select cannot
+              offer a channel publish-metadata.mjs would reject. */}
+          <Select
+            id="create-channel"
             value={channel}
             onChange={(event) => setChannel(event.target.value as KnownChannel)}
-            // A channel is a categorical value, not code: mono would set a status
-            // word in the code face. Only the game id below stays mono.
-            className="dw-input font-sans"
           >
-            {/* The real contract list, not a hand-typed copy: this select cannot
-                offer a channel publish-metadata.mjs would reject. */}
             {KNOWN_CHANNELS.map((one) => (
               <option key={one} value={one}>
                 {one}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
 
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Display name
-          <input
-            type="text"
+        <Field label="Display name" htmlFor="create-name">
+          <TextInput
+            id="create-name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
             placeholder={gameId.trim() || 'Pandawan Rising'}
-            className="dw-input font-sans"
+            onChange={(event) => setName(event.target.value)}
           />
-        </label>
+        </Field>
 
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Developer
-          <input
-            type="text"
+        <Field label="Developer" htmlFor="create-developer">
+          <TextInput
+            id="create-developer"
             value={developer}
-            onChange={(event) => setDeveloper(event.target.value)}
             placeholder="Pandawan Corp"
-            className="dw-input font-sans"
+            onChange={(event) => setDeveloper(event.target.value)}
           />
-        </label>
+        </Field>
 
-        <label className="col-span-2 flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Description
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            rows={2}
-            placeholder="One line about what the game is."
-            className="dw-input resize-y font-sans"
-          />
-        </label>
+        <div className="sm:col-span-2">
+          <Field label="Description" htmlFor="create-description">
+            <TextArea
+              id="create-description"
+              value={description}
+              rows={2}
+              placeholder="One line about what the game is."
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </Field>
+        </div>
       </div>
 
-      {idError && gameId.trim() && <ErrorLine>{idError}</ErrorLine>}
-      {error && <ErrorLine>{error}</ErrorLine>}
+      {error ? <ErrorLine>{error}</ErrorLine> : null}
 
       <ActionRow>
-        <button type="button" onClick={onClose} className="dw-button">
-          Cancel
-        </button>
-        <button
-          type="button"
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          variant="primary"
           onClick={() => void create()}
+          busy={running}
           disabled={Boolean(idError) || running}
-          className="dw-button dw-button-primary"
         >
-          {running ? 'creating…' : 'Create game'}
-        </button>
+          Create game
+        </Button>
       </ActionRow>
 
-      {log && <Log lines={log} />}
-    </Panel>
+      {log ? <Log lines={log} /> : null}
+    </Card>
   );
 }

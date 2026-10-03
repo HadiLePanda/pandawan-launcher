@@ -51,17 +51,7 @@ import { useSession } from '@store/session';
 import type { StagedFile } from '@/types/api';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  ErrorNote,
-  GlobalPanel,
-  Spinner,
-  TextArea,
-  TextInput,
-} from './ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, Spinner, TextArea, TextInput } from './ui';
 import { usePublisherStream, verdictLine, type StreamHandle } from './usePublisherStream';
 
 // --- The response shape ---------------------------------------------------
@@ -172,11 +162,16 @@ export default function NewsPanel() {
   );
 
   return (
-    <GlobalPanel
-      title="News"
-      subtitle="Not scoped to the game in the rail: an item can be about any game, or none."
-      actions={
-        <>
+    // No "News" heading: the tab strip already names this tab and the game header
+    // names the game, so a title here would be the third restatement in a row.
+    // The one line that stays is the one that prevents a mistake - the feed is
+    // NOT filtered to the selected game, which the layout cannot say by itself.
+    <>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="m-0 max-w-2xl text-[12px] text-ink-subtle">
+          Not scoped to the game in the rail: an item can be about any game, or none.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => void refresh()} aria-label="Reload the news feed">
             <RefreshCw aria-hidden size={14} />
             Reload
@@ -185,9 +180,8 @@ export default function NewsPanel() {
             <Plus aria-hidden size={14} />
             New item
           </Button>
-        </>
-      }
-    >
+        </div>
+      </div>
       {/* One gate for every verb below, because they all write the same array. */}
       <DryRunToggle dryRun={dryRun} onChange={setDryRun} busy={stream.busy} />
 
@@ -319,7 +313,7 @@ export default function NewsPanel() {
           />
         </div>
       ) : null}
-    </GlobalPanel>
+    </>
   );
 }
 

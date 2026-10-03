@@ -1,16 +1,15 @@
 /**
  * Delete all but the newest builds for the selected game and channel.
  *
- * The one destructive verb in the tool, so it is set apart and marked: the panel
- * carries an amber edge, the submit button is deliberately NOT filled red, and
- * the real delete is behind a toggle that also changes what the button says.
+ * The one destructive verb in the tool, so it is marked: the panel carries an
+ * amber "destructive" badge (colour paired with a word), the submit button is
+ * deliberately NOT filled red, and the real delete is behind a toggle that also
+ * changes what the button says.
  *
  * A destructive button stays unfilled on purpose. It is an armed action sitting
  * next to a preview-only checkbox, and filling it red would give it the same
  * visual weight as the primary button it outranks the moment the checkbox is
- * ticked - which is exactly when the operator needs the two distinguishable. The
- * warn edge and the toggled submit rule carry the state instead, on the control
- * being clicked rather than in a permanent badge.
+ * ticked - which is exactly when the operator needs the two distinguishable.
  *
  * --dry-run is the server's default and a real run needs confirm: true, because
  * the script's own prompt reads a keystroke from a console this stream cannot
@@ -23,7 +22,8 @@ import { useState } from 'react';
 import { streamScript } from '@lib/api';
 import { plural } from '@lib/format';
 
-import { ActionRow, ErrorLine, Log, Panel, Section } from '@components/ui';
+import { ActionRow, ErrorLine, Log } from '@components/ui';
+import { Badge, Button, Card, Field, TextInput } from '@/panels/ui';
 
 import type { GameTabProps } from './types';
 
@@ -76,78 +76,62 @@ export function PruneTab({ gameId, channel, onPublished }: GameTabProps) {
 
   return (
     <>
-      <Section title={`Prune builds - ${gameId} / ${channel}`}>
-        <Panel tone="warn">
-          <h2 className="dw-eyebrow m-0 text-warn">Destructive</h2>
-          <p className="mt-2 max-w-2xl text-[12.5px] leading-[1.6] text-ink-muted">
-            Deletes build directories from the bucket. Versions the manifest currently points at are
-            never deleted, so whatever players are downloading survives.
-          </p>
+      <Card>
+        <Badge tone="warn">destructive</Badge>
+        {/* The one line here that stops a mistake: what survives the delete. */}
+        <p className="mt-2 max-w-2xl text-[12px] text-ink-subtle">
+          Deletes build directories from the bucket. Versions the manifest currently points at are
+          never deleted, so whatever players are downloading survives.
+        </p>
 
-          <div className="mt-4 flex max-w-[220px] flex-col gap-1.5 text-[12px] text-ink-muted">
-            <label htmlFor="prune-keep">Builds to keep</label>
-            <input
+        <div className="mt-4 max-w-[220px]">
+          <Field
+            label="Builds to keep"
+            htmlFor="prune-keep"
+            error={!keepValid ? '--keep must be a positive integer.' : undefined}
+          >
+            <TextInput
               id="prune-keep"
-              type="text"
               inputMode="numeric"
+              className="font-mono"
               value={keep}
               onChange={(event) => setKeep(event.target.value)}
-              aria-describedby={keepValid ? undefined : 'prune-keep-error'}
-              className="dw-input font-mono"
             />
-          </div>
+          </Field>
+        </div>
 
-          {!keepValid && (
-            <p id="prune-keep-error" className="mt-2 text-[12px] text-danger">
-              --keep must be a positive integer.
-            </p>
-          )}
+        {error ? <ErrorLine>{error}</ErrorLine> : null}
 
-          {error && <ErrorLine>{error}</ErrorLine>}
+        <ActionRow>
+          <label className="mr-auto flex cursor-pointer flex-row items-center gap-2 text-[12px] text-ink-subtle">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.target.checked)}
+              className="size-[15px] accent-[var(--color-warn)]"
+            />
+            Delete for real (otherwise a dry run)
+          </label>
 
-          <ActionRow>
-            <label className="mr-auto flex cursor-pointer flex-row items-center gap-2 text-[12px] text-ink-subtle">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(event) => setConfirmed(event.target.checked)}
-                className="size-[15px] accent-[var(--color-warn)]"
-              />
-              Delete for real (otherwise a dry run)
-            </label>
+          <Button
+            variant={confirmed ? 'danger' : 'secondary'}
+            onClick={() => void run()}
+            disabled={!keepValid || running}
+            busy={running}
+          >
+            {confirmed ? `Delete all but ${keepNumber || '…'}` : 'Preview prune'}
+          </Button>
+        </ActionRow>
 
-            <button
-              type="button"
-              onClick={() => void run()}
-              disabled={!keepValid || running}
-              className={[
-                'dw-button dw-button-danger',
-                // Arming the toggle changes the button it guards, so the
-                // consequence is shown on the control being clicked rather than
-                // described in a permanent badge.
-                confirmed
-                  ? 'border-transparent bg-warn font-semibold text-warn-ink hover:bg-warn hover:text-warn-ink'
-                  : '',
-              ].join(' ')}
-            >
-              {running
-                ? 'working…'
-                : confirmed
-                  ? `Delete all but ${keepNumber || '…'}`
-                  : 'Preview prune'}
-            </button>
-          </ActionRow>
+        {!confirmed ? (
+          <p className="mt-2 text-right text-[11.5px] text-ink-subtle">
+            {plural(keepNumber || 0, 'build', 'builds')} will be kept. Nothing is deleted until
+            &ldquo;Delete for real&rdquo; is ticked.
+          </p>
+        ) : null}
+      </Card>
 
-          {!confirmed && (
-            <p className="mt-2 text-right text-[11.5px] text-ink-subtle">
-              {plural(keepNumber || 0, 'build', 'builds')} will be kept. Nothing is deleted until
-              &ldquo;Delete for real&rdquo; is ticked.
-            </p>
-          )}
-        </Panel>
-      </Section>
-
-      {log && <Log lines={log} />}
+      {log ? <Log lines={log} /> : null}
     </>
   );
 }

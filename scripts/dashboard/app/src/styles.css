@@ -310,19 +310,6 @@
     background: var(--color-accent-hover);
   }
 
-  /* A destructive button is deliberately NOT filled: it sits beside a
-     preview-only toggle, and filling it red would give it the same weight as
-     the primary button it outranks the moment the toggle is ticked - which is
-     exactly when the two have to stay distinguishable. */
-  .dw-button-danger {
-    color: var(--color-ink-muted);
-  }
-
-  .dw-button-danger:hover:not(:disabled) {
-    color: var(--color-danger);
-    border-color: rgba(248, 113, 113, 0.45);
-  }
-
   /* Command output, recessed like a terminal and quiet enough that the numbers
      in it stay the thing you look at. */
   .dw-log {

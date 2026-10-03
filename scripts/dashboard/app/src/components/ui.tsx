@@ -51,57 +51,6 @@ export function DataAge({
   );
 }
 
-/** A named section. `actions` sits on the same line as the title, right-aligned. */
-export function Section({
-  title,
-  actions,
-  children,
-}: {
-  title: string;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="mb-4">
-      <div className="mb-3 flex items-center gap-3">
-        <h2 className="dw-eyebrow flex-1">{title}</h2>
-        {actions}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** A bordered panel. `tone` marks risk, not decoration. */
-export function Panel({
-  tone = 'plain',
-  className = '',
-  children,
-}: {
-  tone?: 'plain' | 'warn';
-  className?: string;
-  children: ReactNode;
-}) {
-  if (tone === 'warn') {
-    return (
-      <div
-        className={`relative mb-4 overflow-hidden rounded-lg border border-edge bg-surface px-6 py-5 ${className}`}
-      >
-        {/* A hairline of colour down the leading edge rather than a full coloured
-            border: it marks the panel without shouting, and leaves the surface
-            neutral so the form inside still reads calmly. */}
-        <span className="absolute inset-y-0 left-0 w-[3px] bg-warn" aria-hidden="true" />
-        {children}
-      </div>
-    );
-  }
-  return (
-    <div className={`mb-4 rounded-lg border border-edge bg-surface px-6 py-5 ${className}`}>
-      {children}
-    </div>
-  );
-}
-
 /**
  * A dead end that says what to do next.
  *
@@ -136,25 +85,6 @@ export function ErrorLine({ children }: { children: ReactNode }) {
       <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
       <span>{children}</span>
     </p>
-  );
-}
-
-/** A warning that is a fact about the data rather than a failed request. */
-export function WarnLine({ children }: { children: ReactNode }) {
-  return (
-    <p className="mt-3 rounded-sm border-l-[3px] border-warn bg-warn/10 px-3 py-2 text-[12px] leading-[1.5] text-warn">
-      {children}
-    </p>
-  );
-}
-
-/** A dirty tally. Filled, not tinted: it has to survive being read at a glance. */
-export function DirtyBadge({ count }: { count: number }) {
-  if (!count) return null;
-  return (
-    <span className="shrink-0 rounded-full bg-accent px-1.5 text-[10px] font-bold uppercase leading-[1.6] tracking-[0.04em] text-accent-ink">
-      {count} changed
-    </span>
   );
 }
 
