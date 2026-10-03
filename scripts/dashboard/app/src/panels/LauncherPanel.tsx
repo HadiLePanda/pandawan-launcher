@@ -25,9 +25,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, KeyRound, Loader2, RefreshCw, Rocket, Tag } from 'lucide-react';
 
 import { apiGet, messageOf } from '@/lib/api';
-import { compareVersions } from '@lib/version';
+import { compareVersions, nextVersion } from '@lib/version';
 import { DataAge } from '@components/ui';
 import { cx } from './cx';
+import { Rung, StatusWord, Tally } from './ladder';
 import { usePublisherStream, verdictLine, type StreamVerdict } from './usePublisherStream';
 
 /** `GET /api/launcher/status`. */
@@ -80,19 +81,6 @@ export default function LauncherPanel() {
   const [manualTag, setManualTag] = useState(false);
   const [releaseLevel, setReleaseLevel] = useState<'patch' | 'minor' | 'major'>('patch');
   const [releaseDryRun, setReleaseDryRun] = useState(true);
-
-  // Display only - the release script computes the version it writes. It is here so
-  // the level's effect is on screen: "minor" with nothing saying 0.2.0 reads the
-  // same as "patch", which would quietly produce 0.1.1.
-  function nextVersion(version: string, level: 'patch' | 'minor' | 'major') {
-    const parts = version.split('.').map((part) => parseInt(part, 10) || 0);
-    const major = parts[0] ?? 0;
-    const minor = parts[1] ?? 0;
-    const patch = parts[2] ?? 0;
-    if (level === 'major') return `${major + 1}.0.0`;
-    if (level === 'minor') return `${major}.${minor + 1}.0`;
-    return `${major}.${minor}.${patch + 1}`;
-  }
 
   const publish = usePublisherStream();
   const release = usePublisherStream();
@@ -470,29 +458,6 @@ export default function LauncherPanel() {
   );
 }
 
-/** One rung of the ladder: a dot for the role, the role's name, the value. */
-function Rung({
-  label,
-  value,
-  dot,
-  tone,
-}: {
-  label: string;
-  value: string;
-  dot: string;
-  tone: string;
-}) {
-  return (
-    <span className="flex items-baseline gap-1.5">
-      <span className={cx('size-1.5 shrink-0 self-center rounded-[1px]', dot)} aria-hidden="true" />
-      <span className="text-[11px] text-ink-subtle">{label}</span>
-      <span className={cx('font-mono text-[15px] tracking-[-0.01em] whitespace-nowrap', tone)}>
-        {value}
-      </span>
-    </span>
-  );
-}
-
 /**
  * Releases built and not yet published, as amber chips.
  *
@@ -537,25 +502,6 @@ function WaitingChips({
           );
         })
       )}
-    </span>
-  );
-}
-
-/** A number with its unit beside it, so the magnitude reads before the word. */
-function Tally({ value, label }: { value: number; label: string }) {
-  return (
-    <span className="flex items-baseline gap-1.5">
-      <span className="font-mono text-[15px] text-ink">{value}</span>
-      <span className="text-[11px] text-ink-subtle">{label}</span>
-    </span>
-  );
-}
-
-/** The ladder's verdict, as a word. Never a sentence comparing two versions. */
-function StatusWord({ tone, children }: { tone: string; children: string }) {
-  return (
-    <span className={cx('text-[11px] font-semibold uppercase tracking-[0.06em]', tone)}>
-      {children}
     </span>
   );
 }

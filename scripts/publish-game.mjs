@@ -33,6 +33,11 @@ const asList = (value) => (value === undefined ? [] : [].concat(value));
 
 const args = parseArgs(process.argv.slice(2));
 
+// A dry run generates the manifest and reports exactly what it would upload,
+// running the same validation and comparison the real path does - it only skips
+// the writes. A preview that skipped the plan could not prove the publish works.
+const dryRun = Boolean(args['dry-run']);
+
 for (const name of REQUIRED) {
   if (!args[name]) fail(`--${name} is required.`);
 }
@@ -66,6 +71,7 @@ const versionPrefix = `${prefix}/${args.version}`;
 console.log(`Game:     ${gameId}`);
 console.log(`Channel:  ${channel}`);
 console.log(`Version:  ${args.version} (build ${args['build-number']})`);
+console.log(`Mode:     ${dryRun ? 'DRY RUN - nothing will be uploaded' : 'PUBLISH'}`);
 if (inputDir) console.log(`Source:   ${path.relative(repoRoot, inputDir) || '.'}`);
 console.log(`Target:   ${S3.s3Uri(bucket, versionPrefix)}`);
 console.log(`Manifest: ${S3.s3Uri(bucket, `${prefix}/manifest.json`)}`);
@@ -131,8 +137,9 @@ try {
 // exists, so publishing it first would let someone resolve a manifest whose
 // files are not there yet.
 // Clear any half-finished upload from a previous interrupted run first; those
-// parts are billed and are not visible to s3 ls.
-abortStaleMultipartUploads(`${prefix}/`, { endpoint, bucket });
+// parts are billed and are not visible to s3 ls. Skipped on a dry run: aborting
+// uploads is a real change to the bucket.
+if (!dryRun) abortStaleMultipartUploads(`${prefix}/`, { endpoint, bucket });
 for (const spec of platformSpecs) {
   const separator = spec.indexOf('=');
   const platform = spec.slice(0, separator).trim().toLowerCase();
@@ -153,6 +160,7 @@ for (const spec of platformSpecs) {
   console.log(
     `  ${platform}: ${path.relative(repoRoot, dir) || '.'} - ${changed.length} to upload, ${skipped.length} already published`
   );
+  if (dryRun) continue;
   uploadFiles(dir, changed, `${S3.s3Uri(bucket, `${versionPrefix}/${platform}`)}/`, {
     endpoint,
     cacheControl: IMMUTABLE,
@@ -161,30 +169,35 @@ for (const spec of platformSpecs) {
 
 if (inputDir) {
   // A flat publish has no per-platform list to compare, so the tree goes up whole.
-  uploadDir(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
-    endpoint,
-    cacheControl: IMMUTABLE,
-  });
+  if (!dryRun) {
+    uploadDir(inputDir, `${S3.s3Uri(bucket, versionPrefix)}/`, {
+      endpoint,
+      cacheControl: IMMUTABLE,
+    });
+  }
 }
 
 // The manifest also goes inside the version directory, and this is what makes
 // per-platform resolution possible: a client pinned to an older version on one
 // platform must be able to read that version's manifest after a newer one has
 // overwritten the channel root. The copy here is immutable like everything else
-// at that path, so it can be cached forever.
-upload(manifestPath, S3.s3Uri(bucket, `${versionPrefix}/manifest.json`), {
-  endpoint,
-  cacheControl: IMMUTABLE,
-  contentType: 'application/json',
-});
+// at that path, so it can be cached forever. Both manifest writes are skipped on
+// a dry run - the manifest IS the signal that a build is available.
+if (!dryRun) {
+  upload(manifestPath, S3.s3Uri(bucket, `${versionPrefix}/manifest.json`), {
+    endpoint,
+    cacheControl: IMMUTABLE,
+    contentType: 'application/json',
+  });
 
-// The channel-root copy is mutable and is the signal that a build is available,
-// so it is uploaded last and never cached. Older clients read only this.
-upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-  contentType: 'application/json',
-});
+  // The channel-root copy is mutable and is the signal that a build is available,
+  // so it is uploaded last and never cached. Older clients read only this.
+  upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+    contentType: 'application/json',
+  });
+}
 
 // Per-platform "what is current" pointer. A channel has one immutable manifest
 // per version, but platforms ship independently, so a flat manifest.json cannot
@@ -221,19 +234,25 @@ for (const platform of attributed) {
 }
 
 const latestPath = path.join(path.dirname(manifestPath), 'latest.json');
-writeFileSync(latestPath, `${JSON.stringify(latest, null, 2)}\n`);
+if (!dryRun) {
+  writeFileSync(latestPath, `${JSON.stringify(latest, null, 2)}\n`);
 
-upload(latestPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-  contentType: 'application/json',
-});
+  upload(latestPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+    contentType: 'application/json',
+  });
+}
 
 const behind = Object.entries(latest)
   .filter(([, v]) => v.version !== args.version)
   .map(([k, v]) => `${k} ${v.version}`);
 
-console.log(`\nPublished ${gameId} ${args.version} (${channel}) for ${attributed.join(', ')}.`);
+console.log(
+  dryRun
+    ? `\nDRY RUN complete: would publish ${gameId} ${args.version} (${channel}) for ${attributed.join(', ')}. Nothing was uploaded.`
+    : `\nPublished ${gameId} ${args.version} (${channel}) for ${attributed.join(', ')}.`
+);
 
 // Platforms left behind are the entire reason latest.json exists, so say so here
 // rather than letting the drift be discovered by a player on the other OS.

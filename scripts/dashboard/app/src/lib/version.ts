@@ -45,6 +45,23 @@ export function newestVersion(versions: readonly (string | null | undefined)[]):
 }
 
 /**
+ * What a level does to a version, for the preview beside a bump control.
+ *
+ * Display only - the script that writes the version owns the real bump. It is
+ * shown so the level's effect is on screen: "minor" with nothing saying 0.2.0
+ * reads the same as "patch", which would quietly produce 0.1.1.
+ */
+export function nextVersion(version: string, level: 'patch' | 'minor' | 'major'): string {
+  const [core] = splitVersion(version);
+  const major = core[0] ?? 0;
+  const minor = core[1] ?? 0;
+  const patch = core[2] ?? 0;
+  if (level === 'major') return `${major + 1}.0.0`;
+  if (level === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
+/**
  * The version to suggest when publishing another build of a game.
  *
  * Bumps the patch component of whatever is live. Returns '' when nothing is

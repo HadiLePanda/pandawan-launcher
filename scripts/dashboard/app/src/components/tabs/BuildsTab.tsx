@@ -1,7 +1,13 @@
 /**
- * Upload another build of the selected game.
+ * Publish another build of the selected game.
  *
  * The game and channel are locked to the selection - there is nothing to retype.
+ *
+ * The header is the ladder, in the Launcher releases panel's arrangement: the
+ * channel, the version live on it, and each platform's version and build, so the
+ * everyday question ("what is players' current build, and what is next?") is
+ * answered before the form rather than assembled from it. The suggestion beside
+ * the Version and Build controls is one click to apply.
  *
  * The prefill is the part worth reading. The version is suggested from what is
  * live and the build number from the highest counter any platform is on, both
@@ -12,16 +18,24 @@
  * Platform directories are left EMPTY on purpose. They describe local build
  * output and cannot be inferred; carrying the previous game's paths over would
  * publish this game's files from another game's folder.
+ *
+ * Publishing is a real upload, so dry run is the default: `--dry-run` generates
+ * the manifest and reports what it would send, running the same validation and
+ * comparison the real path does, and only the writes are gated behind unticking
+ * Preview plus a confirm.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { streamScript } from '@lib/api';
+import { platformDot, platformHue } from '@lib/platform-hue';
 import { suggestNextBuild, suggestNextVersion } from '@lib/version';
 import { PLATFORMS } from '@/types/api';
 
-import { ActionRow, ErrorLine, Log, Panel, Section } from '@components/ui';
+import { ActionRow, EmptyState, ErrorLine, Log } from '@components/ui';
+import { Button, Card, Field, TextInput } from '@/panels/ui';
 
+import { Rung, Tally } from '@/panels/ladder';
 import type { GameTabProps } from './types';
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -52,6 +66,7 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     macos: '',
     linux: '',
   });
+  const [dryRun, setDryRun] = useState(true);
   const [log, setLog] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -59,14 +74,11 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
   /**
    * Reset the form when the SELECTION changes, not just on mount.
    *
-   * All seven fields are set in one effect rather than at their declarations, so
+   * All the fields are set in one effect rather than at their declarations, so
    * the form cannot paint halfway between the old game's version and the new
-   * one - a mixed pair that never existed in the data.
-   *
-   * The reset guard is the other half. Without it the effect also ran when
-   * `suggestedVersion` changed after a publish, which would wipe whatever the
-   * operator was in the middle of typing. Comparing the selection against the
-   * last one it saw means this fires only on a genuine game change.
+   * one - a mixed pair that never existed in the data. The reset guard is the
+   * other half: without it the effect also ran when `suggestedVersion` changed
+   * after a publish, which would wipe whatever the operator was mid-way through.
    */
   const selection = `${gameId} ${channel}`;
   const resetRef = useRef(selection);
@@ -77,10 +89,10 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     setBuildNumber(suggestedBuild === null ? '' : String(suggestedBuild));
     setExecutable(`${gameId}.exe`);
     // Platform directories describe local build output and cannot be inferred.
-    // Carrying the previous game's paths over would publish THIS game's files
-    // from another game's folder, so they are always cleared on a new selection.
     setPlatformDirs({ windows: '', macos: '', linux: '' });
     setInputDir('');
+    // A new selection must not inherit an armed real publish.
+    setDryRun(true);
     setLog('');
     setError(null);
   }, [selection, suggestedVersion, suggestedBuild, gameId]);
@@ -93,8 +105,23 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     missing.push('an input directory or at least one platform directory');
   }
 
+  // The manifest key this publish would write, shown beside the button so the
+  // target is on screen before the press rather than in the log after it.
+  const target = `games/${gameId}/${channel}/${version.trim() || '…'}/manifest.json`;
+
   const publish = async () => {
     if (missing.length) return;
+
+    if (
+      !dryRun &&
+      !window.confirm(
+        `Publish ${gameId} ${version.trim()} (build ${buildNumber.trim()}) to ${channel}? ` +
+          'Players will be offered this build immediately.'
+      )
+    ) {
+      return;
+    }
+
     setRunning(true);
     setError(null);
     setLog('');
@@ -119,6 +146,8 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
       const dir = platformDirs[platform]?.trim();
       if (dir) args.push('--platform', `${platform}=${dir}`);
     }
+    // The server's publisher reads --dry-run and writes nothing without it.
+    if (dryRun) args.push('--dry-run');
 
     const code = await streamScript('/api/publish', { args }, (chunk) =>
       setLog((prev) => prev + chunk)
@@ -128,125 +157,182 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
       setError(`publish-game exited with code ${code}. Nothing was published.`);
       return;
     }
-    onPublished();
+    // A preview leaves the form alone; only a real publish re-reads the bucket.
+    if (!dryRun) onPublished();
   };
 
-  return (
-    <>
-      <Section title={`Publish a build - ${gameId} / ${channel}`}>
-        <Panel>
-          <p className="m-0 text-[12.5px] text-ink-subtle">
-            {scope.version ? (
-              <>
-                Suggested next version <strong className="text-ink">{suggestedVersion}</strong> from
-                what is live ({scope.version}).
-                {suggestedBuild !== null && (
-                  <> Build {suggestedBuild}, one past the highest counter on any platform.</>
-                )}
-              </>
-            ) : (
-              'Nothing is published on this channel yet. CI decides the first version number - type it in.'
-            )}
-          </p>
+  const platforms = Object.entries(scope.latest);
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Field label="Version" value={version} onChange={setVersion} placeholder="0.4.1" mono />
-            <Field
-              label="Build number"
-              value={buildNumber}
-              onChange={setBuildNumber}
-              placeholder="103"
-              mono
-            />
-            <Field
-              label="Executable"
-              value={executable}
-              onChange={setExecutable}
-              placeholder={`${gameId}.exe`}
-              mono
-            />
-            <Field
-              label="Input directory"
-              value={inputDir}
-              onChange={setInputDir}
-              placeholder="C:\\Builds\\out"
-              mono
-            />
-          </div>
-
-          {/* The platform group is a set-in from the fields above it, so it is
-              recessed and inset rather than carrying another full-weight panel. */}
-          <fieldset className="mt-5 rounded-sm border border-edge bg-black/20 px-4 py-4">
-            <legend className="px-2 text-[12px] text-ink-muted">Platform directories</legend>
-            {/* One sentence, because it is the reason to distrust the field: a
-                prefill here would publish this game's files from another game's
-                folder. */}
-            <p className="mt-0 text-[11.5px] text-ink-subtle">
-              Local build output, so they cannot be inferred and start empty every time.
-            </p>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {PLATFORMS.map((platform) => (
-                <Field
-                  key={platform}
-                  label={PLATFORM_LABEL[platform] ?? platform}
-                  value={platformDirs[platform] ?? ''}
-                  onChange={(next) => setPlatformDirs((prev) => ({ ...prev, [platform]: next }))}
-                  placeholder="(unused)"
-                  mono
-                />
-              ))}
-            </div>
-          </fieldset>
-
-          {missing.length > 0 && (
-            <p className="mt-3 text-[12px] text-ink-subtle">Still needed: {missing.join(', ')}.</p>
-          )}
-
-          {error && <ErrorLine>{error}</ErrorLine>}
-
-          <ActionRow>
-            <button
-              type="button"
-              onClick={() => void publish()}
-              disabled={missing.length > 0 || running}
-              className="dw-button dw-button-primary"
-            >
-              {running ? 'uploading…' : 'Publish build'}
-            </button>
-          </ActionRow>
-        </Panel>
-      </Section>
-
-      {log && <Log lines={log} />}
-    </>
+  // The game header above already lists every platform's version and build, so a
+  // rung here is only worth the ink when it DISAGREES with the channel's live
+  // version - a platform left behind by a partial publish is the exception, and
+  // that is the case the operator needs to see. Repeating the identical rungs
+  // 20px below themselves is the nesting this page is being cleaned of.
+  const diverged = platforms.filter(
+    ([, entry]) => scope.version && entry.version !== scope.version
   );
-}
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  /** True when the value is a literal code token (a version, a build number, a
-      path) and so belongs in mono; false for an ordinary typed label. */
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  placeholder?: string;
-  mono?: boolean;
-}) {
   return (
-    <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-      {label}
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className={`dw-input ${mono ? 'font-mono' : 'font-sans'}`}
-      />
-    </label>
+    <Card>
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-edge pb-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1">
+          <Rung label="channel" value={channel} dot="bg-accent" tone="text-accent" />
+          <Rung
+            label="live"
+            value={scope.version || 'none'}
+            dot="bg-ink-faint"
+            tone={scope.version ? 'text-ink' : 'text-ink-subtle'}
+          />
+          {diverged.map(([platform, entry]) => (
+            <Rung
+              key={platform}
+              label={`${platform} behind`}
+              value={`${entry.version} #${entry.build}`}
+              dot={platformDot(platform)}
+              tone={platformHue(platform)}
+            />
+          ))}
+        </div>
+        {suggestedBuild !== null ? <Tally value={suggestedBuild} label="next build" /> : null}
+      </header>
+
+      {!scope.version && !platforms.length ? (
+        <EmptyState title="Nothing is published on this channel yet">
+          CI decides the first version number - type it in and publish the first build.
+        </EmptyState>
+      ) : null}
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Field
+          label="Version"
+          required
+          htmlFor="build-version"
+          action={
+            suggestedVersion && suggestedVersion !== version ? (
+              <button
+                type="button"
+                onClick={() => setVersion(suggestedVersion)}
+                title={`Use the suggested next version, ${suggestedVersion}`}
+                className="border-none bg-none p-0 text-[11px] text-ink-subtle underline underline-offset-2 hover:text-ink"
+              >
+                use {suggestedVersion}
+              </button>
+            ) : undefined
+          }
+        >
+          <TextInput
+            id="build-version"
+            className="font-mono"
+            value={version}
+            placeholder="0.4.1"
+            onChange={(event) => setVersion(event.target.value)}
+          />
+        </Field>
+
+        <Field
+          label="Build number"
+          required
+          htmlFor="build-number"
+          action={
+            suggestedBuild !== null && String(suggestedBuild) !== buildNumber ? (
+              <button
+                type="button"
+                onClick={() => setBuildNumber(String(suggestedBuild))}
+                title={`Use the next build number, ${suggestedBuild}`}
+                className="border-none bg-none p-0 text-[11px] text-ink-subtle underline underline-offset-2 hover:text-ink"
+              >
+                use {suggestedBuild}
+              </button>
+            ) : undefined
+          }
+        >
+          <TextInput
+            id="build-number"
+            className="font-mono"
+            value={buildNumber}
+            placeholder="103"
+            onChange={(event) => setBuildNumber(event.target.value)}
+          />
+        </Field>
+
+        <Field label="Executable" required htmlFor="build-executable">
+          <TextInput
+            id="build-executable"
+            className="font-mono"
+            value={executable}
+            placeholder={`${gameId}.exe`}
+            onChange={(event) => setExecutable(event.target.value)}
+          />
+        </Field>
+
+        <Field label="Input directory" htmlFor="build-input">
+          <TextInput
+            id="build-input"
+            className="font-mono"
+            value={inputDir}
+            placeholder="C:\\Builds\\out"
+            onChange={(event) => setInputDir(event.target.value)}
+          />
+        </Field>
+      </div>
+
+      {/* The platform group is a set-in from the fields above it, so it is
+          recessed and inset rather than carrying another full-weight panel. */}
+      <fieldset className="mt-4 rounded-sm border border-edge bg-black/20 px-4 py-3">
+        <legend className="px-2 text-[12px] text-ink-muted">Platform directories</legend>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {PLATFORMS.map((platform) => (
+            <Field
+              key={platform}
+              label={PLATFORM_LABEL[platform] ?? platform}
+              htmlFor={`build-${platform}`}
+            >
+              <TextInput
+                id={`build-${platform}`}
+                className="font-mono"
+                value={platformDirs[platform] ?? ''}
+                placeholder="(unused)"
+                onChange={(event) =>
+                  setPlatformDirs((prev) => ({ ...prev, [platform]: event.target.value }))
+                }
+              />
+            </Field>
+          ))}
+        </div>
+      </fieldset>
+
+      {missing.length > 0 && !running ? (
+        <p className="mt-3 text-[12px] text-ink-subtle">Still needed: {missing.join(', ')}.</p>
+      ) : null}
+
+      {error ? <ErrorLine>{error}</ErrorLine> : null}
+
+      <ActionRow>
+        <label className="mr-auto flex cursor-pointer flex-row items-center gap-2 text-[12px] text-ink-subtle">
+          <input
+            type="checkbox"
+            checked={dryRun}
+            onChange={(event) => setDryRun(event.target.checked)}
+            className="size-[15px] accent-[var(--color-warn)]"
+          />
+          Preview only (dry run)
+        </label>
+        {/* The value the action produces, so the target is on screen before the
+            button is pressed rather than in the log after it. */}
+        <code className="mr-2 truncate font-mono text-[11px]" title={target}>
+          {target}
+        </code>
+        <Button
+          variant="primary"
+          onClick={() => void publish()}
+          busy={running}
+          disabled={missing.length > 0 || running}
+        >
+          {dryRun ? 'Preview build' : 'Publish build'}
+        </Button>
+      </ActionRow>
+
+      {log ? <Log lines={log} /> : null}
+    </Card>
   );
 }
