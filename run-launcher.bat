@@ -83,5 +83,9 @@ echo Could not start. See the messages above.
 
 :done
 echo.
-pause
-endlocal
+REM Leave a live prompt here instead of a "press a key to continue" nag: the
+REM last command is one up-arrow away, and a failure stays on screen to be read
+REM and retried. `endlocal & set` re-exports the PATH dev-env.bat added, which a
+REM bare endlocal would discard and leave cargo/aws off PATH in the new shell.
+endlocal & set "PATH=%PATH%"
+cmd /k
