@@ -148,6 +148,7 @@
         "available": "Mise à jour v{{version}} disponible",
         "checkButton": "Rechercher des mises à jour",
         "checking": "Vérification…",
+        "devHint": "Build de dev uniquement — appuie sur Ctrl+Maj+U pour parcourir les états de mise à jour, ou utilise window.__launcherUpdater.force('<state>') dans les devtools de la webview.",
         "downloading": "Téléchargement de la mise à jour…",
         "error": "Échec de la vérification des mises à jour : {{error}}",
         "installButton": "Installer la mise à jour",

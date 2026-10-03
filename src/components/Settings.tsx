@@ -463,6 +463,11 @@ function AboutSettings() {
   const updateVersion = useUpdaterStore((s) => s.version);
   const updaterError = useUpdaterStore((s) => s.error);
 
+  // Dev-build only, and only while nothing real is happening: the forcer does
+  // not exist in a release build and must not compete with a genuine update.
+  const showDevHint =
+    import.meta.env.DEV && (updaterStatus === 'idle' || updaterStatus === 'up-to-date');
+
   useEffect(() => {
     getVersion()
       .then(setCurrentVersion)
@@ -563,6 +568,7 @@ function AboutSettings() {
           </div>
         </div>
         {statusText && <p className="caption">{statusText}</p>}
+        {showDevHint && <p className="caption">{t('settings.about.updates.devHint')}</p>}
         {logsError && <p className="caption text-red-400">{logsError}</p>}
       </div>
 

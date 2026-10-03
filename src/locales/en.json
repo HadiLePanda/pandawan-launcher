@@ -148,6 +148,7 @@
         "available": "Update v{{version}} available",
         "checkButton": "Check for updates",
         "checking": "Checking…",
+        "devHint": "Dev build only — press Ctrl+Shift+U to cycle the update states, or set window.__launcherUpdater.force('<state>') in the devtools.",
         "downloading": "Downloading update…",
         "error": "Update check failed: {{error}}",
         "installButton": "Install update",
