@@ -17,7 +17,7 @@ import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 
 interface TitleBarProps {
   catalogUnreachable: boolean;
-  catalogSource: 'remote' | 'local' | 'embedded' | null;
+  catalogSource: 'remote' | 'cache' | 'local' | 'embedded' | null;
   onRetry: () => void;
   onDoubleClick?: () => void;
 }

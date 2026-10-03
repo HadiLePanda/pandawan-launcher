@@ -12,6 +12,7 @@ import {
 import { commands } from './commands';
 import { unwrapResult } from './errors';
 import i18n from './i18n';
+import { fetchCachedText, lastReadSource } from './http-cache';
 import { logger } from './logger';
 
 export const DEFAULT_CHANNEL = 'stable';
@@ -57,7 +58,7 @@ export async function fetchRemoteText(url: string): Promise<string> {
 export interface ResolvedCatalog {
   games: GameInfo[];
   catalog: GameCatalog;
-  source: 'remote' | 'local' | 'embedded';
+  source: 'remote' | 'cache' | 'local' | 'embedded';
   unreachable?: boolean;
 }
 
@@ -70,7 +71,15 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
   try {
     const catalog = await fetchRemoteCatalog(CATALOG_URL);
     const games = await resolveCatalogGames(catalog);
-    return { catalog, games, source: 'remote' };
+    // A cached read is not a live one. Served after a failed read it is also
+    // stale, which is the case the connectivity banner exists for.
+    const read = lastReadSource(CATALOG_URL);
+    return {
+      catalog,
+      games,
+      source: read === 'network' ? 'remote' : 'cache',
+      unreachable: read === 'stale' ? true : undefined,
+    };
   } catch (err) {
     logger.warn('Failed to load remote catalog', { url: CATALOG_URL, error: String(err) });
   }
@@ -98,7 +107,7 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
-  const body = await fetchRemoteText(url);
+  const body = await fetchCachedText(url, fetchRemoteText);
   const catalog = JSON.parse(body);
   validateCatalog(catalog);
   return catalog as GameCatalog;
@@ -160,7 +169,7 @@ async function fetchLatestIndex(
   channel: string
 ): Promise<Record<string, PlatformVersion> | null> {
   try {
-    const body = await fetchRemoteText(latestIndexUrl(id, channel));
+    const body = await fetchCachedText(latestIndexUrl(id, channel), fetchRemoteText);
     const parsed = JSON.parse(body);
     if (!parsed || typeof parsed !== 'object') return null;
     return parsed as Record<string, PlatformVersion>;
@@ -219,7 +228,7 @@ export async function resolveManifestForPlatform(
   }
 }
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
-  const body = await fetchRemoteText(manifestUrl);
+  const body = await fetchCachedText(manifestUrl, fetchRemoteText);
   const manifest = JSON.parse(body);
   if (!manifest || typeof manifest !== 'object' || !manifest.game_id || !manifest.version) {
     throw new Error('Invalid manifest: missing game_id or version');

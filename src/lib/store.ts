@@ -43,7 +43,7 @@ interface LauncherState {
   /** A cancel has been sent and the backend is winding down. */
   cancelling: boolean;
   settings: LauncherSettings | null;
-  catalogSource: 'remote' | 'local' | 'embedded' | null;
+  catalogSource: 'remote' | 'cache' | 'local' | 'embedded' | null;
   catalogUnreachable: boolean;
   gameFilters: GameFilters;
   notifications: LauncherNotification[];
