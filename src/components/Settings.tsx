@@ -575,11 +575,11 @@ function AboutSettings() {
           <span className="body">{t('settings.about.license')}</span>
           <span>MIT License</span>
         </div>
-        <div className="flex justify-between py-3">
-          <span className="body">{t('settings.about.tauriVersion')}</span>
-          <span>2.0.0</span>
-        </div>
       </div>
+
+      {/* A build-time detail, not an app version. As its own label/value row it
+          read as a second version next to the launcher's in the header above. */}
+      <p className="text-xs text-ink-muted mt-3">{t('settings.about.tauriVersion')} · 2.0.0</p>
     </div>
   );
 }
