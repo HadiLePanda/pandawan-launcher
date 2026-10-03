@@ -1,17 +1,9 @@
-//! Test utilities for Pandawan Launcher
-//!
-//! This module provides helper functions and mock data for testing
-//! the launcher components.
-
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-use crate::types::{
-    FileEntry, GameInstallation, GameManifest, LauncherSettings, PatchProgress, PatchState,
-    PatchStatus,
-};
+use crate::types::{FileEntry, GameInstallation, GameManifest, LauncherSettings};
 
 /// Creates a test file with specified content and returns its SHA256 hash
 pub fn create_test_file_with_content(path: &Path, content: &[u8]) -> String {
@@ -23,7 +15,6 @@ pub fn create_test_file_with_content(path: &Path, content: &[u8]) -> String {
         .expect("Failed to write test content");
     file.flush().expect("Failed to flush file");
 
-    // Compute and return SHA256 hash
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(content);
@@ -72,17 +63,6 @@ pub fn create_test_manifest() -> GameManifest {
     }
 }
 
-/// Creates a test manifest with updated version
-pub fn create_updated_test_manifest() -> GameManifest {
-    let mut manifest = create_test_manifest();
-    manifest.version = "1.1.0".to_string();
-    manifest.build_number = 101;
-    // Modify one file to simulate update
-    manifest.files[1].hash = "d".repeat(64);
-    manifest.files[1].size = 300;
-    manifest
-}
-
 /// Creates a test game installation
 pub fn create_test_installation(install_path: &Path) -> GameInstallation {
     let mut installed_files = HashMap::new();
@@ -120,17 +100,6 @@ pub fn create_test_settings() -> LauncherSettings {
     }
 }
 
-/// Creates a test patch status
-pub fn create_test_patch_status() -> PatchStatus {
-    PatchStatus {
-        game_id: "test-game".to_string(),
-        current_version: "1.0.0".to_string(),
-        target_version: "1.1.0".to_string(),
-        status: PatchState::Idle,
-        progress: PatchProgress::default(),
-    }
-}
-
 /// Sets up a temporary directory for testing
 pub fn setup_test_dir() -> tempfile::TempDir {
     tempfile::tempdir().expect("Failed to create temp directory")
@@ -146,7 +115,6 @@ pub fn compute_hash(content: &[u8]) -> String {
 
 /// Creates a realistic test environment with actual files
 pub fn create_realistic_test_environment(base_path: &Path) -> (GameManifest, GameInstallation) {
-    // Create actual files with real content
     let exe_content = b"This is the game executable content";
     let config_content = b"{\"resolution\": \"1920x1080\"}";
     let texture_content = vec![0x89, 0x50, 0x4E, 0x47]; // PNG magic bytes
@@ -159,7 +127,6 @@ pub fn create_realistic_test_environment(base_path: &Path) -> (GameManifest, Gam
     let config_hash = create_test_file_with_content(&config_path, config_content);
     let texture_hash = create_test_file_with_content(&texture_path, &texture_content);
 
-    // Create manifest with actual hashes
     let manifest = GameManifest {
         game_id: "realistic-game".to_string(),
         name: "Realistic Test Game".to_string(),
@@ -199,7 +166,6 @@ pub fn create_realistic_test_environment(base_path: &Path) -> (GameManifest, Gam
         size_bytes: None,
     };
 
-    // Create installation record
     let mut installed_files = HashMap::new();
     installed_files.insert("game.exe".to_string(), exe_hash);
     installed_files.insert("data/config.json".to_string(), config_hash);
@@ -228,24 +194,6 @@ pub mod assertions {
     /// Assert that a file exists
     pub fn assert_file_exists(path: &Path) {
         assert!(path.exists(), "Expected file to exist: {}", path.display());
-    }
-
-    /// Assert that a file does not exist
-    pub fn assert_file_not_exists(path: &Path) {
-        assert!(
-            !path.exists(),
-            "Expected file to NOT exist: {}",
-            path.display()
-        );
-    }
-
-    /// Assert that a directory exists
-    pub fn assert_dir_exists(path: &Path) {
-        assert!(
-            path.exists() && path.is_dir(),
-            "Expected directory to exist: {}",
-            path.display()
-        );
     }
 
     /// Assert file content equals expected

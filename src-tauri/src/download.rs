@@ -13,7 +13,6 @@ use tauri::ipc::Channel;
 use tokio::sync::Semaphore;
 use tokio::time::sleep;
 
-/// Download manager for handling game file downloads
 pub struct DownloadManager {
     client: Client,
     max_concurrent: usize,
@@ -110,7 +109,6 @@ impl DownloadManager {
         Err(last_error.unwrap_or(DownloadError::Cancelled))
     }
 
-    /// Single attempt at downloading a file
     async fn download_file_single_attempt(
         &self,
         url: &str,
@@ -119,19 +117,16 @@ impl DownloadManager {
         on_event: &Channel<DownloadEvent>,
         stats: Option<Arc<DownloadStats>>,
     ) -> Result<(), DownloadError> {
-        // Create parent directories
         if let Some(parent) = dest_path.parent() {
             fs::create_dir_all(parent)?;
         }
 
-        // Determine existing partial size for resume header
         let start_byte = if dest_path.exists() {
             fs::metadata(dest_path)?.len()
         } else {
             0
         };
 
-        // Build request with resume header
         if self.cancel_token.load(Ordering::Relaxed) {
             return Err(DownloadError::Cancelled);
         }
@@ -214,7 +209,6 @@ impl DownloadManager {
             let chunk = chunk?;
             let chunk_len = chunk.len() as u64;
 
-            // Apply the global speed limit, if configured.
             if let Some(ref limiter) = self.rate_limiter {
                 limiter.consume(chunk_len).await;
             }
@@ -251,7 +245,6 @@ impl DownloadManager {
         file.flush()?;
         drop(file);
 
-        // Verify hash if provided
         if let Some(expected) = expected_hash {
             let actual_hash = crate::patch::compute_file_hash(dest_path)
                 .await
@@ -382,16 +375,6 @@ impl DownloadManager {
 
     pub fn cancel(&self) {
         self.cancel_token.store(true, Ordering::Relaxed);
-    }
-
-    /// Current maximum number of concurrent downloads.
-    pub fn max_concurrent(&self) -> usize {
-        self.max_concurrent
-    }
-
-    /// Current global speed limit in bytes per second, if any.
-    pub fn speed_limit(&self) -> Option<u64> {
-        self.speed_limit
     }
 
     pub fn reset_cancel(&self) {

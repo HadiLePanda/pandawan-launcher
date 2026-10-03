@@ -8,7 +8,6 @@ use thiserror::Error;
 #[cfg(test)]
 use serde_json;
 
-/// Game manifest from CDN
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GameManifest {
     pub game_id: String,
@@ -42,9 +41,6 @@ pub struct GameManifest {
     pub size_bytes: Option<u64>,
 }
 
-/// One platform's slice of a multi-platform manifest.
-///
-/// Mirrors the `platforms` map on `GameManifest`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PlatformBuild {
     pub executable: String,
@@ -86,7 +82,6 @@ pub struct VerifyProgress {
     pub missing: usize,
 }
 
-/// Individual file entry in manifest
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct FileEntry {
     pub path: String,
@@ -97,7 +92,6 @@ pub struct FileEntry {
     pub compress: Option<bool>,
 }
 
-/// Local game installation state
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GameInstallation {
     pub game_id: String,
@@ -120,7 +114,6 @@ pub struct GameInstallation {
     pub executable: String,
 }
 
-/// Download progress event
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(tag = "event", content = "data")]
 pub enum DownloadEvent {
@@ -251,7 +244,6 @@ impl DownloadStats {
     }
 }
 
-/// Patch operation status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PatchStatus {
     pub game_id: String,
@@ -283,7 +275,6 @@ pub struct PatchProgress {
 }
 
 impl PatchProgress {
-    /// Calculate download percentage (0.0 to 100.0)
     pub fn percentage(&self) -> f64 {
         if self.total_bytes == 0 {
             0.0
@@ -292,7 +283,6 @@ impl PatchProgress {
         }
     }
 
-    /// Calculate file completion percentage (0.0 to 100.0)
     pub fn file_percentage(&self) -> f64 {
         if self.total_files == 0 {
             0.0
@@ -301,17 +291,14 @@ impl PatchProgress {
         }
     }
 
-    /// Check if download is complete
     pub fn is_complete(&self) -> bool {
         self.downloaded_bytes >= self.total_bytes && self.total_bytes > 0
     }
 
-    /// Get remaining bytes to download
     pub fn remaining_bytes(&self) -> u64 {
         self.total_bytes.saturating_sub(self.downloaded_bytes)
     }
 
-    /// Estimate time remaining in seconds (based on current speed in bytes/sec)
     pub fn estimated_time_remaining(&self, speed_bps: f64) -> Option<u64> {
         if speed_bps <= 0.0 {
             return None;
@@ -321,7 +308,6 @@ impl PatchProgress {
     }
 }
 
-/// Game launch result
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct LaunchResult {
     pub success: bool,
@@ -373,7 +359,6 @@ impl From<std::io::Error> for LauncherError {
     }
 }
 
-/// Launcher settings
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct LauncherSettings {
@@ -433,7 +418,6 @@ impl Default for LauncherSettings {
 }
 
 impl LauncherSettings {
-    /// Validate settings
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
@@ -458,7 +442,6 @@ impl LauncherSettings {
         }
     }
 
-    /// Get download speed in human-readable format
     pub fn download_speed_display(&self) -> String {
         match self.max_download_speed {
             None => "Unlimited".to_string(),
@@ -473,10 +456,8 @@ impl LauncherSettings {
     }
 }
 
-/// Test utilities for types module
 #[cfg(test)]
 impl GameManifest {
-    /// Create a minimal manifest for testing
     pub fn test_manifest() -> Self {
         Self {
             game_id: "test-game".to_string(),
@@ -495,12 +476,10 @@ impl GameManifest {
         }
     }
 
-    /// Get total size of all files
     pub fn total_size(&self) -> u64 {
         self.files.iter().map(|f| f.size).sum()
     }
 
-    /// Check if manifest has valid file entries
     pub fn validate(&self) -> Result<(), String> {
         if self.game_id.is_empty() {
             return Err("game_id cannot be empty".to_string());
@@ -1316,7 +1295,6 @@ mod tests {
         assert!(json.contains("duration_seconds"));
     }
 
-    // Helper function for GameInstallation tests
     fn create_test_installation() -> GameInstallation {
         GameInstallation {
             game_id: "test".to_string(),

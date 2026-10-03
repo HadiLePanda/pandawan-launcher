@@ -17,7 +17,6 @@ use tokio::io::{AsyncReadExt, BufReader};
 use tokio::sync::{Mutex, RwLock};
 use walkdir::WalkDir;
 
-/// Manages game patching operations
 pub struct PatchManager {
     download_manager: RwLock<DownloadManager>,
     state: Arc<Mutex<PatchStatus>>,
@@ -37,20 +36,6 @@ impl PatchManager {
         }
     }
 
-    /// Reconfigure the underlying download manager with new concurrency and
-    /// speed limits. Existing downloads are not affected, but future operations
-    /// will use the new limits.
-    pub async fn reconfigure(&self, max_concurrent: usize, speed_limit: Option<u64>) {
-        *self.download_manager.write().await = DownloadManager::new(max_concurrent, speed_limit);
-    }
-
-    /// Return the current download limits.
-    pub async fn current_limits(&self) -> (usize, Option<u64>) {
-        let dm = self.download_manager.read().await;
-        (dm.max_concurrent(), dm.speed_limit())
-    }
-
-    /// Check which files need to be updated
     pub async fn check_for_updates(
         &self,
         manifest: &GameManifest,
@@ -120,7 +105,6 @@ impl PatchManager {
         })
     }
 
-    /// Perform full patch/installation
     pub async fn patch_game(
         &self,
         manifest: GameManifest,
@@ -129,7 +113,6 @@ impl PatchManager {
         base_url: String,
         on_event: Channel<DownloadEvent>,
     ) -> Result<GameInstallation, PatchError> {
-        // Update state
         {
             let mut state = self.state.lock().await;
             state.game_id = manifest.game_id.clone();
@@ -149,10 +132,8 @@ impl PatchManager {
             format!("{}/", base_url)
         };
 
-        // Create install directory
         fs::create_dir_all(&install_path)?;
 
-        // Check which files need updating
         let files_to_update = self.check_for_updates(&manifest, &install_path).await?;
 
         // Load the previous installation once: it preserves play history
@@ -171,7 +152,6 @@ impl PatchManager {
         };
 
         if files_to_update.is_empty() {
-            // Already up to date
             let installation =
                 Self::build_installation(&manifest, &install_path, previous_installation.as_ref())?;
 
@@ -182,7 +162,6 @@ impl PatchManager {
             return Ok(installation);
         }
 
-        // Update state for downloading
         {
             let mut state = self.state.lock().await;
             state.status = PatchState::Downloading;
@@ -190,7 +169,6 @@ impl PatchManager {
             state.progress.total_bytes = files_to_update.iter().map(|f| f.size).sum();
         }
 
-        // Prepare download tasks
         let base = reqwest::Url::parse(&base_url)
             .map_err(|e| PatchError::Other(format!("Invalid base URL '{}': {}", base_url, e)))?;
         let mut download_tasks = Vec::new();
@@ -211,7 +189,6 @@ impl PatchManager {
             });
         }
 
-        // Update state progress before downloading
         {
             let mut state = self.state.lock().await;
             state.progress.total_files = files_to_update.len();
@@ -220,14 +197,12 @@ impl PatchManager {
             state.progress.downloaded_bytes = 0;
         }
 
-        // Download files
         {
             let dm = self.download_manager.read().await;
             dm.reset_cancel();
             dm.download_files(download_tasks, on_event.clone()).await?;
         }
 
-        // After download, ensure progress is complete
         {
             let mut state = self.state.lock().await;
             state.progress.completed_files = state.progress.total_files;
@@ -241,11 +216,9 @@ impl PatchManager {
         self.cleanup_orphaned_files(&manifest, &install_path, previous_files.as_ref())
             .await?;
 
-        // Create installation record
         let installation =
             Self::build_installation(&manifest, &install_path, previous_installation.as_ref())?;
 
-        // Update state
         {
             let mut state = self.state.lock().await;
             state.status = PatchState::Complete;
@@ -254,7 +227,6 @@ impl PatchManager {
         Ok(installation)
     }
 
-    /// Verify game installation integrity
     pub async fn verify_installation(
         &self,
         manifest: &GameManifest,
@@ -342,7 +314,6 @@ impl PatchManager {
             }
         }
 
-        // Remove empty directories
         self.remove_empty_dirs(install_path);
 
         Ok(())
@@ -372,7 +343,6 @@ impl PatchManager {
     }
 }
 
-/// Compute SHA256 hash of a file using streaming reads
 pub async fn compute_file_hash(path: &Path) -> Result<String, PatchError> {
     let file = tokio::fs::File::open(path).await?;
     let mut reader = BufReader::new(file);
@@ -390,7 +360,6 @@ pub async fn compute_file_hash(path: &Path) -> Result<String, PatchError> {
     Ok(hex::encode(hasher.finalize()))
 }
 
-/// Compute hash synchronously using streaming reads (for small files)
 pub fn compute_file_hash_sync(path: &Path) -> Result<String, PatchError> {
     let file = fs::File::open(path)?;
     let mut reader = std::io::BufReader::new(file);
@@ -418,17 +387,14 @@ pub struct VerificationResult {
 }
 
 impl VerificationResult {
-    /// Get total number of files checked
     pub fn total_files(&self) -> usize {
         self.valid_files + self.invalid_files.len() + self.missing_files.len()
     }
 
-    /// Get number of problematic files (invalid or missing)
     pub fn problematic_count(&self) -> usize {
         self.invalid_files.len() + self.missing_files.len()
     }
 
-    /// Create a summary string
     pub fn summary(&self) -> String {
         if self.is_valid {
             format!("All {} files verified successfully", self.valid_files)
@@ -442,7 +408,6 @@ impl VerificationResult {
         }
     }
 
-    /// Check if a specific file is problematic
     pub fn is_file_problematic(&self, file_path: &str) -> bool {
         self.invalid_files.contains(&file_path.to_string())
             || self.missing_files.contains(&file_path.to_string())
@@ -485,7 +450,6 @@ impl From<PatchError> for LauncherError {
     }
 }
 
-/// Save installation to disk
 pub fn save_installation(
     app_data_dir: &Path,
     installation: &GameInstallation,
@@ -502,7 +466,6 @@ pub fn save_installation(
     Ok(())
 }
 
-/// Load installation from disk
 pub fn load_installation(
     app_data_dir: &Path,
     game_id: &str,
@@ -544,7 +507,6 @@ pub fn record_playtime(
     Ok(installation)
 }
 
-/// List all installations
 pub fn list_installations(app_data_dir: &Path) -> Result<Vec<GameInstallation>, PatchError> {
     let installs_dir = app_data_dir.join("installations");
 

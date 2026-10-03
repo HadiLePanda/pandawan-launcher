@@ -22,7 +22,6 @@ use patch::{
 use path_utils::{assert_path_inside, validate_game_id};
 use types::*;
 
-// Global state for the launcher
 struct LauncherState {
     patch_manager: Arc<PatchManager>,
     settings: Arc<Mutex<LauncherSettings>>,
@@ -41,7 +40,6 @@ impl LauncherState {
 
         let _ = std::fs::create_dir_all(&app_data_dir);
 
-        // Load settings
         let settings = load_settings(&app_data_dir).await.unwrap_or_default();
 
         Self {
@@ -55,7 +53,6 @@ impl LauncherState {
     }
 }
 
-/// Get the default games install path
 fn get_default_games_path() -> PathBuf {
     dirs::data_local_dir()
         .unwrap_or_default()
@@ -297,13 +294,11 @@ async fn launch_game(
         .app_data_dir()
         .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    // Load installation
     let installation = match load_installation(&app_data_dir, &game_id)? {
         Some(inst) => inst,
         None => return Err(LauncherError::NotInstalled),
     };
 
-    // Check if already running
     {
         let running = state.running_games.lock().await;
         if running.contains_key(&game_id) {
@@ -311,7 +306,6 @@ async fn launch_game(
         }
     }
 
-    // Build executable path
     let exe_path = installation.install_path.join(&installation.executable);
 
     if !exe_path.exists() {
@@ -322,7 +316,6 @@ async fn launch_game(
 
     assert_path_inside_root(&exe_path, &installation.install_path)?;
 
-    // Launch game
     let mut command = TokioCommand::new(&exe_path);
     command
         .current_dir(&installation.install_path)
@@ -343,7 +336,6 @@ async fn launch_game(
                 running.insert(game_id.clone(), kill_tx);
             }
 
-            // Spawn a task to wait for process exit
             let app_handle = app.clone();
             let app_data_dir = app_data_dir.clone();
             let running_games = Arc::clone(&state.running_games);
@@ -441,7 +433,6 @@ async fn uninstall_game(
         .app_data_dir()
         .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    // Determine the allowed install root from settings
     let allowed_root = {
         let settings = state.settings.lock().await;
         settings
@@ -450,17 +441,14 @@ async fn uninstall_game(
             .unwrap_or_else(get_default_games_path)
     };
 
-    // Get installation info
     if let Some(installation) = load_installation(&app_data_dir, &game_id)? {
         // Safety check: refuse to delete paths outside the configured games root
         assert_path_inside_root(&installation.install_path, &allowed_root)?;
 
-        // Remove game files
         if installation.install_path.exists() {
             std::fs::remove_dir_all(&installation.install_path)?;
         }
 
-        // Remove installation record using the validated slug
         let install_file = app_data_dir
             .join("installations")
             .join(format!("{}.json", game_id));
@@ -567,7 +555,6 @@ async fn get_app_data_dir(app: AppHandle) -> Result<PathBuf, LauncherError> {
         .map_err(|e| LauncherError::Io(e.to_string()))
 }
 
-/// Load settings from disk
 async fn load_settings(
     app_data_dir: &std::path::Path,
 ) -> Result<LauncherSettings, Box<dyn std::error::Error>> {
@@ -583,7 +570,6 @@ async fn load_settings(
     Ok(settings)
 }
 
-/// Save settings to disk after validation
 fn save_settings_to_disk(
     app_data_dir: &std::path::Path,
     settings: &LauncherSettings,
@@ -795,7 +781,6 @@ mod tests {
     fn test_get_default_games_path() {
         let path = get_default_games_path();
 
-        // Path should contain "PandawanGames"
         assert!(path.to_string_lossy().contains("PandawanGames"));
     }
 
@@ -1001,7 +986,6 @@ mod tests {
         assert!(!needs_update); // Already newer
     }
 
-    // Helper function for check_game_update logic (extracted for testing)
     async fn check_game_update_logic(
         app_data_dir: &std::path::Path,
         manifest: &GameManifest,
@@ -1325,16 +1309,4 @@ mod tests {
         assert!(result.is_err());
         assert!(!temp_dir.path().join("settings.json").exists());
     }
-
-    // =========================================================================
-    // TypeScript Bindings Export
-    //
-    // This used to live here as the `export_typescript_bindings` test. It is
-    // unreachable in practice: a lib unit test links `webview2-com-sys`, which
-    // resolves the WebView2 loader when the process loads, so on a Windows host
-    // without that runtime the binary dies with STATUS_ENTRYPOINT_NOT_FOUND
-    // (0xC0000139) before any test body runs. It has been replaced by
-    // `cargo run --bin export-bindings`, which calls the same
-    // `create_specta_builder()` without starting the app and therefore works
-    // anywhere cargo does.
 }
