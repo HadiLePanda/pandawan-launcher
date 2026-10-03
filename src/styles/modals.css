@@ -389,6 +389,9 @@
   position: relative;
   cursor: pointer;
   transition: all 0.15s ease;
+  /* A fixed control in a flex row must not absorb the row's shortfall: a long
+     description beside it would otherwise shrink the switch below its width. */
+  flex-shrink: 0;
 }
 
 .toggle-active {
