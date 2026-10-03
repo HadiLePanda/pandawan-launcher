@@ -249,6 +249,19 @@ export function deletePrefix(keyPrefix, { endpoint } = {}) {
   );
 }
 
+/**
+ * Delete a single object. `source` is the full s3:// URI, as deletePrefix takes.
+ *
+ * No `--recursive`: this removes exactly the one key it is given, which is what
+ * lets a caller prove that key is unreferenced first (an artwork object whose
+ * URL catalog.json or manifest.json points at must never be removed).
+ */
+export function deleteObject(source, { endpoint, throwOnFailure } = {}) {
+  run('aws', ['s3', 'rm', source, '--endpoint-url', endpoint], `Deleting ${source}`, {
+    throwOnFailure,
+  });
+}
+
 export const S3 = {
   s3Uri: (bucket, key) => `s3://${bucket}/${key}`,
 };

@@ -5,30 +5,30 @@
  * these objects: objects are content-addressed, so a replaced banner leaves the
  * old one in place forever, and the operator needs to see that when cleaning up.
  * The bucket records no object-to-field mapping, so the server derives one from
- * the URLs the form holds - which is why an object labelled "not referenced by
- * any field" is the answer to a question, not decoration. Those URLs are
- * therefore read from the live metadata here rather than passed in from the
- * editor, because an unsaved draft's URL would label the list with a field that
- * is not published yet.
+ * the URLs the form holds.
+ *
+ * Deleting is the one action here that leaves the machine. It is offered only on
+ * an object nothing references - an in-use one is labelled and its delete is
+ * disabled - and the server re-checks every reference before it removes a key,
+ * because artwork is content-addressed and a live catalog page points at these
+ * URLs. The operator confirms with a window.confirm naming the object.
  *
  * `useArtworkObjects` below is that read, factored out because this is where
- * "which images exist" is answered. The image fields on the Metadata tab pick
- * from the same listing through it, so the picker and this tab can never drift
- * into offering different sets of images.
- *
- * Nothing here is editable. The editor lives on the Metadata tab; this tab shows
- * what is actually on the bucket and what is actually in use.
+ * "which images exist" is answered. The Metadata tab's MediaPicker picks from the
+ * same listing, so the picker and this tab can never drift into offering
+ * different sets of images.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
 
-import { apiGet } from '@lib/api';
+import { apiGet, apiPost, messageOf } from '@lib/api';
 import { ago, plural, updatedPhrase } from '@lib/format';
 import type { ArtworkObject, ArtworkPayload, MetaPayload } from '@/types/api';
 
 import { ImagePreview } from '@components/ImagePreview';
-import { ActionRow, EmptyState, ErrorLine, Panel, Section } from '@components/ui';
+import { EmptyState, ErrorLine } from '@components/ui';
+import { Button, Card, ErrorNote } from '@/panels/ui';
 
 import type { GameTabProps } from './types';
 
@@ -105,6 +105,9 @@ export function useArtworkObjects({
       const published = meta.data.fields ?? {};
       const values: Record<string, string> = {};
       for (const flag of IMAGE_FLAGS) values[flag] = published[flag]?.value ?? '';
+      // Screenshots are marked too: an unmarked screenshot reads as unused and
+      // would be offered for deletion while a live page still shows it.
+      values['screenshots'] = published['screenshots']?.value ?? '';
       if (field) values[field] = value ?? '';
 
       const result = await apiGet<ArtworkPayload>('/api/art', {
@@ -151,81 +154,95 @@ export function useArtworkObjects({
   return { objects, ageMs, loading, refreshing, error, reload: load };
 }
 
-export function ArtworkTab({ gameId, channel, onPublished }: GameTabProps) {
+export function ArtworkTab({ gameId, channel }: GameTabProps) {
   const { objects, ageMs, loading, refreshing, error, reload } = useArtworkObjects({
     gameId,
     channel,
   });
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const inUse = objects.filter((object) => object.inUse);
   const unused = objects.filter((object) => !object.inUse);
 
+  async function remove(object: ArtworkObject) {
+    // Opt-in, and the confirmation names the exact object: an irreversible
+    // delete must never be reachable without saying what it removes.
+    if (
+      !window.confirm(
+        `Delete ${object.name} from the bucket? Its URL stops resolving and cannot be recovered.`
+      )
+    ) {
+      return;
+    }
+    setBusyKey(object.key);
+    setActionError(null);
+    try {
+      await apiPost('/api/art/delete', { key: object.key, confirm: true });
+      await reload(true);
+    } catch (err) {
+      // The server refuses a referenced object with the fields that name it;
+      // shown on the panel rather than swallowed.
+      setActionError(messageOf(err));
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   return (
-    <>
-      <Section
-        title={`On the bucket - ${gameId} / ${channel}`}
-        actions={
-          <button
-            type="button"
-            onClick={() => void reload(true)}
-            disabled={refreshing}
-            className="dw-button"
-            aria-label="Re-list the artwork objects on the bucket"
-          >
-            <RefreshCw
-              className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`}
-              aria-hidden="true"
+    <Card>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="m-0 text-[12px] text-ink-subtle">
+          {plural(inUse.length, 'object')} in use, {unused.length} superseded.
+          {updatedPhrase(ageMs) ? ` ${updatedPhrase(ageMs)}.` : ''}
+        </p>
+        <Button
+          size="sm"
+          onClick={() => void reload(true)}
+          disabled={refreshing}
+          aria-label="Re-list the artwork objects on the bucket"
+        >
+          <RefreshCw className={refreshing ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden />
+          Refresh
+        </Button>
+      </div>
+
+      {error ? <ErrorLine>{error}</ErrorLine> : null}
+      {actionError ? <ErrorNote>{actionError}</ErrorNote> : null}
+
+      {loading ? (
+        <p className="text-[12.5px] text-ink-subtle">Listing objects&hellip;</p>
+      ) : !objects.length ? (
+        <EmptyState title="No artwork is published for this game and channel yet.">
+          Upload an icon or banner from the Metadata tab.
+        </EmptyState>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3">
+          {/* Newest first, which is the server's sort order: the picture a player
+              sees today leads the list. */}
+          {objects.map((object) => (
+            <ArtworkCard
+              key={object.key}
+              object={object}
+              busy={busyKey === object.key}
+              onDelete={() => void remove(object)}
             />
-            Refresh
-          </button>
-        }
-      >
-        {error && <ErrorLine>{error}</ErrorLine>}
-
-        {loading ? (
-          <p className="text-[12.5px] text-ink-subtle">Listing objects&hellip;</p>
-        ) : !objects.length ? (
-          <EmptyState title="No artwork is published for this game and channel yet.">
-            Upload an icon or banner from the Metadata tab.
-          </EmptyState>
-        ) : (
-          <>
-            <p className="m-0 text-[12px] text-ink-subtle">
-              {plural(inUse.length, 'object')} in use, {unused.length} superseded.
-              {/* One footnote, not two sentences. `updatedPhrase` already reads
-                  "updated 2 minutes", so prefixing it with a verb produced
-                  "Listed updated 2 minutes". */}
-              {updatedPhrase(ageMs) ? ` ${updatedPhrase(ageMs)}.` : ''}
-            </p>
-
-            <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3">
-              {/* Newest first, which is the server's sort order: the picture a
-                  player sees today leads the list. */}
-              {objects.map((object) => (
-                <ArtworkCard key={object.key} object={object} />
-              ))}
-            </div>
-          </>
-        )}
-      </Section>
-
-      <Panel>
-        <ActionRow>
-          <button
-            type="button"
-            onClick={onPublished}
-            className="dw-button"
-            title="Re-read the inventory so the rail and header reflect a publish"
-          >
-            Refresh inventory
-          </button>
-        </ActionRow>
-      </Panel>
-    </>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
-function ArtworkCard({ object }: { object: ArtworkObject }) {
+function ArtworkCard({
+  object,
+  busy,
+  onDelete,
+}: {
+  object: ArtworkObject;
+  busy: boolean;
+  onDelete: () => void;
+}) {
   return (
     <div
       className={[
@@ -268,6 +285,28 @@ function ArtworkCard({ object }: { object: ArtworkObject }) {
           >
             <ExternalLink className="size-3" aria-hidden="true" />
           </a>
+          {/* An in-use object cannot be deleted, and says so rather than offering
+              an action the server would refuse. */}
+          <Button
+            size="sm"
+            iconOnly
+            variant={object.inUse ? 'quiet' : 'danger'}
+            disabled={object.inUse || busy}
+            busy={busy}
+            onClick={onDelete}
+            title={
+              object.inUse
+                ? 'In use - remove it from the field first'
+                : `Delete ${object.name} from the bucket`
+            }
+            aria-label={
+              object.inUse
+                ? `${object.name} is in use and cannot be deleted`
+                : `Delete ${object.name} from the bucket`
+            }
+          >
+            <Trash2 className="size-3" aria-hidden="true" />
+          </Button>
         </div>
       </div>
     </div>

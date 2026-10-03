@@ -24,7 +24,15 @@ import { fileURLToPath } from 'node:url';
 // The in-server catalog write reuses r2.mjs's upload/NO_CACHE so its
 // cache-control header matches publish-catalog.mjs exactly: a mutable index
 // served under a long-lived cache header makes a publish look like a no-op.
-import { NO_CACHE, S3, listKeysWithMeta, loadDotEnv, r2Config, upload } from './lib/r2.mjs';
+import {
+  NO_CACHE,
+  S3,
+  deleteObject,
+  listKeysWithMeta,
+  loadDotEnv,
+  r2Config,
+  upload,
+} from './lib/r2.mjs';
 // The field contract is shared with the publisher, so the form cannot offer a
 // field the script would silently ignore.
 import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-fields.mjs';
@@ -41,6 +49,7 @@ import {
 import {
   describeArtwork,
   MAX_ARTWORK_BYTES,
+  referencesObject,
   safeLocalName,
   selectArtworkObjects,
   sortArtwork,
@@ -1870,6 +1879,9 @@ const server = http.createServer(async (req, res) => {
         url.searchParams.get(metadataFlag) ?? '',
       ])
     );
+    // Screenshots are a list field the listing must mark too: without this a
+    // screenshot object reads as unused and invites a delete that breaks a page.
+    values['screenshots'] = url.searchParams.get('screenshots') ?? '';
 
     let prefix;
     if (scope === 'news') {
@@ -1956,6 +1968,108 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(500).end(`could not stage the file: ${String(err)}`);
     }
+    return;
+  }
+
+  if (url.pathname === '/api/art/delete' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (!payload) return;
+
+    const key = String(payload.key ?? '').trim();
+    // Removing an object from the bucket cannot be undone, so it is refused
+    // without an explicit confirmation - the client sends confirm: true only
+    // after a window.confirm that names the object.
+    if (payload.confirm !== true) {
+      res
+        .writeHead(400)
+        .end('Deleting an artwork object cannot be undone. Send confirm: true to proceed.');
+      return;
+    }
+
+    // Only a plausible artwork key reaches aws: a single object directly under a
+    // game's channel (or the news prefix), with an image extension and no path
+    // escape. Anything else is a bug, not a delete.
+    const isNews = key.startsWith(`${NEWS_ART_PREFIX}/`);
+    const segments = key.split('/');
+    const plausible =
+      (key.startsWith('games/') || isNews) &&
+      !key.includes('..') &&
+      segments.length === (isNews ? 3 : 4) &&
+      /\.(png|jpe?g|webp|gif)$/i.test(key);
+    if (!plausible) {
+      res.writeHead(400).end('That is not an artwork key.');
+      return;
+    }
+
+    const object = { key, url: `${String(cdnOrigin).replace(/\/+$/, '')}/${key}` };
+
+    // CRITICAL: artwork is content-addressed and its URLs are referenced by
+    // catalog.json and manifest.json, so deleting an object something still
+    // points at breaks a live store page. Every published value is checked
+    // FIRST; a referenced object is refused with the fields that name it.
+    const referencedBy = [];
+    const values = [];
+    const [live, local] = await Promise.all([readLiveCatalog(), readLocalCatalog()]);
+    for (const doc of [live.catalog, local.catalog]) {
+      for (const game of doc?.games ?? []) {
+        for (const [field, value] of Object.entries(game ?? {})) {
+          for (const one of Array.isArray(value) ? value : [value]) {
+            if (typeof one === 'string' && one.trim())
+              values.push([`${game?.id ?? 'a game'}.${field}`, one]);
+          }
+        }
+      }
+    }
+    // games/<id>/<channel>/<name>: the channel's manifest can name the object
+    // even when no catalog entry does.
+    const [, gameId, channel] = segments;
+    try {
+      const meta = await readGameMetadata(gameId ?? '', channel ?? '', {
+        cdnOrigin,
+        fields: FIELDS,
+      });
+      for (const [flag, field] of Object.entries(meta.fields ?? {})) {
+        const value = field?.value;
+        for (const one of Array.isArray(value) ? value : String(value ?? '').split(',')) {
+          if (String(one).trim()) values.push([flag, String(one)]);
+        }
+      }
+    } catch {
+      // A manifest that cannot be read does not excuse skipping the catalog
+      // check that already ran.
+    }
+    for (const [field, value] of values) {
+      if (referencesObject(value, object)) referencedBy.push(field);
+    }
+
+    if (referencedBy.length) {
+      res
+        .writeHead(409)
+        .end(
+          `${key} is still referenced by ${[...new Set(referencedBy)].join(', ')}; ` +
+            'deleting it would break a live page, so it was not deleted.'
+        );
+      return;
+    }
+
+    try {
+      // throwOnFailure: a plain run() calls process.exit(1) on a non-zero aws
+      // exit, which would kill the dashboard instead of reporting the refusal.
+      deleteObject(S3.s3Uri(bucket, key), { endpoint, throwOnFailure: true });
+    } catch (err) {
+      res.writeHead(500).end(`could not delete ${key}: ${String(err)}`);
+      return;
+    }
+
+    // The listing changed, as did the metadata read that marks which object each
+    // field points at, the inventory the rail is built from, and the catalog
+    // whose entries name these URLs.
+    invalidateCache('/api/art');
+    invalidateCache('/api/meta');
+    invalidateCache('/api/inventory');
+    invalidateCache('/api/catalog');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, deleted: key }));
     return;
   }
 

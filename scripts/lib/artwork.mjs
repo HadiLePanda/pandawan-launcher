@@ -111,15 +111,33 @@ function references(value, object) {
 }
 
 /**
+ * Whether a stored value points at this object, by key, absolute URL or
+ * relative path. Exported so a delete can prove an object is unreferenced
+ * before removing it - the one decision that must match what the listing says.
+ */
+export function referencesObject(value, object) {
+  return references(value, object);
+}
+
+/** A stored value as the individual references it may carry. */
+function referenceCandidates(value) {
+  const parts = Array.isArray(value) ? value : String(value ?? '').split(',');
+  return parts.map((part) => String(part).trim()).filter(Boolean);
+}
+
+/**
  * Attach each published image to the metadata field pointing at it.
  *
- * The bucket records no object-to-field mapping, so it is derived from the URLs the
- * form loaded. Without it a directory of hash-named files cannot be read.
+ * The bucket records no object-to-field mapping, so it is derived from the URLs
+ * the form loaded. Without it a directory of hash-named files cannot be read.
+ * A list field (screenshots) arrives comma-joined or as an array, so it is
+ * split: otherwise the joined string matches no object and every screenshot
+ * would read as unused.
  */
 export function describeArtwork(objects, valuesByFlag) {
-  const values = Object.entries(valuesByFlag ?? {})
-    .map(([flag, value]) => [flag, String(value ?? '').trim()])
-    .filter(([, value]) => value !== '');
+  const values = Object.entries(valuesByFlag ?? {}).flatMap(([flag, value]) =>
+    referenceCandidates(value).map((one) => [flag, one])
+  );
 
   return objects.map((object) => {
     const match = values.find(([, value]) => references(value, object));
