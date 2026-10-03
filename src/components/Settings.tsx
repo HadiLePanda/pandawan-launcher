@@ -53,8 +53,7 @@ const DEFAULT_SETTINGS: LauncherSettings = {
   maxConcurrentDownloads: 4,
   autoUpdateGames: true,
   autoUpdateLauncher: true,
-  minimizeToTray: true,
-  closeToTray: false,
+  closeToTray: true,
   trayHintShown: false,
   language: 'en',
   theme: 'adaptive',
@@ -333,12 +332,6 @@ function GeneralSettings({ settings, onChange }: TabProps) {
         </select>
       </SettingItem>
 
-      <ToggleSetting
-        title={t('settings.general.minimizeToTray.title')}
-        description={t('settings.general.minimizeToTray.description')}
-        checked={settings.minimizeToTray}
-        onChange={(checked) => onChange({ minimizeToTray: checked })}
-      />
       <ToggleSetting
         title={t('settings.general.closeToTray.title')}
         description={t('settings.general.closeToTray.description')}

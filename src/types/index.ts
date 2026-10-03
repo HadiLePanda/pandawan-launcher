@@ -136,7 +136,6 @@ export interface LauncherSettings {
   maxConcurrentDownloads: number;
   autoUpdateGames: boolean;
   autoUpdateLauncher: boolean;
-  minimizeToTray: boolean;
   closeToTray: boolean;
   /** One-time tray tutorial has been shown; persisted so it never returns. */
   trayHintShown: boolean;

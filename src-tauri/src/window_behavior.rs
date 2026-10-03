@@ -3,15 +3,30 @@
 //! Kept as a pure function so the policy is testable without a Tauri runtime
 //! and cannot hide inside a window-event handler.
 
-/// Whether closing the main window should dock to the tray instead of exiting.
+/// What a close of the main window should do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseAction {
+    /// Hide the window; the app keeps running in the tray.
+    Dock,
+    /// Quit. A running game is stopped through the waiter that owns its
+    /// process, so the session still records its playtime.
+    Quit,
+}
+
+/// Closing is the one preference: `close_to_tray` off means the user asked for a
+/// quit on close, and a quit that left a game running would detach it from the
+/// launcher that tracks it.
 ///
-/// A running game always docks, regardless of the `close_to_tray` setting. That
-/// override is not a preference: the launcher owns the waiter task that records
-/// playtime and emits `game-exited`, so exiting the launcher mid-game silently
-/// loses the whole session's playtime. Refusing to quit is the lesser surprise,
-/// and the tray's explicit Quit still offers a real exit after a confirmation.
-pub fn should_dock_on_close(close_to_tray: bool, game_running: bool) -> bool {
-    close_to_tray || game_running
+/// Whether a game is running is deliberately NOT an input. It used to override
+/// the setting and dock anyway, which made the toggle a lie: turning it off
+/// while a game played still refused to close. The quit path stops the game
+/// through the waiter instead, so its playtime is still recorded.
+pub fn close_action(close_to_tray: bool) -> CloseAction {
+    if close_to_tray {
+        CloseAction::Dock
+    } else {
+        CloseAction::Quit
+    }
 }
 
 #[cfg(test)]
@@ -19,22 +34,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn quits_when_neither_is_set() {
-        assert!(!should_dock_on_close(false, false));
-    }
-
-    #[test]
     fn docks_when_close_to_tray_is_set() {
-        assert!(should_dock_on_close(true, false));
+        assert_eq!(close_action(true), CloseAction::Dock);
     }
 
     #[test]
-    fn docks_when_a_game_is_running_even_with_the_setting_off() {
-        assert!(should_dock_on_close(false, true));
-    }
-
-    #[test]
-    fn docks_when_both_are_set() {
-        assert!(should_dock_on_close(true, true));
+    fn quits_when_close_to_tray_is_off() {
+        assert_eq!(close_action(false), CloseAction::Quit);
     }
 }

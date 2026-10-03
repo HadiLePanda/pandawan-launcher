@@ -580,8 +580,7 @@ fn test_launcher_settings_default() {
     assert_eq!(settings.max_concurrent_downloads, 4);
     assert!(settings.auto_update_games);
     assert!(settings.auto_update_launcher);
-    assert!(settings.minimize_to_tray);
-    assert!(!settings.close_to_tray);
+    assert!(settings.close_to_tray);
     assert_eq!(settings.language, "en");
     assert!(settings.notify_game_updates);
     assert!(settings.notify_download_complete);
@@ -622,8 +621,7 @@ fn test_launcher_settings_serialization() {
         max_concurrent_downloads: 8,
         auto_update_games: false,
         auto_update_launcher: false,
-        minimize_to_tray: false,
-        close_to_tray: true,
+        close_to_tray: false,
         language: "fr".to_string(),
         theme: "dark".to_string(),
         ..Default::default()

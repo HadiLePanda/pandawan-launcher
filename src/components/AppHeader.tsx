@@ -236,10 +236,9 @@ export function MainNav({
 
   const handleRestartUpdate = () => {
     // Relaunch replaces the process, so the waiter that records playtime dies
-    // with it: the same hazard as quitting mid-game, and the same rule that
-    // makes a running game dock instead of quit (should_dock_on_close's
-    // game_running term). Declining defers - the staged update still applies the
-    // next time the launcher really exits, so waiting loses nothing.
+    // with it: a game is left running with nobody tracking its session.
+    // Declining defers - the staged update still applies the next time the
+    // launcher really exits, so waiting loses nothing.
     if (gameRunning && !confirm(t('topBar.restartWhileGameRunning'))) return;
     setIsUpdatePopoverOpen(false);
     setIsRestarting(true);

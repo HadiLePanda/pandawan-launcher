@@ -92,8 +92,7 @@ pub fn create_test_settings() -> LauncherSettings {
         max_concurrent_downloads: 4,
         auto_update_games: true,
         auto_update_launcher: true,
-        minimize_to_tray: true,
-        close_to_tray: false,
+        close_to_tray: true,
         language: "en".to_string(),
         theme: "adaptive".to_string(),
         ..Default::default()

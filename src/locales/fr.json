@@ -202,13 +202,9 @@
         "light": "Clair",
         "title": "Thème"
       },
-      "minimizeToTray": {
-        "title": "Réduire dans la barre d'état",
-        "description": "Garder le launcher en arrière-plan dans la barre d'état quand tu le réduis"
-      },
       "closeToTray": {
         "title": "Fermer dans la barre d'état",
-        "description": "Garder le launcher en arrière-plan dans la barre d'état quand tu fermes la fenêtre. Désactive-le pour quitter à la fermeture — sauf si un jeu tourne"
+        "description": "Fermer la fenêtre cache le launcher"
       }
     },
     "notifications": {
@@ -293,12 +289,12 @@
     "issueMany": "{{count}} fichiers à vérifier"
   },
   "tray": {
-    "quitWhileGameRunning": "Un jeu est en cours. Quitter maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Quitter quand même\u00a0?"
+    "quitWhileGameRunning": "Un jeu est en cours. Quitter l'arrêtera. Quitter quand même\u00a0?"
   },
   "trayHint": {
     "notificationTitle": "Le launcher Pandawan tourne toujours",
     "notificationBody": "Il est dans la barre d'état près de l'horloge. Tu ne le vois pas\u00a0? Clique sur ^ pour afficher les icônes masquées, puis fais glisser l'icône du launcher sur la barre des tâches pour la garder visible.",
-    "popoverMessage": "Le launcher continue de tourner dans la barre d'état quand tu le fermes ou le réduis. Si l'icône n'est pas près de l'horloge, clique sur ^ pour afficher les icônes masquées, puis fais-la glisser sur la barre des tâches pour l'épingler. Modifie ce comportement dans Paramètres > Général.",
+    "popoverMessage": "Le launcher continue de tourner dans la barre d'état quand tu le fermes. Si l'icône n'est pas près de l'horloge, clique sur ^ pour afficher les icônes masquées, puis fais-la glisser sur la barre des tâches pour l'épingler. Modifie ce comportement dans Paramètres > Général.",
     "changeSetting": "Modifier ce réglage"
   },
   "windowControls": {

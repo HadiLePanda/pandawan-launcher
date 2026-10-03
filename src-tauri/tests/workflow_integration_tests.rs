@@ -706,7 +706,7 @@ fn test_settings_migration_workflow() {
     // Missing fields should use defaults
     assert!(settings.auto_update_games); // Default
     assert!(settings.auto_update_launcher); // Default
-    assert!(!settings.close_to_tray); // Default
+    assert!(settings.close_to_tray); // Default
 }
 
 #[test]

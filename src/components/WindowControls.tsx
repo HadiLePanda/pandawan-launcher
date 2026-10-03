@@ -2,16 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useLauncherStore } from '@/lib/store';
 import { logger } from '@/lib/logger';
-import { commands } from '@/lib/commands';
 import { quitLauncher } from '@/lib/updater-service';
 
 export function WindowControls() {
   const { t } = useTranslation();
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
-  const minimizeToTray = useLauncherStore((s) => s.settings?.minimizeToTray ?? true);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -30,19 +27,10 @@ export function WindowControls() {
   }, [appWindow]);
 
   const handleMinimize = async () => {
-    // Docking to the tray is a hide, not a minimize: a minimized frameless
-    // window still has no taskbar entry here, so the tray is the only way back.
-    if (!minimizeToTray) {
-      await appWindow.minimize();
-      return;
-    }
-    try {
-      await commands.dockToTray();
-    } catch (err) {
-      // A minimize that silently does nothing is worse than a real minimize.
-      logger.warn('Hiding to the tray failed, minimizing instead', { error: String(err) });
-      await appWindow.minimize();
-    }
+    // Minimizing always goes to the taskbar. Close-to-tray is the only tray
+    // preference, so there is nothing to read here and a minimize that hid the
+    // window would leave no taskbar entry to restore it from.
+    await appWindow.minimize();
   };
 
   const handleMaximize = async () => {

@@ -202,13 +202,9 @@
         "light": "Light",
         "title": "Theme"
       },
-      "minimizeToTray": {
-        "title": "Minimize to tray",
-        "description": "Keep the launcher running in the tray when you minimize it"
-      },
       "closeToTray": {
         "title": "Close to tray",
-        "description": "Keep the launcher running in the tray when you close the window. Turn this off to quit when closing — unless a game is running"
+        "description": "Closing the window hides the launcher"
       }
     },
     "notifications": {
@@ -293,12 +289,12 @@
     "issueMany": "{{count}} files need attention"
   },
   "tray": {
-    "quitWhileGameRunning": "A game is running. Quitting now stops tracking this session — its playtime will not be recorded. Quit anyway?"
+    "quitWhileGameRunning": "A game is running. Quitting will stop it. Quit anyway?"
   },
   "trayHint": {
     "notificationTitle": "Pandawan Launcher is still running",
     "notificationBody": "It's in the tray near the clock. Don't see it? Click ^ to show hidden icons, then drag the launcher icon onto the taskbar to keep it visible.",
-    "popoverMessage": "The launcher keeps running in the tray when you close or minimise it. If the icon isn't near the clock, click ^ to show hidden icons, then drag it onto the taskbar to pin it. Change this in Settings > General.",
+    "popoverMessage": "The launcher keeps running in the tray when you close it. If the icon isn't near the clock, click ^ to show hidden icons, then drag it onto the taskbar to pin it. Change this in Settings > General.",
     "changeSetting": "Change this"
   },
   "windowControls": {

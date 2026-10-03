@@ -329,9 +329,10 @@ function App() {
   }, [updateGameStatus, refreshInstallation]);
 
   // The tray drives two actions that only exist in the frontend: the update
-  // check lives in the JS updater plugin, and quitting while a game runs needs a
-  // confirmation naming the playtime it will drop. Event names mirror
-  // tray::EVENT_CHECK_UPDATES / EVENT_QUIT_REQUESTED in Rust.
+  // check lives in the JS updater plugin, and quitting needs a confirmation
+  // naming the game it will stop. The window close reaches this too, when
+  // close-to-tray is off. Event names mirror tray::EVENT_CHECK_UPDATES /
+  // EVENT_QUIT_REQUESTED in Rust.
   useEffect(() => {
     const quit = listen('tray-quit-requested', () => {
       if (confirm(t('tray.quitWhileGameRunning'))) {

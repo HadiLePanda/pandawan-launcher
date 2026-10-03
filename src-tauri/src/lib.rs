@@ -29,7 +29,15 @@ struct LauncherState {
     settings: Arc<Mutex<LauncherSettings>>,
     // Oneshot senders, not child handles: the waiter task owns the process and
     // must record playtime whether the game exits or the launcher closes it.
-    running_games: Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>,
+    running_games: Arc<Mutex<HashMap<String, RunningProcess>>>,
+}
+
+/// One launched game: how to stop it, and how to know its playtime is written.
+struct RunningProcess {
+    /// Tells the waiter to kill the child.
+    kill: tokio::sync::oneshot::Sender<()>,
+    /// Resolves once the waiter has reaped the child and recorded playtime.
+    done: tokio::sync::oneshot::Receiver<()>,
 }
 
 impl LauncherState {
@@ -75,18 +83,47 @@ async fn close_game(app: AppHandle, game_id: String) -> Result<(), LauncherError
 /// The stop path shared by the `close_game` command and the tray's Stop item.
 pub(crate) async fn stop_game_by_id(app: &AppHandle, game_id: &str) -> Result<(), LauncherError> {
     let state = app.state::<LauncherState>();
-    let killer = {
+    let running = {
         let mut running = state.running_games.lock().await;
         running.remove(game_id)
     };
 
-    match killer {
-        Some(killer) => {
-            // The waiter reaps the process; awaiting it here too would be a double wait.
-            let _ = killer.send(());
+    match running {
+        Some(process) => {
+            // The waiter reaps the process; awaiting it here too would be a
+            // double wait. `done` is the acknowledgement that playtime is on
+            // disk, which a quit depends on.
+            let RunningProcess { kill, done } = process;
+            let _ = kill.send(());
+            let _ = done.await;
             Ok(())
         }
         None => Err(LauncherError::NotRunning),
+    }
+}
+
+/// Stop every running game and wait for each playtime write to land.
+///
+/// Called on the quit path, so the app never exits while a waiter still owns a
+/// live child: an orphaned game would keep running with nobody recording it.
+async fn stop_all_games(app: &AppHandle) {
+    let state = app.state::<LauncherState>();
+    let running = {
+        let mut running = state.running_games.lock().await;
+        std::mem::take(&mut *running)
+    };
+
+    let mut pending = Vec::new();
+    for (_, process) in running {
+        let RunningProcess { kill, done } = process;
+        let _ = kill.send(());
+        pending.push(done);
+    }
+
+    // `done` resolves after the waiter has written playtime, so this is the
+    // point at which nothing is left to record.
+    for done in pending {
+        let _ = done.await;
     }
 }
 
@@ -339,10 +376,17 @@ async fn launch_game(
             let pid = child.id();
             let launched_at = Instant::now();
             let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
+            let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
 
             {
                 let mut running = state.running_games.lock().await;
-                running.insert(game_id.clone(), kill_tx);
+                running.insert(
+                    game_id.clone(),
+                    RunningProcess {
+                        kill: kill_tx,
+                        done: done_rx,
+                    },
+                );
             }
 
             app.state::<tray::TrayState>()
@@ -387,6 +431,8 @@ async fn launch_game(
                         duration_seconds,
                     },
                 );
+                // Last: a quit waiting on `done` is waiting on the playtime write.
+                let _ = done_tx.send(());
             });
 
             Ok(LaunchResult {
@@ -598,29 +644,17 @@ async fn set_launcher_update_available(
     Ok(())
 }
 
-/// Exit the launcher. The frontend calls this only after confirming, when a
-/// game is running and a quit would drop that session's playtime.
-#[tauri::command]
-#[specta::specta]
-fn quit_launcher(app: AppHandle) -> Result<(), LauncherError> {
-    app.exit(0);
-    Ok(())
-}
-
-/// Hide the window to the tray.
+/// Exit the launcher, stopping any running game first.
 ///
-/// The single dock entry point for the minimize button, so the dock event is
-/// emitted from one place regardless of how the window was hidden.
+/// A quit must not orphan a game: the waiter task is what records its playtime,
+/// so it has to run to completion before the process goes. The frontend calls
+/// this only after confirming, either from the tray's Quit or from the window
+/// close when close-to-tray is off.
 #[tauri::command]
 #[specta::specta]
-async fn dock_to_tray(app: AppHandle) -> Result<(), LauncherError> {
-    let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| LauncherError::Other("the main window is unavailable".to_string()))?;
-    window
-        .hide()
-        .map_err(|e| LauncherError::Other(e.to_string()))?;
-    let _ = app.emit(tray::EVENT_TRAY_DOCKED, ());
+async fn quit_launcher(app: AppHandle) -> Result<(), LauncherError> {
+    stop_all_games(&app).await;
+    app.exit(0);
     Ok(())
 }
 
@@ -677,7 +711,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             get_app_data_dir,
             set_launcher_update_available,
             quit_launcher,
-            dock_to_tray,
         ])
         .events(collect_events![GameExited])
 }
@@ -742,20 +775,32 @@ pub fn run() {
                 if window.label() != "main" {
                     return;
                 }
-                let (close_to_tray, game_running) = {
-                    let state = window.app_handle().state::<tray::TrayState>();
-                    state.close_policy()
-                };
-                if window_behavior::should_dock_on_close(close_to_tray, game_running) {
-                    // Hide rather than exit: the app keeps running in the tray.
-                    api.prevent_close();
-                    if let Err(e) = window.hide() {
-                        // Never let a close leave the launcher in a dead state
-                        // where the window is neither hidden nor exiting.
-                        eprintln!("Failed to hide the window to the tray, exiting instead: {e}");
-                        window.app_handle().exit(0);
-                    } else {
-                        let _ = window.app_handle().emit(tray::EVENT_TRAY_DOCKED, ());
+                let state = window.app_handle().state::<tray::TrayState>();
+                match window_behavior::close_action(state.close_to_tray()) {
+                    window_behavior::CloseAction::Dock => {
+                        // Hide rather than exit: the app keeps running in the tray.
+                        api.prevent_close();
+                        if let Err(e) = window.hide() {
+                            // Never let a close leave the launcher in a dead state
+                            // where the window is neither hidden nor exiting.
+                            eprintln!(
+                                "Failed to hide the window to the tray, exiting instead: {e}"
+                            );
+                            window.app_handle().exit(0);
+                        } else {
+                            let _ = window.app_handle().emit(tray::EVENT_TRAY_DOCKED, ());
+                        }
+                    }
+                    window_behavior::CloseAction::Quit => {
+                        // A game must not outlive the process tracking it, so a
+                        // quit stops it through the waiter first, which records
+                        // its playtime. That needs the frontend's confirmation, and
+                        // an unconfirmed quit may cancel - so hold the window open
+                        // rather than closing on the user's click alone.
+                        if state.any_running() {
+                            let _ = window.app_handle().emit(tray::EVENT_QUIT_REQUESTED, ());
+                            api.prevent_close();
+                        }
                     }
                 }
             }
@@ -1122,7 +1167,7 @@ mod tests {
         assert_eq!(settings.max_concurrent_downloads, 4);
         assert_eq!(settings.language, "en");
         assert!(settings.auto_update_games);
-        assert!(!settings.close_to_tray);
+        assert!(settings.close_to_tray);
     }
 
     // =========================================================================

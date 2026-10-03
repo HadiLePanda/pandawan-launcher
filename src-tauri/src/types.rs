@@ -369,7 +369,6 @@ pub struct LauncherSettings {
     pub max_concurrent_downloads: usize,
     pub auto_update_games: bool,
     pub auto_update_launcher: bool,
-    pub minimize_to_tray: bool,
     pub close_to_tray: bool,
     /// Whether the one-time "still running in the tray" tutorial has been
     /// shown. Persisted here rather than in the webview store so clearing that
@@ -411,8 +410,10 @@ impl Default for LauncherSettings {
             max_concurrent_downloads: 4,
             auto_update_games: true,
             auto_update_launcher: true,
-            minimize_to_tray: true,
-            close_to_tray: false,
+            // Closing hides to the tray by default, as Steam and Battle.net do.
+            // A close that quits is the deliberate opt-out, and the old default
+            // (quit) meant the one setting that people look for was off.
+            close_to_tray: true,
             tray_hint_shown: false,
             language: "en".to_string(),
             theme: "adaptive".to_string(),
@@ -1084,8 +1085,7 @@ mod tests {
         assert_eq!(settings.language, "en");
         assert!(settings.auto_update_games);
         assert!(settings.auto_update_launcher);
-        assert!(settings.minimize_to_tray);
-        assert!(!settings.close_to_tray);
+        assert!(settings.close_to_tray);
         assert!(!settings.tray_hint_shown);
         assert!(settings.max_download_speed.is_none());
         assert!(settings.games_install_path.is_none());
@@ -1101,8 +1101,7 @@ mod tests {
             max_concurrent_downloads: 8,
             auto_update_games: false,
             auto_update_launcher: false,
-            minimize_to_tray: false,
-            close_to_tray: true,
+            close_to_tray: false,
             tray_hint_shown: false,
             language: "fr".to_string(),
             theme: "dark".to_string(),
@@ -1127,15 +1126,17 @@ mod tests {
 
     #[test]
     fn test_launcher_settings_deserialization_ignores_removed_fields() {
-        // `notifyFriendActivity` / `notifyNewsEvents` were removed from the
-        // schema because no code read them. Settings files written by older
-        // builds still contain those keys, so loading must ignore them rather
-        // than fail and reset the user's configuration.
+        // `notifyFriendActivity` / `notifyNewsEvents` / `minimizeToTray` were
+        // removed from the schema: the first two because no code read them, the
+        // last because close-to-tray became the single tray toggle. Settings
+        // files written by older builds still contain those keys, so loading must
+        // ignore them rather than fail and reset the user's configuration.
         let json = r#"{
             "language": "de",
             "theme": "light",
             "notifyFriendActivity": true,
-            "notifyNewsEvents": false
+            "notifyNewsEvents": false,
+            "minimizeToTray": true
         }"#;
 
         let settings: LauncherSettings = serde_json::from_str(json).expect("Failed to deserialize");

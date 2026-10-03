@@ -42,11 +42,13 @@ impl TrayState {
         }))
     }
 
-    /// The close policy and whether a game is running, read together so the
-    /// window handler cannot observe a half-updated pair.
-    pub fn close_policy(&self) -> (bool, bool) {
-        let data = self.0.lock().unwrap();
-        (data.close_to_tray, !data.running.is_empty())
+    /// The close policy the window handler needs, read synchronously.
+    pub fn close_to_tray(&self) -> bool {
+        self.0.lock().unwrap().close_to_tray
+    }
+
+    pub fn any_running(&self) -> bool {
+        !self.0.lock().unwrap().running.is_empty()
     }
 
     pub fn add_running(&self, game: RunningGame) {
