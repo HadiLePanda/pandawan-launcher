@@ -34,6 +34,12 @@ jobs:
       - name: Type check and build
         run: npm run build
 
+      # The dashboard is a second Vite app with its own tsconfig, which the root
+      # `tsc` does not include (include: ["src"]). Without this step a type error
+      # or a build break in it ships unnoticed.
+      - name: Type check and build (dashboard)
+        run: npm run dashboard:build
+
       - name: Test
         run: npm test
 
