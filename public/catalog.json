@@ -17,7 +17,10 @@
       ],
       "iconUrl": "games/misspell/alpha/icon-f9fc90b2.png",
       "bannerUrl": "games/misspell/alpha/banner-db45f64a.png",
-      "screenshots": [],
+      "screenshots": [
+        "games/misspell/alpha/artwork-1599892c.png",
+        "games/misspell/alpha/banner-db45f64a.png"
+      ],
       "supportedPlatforms": [
         "windows",
         "macos"
