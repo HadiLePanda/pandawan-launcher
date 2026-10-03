@@ -150,7 +150,9 @@ pub fn sanitize_relative_path(path: &str) -> Result<PathBuf, PathError> {
     }
 
     let as_path = Path::new(path);
-    if as_path.is_absolute() {
+    // `is_absolute` is false for a Windows root-relative path like `/foo` (it
+    // has a root but no drive prefix); `has_root` catches both forms.
+    if as_path.is_absolute() || as_path.has_root() {
         return Err(PathError::PathNotAllowed(format!(
             "Absolute paths are not allowed: {}",
             path
