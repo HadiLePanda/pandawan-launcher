@@ -257,6 +257,9 @@ function App() {
 
   const handleSelectGame = (gameId: string | null) => {
     setSelectedGameId(gameId);
+    // Picking a game is leaving whatever you were reading: the article shows over
+    // the game page, so without this it stays up over the game you just chose.
+    setNewsArticle(null);
     if (gameId) {
       setLastSelectedGameId(gameId);
     }
