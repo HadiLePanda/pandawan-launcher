@@ -1,26 +1,21 @@
 /**
- * One editor per metadata field, shared by the Metadata and Catalog tabs.
+ * One editor per non-media metadata field, rendered from the contract's own
+ * `list` / `long` flags.
  *
- * Both tabs used to walk their own field list, so the same field behaved
- * differently in each - the image fields were a picker in one and a URL box in the
- * other. Rendering by the contract's `list` / `image` / `long` flags keeps them
- * agreeing by construction instead of by discipline.
- *
- * Presentational on purpose: the artwork listing and the suggestions are props, so
- * this has no data dependencies and cannot pull the tabs into an import cycle.
+ * Media fields do NOT come through here: icon, banner and screenshots all use
+ * the shared MediaPicker, so there is exactly one picture selector in the app
+ * and this control stays a text control. Presentational on purpose - the chips
+ * for a list field are a prop - so it has no data dependencies.
  */
 
 import { useState } from 'react';
 
-import type { ArtworkObject } from '@/types/api';
-
-import { Badge, Button, Field, TextArea, TextInput } from './ui';
+import { Badge, Field, TextArea, TextInput } from './ui';
 
 export interface FieldSpec {
   flag: string;
   label: string;
   list?: boolean;
-  image?: boolean;
   long?: boolean;
 }
 
@@ -30,11 +25,7 @@ export interface FieldControlProps {
   id: string;
   /** What the publisher stores and receives back. */
   value: string;
-  /** Display-only, image fields only: `value` may be origin-less. */
-  previewUrl?: string;
   onChange: (next: string) => void;
-  /** The bucket's artwork for this game and channel, for the image picker. */
-  artworks?: ArtworkObject[];
   /** Chips offered for a list field, e.g. the known platforms. */
   suggestions?: string[];
   /** Renders the "changed" badge next to the label. */
@@ -118,69 +109,11 @@ function Chips({
   );
 }
 
-function ImagePicker({
-  id,
-  value,
-  previewUrl,
-  artworks = [],
-  onChange,
-}: {
-  id: string;
-  value: string;
-  previewUrl?: string;
-  artworks?: ArtworkObject[];
-  onChange: (next: string) => void;
-}) {
-  const [typing, setTyping] = useState(false);
-  const shown = previewUrl || value;
-
-  return (
-    <div className="flex flex-col gap-2">
-      {artworks.length > 0 && !typing ? (
-        <div className="dw-art-grid">
-          {artworks.map((object) => (
-            <button
-              key={object.key}
-              type="button"
-              title={object.name}
-              aria-pressed={value === object.key || value === object.url}
-              className="dw-art-tile"
-              onClick={() => onChange(object.key)}
-            >
-              <img src={object.url} alt={object.name} loading="lazy" />
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {typing ? (
-        <TextInput
-          id={id}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          autoFocus
-        />
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="truncate font-mono text-[11.5px] text-ink-muted" title={shown}>
-            {shown || 'nothing set'}
-          </span>
-          <Button size="sm" variant="secondary" onClick={() => setTyping(true)}>
-            Paste a URL
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function FieldControl({
   field,
   id,
   value,
-  previewUrl,
   onChange,
-  artworks,
   suggestions,
   changed,
 }: FieldControlProps) {
@@ -194,15 +127,7 @@ export function FieldControl({
       }
       htmlFor={id}
     >
-      {field.image ? (
-        <ImagePicker
-          id={id}
-          value={value}
-          previewUrl={previewUrl}
-          artworks={artworks}
-          onChange={onChange}
-        />
-      ) : field.list ? (
+      {field.list ? (
         <Chips id={id} value={value} suggestions={suggestions} onChange={onChange} />
       ) : field.long ? (
         <TextArea id={id} value={value} onChange={(event) => onChange(event.target.value)} />

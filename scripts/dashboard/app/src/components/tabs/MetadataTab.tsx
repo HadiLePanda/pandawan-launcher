@@ -35,13 +35,13 @@ import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject, type MetaFieldSpec } fro
 import { draftNoteText, useDraft } from '@/hooks/useDraft';
 
 import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
+import { MediaPicker } from '@/panels/MediaPicker';
 import { Badge, Field } from '@/panels/ui';
 
 import { DiffReview } from '@components/DiffReview';
 import { ActionRow, DirtyBar, EmptyState, ErrorLine, Log } from '@components/ui';
 
 import { useArtworkObjects } from './ArtworkTab';
-import { ScreenshotPicker } from './ScreenshotPicker';
 import type { GameTabProps } from './types';
 import {
   buildPayload,
@@ -79,101 +79,14 @@ const SUGGESTIONS: Record<string, string[]> = {
  */
 const MEDIA_FLAGS = new Set(['icon-url', 'banner-url', 'screenshots']);
 
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
-
 /** The presentational spec FieldControl renders from, straight off the served contract. */
 function specFor(spec: MetaFieldSpec): FieldSpec {
   return {
     flag: spec.flag,
     label: spec.label,
     list: spec.list,
-    image: spec.image,
     long: spec.long,
   };
-}
-
-/**
- * The file-upload half of an image field.
- *
- * FieldControl owns the bucket picker; this is the route the picker cannot offer,
- * because a browser cannot hand the publisher an absolute path. The bytes go to
- * the one staging endpoint the publisher already reads from (/api/art/stage) and
- * come back as a path; there is deliberately no second upload path.
- */
-function ArtworkUpload({
-  noun,
-  onPathChange,
-  onPreview,
-}: {
-  noun: string;
-  onPathChange: (next: string) => void;
-  /** The picked file's own blob URL, so the field can preview it before publish. */
-  onPreview: (blob: string) => void;
-}) {
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
-  const [staging, setStaging] = useState(false);
-  const previewRef = useRef('');
-
-  // Release the blob when the picker goes away. A picked file is already held by
-  // the browser, so keeping the handle alive for the life of the form leaks.
-  useEffect(() => {
-    const ref = previewRef;
-    return () => {
-      if (ref.current) releasePreviewUrl(ref.current);
-    };
-  }, []);
-
-  const onPick = async (file: File) => {
-    if (previewRef.current) releasePreviewUrl(previewRef.current);
-    const blob = previewUrlFor(file);
-    previewRef.current = blob;
-    onPreview(blob);
-
-    setError('');
-    setStatus('staging…');
-    setStaging(true);
-    try {
-      const staged = await stageArtwork(file);
-      // No second step: staging the file IS choosing it. The staged path makes
-      // the field dirty, and the publish uploads it and rewrites the URL.
-      onPathChange(staged.localPath);
-      setStatus(`${staged.name} uploads on publish`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setStatus('');
-    } finally {
-      setStaging(false);
-    }
-  };
-
-  return (
-    <div className="mt-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="file"
-          accept={ACCEPT}
-          aria-label={`Choose a ${noun} image to upload and use it`}
-          disabled={staging}
-          onChange={(event) => {
-            const input = event.currentTarget;
-            const file = input.files?.[0];
-            // Cleared so choosing the same file twice still fires: this input is
-            // uncontrolled and a browser does not re-report an unchanged pick.
-            input.value = '';
-            if (file) void onPick(file);
-          }}
-          className="max-w-[210px] text-[11.5px] text-ink-subtle file:mr-2 file:rounded-sm file:border file:border-edge file:bg-surface-2 file:px-2 file:py-1 file:text-[11.5px] file:text-ink-muted hover:file:bg-surface-3"
-        />
-        {staging && <span className="text-[11.5px] text-ink-subtle">staging…</span>}
-        {status && !staging && (
-          <span className="truncate text-[11.5px] text-ink-muted">{status}</span>
-        )}
-      </div>
-
-      {error && <ErrorLine>{error}</ErrorLine>}
-    </div>
-  );
 }
 
 /**
@@ -244,26 +157,55 @@ function MetaFieldRow({
 }) {
   const flag = spec.flag;
   const isImage = spec.image;
-  // The picked file's own blob, held here so the image control can show it in
-  // place of the published URL until the upload rewrites that URL on publish.
+  const isScreenshots = flag === 'screenshots';
+  const isMedia = isImage || isScreenshots;
+  // The staged file's blob and name, held here so the row shows the chosen
+  // picture before the upload rewrites the URL on publish.
   const [stagedPreview, setStagedPreview] = useState('');
+  const [stagedName, setStagedName] = useState('');
+  const previewRef = useRef('');
+
+  // Release the blob when the field goes away. A picked file is already held by
+  // the browser, so keeping the handle alive for the life of the form leaks.
+  useEffect(() => {
+    const ref = previewRef;
+    return () => {
+      if (ref.current) releasePreviewUrl(ref.current);
+    };
+  }, []);
 
   // A value that is a bucket key resolves to its object's URL for display; the
   // saved value stays the raw key. Falls back to the server's preview for a
   // published URL the listing cannot name.
   const picked = artworks.find((object) => object.key === value.trim());
   const previewUrl = isImage ? stagedPreview || picked?.url || field.previewUrl : undefined;
-  const noun = field.label.replace(/\s*URL$/i, '').toLowerCase();
+  const noun = isScreenshots ? 'screenshot' : field.label.replace(/\s*URL$/i, '').toLowerCase();
+
+  const clearStaged = () => {
+    setStagedPreview('');
+    setStagedName('');
+    if (previewRef.current) releasePreviewUrl(previewRef.current);
+    previewRef.current = '';
+    onPathChange('');
+  };
 
   const handleChange = (next: string) => {
-    // Choosing a URL - a picker tile or a pasted one - supersedes a staged
-    // upload, which would otherwise win on publish and make the visible choice a
-    // lie. Same rule the old picker applied when a tile was clicked.
-    if (isImage) {
-      setStagedPreview('');
-      onPathChange('');
-    }
+    // Choosing a library image supersedes a staged upload, which would otherwise
+    // win on publish and make the visible choice a lie.
+    if (isImage) clearStaged();
     onChange(next);
+  };
+
+  const handleUpload = async (file: File) => {
+    if (previewRef.current) releasePreviewUrl(previewRef.current);
+    const blob = previewUrlFor(file);
+    previewRef.current = blob;
+    setStagedPreview(blob);
+    setStagedName(file.name);
+    // Staging the file IS choosing it: the path makes the field dirty and the
+    // publish uploads the bytes and rewrites the URL. The one upload path.
+    const staged = await stageArtwork(file);
+    onPathChange(staged.localPath);
   };
 
   return (
@@ -288,7 +230,7 @@ function MetaFieldRow({
         )}
       </div>
 
-      {spec.flag === 'screenshots' ? (
+      {isMedia ? (
         <Field
           label={
             <span className="flex items-center gap-1.5">
@@ -298,23 +240,27 @@ function MetaFieldRow({
           }
           htmlFor={`meta-field-${flag}`}
         >
-          <ScreenshotPicker value={value} objects={artworks} onChange={handleChange} />
+          <MediaPicker
+            id={`meta-field-${flag}`}
+            value={value}
+            objects={artworks}
+            onChange={handleChange}
+            noun={noun}
+            multiple={isScreenshots}
+            previewUrl={previewUrl}
+            stagedName={stagedName}
+            onUpload={isImage ? handleUpload : undefined}
+          />
         </Field>
       ) : (
         <FieldControl
           field={specFor(spec)}
           id={`meta-field-${flag}`}
           value={value}
-          previewUrl={previewUrl}
           onChange={handleChange}
-          artworks={isImage ? artworks : undefined}
           suggestions={SUGGESTIONS[flag]}
           changed={dirty}
         />
-      )}
-
-      {isImage && (
-        <ArtworkUpload noun={noun} onPathChange={onPathChange} onPreview={setStagedPreview} />
       )}
     </div>
   );
