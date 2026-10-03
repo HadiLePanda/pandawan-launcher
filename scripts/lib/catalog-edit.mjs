@@ -1,35 +1,26 @@
 /**
  * The pure catalog decisions the dashboard's read and CRUD paths share.
  *
- * Extracted from dashboard.mjs for the same reason catalog-merge.mjs lives where
- * it does: a dashboard holds R2 credentials and boots an HTTP server, so nothing
- * about what a catalog edit *means* can be checked there. Every function here is
- * a total function over plain JSON - no network, no filesystem, no credentials -
- * and the transports in dashboard.mjs stay as dumb as publish-catalog.mjs's is.
+ * Total functions over plain JSON - no network, no filesystem, no credentials -
+ * so the transports in dashboard.mjs stay dumb and every rule here is testable.
  *
- * Three questions live here, and they are deliberately separate:
+ * Three questions, deliberately separate:
  *
  *   1. What differs between the published catalog and public/catalog.json?
- *      (catalogDiff) The Games -> Catalog tab used to be empty because there was
- *      no read endpoint at all, so it could only publish. An operator could not
- *      see what a publish would do before doing it.
+ *      (catalogDiff) So the Games -> Catalog tab can show what a publish would
+ *      do before it does it.
+ *   2. What entry does a create request describe? (catalogEntryFrom,
+ *      catalogGameId) A game id becomes a bucket path segment and is printed by
+ *      scripts that treat a bare `--token` as a flag, so it is validated once
+ *      rather than in a route handler.
+ *   3. What does removing an entry produce? (removeCatalogEntry) This is the one
+ *      decision catalog-merge.mjs deliberately does NOT own: that module promises
+ *      a publish can never make a live game vanish, while a delete here is an
+ *      explicit, confirmed operator request with its own rule and test.
  *
- *   2. What entry does a create request describe? (catalogEntryFrom, catalogGameId)
- *      A game id becomes a bucket path segment and is printed by scripts that
- *      treat a bare `--token` as a flag, so it is validated in one place rather
- *      than in a route handler.
- *
- *   3. What does removing an entry produce? (removeCatalogEntry)
- *      This is the one decision catalog-merge.mjs deliberately does NOT own:
- *      that module's whole promise is that a catalog publish can never make a
- *      live game vanish. A delete in the dashboard is an explicit, confirmed
- *      request from the operator, so it needs its own rule - and its own test.
- *
- * What is deliberately NOT here: the create path. Creating an entry into the
- * published catalog is an *add*, and catalog-merge.mjs already owns what an add
- * means, including the refusal to overwrite an entry the CDN already lists.
- * Reusing it is the point - a second, subtly different "add" rule in this file
- * is exactly how the two would drift.
+ * The create path is NOT here: creating an entry IS an add, and catalog-merge.mjs
+ * already owns what an add means, including the refusal to overwrite an entry the
+ * CDN already lists.
  */
 
 import { CHANNELS } from './metadata-fields.mjs';
@@ -38,14 +29,12 @@ import { validateCatalog } from './catalog-merge.mjs';
 /**
  * The fields compared by catalogDiff, and the columns the Catalog tab can show.
  *
- * `id` is the join key and is therefore excluded from the comparison by
- * construction; it is in the list only because the UI needs it as a column.
- * `channel` IS compared: a game that moved from alpha to stable is a real change
- * the launcher would act on, and it is the field a stale local copy most often
- * disagrees about.
+ * `id` is the join key and is excluded from the comparison by construction; it
+ * is here only because the UI needs it as a column. `channel` IS compared: a
+ * game that moved from alpha to stable is a real change the launcher acts on.
  *
- * Spelled out rather than derived from FIELDS at runtime so the list is readable
- * on its own; catalog-edit.test.ts asserts that every `catalog` field in
+ * Spelled out rather than derived from FIELDS so the list is readable on its
+ * own; catalog-edit.test.ts asserts every `catalog` field in
  * metadata-fields.mjs appears here, so the two cannot fall apart silently.
  */
 export const CATALOG_GAME_FIELDS = [
@@ -115,25 +104,21 @@ function summarise(entry) {
 /**
  * Which games differ between the published catalog and the checked-in copy.
  *
- * Split by direction on purpose, because the three lists mean different things
- * to the operator and lumping them together is what makes a catalog diff
- * unreadable:
+ * Split by direction, because the three lists mean different things and lumping
+ * them together is what makes a catalog diff unreadable:
  *
  *   - `onlyLive`  published but not in public/catalog.json. A publish will NOT
  *                 remove these (catalog-merge.mjs preserves them); they are games
- *                 that exist for players and are missing from the repo.
+ *                 players have and the repo is missing.
  *   - `onlyLocal` in the repo but not published. These are exactly what a publish
- *                 ADDS, which makes this the list an operator actually acts on.
- *   - `changed`   in both, with at least one display field differing. Report is
- *                 field NAMES, not values: the table renders both columns anyway,
- *                 and shipping every value twice doubles the payload for no gain.
- *                 Note this is informational - the merge keeps the published
- *                 entry, so a `changed` game is not at risk from a publish.
+ *                 ADDS, so this is the list an operator acts on.
+ *   - `changed`   in both, with at least one display field differing. Reported as
+ *                 field NAMES, not values (the table renders both columns anyway).
+ *                 Informational: the merge keeps the published entry.
  *
- * Pure, and tolerant of a missing document: a null side compares as "knows
- * nothing", which is exactly what an absent file or an unreadable CDN document
- * means. Callers are responsible for telling the operator which side was real -
- * see the `liveStatus` / `localStatus` the GET carries alongside this.
+ * Tolerant of a missing document: a null side compares as "knows nothing", which
+ * is what an absent file or an unreadable CDN document means. Callers report
+ * which side was real - see the `liveStatus` / `localStatus` the GET carries.
  *
  * @param live  the catalog as published, or null
  * @param local public/catalog.json, or null
@@ -169,21 +154,12 @@ export function catalogDiffIsEmpty(diff) {
 }
 
 /**
- * Why a game id cannot be used, or null when it can.
- *
- * Checked before the id is ever used as a path segment or handed to a publishing
- * script:
- *
- *   - a leading `--` would be read as an option by every script in scripts/
- *     (prune-builds treats a bare `--token` as a flag), so `--force` as a game id
- *     would turn a form field into a destructive switch;
- *   - a `/` would create a nested key, turning one catalog entry into a prefix
- *     another object could be written under;
- *   - `..` would climb out of the game's own prefix, which prune then deletes
- *     recursively.
- *
- * The character class is the intersection of what the repo's ids look like
- * (misspell, pandawan-test-game) and what a bucket path segment safely accepts.
+ * Why a game id cannot be used, or null when it can. Checked before the id is
+ * used as a path segment or handed to a publishing script: a leading `--` would
+ * be read as an option (prune-builds treats a bare `--token` as a flag), a `/`
+ * would nest the key, and `..` would climb out of the game's own prefix, which
+ * prune then deletes recursively. The character class is what a bucket path
+ * segment safely accepts.
  */
 export function catalogGameId(value) {
   const id = typeof value === 'string' ? value.trim() : '';
@@ -206,14 +182,13 @@ export function catalogGameId(value) {
  * The catalog entry a create request describes, or an error explaining why not.
  *
  * Only the fields the operator actually sent are copied. Nothing is defaulted
- * except what the launcher requires to build a manifest URL (`id` and
- * `channel`): inventing an `availableChannels: [channel]` or a placeholder
- * `iconUrl` here would write fields the publisher does not write, and the next
- * real publish would then disagree with what the tab just showed as published.
+ * except what the launcher needs to build a manifest URL (`id` and `channel`):
+ * inventing an `availableChannels` or a placeholder `iconUrl` would write fields
+ * the publisher does not, and the next real publish would then disagree with
+ * what the tab showed as published.
  *
  * A key the catalog does not have is dropped rather than copied through, so this
- * endpoint cannot be used to smuggle an arbitrary field into a document every
- * launcher reads.
+ * endpoint cannot smuggle an arbitrary field into a document every launcher reads.
  *
  * @param values a plain object of catalog field names, straight from the payload
  */
@@ -260,22 +235,16 @@ export function catalogEntryFrom(values) {
 /**
  * The catalog with one entry removed, or an error explaining why not.
  *
- * The rules, each one a guard against an irreversible player-visible change:
+ * Each rule guards an irreversible player-visible change: the id must be usable;
+ * it must actually be published, so a typo is "no such game" not a silent
+ * success; it must not be the last entry, since a catalog with no games breaks
+ * every launcher; and the result is run back through the publisher's own
+ * validateCatalog, so this cannot produce a document publish-catalog.mjs would
+ * have refused to write.
  *
- *   - the id must be a usable one, for the same reason it is on create;
- *   - it must actually be published, so a typo is a clear "no such game" instead
- *     of a silent success;
- *   - it must not be the last entry. A catalog with no games is rejected by
- *     validateCatalog and breaks every launcher that reads it, so an accidental
- *     double-click on Delete must not be able to produce one;
- *   - the result is run back through the publisher's own validateCatalog before
- *     it is returned, so this function cannot produce a document
- *     publish-catalog.mjs would have refused to write.
- *
- * Note what is NOT checked: that a build exists for the game, or that anything
- * else references it. catalog.json is the index the launcher reads; removing an
- * entry hides the game, it does not delete its objects. That is the operator's
- * call, made with `confirm: true`.
+ * Not checked: whether a build exists for the game. catalog.json is only the
+ * index the launcher reads, so removing an entry hides the game rather than
+ * deleting its objects.
  *
  * @param catalog the published document
  * @param id      the entry to remove

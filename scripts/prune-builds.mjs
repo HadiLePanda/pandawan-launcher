@@ -25,18 +25,8 @@ import {
   run,
   S3,
 } from './lib/r2.mjs';
+import { parseArgs } from './lib/args.mjs';
 import { planPrune, readActiveVersion, readPinnedVersions } from './lib/prune-plan.mjs';
-
-function parseArgs(argv) {
-  const args = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (!argv[i].startsWith('--')) continue;
-    const key = argv[i].slice(2);
-    const value = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
-    args[key] = value;
-  }
-  return args;
-}
 
 const args = parseArgs(process.argv.slice(2));
 const gameId = args['game-id'];
@@ -63,9 +53,8 @@ console.log(`Keep:    ${keep} newest build(s)\n`);
 
 const keys = listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
 
-// Read the pins before planning. This must come first: planPrune receives them,
-// and a const declared below its use site throws a temporal-dead-zone error on
-// every run - which meant the script could not even do a dry run.
+// Read the pins after the listing but before planning: planPrune needs them, and
+// a const referenced before its declaration throws a temporal-dead-zone error.
 const activeVersions = (() => {
   const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
   // A network failure must not read the same as "the document is absent": an

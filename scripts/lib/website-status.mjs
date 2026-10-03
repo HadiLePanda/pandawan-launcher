@@ -1,47 +1,34 @@
 /**
  * The pure website decisions the dashboard's Website panel shares.
  *
- * Extracted from dashboard.mjs for the same reason catalog-edit.mjs lives where
- * it does: this process holds the R2 secret key and boots an HTTP server, so
- * nothing about what a website fact *means* can be checked there. Every function
- * here is a total function over plain values - no network, no filesystem, no
- * child processes - and dashboard.mjs stays a transport that gathers bytes and
- * hands them to these rules.
+ * Total functions over plain values - no network, no filesystem, no child
+ * processes - so dashboard.mjs stays a transport that gathers bytes and hands
+ * them to these rules.
  *
- * The site is a SEPARATE repository (pandawan-launcher-site) whose page data
- * comes from R2 rather than from its own repo: publish-launcher.mjs writes
- * launcher/downloads.json and the site reads it through a Cloudflare Pages
- * Function. So publishing a launcher version changes what the site SHOWS without
- * the site being redeployed. The rules below exist to make that visible instead
- * of letting the panel imply the site is stale.
+ * Four questions, deliberately separate:
  *
- * Four questions live here, deliberately separate:
- *
- *   1. What does downloads.json mean for a person? (summariseDownloads)
- *      The document is a nested map the site renders by a rule of its own. The
- *      panel has to apply the SAME rule or it reports a different artifact than
- *      the button does.
- *
+ *   1. What does downloads.json mean for a person? (summariseDownloads) The site
+ *      renders it by a rule of its own, so the panel must apply the same rule or
+ *      it reports a different artifact than the button does.
  *   2. What does `git status --porcelain` say? (siteGitSummary, parseAheadCount)
- *      Porcelain output is a format, not a question, and "dirty" has to mean one
- *      thing to the status row and to the pre-deploy warning.
- *
+ *      "Dirty" has to mean one thing to the status row and to the deploy warning.
  *   3. What does wrangler say about the deployed site? (parsePagesDeployments)
- *      A deployment list is the only answer to "is what is live the same as
- *      what is checked out", and it is a CLI's JSON, not ours.
- *
- *   4. What should be said when the repo is missing? (siteMissingMessage)
- *      Named in one place so the panel and the refusal cannot disagree.
+ *      The deployment list is the only answer to "is what is live the same as
+ *      what is checked out".
+ *   4. What should be said when the repo is missing? (siteMissingMessage) Named
+ *      once so the panel and the refusal cannot disagree. The site repo is a
+ *      separate checkout that publishes launcher/downloads.json to R2, which the
+ *      site reads through a Pages Function - so publishing a launcher version
+ *      changes what the site shows without the site being redeployed.
  */
 
 /**
  * The Pages project the site repo deploys to.
  *
- * Hard-coded because the site repo has no wrangler.toml - deliberately, since
- * its presence makes wrangler take over the deploy and breaks the Pages native
- * upload. The name is also the directory name, which is what Cloudflare Pages
- * defaults to, so there is no second place to read it from. Overridable for a
- * fork without making the default guesswork.
+ * Hard-coded because the site repo deliberately has no wrangler.toml - its
+ * presence makes wrangler take over the deploy and break the Pages native
+ * upload - and the name equals the directory name Pages defaults to, so there
+ * is no second place to read it from. Overridable for a fork.
  */
 export const SITE_PROJECT_NAME = process.env.DASHBOARD_SITE_PROJECT || 'pandawan-launcher-site';
 
@@ -50,11 +37,9 @@ export const SITE_PROJECT_NAME = process.env.DASHBOARD_SITE_PROJECT || 'pandawan
  *
  * Mirrors PREFERRED in the site's own app.js, because that map is what the page
  * matches on and the panel must report the artifact the button will actually be.
- * A mismatch here does not break anything by itself - the site falls back to
- * items[0] - but it silently changes which file a person downloads, which is
- * exactly the failure the site's own `npm run verify` exists to catch. Where the
- * two genuinely disagree, verify.mjs is the authority and this map is a display
- * detail.
+ * A mismatch silently changes which file a person downloads; where the two
+ * genuinely disagree, the site's verify.mjs is the authority and this is a
+ * display detail.
  */
 export const SITE_PREFERRED = {
   windows: 'MSI installer',
@@ -133,18 +118,15 @@ function downloadEntry(item) {
  * What the page will actually offer, per platform.
  *
  * The site's own rule, copied rather than re-guessed: it takes the first entry
- * whose `label` equals PREFERRED[platform], and falls back to items[0] when no
- * label matches. That fallback is why `fallback` is reported - a renamed label
- * does not break the page, it changes which file the Download button leads with,
- * and nothing on either side would otherwise say so.
+ * whose `label` equals PREFERRED[platform], falling back to items[0] when no
+ * label matches. `fallback` is reported because a renamed label does not break
+ * the page - it changes which file the Download button leads with, and nothing
+ * else would say so. `alternatives` is the rest of the group, in document order
+ * (the site shows these as a dropdown).
  *
- * `alternatives` is the rest of the group, in the document's order. The site
- * shows these as a dropdown, so a format that is published but not listed
- * anywhere is a format nobody can get.
- *
- * Known platforms come first and in the site's own order, then any extra id the
- * document happens to carry - an unlisted platform is not filtered out, because a
- * platform the page renders but the panel hides is worse than an odd row.
+ * Known platforms come first in the site's order, then any extra id the document
+ * carries - an unlisted platform is not filtered out, because a platform the page
+ * renders but the panel hides is worse than an odd row.
  *
  * @param doc the parsed downloads.json, or anything else
  * @returns {{version: string|null, platforms: object[]}}
@@ -350,15 +332,13 @@ function arrayStartAfterBanner(raw) {
 /**
  * The deployed site state, from `wrangler pages deployment list --json`.
  *
- * Tolerant of the banner: wrangler suppresses it for --json, but an older build
- * or a logged warning in front of the array would otherwise turn a successful
- * list into "wrangler is unavailable" - the one answer this panel must not get
- * wrong, because it is what says whether the live site matches the checkout.
+ * Tolerant of a banner: wrangler suppresses it for --json, but an older build or
+ * a logged warning in front of the array would otherwise turn a successful list
+ * into "wrangler is unavailable" - the one answer this panel must not get wrong,
+ * because it is what says whether the live site matches the checkout.
  *
  * `latest` is the first entry as wrangler orders it (newest first), hoisted out
- * because "what is live right now" is the question the panel opens with. When
- * the local commit and the deployment source agree, nothing needs redeploying;
- * when they do not, that is a real fact about the site, not a warning about it.
+ * because "what is live right now" is the question the panel opens with.
  *
  * @returns {{deployments: object[], latest: object|null, error: string|null}}
  */

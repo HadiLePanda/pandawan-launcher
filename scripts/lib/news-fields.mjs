@@ -90,11 +90,6 @@ export function toKey(flag) {
   return flag.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 }
 
-/** The reverse of toKey. */
-export function toFlag(key) {
-  return key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-}
-
 /**
  * Build the item a publish will write.
  *

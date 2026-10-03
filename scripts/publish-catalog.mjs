@@ -10,28 +10,21 @@
  *   npm run publish:catalog -- --dry-run
  *   npm run publish:catalog -- --force
  *
- * The catalog is merged, not overwritten. public/catalog.json is the checked-in
- * copy, and the CDN document is the one that has been edited since:
- * publish:meta rewrites the published catalog in place, so uploading the local
- * file over it reverted every metadata edit and brought the stale name back.
- * Therefore
+ * The catalog is merged, not overwritten; the decision lives in
+ * scripts/lib/catalog-merge.mjs so it is testable without R2 credentials:
  *
  *   - a game the CDN already lists keeps its published entry, untouched;
  *   - a game the CDN has never seen is added from the local file;
  *   - a game the local file omits is NOT deleted - it is kept and reported.
  *
- * `--force` lets the local file win for games both sides know, for the rare case
- * where the local copy is the one deliberately maintained. It still never
+ * `--force` lets the local file win for games both sides know, but still never
  * deletes: making a live game disappear is not something a catalog push should
  * be able to do. `--dry-run` reports and changes nothing.
  *
- * The decision lives in scripts/lib/catalog-merge.mjs so it is testable without
- * R2 credentials; this file only reads, writes and prints.
- *
- * news.json is guarded by the same rule and for the same reason: this script
- * replaces the CDN feed with the checked-in public/news.json, so an upload that
- * would REMOVE a published item is refused rather than performed. `--force-news`
- * overrides it. The decision is `droppedNewsIds` in scripts/lib/news-merge.mjs.
+ * news.json is guarded by the same rule: this script replaces the CDN feed with
+ * the checked-in public/news.json, so an upload that would REMOVE a published
+ * item is refused. `--force-news` overrides it; the decision is `droppedNewsIds`
+ * in scripts/lib/news-merge.mjs.
  */
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -40,18 +33,9 @@ import { fileURLToPath } from 'node:url';
 
 import { fail, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
+import { fetchJson } from './lib/game-metadata.mjs';
 import { mergeCatalog, remoteCatalogRefusal, validateCatalog } from './lib/catalog-merge.mjs';
 import { droppedNewsIds, newsRefusal } from './lib/news-merge.mjs';
-
-/** Fetch a JSON document from the CDN, or null when it is absent or unparseable. */
-async function fetchJson(url) {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    return res.ok ? await res.json() : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The CDN document's body, or null when it is genuinely absent.
@@ -97,10 +81,7 @@ export async function publishCatalog(argv = []) {
     fail(`Catalog not found: ${catalogPath}`);
   }
 
-  // Validate before uploading: a malformed catalog breaks every client, and the
-  // remote copy is harder to inspect than a local file. The same three checks
-  // and the same messages as before - only the decision about what gets written
-  // changed.
+  // Validate before uploading: a malformed catalog breaks every client.
   let local;
   try {
     local = JSON.parse(readFileSync(catalogPath, 'utf-8'));
@@ -127,10 +108,9 @@ export async function publishCatalog(argv = []) {
 
   const remote = await fetchJson(catalogUrl);
 
-  // The refusal that matters. Publishing from the local file alone because the
-  // CDN was unreachable would drop every game missing from the local copy from
-  // the launcher, so a network blip would become a total outage. Fail loudly
-  // and leave the published document exactly as it is.
+  // A network blip must not become a catalog that drops every game it did not
+  // read, so an unreadable remote refuses the publish rather than writing a new
+  // catalog from scratch.
   if (!remote || !Array.isArray(remote.games)) fail(remoteCatalogRefusal(catalogUrl));
 
   const { catalog, added, skipped, preserved, changed } = mergeCatalog(remote, local, { force });

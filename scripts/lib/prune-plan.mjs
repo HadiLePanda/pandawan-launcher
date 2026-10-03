@@ -1,9 +1,8 @@
 /**
  * Which builds a prune may delete.
  *
- * Extracted from prune-builds.mjs so the destructive decision is testable. This
- * is the only part of pruning that can lose data, and it runs against a live
- * bucket, so it should never depend on being read carefully.
+ * Pure, so the one part of pruning that can lose data is testable without a live
+ * bucket.
  */
 
 /**

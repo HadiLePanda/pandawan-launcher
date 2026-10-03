@@ -108,10 +108,9 @@ export function upload(source, key, { endpoint, cacheControl, contentType, throw
   run('aws', args, `Uploading ${path.basename(source)} -> ${key}`, { throwOnFailure });
 }
 
-export function sync(sourceDir, keyPrefix, { endpoint, cacheControl, exclude } = {}) {
+export function sync(sourceDir, keyPrefix, { endpoint, cacheControl } = {}) {
   const args = ['s3', 'sync', sourceDir, keyPrefix, '--endpoint-url', endpoint, '--no-progress'];
   if (cacheControl) args.push('--cache-control', cacheControl);
-  for (const pattern of exclude ?? []) args.push('--exclude', pattern);
   run('aws', args, `Syncing ${path.basename(sourceDir)}/ -> ${keyPrefix}/`);
 }
 
@@ -119,40 +118,12 @@ export const NO_CACHE = 'no-cache, no-store, must-revalidate';
 export const IMMUTABLE = 'public, max-age=31536000, immutable';
 
 /**
- * List every object under a prefix, one key per line (stripped of the trailing
- * newline `aws s3 ls` adds).
+ * List every object under a prefix, with the date and size `aws s3 ls` printed.
  *
- * Used by the prune script to decide what to delete. Exposed here so it uses the
- * same aws invocation and credential plumbing as upload/sync rather than
- * re-implementing them.
- */
-export function listKeys(keyPrefix, { endpoint } = {}) {
-  // Two wrinkles this has to absorb, both found against the live bucket:
-  //
-  // 1. `--only-show-keys` is rejected by this AWS CLI v2 build, so keys come
-  //    from parsing the default "<date> <time> <size> <key>" listing. Keys may
-  //    contain spaces, hence matching by column rather than splitting on
-  //    whitespace. Output is CRLF, which the trim clears.
-  //
-  // 2. The CLI encodes non-ASCII keys to the console codepage, so a key holding
-  //    "ç" comes back as U+FFFD. Misspell ships a bundle named
-  //    "...-français-...", so the mangled key points at an object that does not
-  //    exist and could never be deleted. `--encoding utf-8` asks the CLI to
-  //    emit UTF-8; where it is honoured (Linux CI, newer CLI) the key round-trips
-  //    exactly and needs no repair.
-  //
-  // Where the CLI still mangles the key, isMangledKey flags it so the caller can
-  // fall back to a server-side delete instead of guessing at a name. This CLI
-  // build rejects both --only-show-keys (ParamValidation, exit 252) and
-  // --encoding, so neither is passed.
-  return listKeysWithMeta(keyPrefix, { endpoint }).map((entry) => entry.key);
-}
-
-/**
- * The same listing as listKeys, with the date and size the CLI already printed.
- *
- * One parser serves both so they cannot drift: a fix to the key format lands in
- * one place rather than needing to be mirrored.
+ * `--only-show-keys` and `--encoding` are rejected by this AWS CLI build, so the
+ * default "<date> <time> <size> <key>" listing is parsed instead. isMangledKey
+ * flags a key the CLI could not encode to the console codepage, so a caller can
+ * delete its parent prefix rather than guess at the name.
  */
 export function listKeysWithMeta(keyPrefix, { endpoint } = {}) {
   const args = ['s3', 'ls', keyPrefix, '--recursive', '--endpoint-url', endpoint];
@@ -165,8 +136,7 @@ export function listKeysWithMeta(keyPrefix, { endpoint } = {}) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      // "<date> <time> <size> <key>". Columns are matched rather than split on
-      // whitespace because keys may contain spaces.
+      // Columns are matched rather than split on whitespace: keys may contain spaces.
       const match = line.match(/^(\S+\s+\S+)\s+(\d+)\s+(.*)$/);
       if (!match) return null;
       const stamped = new Date(match[1].replace(' ', 'T') + 'Z');
@@ -189,13 +159,9 @@ export function isMangledKey(key) {
 }
 
 /**
- * Abort any incomplete multipart uploads under a key prefix.
- *
- * `aws s3 cp` uploads anything over 8 MB in parts, and a publish interrupted
- * part-way leaves those parts behind. R2 keeps them and counts them against
- * storage, but no object exists for them, so they are invisible to `s3 ls` and
- * invisible to prune-builds. Two interrupted uploads of Misspell left 30 MB of
- * phantom "storage" in the dashboard for the whole time they sat there.
+ * Abort incomplete multipart uploads under a key prefix. An interrupted publish
+ * leaves parts R2 bills for but that no object exists for, so they are invisible
+ * to `s3 ls` and to prune.
  */
 export function abortStaleMultipartUploads(keyPrefix, { endpoint, bucket } = {}) {
   const res = spawnSync(

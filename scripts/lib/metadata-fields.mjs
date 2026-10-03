@@ -1,12 +1,9 @@
 /**
  * The metadata contract: which fields a game has, and where each one is stored.
  *
- * Kept free of any dependency - not even the R2 config - because three separate
- * places need it: the publisher that writes these fields, the dashboard that
- * offers them as a form, and the tests that check the two agree. A field defined
- * once here cannot drift between the form and the script that applies it, and
- * this module stays importable from a test runner without dragging in the
- * publishing machinery.
+ * Kept dependency-free because the publisher, the dashboard form and the tests
+ * all need it: a field defined once here cannot drift between the form and the
+ * script that applies it.
  */
 
 /** The channels the launcher knows. Mirrors KNOWN_CHANNELS in the frontend. */
@@ -55,6 +52,5 @@ export const IMAGE_FIELDS = {
   'banner-url': { flag: 'banner-file', objectName: 'banner.png' },
 };
 
-// Re-exported from args.mjs, where they live now that news publishing needs them
-// too. Kept here so the existing importers of metadata-fields keep working.
+// Re-exported so existing importers of metadata-fields keep working.
 export { parseArgs, first, listValue } from './args.mjs';

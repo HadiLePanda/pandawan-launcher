@@ -2,30 +2,21 @@
 /**
  * Edit a game's display metadata without republishing its build.
  *
- * A game is described in two places and the launcher reads both:
- *
- *   catalog.json   name, description, developer, genre, iconUrl, bannerUrl,
- *                  screenshots, channel, availableChannels, supportedPlatforms
- *   manifest.json  name, description, icon_url, banner_url
- *
- * `publish-game.mjs` sets the manifest half, but it is a build publisher: it
- * regenerates the manifest from an input directory and re-uploads every file. For
- * a one-word typo fix that means re-sending gigabytes to change a string.
- *
- * So this script does the opposite. It reads what is already on the bucket,
- * changes only the fields it was asked to change, and writes the documents back.
- * The file list, hashes, sizes and version are copied through byte-for-byte,
- * because they describe bytes that are not changing and must not drift.
+ * A game's presentation lives in two documents - the catalog and the manifest -
+ * and the launcher reads both; the field contract is shared in
+ * scripts/lib/metadata-fields.mjs. publish-game.mjs is a build publisher that
+ * regenerates the manifest from an input directory and re-uploads every file, so
+ * a one-word typo fix would mean re-sending a build. This script instead reads
+ * what is on the bucket, changes only the fields it was asked to change, and
+ * writes the documents back - the file list, hashes, sizes and version are
+ * copied through because they describe bytes that are not changing.
  *
  *   npm run publish:meta -- --game-id misspell --channel alpha \
  *     --name "Misspell" --genre "Multiplayer,Party" --icon-file ./art/icon.png
  *
- * Fields left unset keep the value they already have. That is what makes this
- * safe to drive from a form: a partial edit never blanks a field nobody touched.
- *
- * The icon and banner can be given as a local file to upload (--icon-file) or as
- * an already-hosted URL (--icon-url). A local file is written to the channel
- * directory as icon.png / banner.png and the field is pointed at it.
+ * Fields left unset keep their published value, so a partial edit never blanks a
+ * field nobody touched. The icon and banner can be a local file to upload
+ * (--icon-file) or an already-hosted URL (--icon-url).
  */
 
 import { createHash } from 'node:crypto';
@@ -45,6 +36,7 @@ import {
 } from './lib/metadata-fields.mjs';
 import { applyMetadataChanges } from './lib/apply-metadata.mjs';
 import { artworkObjectName } from './lib/artwork.mjs';
+import { fetchJson } from './lib/game-metadata.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
 export async function publishMetadata(argv) {
@@ -73,16 +65,6 @@ export async function publishMetadata(argv) {
   console.log(`Channel: ${channel}`);
   if (dryRun) console.log('Mode:    DRY RUN - nothing will be uploaded');
 
-  /** Fetch a JSON document from the CDN, or null when it is not there. */
-  async function fetchJson(url) {
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      return res.ok ? await res.json() : null;
-    } catch {
-      return null;
-    }
-  }
-
   // --- Work out the new values ---------------------------------------------
 
   const changes = [];
@@ -102,16 +84,10 @@ export async function publishMetadata(argv) {
     if (!existsSync(localPath)) fail(`--${file.flag} does not exist: ${localPath}`);
     if (!statSync(localPath).isFile()) fail(`--${file.flag} is not a file: ${localPath}`);
 
-    // Content-addressed name. A stable `icon.png` cannot be cached for long,
-    // because a client that already has it can never learn the file changed; that
-    // forced NO_CACHE, which re-downloaded megabytes on every launch. Hashing the
-    // bytes puts changed artwork on a new URL, so the old one stays valid forever
-    // and clients pick up new art only by reading a manifest that names it.
-    //
-    // The extension comes from the source file rather than forced to .png, so a
-    // JPEG icon is served as a JPEG instead of being uploaded with the wrong
-    // Content-Type and rendered unpredictably. Both decisions live in artwork.mjs so
-    // the dashboard's listing cannot disagree with the name written here.
+    // Content-addressed: hashing the bytes puts changed art on a new URL, so the
+    // old one stays valid forever under the immutable header. The extension comes
+    // from the source file so a JPEG is not served with the wrong Content-Type.
+    // Both decisions live in artwork.mjs so the dashboard cannot disagree.
     const base = file.objectName.slice(0, file.objectName.lastIndexOf('.'));
     const hash = createHash('sha256').update(readFileSync(localPath)).digest('hex').slice(0, 8);
     const objectName = artworkObjectName({
@@ -124,17 +100,14 @@ export async function publishMetadata(argv) {
     uploads.push({ localPath, key, label: objectName });
 
     // A chosen file supersedes any URL in the same payload rather than adding a
-    // second change for the same field. IMAGE_FIELDS is keyed by flag, so the
-    // lookup has to match on flag too: matching on catalog finds nothing, which
-    // yields a change with no destination and writes a literal "undefined" key
-    // into the catalog instead of the icon URL.
+    // second change for the same field. IMAGE_FIELDS and FIELDS are keyed by
+    // flag, so match on flag: matching on catalog finds nothing and writes a
+    // literal "undefined" key into the catalog instead of the icon URL.
     const field = FIELDS.find((f) => f.flag === catalogKey);
     if (!field) fail(`No field contract entry for "${catalogKey}".`);
     const change = { ...field, value: `${cdnOrigin}/${key}` };
-    // Compare on flag, for the same reason as the lookup above: catalogKey is a
-    // flag, so testing it against c.catalog never matches and the file change is
-    // appended instead of superseding the typed URL, leaving two writes for one
-    // field where only the last one survives.
+    // Compare on flag too, so a typed URL for this field is replaced rather than
+    // left as a second write where only the last one survives.
     const at = changes.findIndex((c) => c.flag === catalogKey);
     if (at >= 0) changes[at] = change;
     else changes.push(change);
@@ -212,15 +185,8 @@ export async function publishMetadata(argv) {
         '--endpoint-url',
         endpoint,
         '--no-progress',
-        // Immutable, and the key carries a content hash (see `artworkKey`), so a
-        // year-long cache is truthful: a changed image lands on a different URL,
-        // which means a client that cached the old one is never served stale art.
-        //
-        // The earlier NO_CACHE here was correct in isolation - the name was
-        // stable, so a cached copy could outlive the file - but it made every
-        // launch re-download megabytes of artwork, which showed up as slow cards
-        // and a layout that shifted as images arrived. Hashing the name fixes
-        // both the staleness and the download.
+        // Immutable, and the key carries a content hash, so a year-long cache is
+        // truthful: a changed image lands on a different URL.
         '--cache-control',
         IMMUTABLE,
       ],
@@ -261,11 +227,11 @@ export async function publishMetadata(argv) {
 }
 
 // Only run when invoked directly, so the dashboard can import the helpers above
-// without the module trying to publish something.
+// without the module publishing something.
 //
-// `.then()` rather than a top-level `await`: a top-level await makes the whole
-// module an async graph, and the bundler's transform used by the test runner
-// rejects that when this file is imported from a TypeScript test.
+// `.then()` rather than a top-level `await`: a top-level await makes the module
+// an async graph, which the test runner's bundler transform rejects when this
+// file is imported from a TypeScript test.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   publishMetadata(process.argv.slice(2)).catch((err) => {
     console.error(err);

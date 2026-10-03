@@ -7,18 +7,18 @@
  */
 
 /** SVG is excluded: it renders through `<img>` from a remote origin, where it can carry script. */
-export const ARTWORK_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const ARTWORK_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 
 /** Largest upload accepted. Enough for a banner, small enough to bound memory. */
 export const MAX_ARTWORK_BYTES = 12 * 1024 * 1024;
 
 /** True when the path is a recognised image extension. */
-export function isArtworkExtension(name) {
+function isArtworkExtension(name) {
   return ARTWORK_EXTENSIONS.includes(extensionOf(name));
 }
 
 /** The lowercase extension of a path, including the dot, or '' when it has none. */
-export function extensionOf(name) {
+function extensionOf(name) {
   const base = String(name ?? '')
     .split(/[\\/]/)
     .pop();

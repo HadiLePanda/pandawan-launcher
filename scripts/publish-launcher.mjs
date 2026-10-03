@@ -52,14 +52,10 @@ if (!tag || !/^v\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/.test(tag)) {
 
 const staging = path.join(repoRoot, '.publish', tag);
 
-// The updater manifest plus every artifact it points at. A release whose
-// latest.json references a missing file is worse than no release at all: the
-// launcher finds an update, downloads it, and fails.
+// The updater manifest plus every artifact and signature a latest.json can point
+// at. A release whose latest.json references a missing file is worse than no
+// release at all: the launcher finds an update, downloads it, and fails.
 const WANTED = [
-  // The updater manifest itself, plus every artifact and signature a
-  // latest.json can point at. A release whose latest.json references a missing
-  // file is worse than no release at all: the launcher finds an update,
-  // downloads it, and fails.
   /^latest\.json$/,
   /\.msi$/,
   /\.msi\.sig$/,

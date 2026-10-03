@@ -2,10 +2,6 @@
 /**
  * Publish a game build to R2.
  *
- * Files go up first and the manifest last: the manifest is what tells a client
- * a build exists, so publishing it first would let someone resolve a manifest
- * whose files are not there yet.
- *
  *   npm run publish:game -- --game-id g --channel alpha --version 1.0.0 \
  *     --build-number 1 --executable "G.exe" --input-dir ./Builds/g
  *
@@ -27,26 +23,9 @@ import {
   sync,
   upload,
 } from './lib/r2.mjs';
+import { parseArgs } from './lib/args.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
-
-function parseArgs(argv) {
-  const args = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (!argv[i].startsWith('--')) continue;
-    const key = argv[i].slice(2);
-    const value = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
-    // Repeated flags must accumulate rather than overwrite. --platform is given
-    // once per platform and publishing several in one run is the normal case;
-    // last-one-wins would silently ship a single platform and report success.
-    if (key in args) {
-      args[key] = [].concat(args[key], value);
-    } else {
-      args[key] = value;
-    }
-  }
-  return args;
-}
 
 const asList = (value) => (value === undefined ? [] : [].concat(value));
 
@@ -132,10 +111,6 @@ run('python', manifestArgs, 'Generating manifest');
 // Clear any half-finished upload from a previous interrupted run first; those
 // parts are billed and are not visible to s3 ls.
 abortStaleMultipartUploads(`${prefix}/`, { endpoint, bucket });
-
-// Per-platform builds upload into their own subdirectory of the version, so the
-// two cannot overwrite each other and a client only fetches its platform's
-// files. A flat publish has no subdirectory and keeps the original shape.
 for (const spec of platformSpecs) {
   const separator = spec.indexOf('=');
   const platform = spec.slice(0, separator).trim().toLowerCase();

@@ -1,31 +1,20 @@
 /**
  * How a catalog publish is merged into the copy the CDN already serves.
  *
- * Extracted from publish-catalog.mjs so the decision is testable without R2
- * credentials or a network, the same split apply-metadata.mjs and apply-news.mjs
- * use. Nothing here imports r2.mjs: it takes two plain documents and returns the
- * one to upload plus a report of what it did, so the transport can be as dumb as
- * possible.
- *
- * The trap this closes. A game's display fields live in two places and two
- * scripts write them: publish-metadata.mjs edits catalog.json *on the CDN* in
- * place, while publish-catalog.mjs uploaded public/catalog.json straight over
- * that copy. Every `publish:meta` edit was therefore reverted by the next
- * catalog publish, and the stale name came back with no error anywhere - which
- * is why the dashboard's Games -> Catalog button was documented as dangerous.
+ * Pure, with no r2 import: it takes two plain documents and returns the one to
+ * upload plus a report, so the transport stays dumb and this is testable without
+ * credentials.
  *
  * The rule is additive in one direction only:
  *
  *   - a game the CDN already lists is authoritative and is left byte-identical,
  *   - a game the CDN has never seen is added from the local file,
  *   - a game the local file omits is NOT a removal. A stale local copy is not a
- *     delete request, and honouring it as one would make a published game
- *     disappear from the launcher.
+ *     delete request, and honouring it as one would make a live game vanish.
  *
- * `--force` inverts only the first rule. It deliberately does not resurrect the
- * old delete behaviour: the one guarantee an operator needs from a script that
- * rewrites the index every launcher reads is that it cannot silently make a
- * live game vanish. Games the local file omits are kept and listed as kept.
+ * `--force` inverts only the first rule. It deliberately does not resurrect a
+ * delete: a script that rewrites the index every launcher reads must not be able
+ * to make a published game disappear.
  */
 
 /** True when two catalog field values are equal, by content rather than identity. */
@@ -36,13 +25,11 @@ function sameValue(a, b) {
 /**
  * Why a catalog document cannot be published, or null when it can.
  *
- * These messages are the ones the script has always printed, kept verbatim
- * because they are what an operator greps for in CI output. A malformed
- * catalog breaks every client, and the remote copy is harder to inspect than a
- * local file, so this runs before anything is uploaded.
+ * The messages are what an operator greps for in CI output. A malformed catalog
+ * breaks every client, so this runs before anything is uploaded.
  *
- * Note the games array may legitimately be empty or missing *for the merge*
- * (it then adds nothing); this rejection is the script's, not the merge's.
+ * The games array may legitimately be empty *for the merge* (it then adds
+ * nothing); this rejection is the script's, not the merge's.
  */
 export function validateCatalog(catalog) {
   if (!Array.isArray(catalog?.games) || catalog.games.length === 0) {
@@ -62,11 +49,9 @@ export function validateCatalog(catalog) {
 /**
  * The refusal printed when the published catalog cannot be read.
  *
- * Publishing a catalog that was built from the local file alone, because the
- * CDN copy was unreachable, would drop every game that is not in the local
- * file from the launcher - a total outage produced by a transient network
- * error. Refusing is the only safe answer, so this is a message and not an
- * exception: the caller is a script that exits through fail().
+ * Publishing from the local file alone would drop every game it does not list -
+ * a total outage from a transient network error. Refusing is the only safe
+ * answer, so this returns the message the caller exits through fail() with.
  */
 export function remoteCatalogRefusal(url) {
   return `Could not read ${url}. Refusing to write a new catalog from scratch.`;
@@ -74,27 +59,16 @@ export function remoteCatalogRefusal(url) {
 
 /**
  * How a CDN entry and a local entry disagree, split by direction so the report
- * says what was actually at stake rather than just that something differed.
+ * says what was at stake rather than just that something differed.
  *
- * `differs` is the dangerous list, and it is deliberately narrow: a field both
- * sides carry with different values. That is a real CDN-side edit the local file
- * would have reverted - publish:meta wrote the CDN copy, and the checked-in file
- * still holds what it shipped with.
+ * `differs` - a field both sides carry with different values - is the dangerous
+ * list: a real CDN-side edit the local file would revert. `cdnOnly` is a field
+ * only the CDN has, which an overwrite would blank. `localOnly` is the opposite
+ * and NOT a save: an omission rather than a reversal, so it is excluded from the
+ * "would have been reverted" count.
  *
- * `cdnOnly` is a field the CDN has and the local file never mentions at all; an
- * overwrite would have blanked it, which is how a content-addressed iconUrl
- * pointing at real uploaded artwork disappears. Also an edit that would be lost.
- *
- * `localOnly` is the opposite and NOT a save: a field the local file has and the
- * CDN copy lacks, typically a whole CDN entry written by hand from a stub. The
- * merge declines to introduce it, but it is an omission rather than a reversal,
- * so it is reported separately and excluded from the "would have been reverted"
- * count. Folding the two together made every skip look like a rescued edit,
- * which is exactly the false reassurance this report exists to avoid.
- *
- * Keys rather than a fixed field list, on purpose: a hand-added CDN field would
- * be invisible to a whitelist and could still be reverted by a merge that
- * checked only the fields it knew about.
+ * Keys rather than a fixed field list, so a hand-added CDN field cannot be
+ * reverted by a merge that checks only the fields it knows about.
  */
 function describeConflict(cdn, local) {
   const differs = [];
@@ -121,9 +95,9 @@ function describeConflict(cdn, local) {
 /**
  * Merge the local catalog into the published one.
  *
- * Pure: `remote` and `local` are only read, and the returned document is a new
- * object (the returned `games` array is a fresh array holding the untouched CDN
- * entry objects, so a caller cannot corrupt the input by mutating it).
+ * Pure: `remote` and `local` are only read, and the returned `games` array is a
+ * fresh array holding the untouched CDN entry objects, so a caller cannot
+ * corrupt the input by mutating it.
  *
  * @param remote the catalog as served today. Expected to have been checked with
  *   validateCatalog already; a malformed one is treated as "no games known".

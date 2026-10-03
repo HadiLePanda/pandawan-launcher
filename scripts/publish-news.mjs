@@ -26,6 +26,7 @@ import {
 } from './lib/news-fields.mjs';
 import { applyNewsOps, newsItemLabel } from './lib/apply-news.mjs';
 import { artworkObjectName } from './lib/artwork.mjs';
+import { fetchJson } from './lib/game-metadata.mjs';
 
 const NEWS_KEY = 'launcher/news.json';
 
@@ -182,16 +183,6 @@ export async function publishNews(argv) {
 
   // --- Read what is published today ----------------------------------------
 
-  /** Fetch a JSON document from the CDN, or null when it is not there. */
-  async function fetchJson(url) {
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      return res.ok ? await res.json() : null;
-    } catch {
-      return null;
-    }
-  }
-
   const published = await fetchJson(newsUrl);
   const isNewFeed = !published || !Array.isArray(published.items);
   const feed = isNewFeed ? { items: [] } : published;
@@ -275,13 +266,7 @@ export async function publishNews(argv) {
         endpoint,
         '--no-progress',
         // Immutable, and the key carries a content hash, so a year-long cache is
-        // truthful: changed art lands on a different URL, which means a client
-        // that cached the old one is never served stale art.
-        //
-        // The earlier NO_CACHE here was correct in isolation - the name was
-        // stable, so a cached copy could outlive the file - but it made every
-        // launch re-download every announcement image. Hashing the name fixes
-        // both the staleness and the download.
+        // truthful: changed art lands on a different URL.
         '--cache-control',
         IMMUTABLE,
       ],
@@ -307,12 +292,11 @@ export async function publishNews(argv) {
     rmSync(stagedPath, { force: true });
   }
 
-  // The bundled copy is not optional, and this is the line that explains why:
-  // public/news.json ships inside the app as the offline fallback, and
-  // publish-catalog.mjs uploads this very file over the CDN document. A
-  // CDN-only news edit would therefore be reverted by the next catalog
-  // publish - silently, with no error to point at. Same shape as the file
-  // already on disk: 2-space JSON with a trailing newline.
+  // The bundled copy is not optional: public/news.json ships inside the app as
+  // the offline fallback, and publish-catalog.mjs uploads this very file over
+  // the CDN document - so a CDN-only edit would be silently reverted by the next
+  // catalog publish. Same shape as the file already on disk: 2-space JSON with a
+  // trailing newline.
   const localPath = path.join(repoRoot, 'public', 'news.json');
   writeFileSync(localPath, `${JSON.stringify(nextFeed, null, 2)}\n`);
 

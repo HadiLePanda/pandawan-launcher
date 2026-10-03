@@ -11,17 +11,10 @@
  */
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
-import { NO_CACHE, S3, fail, loadDotEnv, repoRoot, upload, r2Config } from './lib/r2.mjs';
+import { NO_CACHE, S3, fail, repoRoot, upload, r2Config } from './lib/r2.mjs';
+import { parseArgs } from './lib/args.mjs';
 
-loadDotEnv();
-
-const args = {};
-for (let i = 2; i < process.argv.length; i++) {
-  if (!process.argv[i].startsWith('--')) continue;
-  const key = process.argv[i].slice(2);
-  args[key] =
-    process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[++i] : 'true';
-}
+const args = parseArgs(process.argv.slice(2));
 
 const gameId = args['game-id'];
 const channel = args.channel ?? 'stable';
