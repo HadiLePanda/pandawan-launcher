@@ -19,7 +19,8 @@ pub mod window_behavior;
 pub mod test_utils;
 
 use patch::{
-    list_installations, load_installation, record_playtime, save_installation, PatchManager,
+    list_installations, load_installation, record_playtime, save_installation_keeping_playtime,
+    PatchManager,
 };
 use path_utils::{assert_path_inside, validate_game_id};
 use types::*;
@@ -242,11 +243,12 @@ async fn install_game(
         .app_data_dir()
         .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    let installation = patch_manager
+    let mut installation = patch_manager
         .patch_game(manifest, install_dir, &app_data_dir, base_url, on_event)
         .await?;
 
-    save_installation(&app_data_dir, &installation)?;
+    // The record above was read before the download, not after it.
+    save_installation_keeping_playtime(&app_data_dir, &mut installation)?;
 
     Ok(installation)
 }
@@ -850,6 +852,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::patch::save_installation;
     use std::collections::HashMap;
 
     // =========================================================================

@@ -873,6 +873,82 @@ fn test_record_playtime_accumulates() {
 }
 
 #[test]
+fn test_update_after_a_session_keeps_the_playtime_that_session_recorded() {
+    use pandawan_launcher_lib::patch::record_playtime;
+    use pandawan_launcher_lib::patch::save_installation_keeping_playtime;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path();
+
+    // patch_game builds its record from the one it read before the download, so
+    // this is the snapshot it would carry for the whole download.
+    let mut snapshot = GameInstallation {
+        game_id: "concurrent-game".to_string(),
+        installed_version: "1.0.0".to_string(),
+        installed_build: 1,
+        install_path: PathBuf::from("/games/concurrent-game"),
+        installed_files: HashMap::new(),
+        installed_at: chrono::Utc::now(),
+        last_played: None,
+        total_playtime_seconds: 600,
+        executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
+    };
+    save_installation(app_data_dir, &snapshot).unwrap();
+
+    // A session ends while the download is still running.
+    record_playtime(app_data_dir, "concurrent-game", 1800).unwrap();
+
+    // The download finishes and writes the snapshot it read at the start.
+    snapshot.installed_build = 2;
+    snapshot.installed_version = "1.1.0".to_string();
+    save_installation_keeping_playtime(app_data_dir, &mut snapshot).unwrap();
+
+    let loaded = load_installation(app_data_dir, "concurrent-game")
+        .unwrap()
+        .unwrap();
+    // The session is kept, not rolled back to the snapshot's total.
+    assert_eq!(loaded.total_playtime_seconds, 2400);
+    assert!(loaded.last_played.is_some());
+    // And the update itself still landed.
+    assert_eq!(loaded.installed_build, 2);
+}
+
+#[test]
+fn test_update_write_does_not_reduce_playtime() {
+    use pandawan_launcher_lib::patch::save_installation_keeping_playtime;
+
+    let temp_dir = temp_dir();
+    let app_data_dir = temp_dir.path();
+
+    let stale = GameInstallation {
+        game_id: "stale-game".to_string(),
+        installed_version: "1.0.0".to_string(),
+        installed_build: 1,
+        install_path: PathBuf::from("/games/stale-game"),
+        installed_files: HashMap::new(),
+        installed_at: chrono::Utc::now(),
+        last_played: None,
+        total_playtime_seconds: 10_000,
+        executable: "game.exe".to_string(),
+        channel: "stable".to_string(),
+    };
+    save_installation(app_data_dir, &stale).unwrap();
+
+    // A snapshot older than what is on disk, the way a record read before a
+    // multi-minute download always is.
+    let mut older = stale.clone();
+    older.total_playtime_seconds = 0;
+    older.last_played = None;
+    save_installation_keeping_playtime(app_data_dir, &mut older).unwrap();
+
+    let loaded = load_installation(app_data_dir, "stale-game")
+        .unwrap()
+        .unwrap();
+    assert_eq!(loaded.total_playtime_seconds, 10_000);
+}
+
+#[test]
 fn test_record_playtime_not_installed() {
     use pandawan_launcher_lib::patch::record_playtime;
 

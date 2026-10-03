@@ -471,6 +471,22 @@ impl From<PatchError> for LauncherError {
     }
 }
 
+/// Serializes the read-modify-write of an installation record.
+///
+/// save_installation is atomic against a crash but not against another writer, and
+/// two writers read-modify-write this file. tokio::sync::Mutex is already imported
+/// under that name, so this one is spelled in full.
+static INSTALLATION_WRITE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Poisoning means a previous holder panicked mid-write. The file was written
+/// atomically, so the record on disk is intact and refusing every later write
+/// would be worse than continuing.
+fn lock_installation_write() -> std::sync::MutexGuard<'static, ()> {
+    INSTALLATION_WRITE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 pub fn save_installation(
     app_data_dir: &Path,
     installation: &GameInstallation,
@@ -491,6 +507,31 @@ pub fn save_installation(
     fs::rename(&tmp_path, &file_path)?;
 
     Ok(())
+}
+
+/// Write a record built before a download, keeping any playtime recorded since.
+///
+/// patch_game reads the record, downloads for as long as the build takes, and only
+/// then writes the record it read at the start. A session that ended in that window
+/// is on disk but not in the snapshot, so writing the snapshot alone silently drops
+/// it. Playtime only ever grows, so the larger of the two totals is the true one and
+/// `last_played` moves forward with it.
+pub fn save_installation_keeping_playtime(
+    app_data_dir: &Path,
+    installation: &mut GameInstallation,
+) -> Result<(), PatchError> {
+    let _guard = lock_installation_write();
+
+    if let Some(stored) = load_installation(app_data_dir, &installation.game_id)? {
+        if stored.total_playtime_seconds > installation.total_playtime_seconds {
+            installation.total_playtime_seconds = stored.total_playtime_seconds;
+        }
+        if stored.last_played > installation.last_played {
+            installation.last_played = stored.last_played;
+        }
+    }
+
+    save_installation(app_data_dir, installation)
 }
 
 pub fn load_installation(
@@ -521,6 +562,8 @@ pub fn record_playtime(
     game_id: &str,
     duration_seconds: u64,
 ) -> Result<GameInstallation, PatchError> {
+    let _guard = lock_installation_write();
+
     let mut installation = load_installation(app_data_dir, game_id)?
         .ok_or_else(|| PatchError::Other(format!("Game '{}' is not installed", game_id)))?;
 
