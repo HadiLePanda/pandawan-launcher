@@ -1,23 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUpdaterStore, downloadAndInstall } from '@/lib/updater-service';
-import { formatBytes } from '@/lib/utils';
+import { formatBytes, cn } from '@/lib/utils';
 import { formatSpeed } from '@/lib/download-channel';
 
 interface UpdatePopoverProps {
   open: boolean;
-  onClose: () => void;
   onRestart: () => void;
+  /** True while a game runs: a restart would kill its playtime recorder. */
+  gameRunning: boolean;
 }
 
 /**
  * Compact launcher-update detail, opened from the top-bar chip.
  *
- * There is deliberately no Cancel: the updater plugin exposes no abort, so a
- * Cancel button would be a lie. "Later" only means "not now" - a staged update
- * still applies the next time the app actually quits.
+ * Downloading is purely informational - no action buttons. The plugin exposes no
+ * abort, so a Cancel would be a lie, and there is no Later either: doing nothing
+ * already defers, and a staged update applies on the next real quit. The staged
+ * state carries the one real action, Restart.
  */
-export function UpdatePopover({ open, onClose, onRestart }: UpdatePopoverProps) {
+export function UpdatePopover({ open, onRestart, gameRunning }: UpdatePopoverProps) {
   const { t } = useTranslation();
   const { status, version, downloadedBytes, totalBytes } = useUpdaterStore();
   const [speed, setSpeed] = useState(0);
@@ -44,15 +46,6 @@ export function UpdatePopover({ open, onClose, onRestart }: UpdatePopoverProps) 
     }, 600);
     return () => window.clearInterval(id);
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -84,12 +77,26 @@ export function UpdatePopover({ open, onClose, onRestart }: UpdatePopoverProps) 
       {!staged && speed > 0 && <div className="update-popover-detail">{formatSpeed(speed)}</div>}
       {staged && <div className="update-popover-detail">{t('updatePopover.readyBody')}</div>}
 
-      <div className="update-popover-actions">
-        {staged ? (
-          <button type="button" className="btn btn-sm btn-primary" onClick={onRestart}>
+      {staged && gameRunning && (
+        <div className="update-popover-detail">{t('updatePopover.gameRunningNote')}</div>
+      )}
+
+      {/* Only the staged state has a button. With a game running it is muted:
+          waiting is the default, since a restart kills the waiter that records
+          this session's playtime and the staged update loses nothing by waiting. */}
+      {staged && (
+        <div className="update-popover-actions">
+          <button
+            type="button"
+            className={cn('btn btn-sm', gameRunning ? 'btn-ghost' : 'btn-primary')}
+            onClick={onRestart}
+          >
             {t('updatePopover.restart')}
           </button>
-        ) : status === 'available' ? (
+        </div>
+      )}
+      {!staged && status === 'available' && (
+        <div className="update-popover-actions">
           <button
             type="button"
             className="btn btn-sm btn-primary"
@@ -97,11 +104,8 @@ export function UpdatePopover({ open, onClose, onRestart }: UpdatePopoverProps) 
           >
             {t('updatePopover.update')}
           </button>
-        ) : null}
-        <button type="button" className="btn btn-sm btn-ghost" onClick={onClose}>
-          {t('updatePopover.later')}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
