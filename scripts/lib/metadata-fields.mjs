@@ -55,23 +55,6 @@ export const IMAGE_FIELDS = {
   'banner-url': { flag: 'banner-file', objectName: 'banner.png' },
 };
 
-export function parseArgs(argv) {
-  const args = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (!argv[i].startsWith('--')) continue;
-    const key = argv[i].slice(2);
-    const value = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
-    if (key in args) args[key] = [].concat(args[key], value);
-    else args[key] = value;
-  }
-  return args;
-}
-
-export const first = (value) => (Array.isArray(value) ? value[0] : value);
-
-/** Split a comma-separated field into its list values, dropping empty parts. */
-export const listValue = (value) =>
-  String(value)
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
+// Re-exported from args.mjs, where they live now that news publishing needs them
+// too. Kept here so the existing importers of metadata-fields keep working.
+export { parseArgs, first, listValue } from './args.mjs';

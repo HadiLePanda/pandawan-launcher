@@ -44,6 +44,7 @@ import {
   parseArgs,
 } from './lib/metadata-fields.mjs';
 import { applyMetadataChanges } from './lib/apply-metadata.mjs';
+import { artworkObjectName } from './lib/artwork.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
 export async function publishMetadata(argv) {
@@ -107,16 +108,20 @@ export async function publishMetadata(argv) {
     // bytes puts changed artwork on a new URL, so the old one stays valid forever
     // and clients pick up new art only by reading a manifest that names it.
     //
-    // The extension is taken from the source file rather than forced to .png, so a
+    // The extension comes from the source file rather than forced to .png, so a
     // JPEG icon is served as a JPEG instead of being uploaded with the wrong
-    // Content-Type and rendered unpredictably.
-    const ext =
-      path.extname(localPath).toLowerCase() ||
-      file.objectName.slice(file.objectName.lastIndexOf('.'));
+    // Content-Type and rendered unpredictably. Both decisions live in artwork.mjs so
+    // the dashboard's listing cannot disagree with the name written here.
     const base = file.objectName.slice(0, file.objectName.lastIndexOf('.'));
     const hash = createHash('sha256').update(readFileSync(localPath)).digest('hex').slice(0, 8);
-    const key = `${prefix}/${base}-${hash}${ext}`;
-    uploads.push({ localPath, key, label: `${base}-${hash}${ext}` });
+    const objectName = artworkObjectName({
+      baseName: base,
+      hash,
+      fileName: localPath,
+      fallbackName: file.objectName,
+    });
+    const key = `${prefix}/${objectName}`;
+    uploads.push({ localPath, key, label: objectName });
 
     // A chosen file supersedes any URL in the same payload rather than adding a
     // second change for the same field. IMAGE_FIELDS is keyed by flag, so the
