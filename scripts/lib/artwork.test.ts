@@ -164,11 +164,13 @@ describe('saying which field each image belongs to', () => {
     const described = describeArtwork(objects, {
       'icon-url': `${CDN}/games/misspell/alpha/icon-11111111.png`,
       'banner-url': `/${PREFIX}/banner-22222222.png`,
+      screenshots: `${PREFIX}/shot-33333333.png`,
     });
 
     const byName = Object.fromEntries(described.map((o) => [o.name, o]));
     expect(byName['icon-11111111.png'].field).toBe('icon-url');
     expect(byName['icon-11111111.png'].inUse).toBe(true);
+    expect(byName['shot-33333333.png'].inUse).toBe(true);
   });
 
   it('matches a URL stored the documented way, as a relative path', () => {

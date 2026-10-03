@@ -168,6 +168,12 @@ The few things worth knowing without looking:
 
 ## Coding Style
 
+### Comments
+
+Rare, and only where the code cannot say it: an invariant, a non-obvious
+constraint, a pitfall, a workaround and its reason. Never restate the line below
+it, and never narrate the change that produced it.
+
 ### TypeScript/React
 
 - Use functional components with hooks

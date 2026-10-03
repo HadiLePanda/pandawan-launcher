@@ -1,10 +1,17 @@
 /**
  * Reading a game current metadata for the publishing dashboard.
  *
- * Split out of dashboard.mjs so it can be tested without starting a server
- * that holds R2 credentials. The caller passes in the CDN origin and the field
- * contract, so this module depends on neither the environment nor the publisher.
+ * Split out of dashboard.mjs so it can be tested without a server holding R2
+ * credentials.
  */
+
+import { IMAGE_FIELDS } from './metadata-fields.mjs';
+
+function artPreviewUrl(value, cdnOrigin) {
+  const text = (Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '')).trim();
+  if (!text || /^https?:\/\//i.test(text) || text.startsWith('/')) return text;
+  return `${String(cdnOrigin).replace(/\/+$/, '')}/${text}`;
+}
 
 /**
  * Everything the metadata form needs to show the current truth for one channel.
@@ -71,6 +78,8 @@ export async function readGameMetadata(gameId, channel, { cdnOrigin, fields }) {
       // A value the launcher is already rendering but which the catalog does not
       // own. Worth surfacing: it is why an edit here may appear to do nothing.
       inherited: source === 'manifest',
+      // Display only; `value` above is what gets saved.
+      previewUrl: field.flag in IMAGE_FIELDS ? artPreviewUrl(value, cdnOrigin) : undefined,
     };
   }
 

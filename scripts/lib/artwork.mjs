@@ -104,8 +104,9 @@ export function selectArtworkObjects(keys, { prefix, cdnOrigin }) {
 /** Whether a stored URL points at this object. */
 function references(value, object) {
   if (!value || !object?.key) return false;
+  if (value === object.key) return true;
   if (value === object.url) return true;
-  // A relative URL has no origin, so it can only match by key.
+  // A root-relative URL has no origin, so it can only match by key.
   return value === `/${object.key}` || value.endsWith(`/${object.key}`);
 }
 

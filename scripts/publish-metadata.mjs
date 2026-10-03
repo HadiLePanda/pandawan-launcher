@@ -105,7 +105,8 @@ export async function publishMetadata(argv) {
     // literal "undefined" key into the catalog instead of the icon URL.
     const field = FIELDS.find((f) => f.flag === catalogKey);
     if (!field) fail(`No field contract entry for "${catalogKey}".`);
-    const change = { ...field, value: `${cdnOrigin}/${key}` };
+    // Relative, not absolute: the CDN host stays in VITE_CDN_ORIGIN.
+    const change = { ...field, value: key };
     // Compare on flag too, so a typed URL for this field is replaced rather than
     // left as a second write where only the last one survives.
     const at = changes.findIndex((c) => c.flag === catalogKey);
