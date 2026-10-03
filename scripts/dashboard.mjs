@@ -163,6 +163,14 @@ function ttlFromEnv(name, fallback) {
 const CACHE_TTL_ONLINE_MS = ttlFromEnv('DASHBOARD_CACHE_TTL_MS', 60 * 60 * 1000);
 
 /**
+ * How long a CDN request may take before it is abandoned. One constant because
+ * the panel's own reads already answer inside it: a fetch with no signal waits on
+ * a half-open connection, which parks the request rather than failing it, and
+ * the read cache would then serve that hung request for an hour.
+ */
+const CDN_FETCH_TIMEOUT_MS = 15_000;
+
+/**
  * How long a LOCAL live fact may be reused, in ms. Short because /api/services
  * is a port probe the client re-polls every few seconds: at 30 s a stopped dev
  * server reads as running for at most 30 s while nine polls in ten cost nothing,
@@ -353,7 +361,10 @@ function cacheHeaders(state, ageMs) {
  * one recursive listing plus latest.json per channel.
  */
 async function buildInventory() {
-  const keys = await listKeysWithMeta(S3.s3Uri(bucket, 'games/'), { endpoint });
+  const keys = await listKeysWithMeta(S3.s3Uri(bucket, 'games/'), {
+    endpoint,
+    throwOnFailure: true,
+  });
   const games = new Map();
 
   const channelOf = (key) => {
@@ -434,7 +445,9 @@ async function buildInventory() {
 
       let latest = null;
       try {
-        const res = await fetch(`${cdnOrigin}/games/${id}/${channel}/latest.json`);
+        const res = await fetch(`${cdnOrigin}/games/${id}/${channel}/latest.json`, {
+          signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+        });
         if (res.ok) latest = await res.json();
       } catch {
         latest = null;
@@ -444,7 +457,9 @@ async function buildInventory() {
       // installs it; reporting every platform as empty would say the opposite.
       if (!latest) {
         try {
-          const res = await fetch(`${cdnOrigin}/games/${id}/${channel}/manifest.json`);
+          const res = await fetch(`${cdnOrigin}/games/${id}/${channel}/manifest.json`, {
+            signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+          });
           if (res.ok) {
             const manifest = await res.json();
             latest = { windows: { version: manifest.version, build: manifest.build_number } };
@@ -625,7 +640,10 @@ function readPagesDeployments() {
  */
 async function headArtifact(url) {
   try {
-    const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(15_000) });
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+    });
     const length = Number(response.headers.get('content-length'));
     return {
       ok: response.ok,
@@ -651,7 +669,10 @@ async function readLiveDownloads() {
   const url = `${cdnOrigin}/launcher/downloads.json`;
   let response;
   try {
-    response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+    response = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+    });
   } catch (err) {
     return { url, error: String(err?.message ?? err), ...summariseDownloads(null) };
   }
@@ -833,7 +854,10 @@ async function launcherStatus() {
   let published = null;
   let publishedError = null;
   try {
-    const response = await fetch(`${cdnOrigin}/launcher/latest.json`, { cache: 'no-store' });
+    const response = await fetch(`${cdnOrigin}/launcher/latest.json`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+    });
     if (response.ok) {
       const manifest = await response.json();
       const targets = Object.keys(manifest.platforms ?? {});
@@ -887,7 +911,10 @@ async function launcherStatus() {
  * destroy whatever it said.
  */
 async function readNewsFeed(cdnOrigin) {
-  const res = await fetch(`${cdnOrigin}/launcher/news.json`, { cache: 'no-store' });
+  const res = await fetch(`${cdnOrigin}/launcher/news.json`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+  });
   if (res.status === 404) return { items: [] };
   const text = await res.text();
   if (!text.trim()) return { items: [] };
@@ -927,7 +954,10 @@ const CATALOG_URL = `${cdnOrigin}/launcher/catalog.json`;
 async function readLiveCatalog() {
   let response;
   try {
-    response = await fetch(CATALOG_URL, { cache: 'no-store' });
+    response = await fetch(CATALOG_URL, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+    });
   } catch (err) {
     return { catalog: null, status: 'unreadable', detail: String(err) };
   }
@@ -1112,9 +1142,20 @@ async function catalogWrite(res, catalog) {
 }
 
 /**
+ * The failure answer of readJson, distinct from every value a body can parse to.
+ * `null` was overloaded, and `0`, `false` and `''` are all falsy: the caller's
+ * `if (!payload) return` read those as "already answered" and left the request
+ * hanging with no response at all.
+ */
+const JSON_REFUSED = Symbol('readJson refused');
+
+/**
  * Parse a JSON request body, answering the request itself on malformed input and
  * on an oversized one. Chunks past `maxBytes` are drained but not stored, so the
  * browser sees the 413 rather than a connection reset.
+ *
+ * Returns JSON_REFUSED when the request has already been answered; the caller
+ * must compare against the symbol, not against a falsy value.
  */
 async function readJson(req, res, { maxBytes = 1024 * 1024 } = {}) {
   const raw = await new Promise((resolve) => {
@@ -1129,20 +1170,32 @@ async function readJson(req, res, { maxBytes = 1024 * 1024 } = {}) {
       }
       body += chunk;
     });
-    req.on('end', () => resolve(refused ? null : body));
+    req.on('end', () => resolve(refused ? JSON_REFUSED : body));
   });
 
-  if (raw === null) {
+  if (raw === JSON_REFUSED) {
     res.writeHead(413).end(`body too large; the limit is ${maxBytes} bytes`);
-    return null;
+    return JSON_REFUSED;
   }
 
+  let value;
   try {
-    return JSON.parse(raw || '{}');
+    value = JSON.parse(raw || '{}');
   } catch {
     res.writeHead(400).end('bad json');
-    return null;
+    return JSON_REFUSED;
   }
+
+  // Every caller reads named fields off the payload, so a scalar or null body is
+  // answered as the malformed request it is. Handing it back "successfully" threw
+  // on the first property access, and this handler has no outer catch: the whole
+  // server went down with the response unanswered.
+  if (typeof value !== 'object' || value === null) {
+    res.writeHead(400).end('a JSON object is required');
+    return JSON_REFUSED;
+  }
+
+  return value;
 }
 
 /**
@@ -1176,10 +1229,25 @@ function runScript(name, args, res, { onExit } = {}) {
   runningScripts.add(script);
   persist();
 
+  // Set by the child's own close, because a normal completion ends the response
+  // and would otherwise cancel the child it just finished reporting on.
+  let finished = false;
+
+  // A closed tab, a reload or a sleeping laptop drops the stream mid-publish and
+  // leaves the upload running with nothing left to stop it. Cancelling kills the
+  // tree: the child records the exit in its own handler, and a taskkill that did
+  // not land leaves the manifest entry for the watchdog to reap.
+  res.on('close', () => {
+    if (finished) return;
+    finished = true;
+    killTree(child.pid);
+  });
+
   child.stdout.on('data', (chunk) => send('output', String(chunk)));
   child.stderr.on('data', (chunk) => send('output', String(chunk)));
   child.on('error', (err) => send('error', String(err)));
   child.on('close', (code) => {
+    finished = true;
     runningScripts.delete(script);
     persist();
     send('done', JSON.stringify({ code }));
@@ -1623,7 +1691,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/publish' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // A build publish changes the inventory, rewrites manifest.json and
     // latest.json (which readGameMetadata fetches), and can ship artwork - so
@@ -1641,7 +1709,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/prune' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // prune-builds deletes build directories, so its argv is assembled from named
     // fields rather than forwarded: the form cannot smuggle in flags like
@@ -1718,7 +1786,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/catalog/create' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // The entry shape is decided by the tested module; the id is validated there
     // too because it becomes a bucket path segment.
@@ -1784,7 +1852,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/catalog/delete' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // Delete hides a game from every launcher with no undo, so it is refused
     // without an explicit confirmation. The message says what will happen rather
@@ -1837,7 +1905,7 @@ const server = http.createServer(async (req, res) => {
     // publish-catalog.mjs merges additively and supports --dry-run, forwarded so
     // the UI's "preview only" checkbox is honoured.
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
     // Dropped on acceptance: a read taken during the publish would otherwise be
     // served for the rest of the TTL. The same script re-uploads public/news.json
     // to launcher/news.json unless SKIP_NEWS, so /api/news is stale too. /api/meta
@@ -1889,7 +1957,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/meta/publish' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // The argument list is assembled from named fields rather than forwarded, for
     // the same reason prune does it: the form must not pass through a flag the UI
@@ -1976,7 +2044,10 @@ const server = http.createServer(async (req, res) => {
       // The form re-reads this after every upload, which is what made the picker
       // feel slow.
       const read = await cachedRead(url, async () => {
-        const keys = await listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
+        const keys = await listKeysWithMeta(S3.s3Uri(bucket, prefix), {
+          endpoint,
+          throwOnFailure: true,
+        });
         // Keyed by the contract entry's key ("icon-url"), NOT its `flag` field
         // ("icon-file"), which names the CLI option. Keyed wrong, nothing is in use.
         const objects = sortArtwork(
@@ -2000,7 +2071,7 @@ const server = http.createServer(async (req, res) => {
     // base64 adds a third again to the file, so the body cap sits above the file
     // cap rather than at it.
     const payload = await readJson(req, res, { maxBytes: Math.ceil(MAX_ARTWORK_BYTES * 1.4) });
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     const fileName = String(payload.fileName ?? '');
     const check = validateArtwork({ fileName, sizeBytes: Number(payload.sizeBytes) });
@@ -2045,7 +2116,7 @@ const server = http.createServer(async (req, res) => {
     // Same body cap as /api/art/stage: the base64 payload adds a third again to
     // the file, so the request cap sits above the file cap rather than at it.
     const payload = await readJson(req, res, { maxBytes: Math.ceil(MAX_ARTWORK_BYTES * 1.4) });
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     const gameId = String(payload.gameId ?? '').trim();
     const channel = String(payload.channel ?? '').trim();
@@ -2110,7 +2181,10 @@ const server = http.createServer(async (req, res) => {
     // published as this game's icon - are a no-op rather than a second copy.
     let existing = null;
     try {
-      const keys = await listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
+      const keys = await listKeysWithMeta(S3.s3Uri(bucket, prefix), {
+        endpoint,
+        throwOnFailure: true,
+      });
       existing = keys.find((entry) => {
         const name = String(entry?.key ?? '').slice(prefix.length + 1);
         return !name.includes('/') && new RegExp(`-${hash}\\.[a-z0-9]+$`, 'i').test(name);
@@ -2179,7 +2253,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/art/delete' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     const key = String(payload.key ?? '').trim();
     // Removing an object from the bucket cannot be undone, so it is refused
@@ -2327,7 +2401,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/news/publish' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     // Validated rather than forwarded: the publisher treats a bare --flag as
     // destructive, so an unrecognised value from the form must never become one.
@@ -2444,7 +2518,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/launcher/publish' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
     // The tag is validated before it is passed on, so a form value can never become
     // an option (publish-launcher treats anything starting with -- as a flag).
     const tag = String(payload.tag ?? '').trim();
@@ -2476,7 +2550,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/launcher/keys' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
     // keys:check only reads the key and signs a throwaway file, so it is always
     // safe to run from here.
     runScript('check-updater-keys.cjs', [], res);
@@ -2485,7 +2559,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/launcher/release' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
     const level = ['patch', 'minor', 'major'].includes(payload.level) ? payload.level : 'patch';
     const argv = [level];
     // A dry run is the default, as for every other publish verb here. A real
@@ -2542,7 +2616,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/website/deploy' && req.method === 'POST') {
     const payload = await readJson(req, res);
-    if (!payload) return;
+    if (payload === JSON_REFUSED) return;
 
     const missing = siteAbsentResponse(res);
     if (missing) return;
@@ -2620,6 +2694,20 @@ for (const signal of ['exit', 'SIGINT', 'SIGTERM']) {
 startWatchdog();
 
 const reaped = reapManifest(manifestPath);
+
+// Without this, a port already in use is an unhandled 'error' event: the process
+// dies on a stack trace that never names the port, and the .bat launchers go on
+// polling it until their own timeout instead of reporting the collision at once.
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `Port ${PORT} is already in use - close whatever is listening there, or pass --port.`
+    );
+  } else {
+    console.error(`Dashboard server error: ${String(err?.message ?? err)}`);
+  }
+  process.exit(1);
+});
 
 server.listen(PORT, '127.0.0.1', () => {
   if (reaped) console.log(`Stopped ${reaped} leftover service tree(s) from a previous run`);

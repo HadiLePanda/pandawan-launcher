@@ -38,6 +38,16 @@ export function fail(message) {
   process.exit(1);
 }
 
+/**
+ * Report a failure the way the caller can survive: the standalone scripts exit,
+ * and the in-process dashboard caller turns it into a rejected promise so the
+ * request fails instead of every other publish running beside it.
+ */
+export function exitOrThrow(message, throwOnFailure) {
+  if (throwOnFailure) throw new Error(message);
+  fail(message);
+}
+
 export function requireEnv(name, hint) {
   const value = process.env[name];
   if (!value) fail(`${name} is not set.\n  ${hint}`);
@@ -157,12 +167,17 @@ export const IMMUTABLE = 'public, max-age=31536000, immutable';
  * default "<date> <time> <size> <key>" listing is parsed instead. isMangledKey
  * flags a key the CLI could not encode to the console codepage, so a caller can
  * delete its parent prefix rather than guess at the name.
+ *
+ * `throwOnFailure` lets the in-process dashboard caller report the error instead
+ * of exiting: a failed listing killed the whole server, along with the watchdog's
+ * in-flight publishes, for one bad request.
  */
-export function listKeysWithMeta(keyPrefix, { endpoint } = {}) {
+export function listKeysWithMeta(keyPrefix, { endpoint, throwOnFailure = false } = {}) {
   const args = ['s3', 'ls', keyPrefix, '--recursive', '--endpoint-url', endpoint];
   const res = spawnSync('aws', args, { shell: false });
-  if (res.error) fail(`could not run aws: ${res.error.message}`);
-  if (res.status !== 0) fail(`listing ${keyPrefix} failed (exit ${res.status})`);
+  if (res.error) exitOrThrow(`could not run aws: ${res.error.message}`, throwOnFailure);
+  if (res.status !== 0)
+    exitOrThrow(`listing ${keyPrefix} failed (exit ${res.status})`, throwOnFailure);
   const stdout = res.stdout ? res.stdout.toString('utf8') : '';
   return stdout
     .split('\n')
