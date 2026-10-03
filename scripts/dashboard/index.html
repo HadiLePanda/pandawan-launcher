@@ -33,6 +33,22 @@
             </svg>
             <span>Games</span>
           </button>
+          <button class="tab nav-item" data-tab="news" aria-selected="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <rect
+                x="2"
+                y="3"
+                width="12"
+                height="10"
+                rx="1.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.3"
+              />
+              <path d="M4.5 6h4M4.5 8.5h7M4.5 11h5" stroke="currentColor" stroke-width="1.3" />
+            </svg>
+            <span>News</span>
+          </button>
           <button class="tab nav-item" data-tab="launcher" aria-selected="false">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <rect
@@ -121,6 +137,78 @@
             <section id="inventory"></section>
           </section>
 
+          <!-- News ----------------------------------------------------------- -->
+          <section class="tabpanel" data-panel="news" role="tabpanel" hidden>
+            <section class="panel">
+              <h2>News feed</h2>
+              <p class="meta">
+                The feed every launcher's home screen reads. Pick an item to edit it, or add one.
+                The order here is the order players see, newest first.
+              </p>
+
+              <div class="split">
+                <!-- Selection sits beside the form: typing an id from memory was the failure
+                     mode this replaces. -->
+                <div class="split-list">
+                  <div class="row">
+                    <input id="newsFilter" placeholder="Filter by title or id" autocomplete="off" />
+                    <button type="button" id="newsRefresh" title="Re-read the published feed">
+                      Reload
+                    </button>
+                    <button type="button" id="newsNew" class="primary">New item</button>
+                  </div>
+                  <div id="newsList" class="pick-list"></div>
+                  <div id="newsState" class="meta"></div>
+                </div>
+
+                <div class="split-detail">
+                  <div id="newsResume" class="draft-note" hidden></div>
+                  <div id="newsBody" hidden>
+                    <div id="newsDirtyBar" class="dirty-bar" hidden></div>
+                    <div id="newsDraftNote" class="draft-note" hidden></div>
+                    <div id="newsFields" class="meta-fields"></div>
+
+                    <div class="meta-art">
+                      <h3>Published news artwork</h3>
+                      <p class="meta">
+                        Images stored under <code>launcher/news/</code>. Replacing an image does not
+                        overwrite it: each upload is stored under a new name, so superseded files
+                        stay here.
+                      </p>
+                      <div id="newsArt"></div>
+                    </div>
+
+                    <!-- The review step. Every field this publish would change is listed
+                                           with what it is replacing, because the form alone only says that
+                                           something changed, not what it is about to become. -->
+                    <section id="newsDiff" class="diff" hidden>
+                      <div class="diff-head">
+                        <h3>Review before publishing</h3>
+                        <p class="meta" id="newsDiffSummary"></p>
+                      </div>
+                      <div id="newsDiffRows"></div>
+                    </section>
+
+                    <div class="row meta-actions">
+                      <button type="button" id="newsRevertAll">Discard all changes</button>
+                      <button type="button" id="newsReview">Review changes</button>
+                      <button type="button" id="newsMoveUp">Move up</button>
+                      <button type="button" id="newsMoveDown">Move down</button>
+                      <button type="button" id="newsDelete" class="danger">Delete item</button>
+                      <label class="confirm"
+                        ><input id="newsDryRun" type="checkbox" checked /> Preview only</label
+                      >
+                      <button type="button" id="newsPublish" class="primary">Publish</button>
+                      <span id="newsDirtyCount" class="meta"></span>
+                    </div>
+                  </div>
+
+                  <pre id="newsLog" class="log" hidden></pre>
+                </div>
+              </div>
+            </section>
+          </section>
+
           <!-- Launcher ------------------------------------------------------ -->
           <section class="tabpanel" data-panel="launcher" role="tabpanel" hidden>
             <section class="panel">
@@ -168,8 +256,62 @@
 
           <!-- Games --------------------------------------------------------- -->
           <section class="tabpanel" data-panel="games" role="tabpanel" hidden>
-            <section class="panel">
+            <!-- Four unrelated jobs used to share one long page, so scrolling to the
+                           prune form meant passing the publish form. They are separate tasks
+                           with separate risks, and one of them is destructive, so each gets its
+                           own panel here rather than an anchor. The chosen sub-panel is kept
+                           separately from the tab hash (see SUBTABS_KEY) so a reload lands back
+                           where you were without disturbing the top-level scheme. -->
+            <div class="subtabs" role="tablist" aria-label="Games sections">
+              <button
+                class="subtab"
+                data-subtab="builds"
+                aria-selected="true"
+                aria-controls="subpanel-builds"
+                role="tab"
+              >
+                Builds
+              </button>
+              <button
+                class="subtab"
+                data-subtab="metadata"
+                aria-selected="false"
+                aria-controls="metaPanel"
+                role="tab"
+              >
+                Metadata
+              </button>
+              <button
+                class="subtab"
+                data-subtab="prune"
+                aria-selected="false"
+                aria-controls="subpanel-prune"
+                role="tab"
+              >
+                Prune
+              </button>
+              <button
+                class="subtab"
+                data-subtab="catalog"
+                aria-selected="false"
+                aria-controls="subpanel-catalog"
+                role="tab"
+              >
+                Catalog
+              </button>
+            </div>
+
+            <section
+              class="subpanel panel"
+              data-subpanel="builds"
+              role="tabpanel"
+              id="subpanel-builds"
+            >
               <h2>Publish a build</h2>
+              <p class="meta">
+                Uploads a game build and makes it the newest one for this channel. The catalog has
+                to be republished afterwards before the launcher sees it.
+              </p>
               <form id="form">
                 <div class="grid">
                   <label>Game<input id="gameId" required placeholder="misspell" /></label>
@@ -208,8 +350,18 @@
               <pre id="log" class="log" hidden></pre>
             </section>
 
-            <section class="panel panel-danger">
+            <section
+              class="subpanel panel panel-danger"
+              data-subpanel="prune"
+              role="tabpanel"
+              id="subpanel-prune"
+              hidden
+            >
               <h2>Prune builds</h2>
+              <p class="meta">
+                Deletes old build directories from the bucket. Untick "Delete for real" to see what
+                would go first; pinned versions are never removed.
+              </p>
               <form id="pruneForm">
                 <div class="grid">
                   <label>Game<input id="pruneGameId" required placeholder="misspell" /></label>
@@ -235,8 +387,18 @@
               <pre id="pruneLog" class="log" hidden></pre>
             </section>
 
-            <section class="panel">
+            <section
+              class="subpanel panel"
+              data-subpanel="catalog"
+              role="tabpanel"
+              id="subpanel-catalog"
+              hidden
+            >
               <h2>Catalog</h2>
+              <p class="meta">
+                Uploads catalog.json, which is what the launcher's game list reads. A build that has
+                not been catalogued stays invisible to players.
+              </p>
               <div class="row">
                 <button
                   type="button"
@@ -250,19 +412,36 @@
             </section>
 
             <!-- Game metadata ------------------------------------------------- -->
-            <section class="panel" id="metaPanel">
+            <section
+              class="subpanel panel"
+              data-subpanel="metadata"
+              role="tabpanel"
+              id="metaPanel"
+              hidden
+            >
               <h2>Game metadata</h2>
               <p class="meta">
                 Edit how a published game presents itself: its name, description, genres and
                 artwork. The build itself is not touched and no game files are re-uploaded. Load a
-                game to fill this in from what is live now, edit what changed, then publish.
+                game to fill this in from what is live now, edit what changed, review the diff, then
+                publish. Preview only stays on until you turn it off, and unsaved edits are kept if
+                you reload.
               </p>
 
-              <form id="metaForm">
-                <div class="grid">
-                  <label
-                    >Game<input id="metaGameId" list="metaGameOptions" placeholder="misspell"
-                  /></label>
+              <div class="split">
+                <!-- Selection sits beside the form: typing an id from memory was the failure
+                               mode this replaces. -->
+                <div class="split-list">
+                  <input id="metaGameFilter" placeholder="Filter games" autocomplete="off" />
+                  <div id="metaGameList" class="pick-list"></div>
+                  <p class="meta">
+                    A game with no build yet cannot be listed from the bucket. Type its id below to
+                    create its entry on the first publish.
+                  </p>
+                  <div class="row">
+                    <input id="metaGameId" placeholder="misspell" />
+                    <button type="button" id="metaLoad">Load</button>
+                  </div>
                   <label
                     >Channel<select id="metaChannel">
                       <option value="alpha">alpha</option>
@@ -270,32 +449,54 @@
                       <option value="stable">stable</option>
                     </select></label
                   >
-                </div>
-                <!-- Outside the grid: a datalist is not a field, and putting it in the
-                 column layout would leave it occupying a cell. -->
-                <datalist id="metaGameOptions"></datalist>
-
-                <div class="row">
-                  <button type="button" id="metaLoad">Load current</button>
                   <span id="metaState" class="meta"></span>
                 </div>
-              </form>
 
-              <div id="metaBody" hidden>
-                <div id="metaWarnings"></div>
-                <div id="metaFields" class="meta-fields"></div>
+                <div class="split-detail">
+                  <div id="metaResume" class="draft-note" hidden></div>
+                  <div id="metaBody" hidden>
+                    <div id="metaDirtyBar" class="dirty-bar" hidden></div>
+                    <div id="metaDraftNote" class="draft-note" hidden></div>
+                    <div id="metaWarnings"></div>
+                    <div id="metaFields" class="meta-fields"></div>
 
-                <div class="row meta-actions">
-                  <button type="button" id="metaRevertAll">Discard all changes</button>
-                  <label class="confirm"
-                    ><input id="metaDryRun" type="checkbox" checked /> Preview only</label
-                  >
-                  <button type="button" id="metaPublish" class="primary">Publish metadata</button>
-                  <span id="metaDirtyCount" class="meta"></span>
+                    <div class="meta-art">
+                      <h3>Published artwork</h3>
+                      <p class="meta">
+                        Every image stored under this game and channel. Replacing artwork does not
+                        overwrite it: each upload is stored under a new name, so superseded files
+                        stay here until something prunes them.
+                      </p>
+                      <div id="metaArt"></div>
+                    </div>
+
+                    <!-- The review step. Reading this before clicking publish is the
+                                   point: it is the only place the value you are about to
+                                   replace is shown next to the value you typed. -->
+                    <section id="metaDiff" class="diff" hidden>
+                      <div class="diff-head">
+                        <h3>Review before publishing</h3>
+                        <p class="meta" id="metaDiffSummary"></p>
+                      </div>
+                      <div id="metaDiffRows"></div>
+                    </section>
+
+                    <div class="row meta-actions">
+                      <button type="button" id="metaRevertAll">Discard all changes</button>
+                      <button type="button" id="metaReview">Review changes</button>
+                      <label class="confirm"
+                        ><input id="metaDryRun" type="checkbox" checked /> Preview only</label
+                      >
+                      <button type="button" id="metaPublish" class="primary">
+                        Publish metadata
+                      </button>
+                      <span id="metaDirtyCount" class="meta"></span>
+                    </div>
+                  </div>
+
+                  <pre id="metaLog" class="log" hidden></pre>
                 </div>
               </div>
-
-              <pre id="metaLog" class="log" hidden></pre>
             </section>
           </section>
 

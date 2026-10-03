@@ -19,39 +19,65 @@
       values that happen to look right on one screen.
    ========================================================================== */
 
+/* One token set for the whole sheet.
+
+   This block used to be two. A second :root further down the file declared the
+   shell's colours, which silently overrode the first, so every rule written
+   against the earlier values was rendering against a palette nobody was reading
+   while editing. There is now exactly one block, and it holds the shell's
+   values: the sidebar shell is the page, and the tokens the inventory grid and
+   the forms sit on are derived from the same ramp. */
 :root {
   color-scheme: dark;
 
-  /* Surfaces: a near-black canvas with three steps up, so depth is readable
-     without borders doing all the work. */
-  --canvas: #0b0d10;
-  --surface: #14171c;
-  --surface-2: #1c2027;
-  --surface-3: #232830;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  /* Surfaces: a near-black canvas, the sidebar one step up, then three steps of
+     panel surface. --inset is darker than the canvas and is for recessed wells -
+     command output, metric strips, the published column of a diff - so a well
+     reads as a well and not as another panel. */
+  --canvas: #0d0f12;
+  --side: #13161b;
+  --surface: #171b21;
+  --surface-2: #1e232a;
+  --surface-3: #262c35;
+  --inset: #090b0e;
+  --border: rgba(255, 255, 255, 0.065);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-  /* Ink: four steps. --ink-faint replaced #6b7280 (3.65:1), which failed AA on
-     the 11px labels it carried; --ink-subtle clears 4.5:1 on every surface. */
-  --ink: #f5f6f7;
-  --ink-muted: #a6adb7;
-  --ink-subtle: #8b9199;
-  --ink-faint: #6f757e;
+  /* Ink: four steps. --ink-subtle carries the 11px labels, so it is the step
+     held at or above 4.5:1 on every surface it lands on, including --surface-3
+     (4.6:1) which is what the hovered row and the artwork thumbnails sit on. The
+     earlier value managed 4.4:1 there, which is under AA for 11px text.
+     --ink-faint is one step below and is for qualifiers a reader can afford to
+     skip (a build number, an age, a footnote), never for a label or a word
+     carrying state. */
+  --ink: #eef1f4;
+  --ink-muted: #a2aab4;
+  --ink-subtle: #8e949c;
+  --ink-faint: #626a74;
 
-  /* Platform hues. Chosen to stay distinguishable for common colour vision
-     deficiency: they differ in lightness as well as hue, so a deutanopic
-     reader still separates blue from violet from amber. */
+  /* One accent. Green rather than the reference's blue: this is a terminal, and
+     the platform hues below are the only other colour on the page. */
+  --accent: #3ecf8e;
+  --accent-hover: #55dd9f;
+  --accent-ink: #052b18;
+
+  /* The same green under the name the older rules were written against. Both
+     spellings resolve, so no rule has to be rewritten to match the theme. */
+  --action: var(--accent);
+  --action-hover: var(--accent-hover);
+  --action-ink: var(--accent-ink);
+
+  /* Platform hues. Chosen to stay distinguishable under common colour vision
+     deficiency: they differ in lightness as well as in hue, so a reader still
+     separates blue from violet from amber without reading the header. */
   --win: #5aa9f7;
   --mac: #c08cf5;
   --linux: #e8b04b;
 
   /* Semantic. Reserved for state, never for identity. */
-  --action: #34d17a;
-  --action-ink: #04240f;
   --warn: #f0b429;
   --warn-ink: #1a1200;
   --danger: #f87171;
-  --action-hover: #46dd8c;
 
   --mono: ui-monospace, 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
   --sans: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -89,97 +115,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The single decorative gesture on the page: a very low-opacity wash behind
-   the header so the chrome separates from the canvas without a hard border.
-   Fixed and behind everything, so it never moves with the content. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0 0 auto;
-  height: 420px;
-  background: radial-gradient(120% 100% at 50% 0%, rgba(52, 209, 122, 0.07), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
+/* Tabs and panels ------------------------------------------------------ */
 
-.bar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  padding: var(--s3) var(--s5);
-  background: rgba(11, 13, 16, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-}
-
-.brand {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  font-size: 15px;
-}
-
-/* A small green mark instead of a wordmark image: it anchors the brand without
-   adding an asset to ship. */
-.brand::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: var(--s2);
-  border-radius: 2px;
-  background: var(--action);
-  vertical-align: middle;
-}
-
-.spacer {
-  flex: 1;
-}
-
-/* Tabs ------------------------------------------------------------------ */
-
-/* In the top bar, not a second row: the panels are the page, so a tab strip
-   that scrolls away is lost exactly when you need to switch. */
-.tabs {
-  display: flex;
-  gap: var(--s1);
-  margin-left: var(--s3);
-}
-
-.tab {
-  border: none;
-  background: transparent;
-  color: var(--ink-subtle);
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    color var(--ease),
-    background var(--ease);
-}
-
-.tab:hover {
-  background: var(--surface-2);
-  color: var(--ink-muted);
-}
-
-/* Selection is a surface plus a top hairline rather than a moving underline:
-   an animated indicator on a bar that can scroll reads as broken mid-move. */
-.tab[aria-selected='true'] {
-  background: var(--surface-2);
-  color: var(--ink);
-  box-shadow: inset 0 1px 0 var(--action);
-}
-
-.tab:focus-visible {
-  outline: 2px solid var(--action);
-  outline-offset: 1px;
-}
+/* The sidebar nav entries carry two classes: `.tab` is what selectTab() matches
+   on and what the arrow keys walk, `.nav-item` is what gives them their
+   appearance further down. That split is deliberate - a tab's behaviour is
+   attributes (aria-selected, the roving tabindex) and needs no styling of its
+   own, while its look belongs to the shell it sits in. So there are no `.tab`
+   rules here: everything a nav button needs is on `.nav-item`. */
 
 /* [hidden] is the default UA rule, but anything that sets `display` outranks
    it, so every component that does needs this. See .drift[hidden] below. */
@@ -206,7 +149,7 @@ body::before {
 }
 
 .status.ok {
-  color: var(--action);
+  color: var(--accent);
 }
 
 .status.bad {
@@ -228,15 +171,7 @@ main {
   z-index: 1;
   width: 100%;
   min-width: 0;
-  padding: var(--s5) var(--s5) var(--s6);
-}
-
-/* The one place a max-width is right: prose. Patch notes and descriptions are
-   long-form text and become unreadable past ~70 characters per line, so this
-   caps the measure without capping the layout. */
-main > .panel--prose,
-.panel--prose {
-  max-width: 78ch;
+  padding: var(--s5) var(--s6) var(--s7);
 }
 
 /* Section heading. The rule is a flex-grow line rather than a full-width
@@ -378,7 +313,7 @@ h2::after {
 }
 
 .inv-row.inv-link:focus-visible {
-  outline: 2px solid var(--action);
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
@@ -387,7 +322,7 @@ h2::after {
 .inv-go {
   display: block;
   font-size: 11px;
-  color: var(--action);
+  color: var(--accent);
   opacity: 0;
   transition: opacity var(--ease);
 }
@@ -568,7 +503,7 @@ h2::after {
   top: 4px;
   bottom: 4px;
   width: 2px;
-  background: var(--action);
+  background: var(--accent);
 }
 
 .rung-label {
@@ -689,6 +624,20 @@ h2::after {
   color: var(--warn);
 }
 
+/* A destructive button. Deliberately not filled: it is an armed action next to a
+   Preview-only checkbox, and filling it in red would give it the same visual
+   weight as the primary button it outranks once the checkbox is ticked - which
+   is exactly when the operator needs the two to be distinguishable. The warn
+   edge and the toggled submit rule below carry the state instead. */
+button.danger {
+  color: var(--ink-muted);
+}
+
+button.danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
 /* The confirm() dialogs in app.js are what actually guard destructive actions.
    Arming the toggle changes the button it guards, so the consequence is shown
    on the control being clicked rather than described in a permanent badge. */
@@ -734,7 +683,9 @@ h2::after {
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s4);
+  /* Tighter between rows than between columns: rows are read as one field, and
+     two fields side by side are read separately. */
+  gap: var(--s3) var(--s4);
 }
 
 /* Inputs carry the width, not the track. Without this a grid track sizes to its
@@ -792,7 +743,7 @@ input::placeholder {
 }
 
 input:focus-visible {
-  border-color: var(--action);
+  border-color: var(--accent);
   background: var(--surface-3);
 }
 
@@ -816,7 +767,7 @@ select:hover {
 }
 
 select:focus-visible {
-  outline: 2px solid var(--action);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -841,8 +792,24 @@ legend {
   gap: var(--s2);
   justify-content: flex-end;
   align-items: center;
+  /* Wrapping is the narrow-window behaviour, not a special case: a row of
+     buttons that cannot wrap pushes the panel wider than its column. */
+  flex-wrap: wrap;
   /* Separated from the fields above so the action reads as a distinct step. */
-  margin-top: var(--s5);
+  margin-top: var(--s4);
+}
+
+/* An input sharing a row with buttons takes the slack rather than its intrinsic
+   width, so the control and the buttons beside it line up on one row. */
+.row input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* A bare input above a button row (the game filter) fills the column instead of
+   sitting at the default 20 characters. */
+.split-list > input {
+  width: 100%;
 }
 
 /* The prune panel's "delete for real" toggle sits in a button row, so it needs the
@@ -864,62 +831,11 @@ input[type='checkbox'] {
 
 /* Buttons share one height and radius so a row of them reads as a set rather
    than as several unrelated controls. */
-button {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--ink);
-  border-radius: var(--radius-sm);
-  padding: 9px 16px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background var(--ease),
-    border-color var(--ease),
-    color var(--ease),
-    opacity var(--ease);
-}
-
-button:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-}
-
-/* The one filled button per panel. Weight, not size, marks the primary action. */
-button.primary {
-  background: var(--action);
-  border-color: transparent;
-  color: var(--action-ink);
-  font-weight: 600;
-}
-
-button.primary:hover {
-  background: var(--action-hover);
-}
-
-/* Every interactive element gets the same visible ring. Inputs, buttons,
-   selects and tabs each relied on their own or on :focus, which meant a
-   keyboard user got no consistent indicator. */
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-.tab:focus-visible,
-.copy:focus-visible {
-  outline: 2px solid var(--action);
-  outline-offset: 2px;
-}
-
-/* A disabled or in-flight button must not look clickable. */
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* Command output: recessed like a terminal, and quiet enough that the numbers
    in it stay the thing you look at. */
 .log {
-  background: var(--canvas);
+  background: var(--inset);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--s3) var(--s4);
@@ -1006,7 +922,7 @@ button:disabled {
 }
 
 .cmd-group .hint {
-  color: var(--ink-faint);
+  color: var(--ink-subtle);
   font-size: 11.5px;
   margin: 4px 0 0;
 }
@@ -1025,7 +941,7 @@ button:disabled {
 }
 
 .hint {
-  color: var(--ink-faint);
+  color: var(--ink-subtle);
   font-size: 12px;
 }
 
@@ -1037,54 +953,6 @@ button:disabled {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
-  }
-}
-
-/* Narrow windows: the header wraps, the two-column forms and the platform
-   columns collapse to one, so fields never scroll sideways. The grid keeps its
-   own horizontal scroll for the platform columns because a version string
-   squeezed into a third of a phone width is unreadable, and dropping the
-   platform column entirely would hide data. */
-@media (max-width: 720px) {
-  .bar {
-    flex-wrap: wrap;
-    gap: var(--s2) var(--s3);
-    padding: var(--s3) var(--s4);
-  }
-
-  .tabs {
-    margin-left: 0;
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .grid,
-  .grid.one {
-    grid-template-columns: 1fr;
-    max-width: none;
-  }
-
-  .row {
-    flex-wrap: wrap;
-  }
-
-  /* The confirm toggle needs the full width once the buttons wrap under it. */
-  label.confirm {
-    margin-right: 0;
-    width: 100%;
-  }
-
-  main {
-    padding: var(--s5) var(--s4) var(--s6);
-  }
-
-  .inv-row {
-    grid-template-columns: minmax(9rem, 1fr) repeat(3, minmax(11rem, 1fr));
-  }
-
-  .cmd code {
-    font-size: 12px;
   }
 }
 
@@ -1123,7 +991,7 @@ button:disabled {
   flex: none;
 }
 .svc.up .dot {
-  background: var(--action);
+  background: var(--accent);
 }
 
 .svc-note {
@@ -1147,38 +1015,65 @@ button:disabled {
   align-items: center;
 }
 
+/* Buttons share one height and radius so a row of them reads as a set rather
+   than as several unrelated controls. `:not(:disabled)` on the hover is what
+   stops a held-down disabled button from lifting to the hover surface. */
 button {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--ink);
   border-radius: var(--radius-sm);
-  padding: 8px 14px;
+  padding: 9px 16px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
+  /* A two-word button ("Publish metadata") that wraps reads as two stacked
+     buttons, so labels stay on one line and the row wraps instead. */
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background var(--ease),
     border-color var(--ease),
-    color var(--ease);
+    color var(--ease),
+    opacity var(--ease);
 }
+
 button:hover:not(:disabled) {
   background: var(--surface-3);
   border-color: var(--border-strong);
 }
+
+/* The one filled button per panel. Weight, not size, marks the primary action.
+   `.primary` (publish) and `.go` (start a service) are the same decision. */
+button.primary,
+button.go {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled),
+button.go:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+/* Every interactive element gets the same visible ring. Each control relied on
+   its own or on :focus, which meant a keyboard user got no consistent
+   indicator. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a.open:focus-visible,
+.copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A disabled or in-flight button must not look clickable. */
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-button.go {
-  background: var(--action);
-  border-color: transparent;
-  color: var(--action-ink);
-  font-weight: 600;
-}
-button.go:hover {
-  background: #46dd8c;
 }
 
 /* Stop is deliberately not red. It is a normal operation most of the time, and
@@ -1203,12 +1098,6 @@ a.open:hover {
   border-color: var(--border-strong);
 }
 
-button:focus-visible,
-a.open:focus-visible {
-  outline: 2px solid var(--action);
-  outline-offset: 2px;
-}
-
 .error {
   margin-top: var(--s2);
   font-size: 12px;
@@ -1224,7 +1113,9 @@ a.open:focus-visible {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.02em;
-  color: var(--ink-faint);
+  /* ink-subtle, not faint: this word is the state, and --ink-faint on
+     --surface is 3.2:1, which is below AA for text that carries meaning. */
+  color: var(--ink-subtle);
 }
 
 .svc-state::before {
@@ -1239,7 +1130,7 @@ a.open:focus-visible {
 }
 
 .svc-state.is-running {
-  color: var(--action);
+  color: var(--accent);
 }
 
 /* Something else already holds the port. Amber rather than green because it
@@ -1256,7 +1147,7 @@ a.open:focus-visible {
   grid-column: 1;
   margin: var(--s2) 0 0;
   padding: var(--s2) var(--s3);
-  background: var(--canvas);
+  background: var(--inset);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--mono);
@@ -1266,175 +1157,435 @@ a.open:focus-visible {
   white-space: pre-wrap;
   max-height: 140px;
   overflow: auto;
+}
 
-  /* ==========================================================================
+/* ==========================================================================
    Game metadata panel
 
-   The hard requirement here is that a pending change is unmistakable. An
-   operator about to overwrite a published display name needs to see, without
-   reading anything, which fields are about to change - so a changed field gets
-   an accent left border, a tinted surface, and the word "changed". The word is
-   not decoration: colour alone would leave the state invisible to a
-   colour-blind user, which is the same class of bug the drift banner avoids.
+   These rules used to sit inside .svc-log, which never closes: the whole block
+   was parsed as nested rules and silently discarded, so every game-metadata and
+   news form shipped unstyled. They are now top level.
+
+   The hard requirement is that a pending change is unmistakable. An operator
+   about to overwrite a published display name has to see, without reading
+   anything, which fields are about to change - so a changed field gets an accent
+   left border, a tinted surface, a tinted control, and the word "changed". The
+   word is not decoration: colour alone would leave the state invisible to a
+   colour-blind reader, which is the same class of bug the drift banner avoids.
    ========================================================================== */
 
-  .meta-actions {
-    align-items: center;
-    gap: var(--s3);
-    margin-top: var(--s5);
-    padding-top: var(--s4);
-    border-top: 1px solid var(--border);
-  }
+.meta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s3);
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
 
-  .meta-fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s3);
-    margin-top: var(--s4);
-  }
+/* The dirty tally shares the button row, so it must not carry the paragraph
+   margin every other .meta does - it would sit a step below the buttons it is
+   counting. */
+.meta-actions .meta {
+  margin: 0;
+}
 
-  .meta-field {
-    padding: var(--s3);
-    border: 1px solid var(--border);
-    border-left: 3px solid transparent;
-    border-radius: 8px;
-    background: var(--surface-2);
-    transition:
-      border-color 0.12s ease,
-      background 0.12s ease;
-  }
+.meta-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
 
-  .meta-field.is-dirty {
-    border-left-color: var(--action);
-    background: color-mix(in srgb, var(--action) 7%, var(--surface-2));
-  }
+/* Padding is 8/12 rather than 12 all round: a form is read top to bottom, and
+   every field carries at least a label and a control, so vertical padding is
+   the first thing that buys nothing. */
+.meta-field {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  transition:
+    border-color var(--ease),
+    background var(--ease);
+}
 
-  .meta-field-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s3);
-    margin-bottom: 6px;
-  }
+.meta-field.is-dirty {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+}
 
-  .meta-label {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex-direction: row;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-muted);
-  }
+/* The control itself takes the accent too: the row is tinted, but the thing
+   being edited is a box, and a tinted box is what the eye lands on. */
+.meta-field.is-dirty input,
+.meta-field.is-dirty select {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
 
-  .meta-dirty {
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--action) 20%, transparent);
-    color: var(--action);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
+.meta-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s1);
+  min-height: 22px;
+}
 
-  .meta-source {
-    color: var(--ink-faint);
-    font-size: 11px;
-    font-weight: 400;
-    cursor: help;
-  }
+.meta-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-direction: row;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  min-width: 0;
+}
 
-  .meta-control {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s2);
-  }
+/* Filled, not tinted: the badge has to survive being read at a glance beside a
+   label, and accent ink on accent is 7.7:1. */
+.meta-dirty {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
-  .meta-control input[type='text'] {
-    width: 100%;
-  }
+/* Where the current value came from: repo, bucket or draft. It is the answer to
+   "why does this field already have something in it". */
+.meta-source {
+  margin-left: auto;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: help;
+}
 
-  .meta-revert {
-    padding: 3px 8px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--ink-subtle);
-    font-size: 11px;
-    cursor: pointer;
-  }
+.meta-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
 
-  .meta-revert:hover {
-    color: var(--ink);
-    border-color: var(--ink-faint);
-  }
+.meta-control input[type='text'] {
+  width: 100%;
+}
 
-  .meta-warning {
-    margin: var(--s3) 0 0;
-    padding: var(--s2) var(--s3);
-    border-left: 3px solid var(--warn);
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--warn) 10%, transparent);
-    color: var(--warn);
-    font-size: 12px;
-    line-height: 1.5;
-  }
+.meta-revert {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  cursor: pointer;
+}
 
-  /* Artwork: a real preview, because the only question when picking an icon is
+/* Kept transparent on hover: it is a ghost control on a field surface, and the
+   generic button hover would otherwise fill it like a normal button. */
+.meta-revert:hover:not(:disabled) {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink-subtle);
+}
+
+.meta-warning {
+  margin: var(--s3) 0 0;
+  padding: var(--s2) var(--s3);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: var(--warn);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Artwork: a real preview, because the only question when picking an icon is
    whether it is the right one, and a URL box cannot answer that. */
-  .meta-image {
-    display: flex;
-    align-items: center;
-    gap: var(--s3);
-    margin-top: var(--s2);
-  }
+.meta-image {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  flex-wrap: wrap;
+}
 
-  .meta-preview {
-    width: 132px;
-    height: 56px;
-    flex: 0 0 auto;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    background: var(--surface-3);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+.meta-preview {
+  width: 132px;
+  height: 56px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  .meta-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+.meta-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-  .meta-preview-empty {
-    color: var(--ink-faint);
-    font-size: 11px;
-  }
+.meta-preview-empty {
+  color: var(--ink-subtle);
+  font-size: 11px;
+}
 
-  .meta-image-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+.meta-image-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: 1 1 220px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
 
-  .meta-file-name {
-    color: var(--ink-subtle);
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.meta-file-name {
+  color: var(--ink-subtle);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 
-  .meta-file {
-    max-width: 220px;
-    font-size: 12px;
-    color: var(--ink-subtle);
-  }
+.meta-file {
+  max-width: 220px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* The picker sits beside the typed path, not instead of it: a chosen file is
+   staged and the typed box filled with that path, so both routes end in the
+   same place. */
+.meta-file-or {
+  color: var(--ink-subtle);
+  font-size: 11px;
+  flex: none;
+}
+
+.meta-picker {
+  font-size: 11.5px;
+  color: var(--ink-subtle);
+  max-width: 190px;
+}
+
+.meta-stage-status {
+  font-size: 11.5px;
+  color: var(--ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preview of the chosen file, which has no URL yet. Hidden until it has
+   something to show. */
+.meta-preview-local:empty {
+  display: none;
+}
+
+/* Master-detail: a selection list beside the thing it selects, so the operator
+ * never has to remember an id. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--s5);
+  margin-top: var(--s4);
+  align-items: start;
+}
+
+.split-list {
+  position: sticky;
+  top: var(--s3);
+  min-width: 0;
+}
+
+.split-detail {
+  min-width: 0;
+}
+
+.pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 460px;
+  overflow-y: auto;
+  margin: var(--s2) 0;
+  padding-right: 2px;
+}
+
+.pick {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The `:not(:disabled)` is not decoration: the generic button hover is
+   button:hover:not(:disabled), which outranks a plain .pick:hover and would
+   otherwise win. */
+.pick:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* Border and weight, not a colour wash, so the selection does not rely on
+   colour alone. */
+.pick.is-active {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+.pick-thumb {
+  width: 44px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pick-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pick-glyph {
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+.pick-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pick-title {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pick.is-active .pick-title {
+  font-weight: 600;
+}
+
+.pick-sub {
+  font-size: 11px;
+  /* The id and channel under a game name are how the right row is picked, so
+     this is a label, not a footnote. */
+  color: var(--ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A grid, because the question is "which of these is the icon" - recognition
+   across images, not reading down a column. */
+.meta-art {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+
+.meta-art h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#metaArt {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+.meta-art-item {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+  padding: var(--s2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.meta-art-item.is-unused {
+  /* Dimmed, not hidden: a superseded image still costs storage. The label carries
+     the meaning, since opacity alone fails for a colour-blind reader. */
+  opacity: 0.6;
+}
+
+.meta-art-thumb {
+  width: 72px;
+  height: 48px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meta-art-thumb img {
+  width: 100%;
+  height: 100%;
+  /* Contain, not cover: cropping a wide banner removes the part being identified. */
+  object-fit: contain;
+}
+
+.meta-art-info {
+  min-width: 0;
+}
+
+.meta-art-name {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-art-meta {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  margin-top: 2px;
+}
+
+.meta-art-field {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  margin-top: 2px;
 }
 
 /* ==========================================================================
@@ -1449,35 +1600,10 @@ a.open:focus-visible {
    the platform hues from the grid below are the only other colour on the page.
    ========================================================================== */
 
-:root {
-  --canvas: #0d0f12;
-  --side: #13161b;
-  --surface: #171b21;
-  --surface-2: #1e232a;
-  --surface-3: #262c35;
-  --inset: #090b0e;
-  --border: rgba(255, 255, 255, 0.065);
-  --border-strong: rgba(255, 255, 255, 0.12);
-
-  --ink: #eef1f4;
-  --ink-muted: #a2aab4;
-  --ink-subtle: #7d858f;
-  --ink-faint: #626a74;
-
-  --accent: #3ecf8e;
-  --accent-hover: #55dd9f;
-  --accent-ink: #052b18;
-}
-
-body {
-  background: var(--canvas);
-}
-
-/* The header wash from the earlier theme fought the sidebar: it drew a glow
-   across the top-left rail, which should be flat. */
-body::before {
-  display: none;
-}
+/* The old header wash - a radial green glow pinned to the top of the canvas -
+   is gone with the rest of the first theme. It drew light across the top of the
+   sidebar, which is meant to stay flat. Depth here comes from the surface ramp
+   and from hairlines, not from a gradient. */
 
 .shell {
   display: grid;
@@ -1609,11 +1735,6 @@ body::before {
   gap: var(--s2);
 }
 
-main {
-  max-width: none;
-  padding: var(--s5) var(--s6) var(--s7);
-}
-
 /* Metric cards --------------------------------------------------------- */
 
 /* Four across on a wide window, the reference's rhythm. The card is the unit
@@ -1642,6 +1763,18 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--s2);
+  /* A version string is wider than a count, and a flex row that cannot give the
+     value its width squeezes the label column until "across all channels"
+     breaks one word per line. Wrapping drops the value onto its own line
+     instead, which leaves three of the four cards side by side and gives the
+     one long value the full card. */
+  flex-wrap: wrap;
+}
+
+/* The label block takes the slack and may shrink; the value may not. */
+.metric-top > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .metric-label {
@@ -1651,17 +1784,20 @@ main {
 }
 
 .metric-value {
+  flex: none;
   font-family: var(--mono);
   font-size: 22px;
   font-weight: 500;
   line-height: 1.1;
   color: var(--ink);
+  /* Never break a version string across lines: "0.4." and "1-alpha.1" is a
+     value nobody can read. */
   white-space: nowrap;
 }
 
 .metric-sub {
   font-size: 11.5px;
-  color: var(--ink-faint);
+  color: var(--ink-subtle);
   margin-top: 1px;
 }
 
@@ -1687,4 +1823,399 @@ main {
 
 .metric.is-good .metric-value {
   color: var(--accent);
+}
+
+/* ==========================================================================
+   Games sub-navigation
+
+   The Games page is five jobs - publish, prune, catalog, metadata, artwork -
+   and all of them are wanted at once. A second strip inside the main column,
+   directly under the page title, keeps them one click away without giving up
+   horizontal space to a second permanent rail.
+
+   .subtabs is the strip, .subtab one entry, .subpanel what it reveals.
+   ========================================================================== */
+
+.subtabs {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s1);
+  margin: 0 0 var(--s4);
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  /* Scrolls inside its own box rather than wrapping: a wrapped second row of
+     tabs reads as a second page header. */
+  overflow-x: auto;
+}
+
+.subtab {
+  flex: none;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-subtle);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--ease),
+    color var(--ease);
+}
+
+.subtab:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink-muted);
+}
+
+/* Selection is a surface plus a 2px accent underline on the leading edge of the
+   text: a surface on its own was too quiet to find the open panel, and a filled
+   accent would make the strip the loudest thing on the page. */
+.subtab[aria-selected='true'] {
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.subpanel {
+  display: block;
+}
+
+/* Same reason as .drift[hidden] and .tabpanel[hidden]: .subpanel sets display,
+   which outranks the user agent's [hidden] rule, so a closed panel would still
+   paint underneath the open one. */
+.subpanel[hidden] {
+  display: none;
+}
+
+/* ==========================================================================
+   Diff: what publishing would change
+
+   The question this view answers is "what exactly am I about to overwrite", so
+   the published value is never hidden or struck through - it sits beside the new
+   value at the same size, because the only way to review a change is to see both
+   sides of it. Tone carries the direction: recessed for before, accent-washed
+   for after, with the column names in .diff-head so the distinction is words as
+   well as colour.
+   ========================================================================== */
+
+.diff {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* .diff-head is a heading, not a column-header row: app.js fills it with the
+   review title and the summary sentence, and the three cells below are labelled
+   inline by their own content ("(empty)" / "(cleared)"). So it is a plain
+   titled strip, and .diff-row carries the grid. */
+.diff-head {
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-subtle);
+}
+
+.diff-head .meta {
+  margin: var(--s1) 0 0;
+}
+
+/* The review panel starts its own grid, since it is not the first child of
+   .diff - .diff-head comes first. */
+.diff-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.diff-row + .diff-row {
+  border-top: 1px solid var(--border);
+}
+
+.diff-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  border-right: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+/* Recessed and one ink step down: the published value is context, not the
+   subject. */
+.diff-before {
+  padding: var(--s2) var(--s3);
+  background: var(--inset);
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  /* A description is a paragraph and a version string is not, so both wrap
+     here rather than widening the column. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The accent is a wash and a 2px leading edge, not coloured body text: a whole
+   description in green is harder to read, not easier. */
+.diff-after {
+  padding: var(--s2) var(--s3);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  box-shadow: inset 2px 0 0 var(--accent);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* An empty cell still needs to say something. app.js writes "(empty)" and
+   "(cleared)" into these nodes as fallback text, so the styling only has to
+   stop that placeholder from being read as a value. */
+.diff-before:empty::after,
+.diff-after:empty::after {
+  content: '\2014';
+  color: var(--ink-faint);
+}
+
+/* Emptying a field is the one edit that loses data, so it is the one that gets
+   the amber edge and a written tag instead of reading as an ordinary change. */
+.diff-row.is-cleared .diff-after {
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+  box-shadow: inset 2px 0 0 var(--warn);
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.diff-row.is-cleared .diff-label::after {
+  content: 'cleared';
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Draft and unsaved-edit affordances
+
+   Publishing overwrites what players already see, so the gap between "you typed
+   something" and "you changed what is live" has to be visible without a prompt.
+   .dirty-bar is that line, and it holds nothing when there is nothing to warn
+   about.
+   ========================================================================== */
+
+/* Same reason as .drift[hidden]: display is set below, which outranks the user
+   agent's [hidden] rule, so a bar with no unsaved edits would still paint. */
+.dirty-bar[hidden] {
+  display: none;
+}
+
+.dirty-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  padding: var(--s2) var(--s3);
+  margin-bottom: var(--s3);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+
+/* The draft note and its discard button sit inside this box rather than beside
+   it, so a restored draft reads as part of the same "not published yet" state
+   instead of as a separate line of prose. */
+.dirty-bar:has(+ .draft-note) {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Small muted text, e.g. "draft restored". It carries the button beside it, so
+   it lays out as a row that wraps rather than as a paragraph. */
+.draft-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s2);
+  padding: var(--s2) var(--s3);
+  margin-bottom: var(--s3);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--ink-subtle);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.draft-note[hidden] {
+  display: none;
+}
+
+/* Standalone it still needs its own box: the dirty bar is often absent, and the
+   restored draft has to be visible on its own. */
+.draft-note:has(+ .draft-note),
+.draft-note:not(:has(+ .draft-note)) {
+  border-top: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+/* A text button, not a third button in the row: it throws away a local restore
+   and has no business weighing as much as Publish does. */
+.draft-clear {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color var(--ease);
+}
+
+.draft-clear:hover:not(:disabled) {
+  background: none;
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+.draft-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Narrow windows: the header wraps, the two-column forms and the platform
+   columns collapse to one, so fields never scroll sideways. The grid keeps its
+   own horizontal scroll for the platform columns because a version string
+   squeezed into a third of a phone width is unreadable, and dropping the
+   platform column entirely would hide data. */
+@media (max-width: 720px) {
+  /* The rail becomes a row above the content. It was a fixed 232px column at
+     every width, which left a phone-width window with 232px of navigation and
+     very little page. */
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+    height: auto;
+    gap: var(--s3);
+  }
+
+  .side-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .nav-item {
+    flex: none;
+  }
+
+  .side-foot {
+    display: none;
+  }
+
+  .topbar {
+    padding: var(--s4) var(--s4) var(--s3);
+  }
+
+  .grid,
+  .grid.one {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+
+  /* The confirm toggle needs the full width once the buttons wrap under it. */
+  label.confirm {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  main {
+    padding: var(--s5) var(--s4) var(--s6);
+  }
+
+  .inv-row {
+    grid-template-columns: minmax(9rem, 1fr) repeat(3, minmax(11rem, 1fr));
+  }
+
+  .cmd code {
+    font-size: 12px;
+  }
+
+  /* The sub-nav scrolls rather than wraps, for the same reason the inventory
+     grid scrolls: a wrapped strip pushes the panel it controls off screen. */
+  .subtabs {
+    scroll-snap-type: x proximity;
+  }
+
+  .subtab {
+    scroll-snap-align: start;
+  }
+
+  /* One field, then the published value above the new one. The column headings
+     are dropped with the header, and the field name becomes the subhead. */
+  .diff-head {
+    display: none;
+  }
+
+  .diff-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .diff-label {
+    grid-column: 1 / -1;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+
+  /* A two-column layout with an unusable form is worse than scrolling, so the
+     split stacks. */
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* position:sticky escapes the grid flow once the split is a single column: the
+     selection list lifted off the top of the page and floated over the form
+     below it. The rail only earns its stickiness while it is a column beside the
+     thing it selects. */
+  .split-list {
+    position: static;
+  }
 }
