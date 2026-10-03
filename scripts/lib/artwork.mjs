@@ -32,7 +32,11 @@ export function artworkObjectName({ baseName, hash, fileName, fallbackName }) {
   const fallbackExt = extensionOf(fallbackName) || '.png';
   const ext = extensionOf(fileName) || fallbackExt;
   const fallbackBase = fallbackName.slice(0, fallbackName.lastIndexOf('.')) || fallbackName;
-  return `${baseName || fallbackBase}-${hash}${ext}`;
+  // The base becomes a key segment and some callers take it from operator input -
+  // a news item's id - so it is disarmed with the staging-name rule rather than
+  // trusted: a base carrying a separator would put the object outside the prefix.
+  const base = safeLocalName(baseName || fallbackBase);
+  return `${base}-${hash}${ext}`;
 }
 
 /** Returns `{ error }` rather than throwing: rejections are read in the operator's form. */

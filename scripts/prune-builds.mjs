@@ -26,6 +26,8 @@ import {
   S3,
 } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
+import { catalogGameId } from './lib/catalog-edit.mjs';
+import { CHANNELS } from './lib/metadata-fields.mjs';
 import { planPrune, readActiveVersion, readPinnedVersions } from './lib/prune-plan.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -39,6 +41,16 @@ const olderThanDays = args['older-than'] ? Number.parseInt(args['older-than'], 1
 
 if (!gameId) {
   fail(`--game-id is required.\n  Example: --game-id misspell --channel alpha --keep 3`);
+}
+
+// This is the one script that deletes recursively, so the id and channel are
+// checked before anything is listed: an id carrying `/` or `..` would resolve the
+// prefix to another game's builds, and a bare `--token` is read as a flag. Same
+// validator the publish paths use, so a publish and a prune cannot disagree.
+const gameIdCheck = catalogGameId(gameId);
+if (!gameIdCheck.ok) fail(`--game-id: ${gameIdCheck.error}`);
+if (!CHANNELS.includes(channel)) {
+  fail(`--channel must be one of ${CHANNELS.join(', ')} (got "${channel}").`);
 }
 if (!Number.isInteger(keep) || keep < 1) {
   fail(`--keep must be a positive integer (got ${args.keep}).`);

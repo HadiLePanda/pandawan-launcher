@@ -25,6 +25,8 @@ import {
   upload,
 } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
+import { catalogGameId } from './lib/catalog-edit.mjs';
+import { CHANNELS } from './lib/metadata-fields.mjs';
 import { manifestFiles, planUpload } from './lib/upload-plan.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
@@ -42,9 +44,24 @@ for (const name of REQUIRED) {
   if (!args[name]) fail(`--${name} is required.`);
 }
 
-const gameId = args['game-id'];
+const gameIdArg = args['game-id'];
 const channel = args.channel;
 const platformSpecs = asList(args.platform);
+
+// Both become a bucket path segment, so both go through the one validator the
+// dashboard's create path already uses: an id carrying `/` or `..` would nest or
+// escape the game's own prefix, and prune deletes that prefix recursively. A
+// channel the launcher does not know builds a manifest URL no client can resolve.
+const gameIdCheck = catalogGameId(gameIdArg);
+if (!gameIdCheck.ok) fail(`--game-id: ${gameIdCheck.error}`);
+if (!CHANNELS.includes(channel)) {
+  fail(`--channel must be one of ${CHANNELS.join(', ')} (got "${channel}").`);
+}
+
+// The validator's trimmed form, not the raw flag: the trimmed id is the one proven
+// safe to use as a key segment.
+const gameId = gameIdCheck.id;
+
 // --platform carries its own directory per platform, so --input-dir is only
 // required for a single-platform (flat) publish.
 if (!args['input-dir'] && platformSpecs.length === 0) {

@@ -8,17 +8,31 @@
  * channel whether old or new.
  *
  *   node scripts/backfill-latest.mjs --game-id misspell --channel alpha
+ *
+ * Dry run unless --confirm is passed, like every other publish verb: this writes
+ * to the bucket.
  */
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { NO_CACHE, S3, fail, repoRoot, upload, r2Config } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
+import { catalogGameId } from './lib/catalog-edit.mjs';
+import { CHANNELS } from './lib/metadata-fields.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 
-const gameId = args['game-id'];
+const gameIdArg = args['game-id'];
 const channel = args.channel ?? 'stable';
-if (!gameId) fail('--game-id is required.');
+if (!gameIdArg) fail('--game-id is required.');
+
+// Same validator the other publish scripts use: the id and channel become a
+// bucket path segment, and this one overwrites latest.json under it.
+const gameIdCheck = catalogGameId(gameIdArg);
+if (!gameIdCheck.ok) fail(`--game-id: ${gameIdCheck.error}`);
+if (!CHANNELS.includes(channel)) {
+  fail(`--channel must be one of ${CHANNELS.join(', ')} (got "${channel}").`);
+}
+const gameId = gameIdCheck.id;
 
 const { bucket, cdnOrigin, endpoint } = r2Config();
 const prefix = `games/${gameId}/${channel}`;
@@ -50,7 +64,16 @@ for (const platform of platforms) {
 console.log(`\n${JSON.stringify(latest, null, 2)}`);
 
 if (Boolean(args['dry-run'])) {
-  console.log('\n--dry-run, nothing uploaded.');
+  console.log('\nDry run. Nothing was uploaded.');
+  process.exit(0);
+}
+
+// --dry-run is honoured above so a stale copy of the old invocation still lands
+// on the safe path. The default is already dry, so the flag only matters as
+// proof the operator meant it.
+if (!Boolean(args.confirm)) {
+  console.log('\nDry run. Nothing was uploaded.');
+  console.log(`Re-run with --confirm to write ${prefix}/latest.json`);
   process.exit(0);
 }
 

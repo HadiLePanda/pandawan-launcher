@@ -36,6 +36,7 @@ import {
 } from './lib/metadata-fields.mjs';
 import { applyMetadataChanges } from './lib/apply-metadata.mjs';
 import { artworkObjectName, validateArtwork } from './lib/artwork.mjs';
+import { catalogGameId } from './lib/catalog-edit.mjs';
 import { fetchJson } from './lib/game-metadata.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
@@ -46,7 +47,7 @@ export async function publishMetadata(argv) {
     if (!first(args[name])) fail(`--${name} is required.`);
   }
 
-  const gameId = String(first(args['game-id'])).trim();
+  const gameIdArg = String(first(args['game-id'])).trim();
   const channel = String(first(args.channel)).trim();
   const dryRun = Boolean(args['dry-run']);
 
@@ -55,6 +56,13 @@ export async function publishMetadata(argv) {
   if (!CHANNELS.includes(channel)) {
     fail(`--channel must be one of ${CHANNELS.join(', ')} (got "${channel}").`);
   }
+
+  // The id becomes a bucket path segment, so it goes through the same validator
+  // the dashboard's create path uses: an id carrying `/` or `..` would nest or
+  // escape the game's own prefix.
+  const gameIdCheck = catalogGameId(gameIdArg);
+  if (!gameIdCheck.ok) fail(`--game-id: ${gameIdCheck.error}`);
+  const gameId = gameIdCheck.id;
 
   const { bucket, cdnOrigin, endpoint } = r2Config();
   const prefix = `games/${gameId}/${channel}`;
