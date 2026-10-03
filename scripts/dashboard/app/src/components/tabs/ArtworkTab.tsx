@@ -13,16 +13,23 @@
  * because artwork is content-addressed and a live catalog page points at these
  * URLs. The operator confirms with a window.confirm naming the object.
  *
+ * Uploading is the other write. It is the SAME path the Metadata tab's picker
+ * uses (`uploadArtwork` -> POST /api/art/upload): the server validates against
+ * artwork.mjs, derives the object name from the bytes' hash, refuses a second
+ * copy of bytes already on the bucket, and the operator confirms the file and the
+ * object it becomes before anything is written.
+ *
  * `useArtworkObjects` below is that read, factored out because this is where
  * "which images exist" is answered. The Metadata tab's MediaPicker picks from the
  * same listing, so the picker and this tab can never drift into offering
  * different sets of images.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-react';
 
 import { apiGet, apiPost, messageOf } from '@lib/api';
+import { ARTWORK_ACCEPT, uploadArtwork } from '@lib/artwork';
 import { ago, plural, updatedPhrase } from '@lib/format';
 import type { ArtworkObject, ArtworkPayload, MetaPayload } from '@/types/api';
 
@@ -53,7 +60,7 @@ interface ArtworkListing {
   refreshing: boolean;
   error: string | null;
   /** Re-read the listing. `true` forces past the server's cache. */
-  reload: (refresh?: boolean) => void;
+  reload: (refresh?: boolean) => Promise<void>;
 }
 
 /**
@@ -162,9 +169,40 @@ export function ArtworkTab({ gameId, channel }: GameTabProps) {
   });
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // The upload is the one action here that ADDS to the library rather than
+  // removing from it. It is opt-in and confirmed inside uploadArtwork, which also
+  // names the object it creates.
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadNote, setUploadNote] = useState('');
 
   const inUse = objects.filter((object) => object.inUse);
   const unused = objects.filter((object) => !object.inUse);
+
+  async function upload(file: File) {
+    setUploadError(null);
+    setUploadNote('');
+    setUploading(true);
+    try {
+      const result = await uploadArtwork({ gameId, channel, file });
+      // Null means the operator cancelled the confirmation: nothing happened, so
+      // there is nothing to report.
+      if (!result) return;
+      setUploadNote(
+        result.duplicate
+          ? `Already on the bucket as ${result.existingName ?? result.objectName}; nothing was uploaded.`
+          : `Uploaded ${result.objectName}.`
+      );
+      // The server dropped /api/art on acceptance, so this re-read sees the new
+      // object rather than the cached listing it replaced.
+      await reload(true);
+    } catch (err) {
+      setUploadError(messageOf(err));
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function remove(object: ArtworkObject) {
     // Opt-in, and the confirmation names the exact object: an irreversible
@@ -197,25 +235,57 @@ export function ArtworkTab({ gameId, channel }: GameTabProps) {
           {plural(inUse.length, 'object')} in use, {unused.length} superseded.
           {updatedPhrase(ageMs) ? ` ${updatedPhrase(ageMs)}.` : ''}
         </p>
-        <Button
-          size="sm"
-          onClick={() => void reload(true)}
-          disabled={refreshing}
-          aria-label="Re-list the artwork objects on the bucket"
-        >
-          <RefreshCw className={refreshing ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* A hidden input driven by the button: the shared control kit has no
+              styled file input, and a bare one is the platform's own chrome. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ARTWORK_ACCEPT}
+            className="sr-only"
+            disabled={uploading}
+            aria-label={`Upload an artwork file to ${gameId} / ${channel}`}
+            onChange={(event) => {
+              const input = event.currentTarget;
+              const file = input.files?.[0];
+              // Cleared so choosing the same file twice still fires: this input is
+              // uncontrolled and a browser does not re-report an unchanged pick.
+              input.value = '';
+              if (file) void upload(file);
+            }}
+          />
+          <Button
+            size="sm"
+            busy={uploading}
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            aria-label={`Upload a new artwork file to ${gameId} / ${channel}`}
+          >
+            <Upload className="size-3.5" aria-hidden="true" />
+            Upload
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => void reload(true)}
+            disabled={refreshing}
+            aria-label="Re-list the artwork objects on the bucket"
+          >
+            <RefreshCw className={refreshing ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error ? <ErrorLine>{error}</ErrorLine> : null}
       {actionError ? <ErrorNote>{actionError}</ErrorNote> : null}
+      {uploadError ? <ErrorNote>{uploadError}</ErrorNote> : null}
+      {uploadNote ? <p className="m-0 mb-3 text-[12px] text-ink-subtle">{uploadNote}</p> : null}
 
       {loading ? (
         <p className="text-[12.5px] text-ink-subtle">Listing objects&hellip;</p>
       ) : !objects.length ? (
         <EmptyState title="No artwork is published for this game and channel yet.">
-          Upload an icon or banner from the Metadata tab.
+          Use Upload above to add an icon, banner or screenshot.
         </EmptyState>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3">

@@ -28,7 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AlertTriangle, Info, Undo2 } from 'lucide-react';
 
 import { streamScript } from '@lib/api';
-import { previewUrlFor, releasePreviewUrl, stageArtwork } from '@lib/artwork';
+import { uploadArtwork, type MediaUploadOutcome } from '@lib/artwork';
 import { plural } from '@lib/format';
 import { DRAFT_KEYS } from '@lib/storage';
 import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject, type MetaFieldSpec } from '@/types/api';
@@ -46,7 +46,6 @@ import type { GameTabProps } from './types';
 import {
   buildPayload,
   diffRows,
-  IMAGE_INPUTS,
   isImageDirty,
   type MetaFieldView,
   useDirtyFlags,
@@ -142,7 +141,7 @@ function MetaFieldRow({
   dirty,
   showInherited,
   onChange,
-  onPathChange,
+  onArtworkUpload,
   onRevert,
 }: {
   /** The served contract entry: names the control and its label. */
@@ -157,61 +156,22 @@ function MetaFieldRow({
   /** True only when the value is inherited from the manifest under a catalog entry. */
   showInherited: boolean;
   onChange: (next: string) => void;
-  onPathChange: (next: string) => void;
+  /** Uploads a new image to the library and reports the object to select. */
+  onArtworkUpload: (file: File) => Promise<MediaUploadOutcome | null>;
   onRevert: () => void;
 }) {
   const flag = spec.flag;
   const isImage = spec.image;
   const isScreenshots = flag === 'screenshots';
   const isMedia = isImage || isScreenshots;
-  // The staged file's blob and name, held here so the row shows the chosen
-  // picture before the upload rewrites the URL on publish.
-  const [stagedPreview, setStagedPreview] = useState('');
-  const [stagedName, setStagedName] = useState('');
-  const previewRef = useRef('');
-
-  // Release the blob when the field goes away. A picked file is already held by
-  // the browser, so keeping the handle alive for the life of the form leaks.
-  useEffect(() => {
-    const ref = previewRef;
-    return () => {
-      if (ref.current) releasePreviewUrl(ref.current);
-    };
-  }, []);
 
   // A value that is a bucket key resolves to its object's URL for display; the
   // saved value stays the raw key. Falls back to the server's preview for a
-  // published URL the listing cannot name.
+  // published URL, so a value whose object is missing from the listing - or one
+  // that is not on this bucket at all - still renders.
   const picked = artworks.find((object) => object.key === value.trim());
-  const previewUrl = isImage ? stagedPreview || picked?.url || field.previewUrl : undefined;
+  const previewUrl = isImage ? picked?.url || field.previewUrl : undefined;
   const noun = isScreenshots ? 'screenshot' : field.label.replace(/\s*URL$/i, '').toLowerCase();
-
-  const clearStaged = () => {
-    setStagedPreview('');
-    setStagedName('');
-    if (previewRef.current) releasePreviewUrl(previewRef.current);
-    previewRef.current = '';
-    onPathChange('');
-  };
-
-  const handleChange = (next: string) => {
-    // Choosing a library image supersedes a staged upload, which would otherwise
-    // win on publish and make the visible choice a lie.
-    if (isImage) clearStaged();
-    onChange(next);
-  };
-
-  const handleUpload = async (file: File) => {
-    if (previewRef.current) releasePreviewUrl(previewRef.current);
-    const blob = previewUrlFor(file);
-    previewRef.current = blob;
-    setStagedPreview(blob);
-    setStagedName(file.name);
-    // Staging the file IS choosing it: the path makes the field dirty and the
-    // publish uploads the bytes and rewrites the URL. The one upload path.
-    const staged = await stageArtwork(file);
-    onPathChange(staged.localPath);
-  };
 
   return (
     <div
@@ -249,12 +209,11 @@ function MetaFieldRow({
             id={`meta-field-${flag}`}
             value={value}
             objects={artworks}
-            onChange={handleChange}
+            onChange={onChange}
             noun={noun}
             multiple={isScreenshots}
             previewUrl={previewUrl}
-            stagedName={stagedName}
-            onUpload={isImage ? handleUpload : undefined}
+            onUpload={onArtworkUpload}
             objectsLoading={artworksLoading}
             objectsError={artworksError}
           />
@@ -264,7 +223,7 @@ function MetaFieldRow({
           field={specFor(spec)}
           id={`meta-field-${flag}`}
           value={value}
-          onChange={handleChange}
+          onChange={onChange}
           suggestions={SUGGESTIONS[flag]}
           changed={dirty}
         />
@@ -342,7 +301,31 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
   // One listing for both image fields. The shared control marks the chosen tile
   // itself, so a single bucket read is enough and the two pickers cannot drift
   // into offering different sets of images.
-  const artworks = useArtworkObjects({ gameId, channel });
+  const {
+    objects: artworks,
+    loading: artworksLoading,
+    error: artworksError,
+    reload: reloadArtworks,
+  } = useArtworkObjects({ gameId, channel });
+
+  // The ONE library upload: the picker's Upload and the Artwork page both call
+  // uploadArtwork, which validates, hashes, names, confirms and writes. This only
+  // re-reads the listing the picker draws from - the server dropped /api/art on
+  // acceptance, so the re-read sees the new object - and reports what was written.
+  const onArtworkUpload = useCallback(
+    async (file: File): Promise<MediaUploadOutcome | null> => {
+      const result = await uploadArtwork({ gameId, channel, file });
+      if (!result) return null; // the operator cancelled the confirmation
+      await reloadArtworks(true);
+      return {
+        key: result.key,
+        note: result.duplicate
+          ? `Already on the bucket as ${result.existingName ?? result.objectName}; nothing was uploaded.`
+          : `Added ${result.objectName} to the library.`,
+      };
+    },
+    [reloadArtworks, channel, gameId]
+  );
 
   const [dryRun, setDryRun] = useState(true);
   const [log, setLog] = useState('');
@@ -454,7 +437,6 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
     );
   }
 
-  const stagedFiles = Object.values(IMAGE_INPUTS).filter((key) => String(values[key] ?? '').trim());
   const inheritedLabels = fieldSpec
     .filter((spec) => original[spec.flag]?.inherited)
     .map((spec) => original[spec.flag]?.label ?? spec.flag);
@@ -473,26 +455,22 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
         spec={spec}
         field={field}
         value={values[spec.flag] ?? ''}
-        artworks={artworks.objects}
-        artworksLoading={artworks.loading}
-        artworksError={artworks.error}
+        artworks={artworks}
+        artworksLoading={artworksLoading}
+        artworksError={artworksError}
         dirty={isImageDirty(original, values, spec.flag)}
         showInherited={Boolean(payload?.hasCatalogEntry) && field.source === 'manifest'}
         onChange={(next) => setValue(spec.flag, next)}
-        onPathChange={(next) =>
-          setValue(IMAGE_INPUTS[spec.flag as keyof typeof IMAGE_INPUTS], next)
-        }
+        onArtworkUpload={onArtworkUpload}
         onRevert={() => revert(spec.flag)}
       />
     );
   };
 
-  // Only what the summary cannot already read off the review: which staged
-  // files upload, and that publishing is a preview. The review header already
-  // names the target and the count, and the Preview toggle sits below it.
-  const summary = stagedFiles.length
-    ? `${plural(stagedFiles.length, 'artwork file')} will upload on publish.`
-    : '';
+  // No summary line: a staged file is no longer a thing, because an upload now
+  // writes a library object and becomes the field's value like any other pick,
+  // so there is nothing extra for the review to say beyond its rows.
+  const summary = '';
 
   return (
     <>

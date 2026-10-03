@@ -8,15 +8,18 @@
  * (screenshots): `multiple` is the prop, not a second component, so a new media
  * slot costs one call site rather than a copy of this file.
  *
- * New bytes reach the library through the artwork upload the Metadata tab
- * already owns (`/api/art/stage`). The picker only calls `onUpload` - it does not
- * know how the file is staged - so there is deliberately one upload path in the
- * app and this is not a second one.
+ * New bytes reach the bucket through the ONE artwork upload the app owns
+ * (`uploadArtwork` in @lib/artwork, backed by POST /api/art/upload) - the same
+ * path the Artwork page uses. The picker only calls `onUpload`, which returns the
+ * object key to select plus a line to show, so validation, naming, the
+ * confirmation and the listing refresh all live in that one path rather than in
+ * a second implementation here.
  */
 import { useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical, Upload, X } from 'lucide-react';
 
 import type { ArtworkObject } from '@/types/api';
+import { ARTWORK_ACCEPT, type MediaUploadOutcome } from '@lib/artwork';
 import { splitList } from '@lib/format';
 import { cx } from './cx';
 import { Thumb } from './Thumb';
@@ -33,12 +36,14 @@ export interface MediaPickerProps {
   noun: string;
   /** Ordered list with add/remove/reorder. False for a single slot. */
   multiple?: boolean;
-  /** Display-only: the current selection's preview, including a staged file. */
+  /** Display-only preview of the current selection when the listing cannot name it. */
   previewUrl?: string;
-  /** Name of the staged file, shown while it waits to upload on publish. */
-  stagedName?: string;
-  /** The one upload path. Absent means this slot accepts no file upload. */
-  onUpload?: (file: File) => Promise<void>;
+  /**
+   * The one upload path: uploads a NEW image to the artwork library and returns
+   * the object key to select (plus a line to show), or null when the operator
+   * cancelled. Absent means this slot accepts no file upload.
+   */
+  onUpload?: (file: File) => Promise<MediaUploadOutcome | null>;
   /** True while the library listing is still being read. */
   objectsLoading?: boolean;
   /**
@@ -48,8 +53,6 @@ export interface MediaPickerProps {
    */
   objectsError?: string | null;
 }
-
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
 /** The content-hashed object name for a stored value, or the value's basename. */
 function nameFor(value: string, objects: ArtworkObject[]): string {
@@ -69,7 +72,6 @@ export function MediaPicker({
   noun,
   multiple = false,
   previewUrl,
-  stagedName,
   onUpload,
   objectsLoading = false,
   objectsError = null,
@@ -80,14 +82,12 @@ export function MediaPicker({
   const [drag, setDrag] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // The outcome of the last upload: names the object that was written, or says
+  // the bytes were already on the bucket. Not an error, so it is not in `error`.
+  const [note, setNote] = useState('');
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const selected = multiple ? splitList(value) : value.trim() ? [value.trim()] : [];
-  // Keyed on the STAGED FILE, not on previewUrl. previewUrl is also the display
-  // preview of the current selection (MetadataTab passes the published URL for a
-  // value the listing cannot resolve), so deriving this from it made a field the
-  // operator just cleared render the old image again as "uploads on publish".
-  const staged = !multiple && !selected.length && Boolean(stagedName);
 
   const commit = (next: string[]) => onChange(multiple ? next.join(', ') : (next[0] ?? ''));
 
@@ -116,9 +116,21 @@ export function MediaPicker({
   const pickFile = async (file: File) => {
     if (!onUpload) return;
     setError('');
+    setNote('');
     setBusy(true);
     try {
-      await onUpload(file);
+      const outcome = await onUpload(file);
+      if (!outcome) return; // the operator cancelled the confirmation
+      setNote(outcome.note);
+      // The upload is a real library write, so the new image is a choice like any
+      // other - selecting it here is what "add a new image without leaving the
+      // form" means. A duplicate hash resolves to the object already on the
+      // bucket, so it selects that one rather than a second copy.
+      if (multiple) commit([...selected, outcome.key]);
+      else {
+        commit([outcome.key]);
+        setOpen(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -238,27 +250,6 @@ export function MediaPicker({
             </Button>
           </div>
         )
-      ) : staged ? (
-        <div className="flex items-center gap-2 rounded-sm border border-edge bg-surface-2 p-1.5">
-          <Thumb url={previewUrl ?? ''} alt={`staged ${noun}`} shape="wide" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-muted">
-            {stagedName || 'staged file'}
-          </span>
-          <span className="text-[11px] text-ink-subtle">uploads on publish</span>
-          <Button
-            size="sm"
-            iconOnly
-            variant="quiet"
-            onClick={() => {
-              setError('');
-              onChange('');
-            }}
-            title={`Clear the staged ${noun}`}
-            aria-label={`Clear the staged ${noun}`}
-          >
-            <X aria-hidden size={14} />
-          </Button>
-        </div>
       ) : (
         <p className="text-[11.5px] text-ink-subtle">
           {multiple ? `No ${noun}s chosen.` : `No ${noun} chosen.`}
@@ -271,7 +262,7 @@ export function MediaPicker({
           onClick={() => setOpen(true)}
           aria-label={`Choose ${noun} from the artwork library`}
         >
-          {selected.length || staged ? 'Change' : 'Choose'}
+          {selected.length ? 'Change' : 'Choose'}
         </Button>
         {onUpload ? (
           <>
@@ -279,10 +270,10 @@ export function MediaPicker({
               ref={fileRef}
               id={id}
               type="file"
-              accept={ACCEPT}
+              accept={ARTWORK_ACCEPT}
               className="sr-only"
               disabled={busy}
-              aria-label={`Upload a ${noun} file`}
+              aria-label={`Upload a new ${noun} to the artwork library`}
               onChange={(event) => {
                 const input = event.currentTarget;
                 const file = input.files?.[0];
@@ -297,7 +288,7 @@ export function MediaPicker({
               busy={busy}
               disabled={busy}
               onClick={() => fileRef.current?.click()}
-              aria-label={`Upload a ${noun} file`}
+              aria-label={`Upload a new ${noun} to the artwork library`}
             >
               <Upload aria-hidden size={13} />
               Upload
@@ -307,6 +298,7 @@ export function MediaPicker({
       </div>
 
       {error ? <p className="text-[11.5px] text-status-error">{error}</p> : null}
+      {note ? <p className="text-[11.5px] text-ink-subtle">{note}</p> : null}
 
       {open ? (
         <div

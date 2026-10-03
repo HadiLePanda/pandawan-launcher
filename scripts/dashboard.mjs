@@ -15,6 +15,7 @@
  */
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
@@ -25,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 // cache-control header matches publish-catalog.mjs exactly: a mutable index
 // served under a long-lived cache header makes a publish look like a no-op.
 import {
+  IMMUTABLE,
   NO_CACHE,
   S3,
   deleteObject,
@@ -47,6 +49,7 @@ import {
 } from './lib/news-fields.mjs';
 // Artwork decisions are pure and unit-tested on their own.
 import {
+  artworkObjectName,
   describeArtwork,
   MAX_ARTWORK_BYTES,
   referencesObject,
@@ -1968,6 +1971,142 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(500).end(`could not stage the file: ${String(err)}`);
     }
+    return;
+  }
+
+  if (url.pathname === '/api/art/upload' && req.method === 'POST') {
+    // Same body cap as /api/art/stage: the base64 payload adds a third again to
+    // the file, so the request cap sits above the file cap rather than at it.
+    const payload = await readJson(req, res, { maxBytes: Math.ceil(MAX_ARTWORK_BYTES * 1.4) });
+    if (!payload) return;
+
+    const gameId = String(payload.gameId ?? '').trim();
+    const channel = String(payload.channel ?? '').trim();
+    // The key is built from these, so they are treated as path segments here
+    // rather than trusted: a gameId carrying a slash or `..` would escape the
+    // game's own prefix.
+    if (!gameId || !channel) {
+      res.writeHead(400).end('gameId and channel are required');
+      return;
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(gameId) || gameId.includes('..')) {
+      res.writeHead(400).end('gameId must be a plain id');
+      return;
+    }
+    if (!CHANNELS.includes(channel)) {
+      res.writeHead(400).end(`channel must be one of ${CHANNELS.join(', ')}`);
+      return;
+    }
+
+    // Decoded FIRST, and the limit checked against the DECODED length: a declared
+    // sizeBytes is operator input, and trusting it would let a small-declared
+    // request write an arbitrarily large object.
+    let bytes;
+    try {
+      bytes = Buffer.from(String(payload.data ?? ''), 'base64');
+    } catch {
+      res.writeHead(400).end('the file could not be decoded');
+      return;
+    }
+    if (!bytes.length) {
+      res.writeHead(400).end('the file is empty');
+      return;
+    }
+    const check = validateArtwork({
+      fileName: String(payload.fileName ?? ''),
+      sizeBytes: bytes.length,
+    });
+    if (check.error) {
+      res.writeHead(400).end(check.error);
+      return;
+    }
+
+    // The name is decided by the CONTENT, never chosen or sent by the client. The
+    // base is a constant rather than the source filename on purpose: a
+    // filename-derived base would let the same image be uploaded twice under two
+    // names, which is exactly what content addressing exists to prevent. The
+    // extension still comes from the source file, through artwork.mjs's rules, so
+    // the object is served with the right Content-Type.
+    const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 8);
+    const objectName = artworkObjectName({
+      baseName: 'artwork',
+      hash,
+      fileName: check.name,
+      fallbackName: 'artwork.png',
+    });
+    const prefix = `games/${gameId}/${channel}`;
+    const key = `${prefix}/${objectName}`;
+    const objectUrl = `${String(cdnOrigin).replace(/\/+$/, '')}/${key}`;
+
+    // Content addressing makes the same image the same object, so the check is by
+    // HASH, not by the exact key: the same bytes already on the bucket - even
+    // published as this game's icon - are a no-op rather than a second copy.
+    let existing = null;
+    try {
+      const keys = await listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
+      existing = keys.find((entry) => {
+        const name = String(entry?.key ?? '').slice(prefix.length + 1);
+        return !name.includes('/') && new RegExp(`-${hash}\\.[a-z0-9]+$`, 'i').test(name);
+      });
+    } catch (err) {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: `could not read the bucket: ${String(err)}` }));
+      return;
+    }
+
+    const plan = {
+      key,
+      objectName,
+      url: objectUrl,
+      sizeBytes: bytes.length,
+      duplicate: Boolean(existing),
+      existingName: existing ? String(existing.key).slice(prefix.length + 1) : null,
+    };
+
+    // A dry run is the default. It answers with the consequence - the name the
+    // bytes will land under, derived from their hash, and whether they are
+    // already on the bucket - because the name cannot be known before the bytes
+    // are hashed, which is why the operator's confirm comes AFTER this call and
+    // names both the file and the resulting object.
+    if (payload.confirm !== true) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, written: false, ...plan }));
+      return;
+    }
+
+    if (existing) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, written: false, ...plan }));
+      return;
+    }
+
+    const localPath = path.join(artStagingDir, `upload-${Date.now()}-${safeLocalName(check.name)}`);
+    try {
+      await mkdir(artStagingDir, { recursive: true });
+      await writeFile(localPath, bytes);
+      // The same r2.mjs layer the delete path uses. Immutable, because the key
+      // carries a content hash: a changed image lands on a different URL.
+      upload(localPath, S3.s3Uri(bucket, key), {
+        endpoint,
+        cacheControl: IMMUTABLE,
+        throwOnFailure: true,
+      });
+    } catch (err) {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: `could not upload ${objectName}: ${String(err)}` }));
+      return;
+    } finally {
+      // The staged copy is only the bridge to `aws s3 cp`; its failure is not the
+      // operator's problem once the object is written.
+      rm(localPath, { force: true }).catch(() => {});
+    }
+
+    // The listing changed, so the cached read that feeds both the Artwork tab and
+    // the picker is dropped on ACCEPTANCE, matching the delete and
+    // metadata-publish handlers.
+    invalidateCache('/api/art');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, written: true, ...plan }));
     return;
   }
 
