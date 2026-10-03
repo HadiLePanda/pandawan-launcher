@@ -426,6 +426,20 @@ body {
   border-radius: 6px;
 }
 
+/* Rail icons are too small for a visible chain: a dead URL hides the image and
+ * reveals the glyph. data-art-failed is the only thing that shows it. */
+.games-bar-icon-fallback {
+  display: none;
+}
+
+.games-bar-icon[data-art-failed='true'] img {
+  display: none;
+}
+
+.games-bar-icon[data-art-failed='true'] .games-bar-icon-fallback {
+  display: flex;
+}
+
 .games-bar-icon.installed {
   opacity: 1;
   filter: none;

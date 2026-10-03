@@ -1,7 +1,27 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { Game } from '@/types';
 import { Gamepad2 } from 'lucide-react';
+
+/** Banner -> icon -> glyph. Truthiness cannot tell "no banner" from "the banner 404ed". */
+function CardArt({ bannerUrl, iconUrl }: { bannerUrl?: string; iconUrl?: string }) {
+  const sources = [bannerUrl, iconUrl].filter((url): url is string => Boolean(url));
+  const [index, setIndex] = useState(0);
+  const src = sources[index];
+
+  if (!src) {
+    return (
+      <div className="game-card-fallback">
+        <Gamepad2 className="w-10 h-10" />
+      </div>
+    );
+  }
+
+  return (
+    <img src={src} alt="" className="game-card-image" onError={() => setIndex((i) => i + 1)} />
+  );
+}
 
 interface GamesHomeProps {
   games: Game[];
@@ -56,15 +76,7 @@ function GameCard({
       title={unavailable ? t('gamesHome.unavailableOnPlatform') : game.info.name}
     >
       <div className="game-card-art">
-        {game.info.bannerUrl ? (
-          <img src={game.info.bannerUrl} alt="" className="game-card-image" />
-        ) : game.info.iconUrl ? (
-          <img src={game.info.iconUrl} alt="" className="game-card-image" />
-        ) : (
-          <div className="game-card-fallback">
-            <Gamepad2 className="w-10 h-10" />
-          </div>
-        )}
+        <CardArt bannerUrl={game.info.bannerUrl} iconUrl={game.info.iconUrl} />
       </div>
       <div className="game-card-content">
         <h3 className="game-card-title">{game.info.name}</h3>
