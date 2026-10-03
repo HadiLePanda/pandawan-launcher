@@ -35,11 +35,13 @@ import { KNOWN_CHANNELS, PLATFORMS, type ArtworkObject, type MetaFieldSpec } fro
 import { draftNoteText, useDraft } from '@/hooks/useDraft';
 
 import { FieldControl, type FieldSpec } from '@/panels/FieldControl';
+import { Badge, Field } from '@/panels/ui';
 
 import { DiffReview } from '@components/DiffReview';
 import { ActionRow, DirtyBar, ErrorLine, Log, WarnLine } from '@components/ui';
 
 import { useArtworkObjects } from './ArtworkTab';
+import { ScreenshotPicker } from './ScreenshotPicker';
 import type { GameTabProps } from './types';
 import {
   buildPayload,
@@ -308,16 +310,30 @@ function MetaFieldRow({
         )}
       </div>
 
-      <FieldControl
-        field={specFor(spec)}
-        id={`meta-field-${flag}`}
-        value={value}
-        previewUrl={previewUrl}
-        onChange={handleChange}
-        artworks={isImage ? artworks : undefined}
-        suggestions={SUGGESTIONS[flag]}
-        changed={dirty}
-      />
+      {spec.flag === 'screenshots' ? (
+        <Field
+          label={
+            <span className="flex items-center gap-1.5">
+              {spec.label}
+              {dirty ? <Badge tone="info">changed</Badge> : null}
+            </span>
+          }
+          htmlFor={`meta-field-${flag}`}
+        >
+          <ScreenshotPicker value={value} objects={artworks} onChange={handleChange} />
+        </Field>
+      ) : (
+        <FieldControl
+          field={specFor(spec)}
+          id={`meta-field-${flag}`}
+          value={value}
+          previewUrl={previewUrl}
+          onChange={handleChange}
+          artworks={isImage ? artworks : undefined}
+          suggestions={SUGGESTIONS[flag]}
+          changed={dirty}
+        />
+      )}
 
       {isImage && (
         <ArtworkUpload noun={noun} onPathChange={onPathChange} onPreview={setStagedPreview} />
