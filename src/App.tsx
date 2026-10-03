@@ -29,7 +29,6 @@ import {
   checkForUpdates,
   downloadAndInstall,
   quitLauncher,
-  restartToApplyUpdate,
 } from '@/lib/updater-service';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -284,13 +283,12 @@ function App() {
         ? Math.min(100, Math.round((updaterDownloadedBytes / updaterTotalBytes) * 100))
         : null;
 
+  // The chip owns a ready update and restarts only through its guarded path
+  // (which warns while a game runs, so the playtime waiter survives). This
+  // handler is the download side only.
   const handleLauncherUpdateClick = useCallback(() => {
-    if (updaterStatus === 'ready') {
-      void restartToApplyUpdate();
-    } else {
-      void downloadAndInstall();
-    }
-  }, [updaterStatus]);
+    void downloadAndInstall();
+  }, []);
 
   useEffect(() => {
     if (!settings) return;
