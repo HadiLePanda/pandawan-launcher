@@ -1,7 +1,7 @@
 @echo off
 REM Compile the launcher once, then run it. No hot reload.
 REM
-REM Use run-dev.bat for day-to-day work: it reuses the debug build and starts in
+REM Use run-launcher.bat for day-to-day work: it reuses the debug build and starts in
 REM seconds. This builds the same debug profile but launches it detached so the
 REM launcher survives this window closing, which is what you want when testing
 REM as a user would - no devtools, no vite server, real window behaviour.

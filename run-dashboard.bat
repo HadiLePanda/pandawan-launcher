@@ -1,8 +1,8 @@
 @echo off
 REM Open the Pandawan dashboard in your browser.
 REM
-REM Double-click this file. It works like the launcher's run-dev.bat: this
-REM window runs the server in the foreground, so closing the window stops it.
+REM Double-click this file. Like run-launcher.bat, this window runs the server
+REM in the foreground, so closing the window stops it.
 REM
 REM   run-dashboard.bat           start it, or start it fresh
 REM   run-dashboard.bat stop      stop one left running from an earlier session
@@ -69,7 +69,7 @@ REM This runs alongside the server in a window that closes itself when done.
 start "dashboard browser" /min cmd /c ^
   "for /l %%n in (1,1,60) do @(ping -n 2 127.0.0.1 >nul ^& netstat -ano ^| findstr :%PORT% ^| findstr LISTENING >nul ^& start "" http://127.0.0.1:%PORT% ^& exit /b)"
 
-REM Run node in this window, in the foreground, exactly as run-dev.bat runs the
+REM Run node in this window, in the foreground, exactly as run-launcher.bat runs the
 REM launcher. That is what makes closing the window stop the server: node is a
 REM child of this console. An earlier version shelled out through npm, putting
 REM four processes between the window and the server, so closing the window left

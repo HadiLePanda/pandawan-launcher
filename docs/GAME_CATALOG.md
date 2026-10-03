@@ -23,6 +23,75 @@ cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0". It maps each platf
 to the version it is pinned at, and the launcher reads its own entry before
 fetching that version's manifest.
 
+### Artwork names are content-addressed
+
+Uploaded art is stored as `<stem>-<sha256[:8]>.<ext>` — `icon-a4bcd7b8.png`, not
+`icon.png`. A stable name cannot be cached for long, because a client that already
+has it can never learn the file changed; that previously forced `no-cache` and
+re-downloaded megabytes of artwork on every launch. Hashing the bytes puts a
+changed image on a **new URL**, so the old object stays valid forever under the
+one-year immutable header and clients pick up new art only by reading a document
+that names it.
+
+The consequences are worth stating plainly:
+
+- Replacing artwork does **not** overwrite. The previous object stays on the bucket
+  and keeps costing storage. `npm run prune:builds` does not touch these, so
+  removing superseded art is a deliberate manual step. The dashboard's "Published
+  artwork" list exists to make that visible, marking unreferenced objects.
+- The bucket records nothing about which field an object belongs to. The dashboard
+  derives that by comparing published URLs against the field values it loaded.
+- Relative URLs work everywhere. `resolveCdnUrl()` in `src/lib/cdn.ts` resolves
+  `/games/{id}/{channel}/icon-a4bcd7b8.png` against the CDN origin, so prefer
+  relative paths in the catalog; absolute URLs pass through untouched.
+- Accepted upload types are png/jpg/jpeg/webp/gif, capped at 12 MB. SVG is
+  rejected: artwork renders through `<img>` from a remote origin, where an SVG can
+  carry script. The bundled SVG placeholders are safe only because they ship inside
+  the app rather than being fetched from the bucket.
+- Upload through the dashboard's Games tab, or directly:
+  `npm run publish:meta -- --game-id misspell --channel alpha --icon-file ./art/icon.png`.
+  The script rewrites both `catalog.json` and `manifest.json` to point at the new
+  object, so a client resolving a build without the catalog sees the same art.
+
+## Editing news
+
+The feed at `{origin}/launcher/news.json` is edited item by item from the
+dashboard's **News** tab, or from the command line:
+
+```bash
+node scripts/publish-news.mjs --create --id spring-event --title "Spring Event" --category Event
+node scripts/publish-news.mjs --update spring-event --excerpt "Now live."
+node scripts/publish-news.mjs --move spring-event --up
+node scripts/publish-news.mjs --delete spring-event --dry-run
+```
+
+Add `--dry-run` to any of them to see the diff without touching the bucket.
+
+An item's fields are `title` and `excerpt` (both shown in the launcher), plus the
+optional `content`, `date`, `category`, `gameId`, `url` and `imageUrl`. Only `id`
+and `title` are actually required — that is what `news-service.ts` checks before
+rendering, and the publisher refuses to write an item that would be dropped.
+
+### An item has two copies, and both are written
+
+`publish-news.mjs` updates the CDN document **and** `public/news.json` in the repo.
+The second is not a convenience: `public/news.json` ships inside the app as the
+offline fallback, and `publish-catalog.mjs` uploads that local file over the CDN one.
+An edit that touched only the CDN copy would be reverted by the next catalog
+publish, without any error.
+
+> The same trap still exists for `catalog.json` and is not yet addressed:
+> `publish-catalog.mjs` uploads `public/catalog.json`, so running the Games →
+> **Publish catalog** button after a `publish:meta` game edit reverts that edit too.
+> If you use the dashboard, edit games through the metadata panel and avoid the
+> catalog button.
+
+### Ordering
+
+The array order in the feed is display order — the launcher renders it as-is, so
+the first item is the newest shown at the top. `--move` reorders without rewriting
+the items.
+
 ## Metadata lives in two places
 
 Name, description, genres, icon and banner are described **twice**, and the two

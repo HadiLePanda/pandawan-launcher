@@ -44,6 +44,91 @@ The few things worth knowing without looking:
   control panel for the publish verbs; the `scripts/publish-*.mjs` scripts are
   those verbs. `src-tauri/tests/bundle_contents_tests.rs` fails the build if any
   of it ever reaches a bundle.
+- The dashboard UI is a **React app in `scripts/dashboard/app/`**, built by its own
+  Vite config and served by `dashboard.mjs`. Two Vite builds exist on purpose:
+  the repo-root one produces `dist/` (the launcher, ships to players) and this one
+  produces `scripts/dashboard/app/dist/` (local admin tool, never ships). The
+  separate `outDir` is what makes the ship guarantee structural rather than a
+  convention — do not point this build at the launcher's `dist/`, and do not add
+  a `bundle.resources` entry for it.
+  - `npm run dashboard:build` builds it. The server serves that output when it
+    exists and logs once at startup which UI is live; the previous hand-written
+    `index.html` / `app.js` / `style.css` remain at `/legacy.html` as the
+    fallback until that log line is no longer needed.
+  - Adding navigation is a three-step procedure, and it starts by asking **which
+    level** the thing belongs to. There is no `panel: true` flag any more: the
+    split is enforced by the type system instead.
+    - **A level-1 section** (Games / Launcher / Website / Services / Commands) goes
+      in `src/components/sections/registry.tsx`. It takes **no props** and renders
+      with no rail and no game selection. If the thing you are building acts on a
+      game, it is not a section.
+    - **A game tab** (inside Games only) goes in
+      `src/components/tabs/registry.tsx`, takes `GameTabProps` (gameId, channel,
+      scope, onPublished) and is unreachable without a selection. A panel flag was
+      removed because "pick a game first" is not a useful thing to say to someone
+      who came to publish a launcher or stop a dev server.
+    - **A Launcher sub-section** goes in `LAUNCHER_SUBS` in the same sections
+      registry, and reuses the game tab's strip.
+  - The level-1 section is in `location.hash` (`#games`, `#website`), so a reload
+    lands where you were and a section is linkable. `sectionFromHash` is tolerant
+    of `/games`, `games?x=1` and a bad percent escape, and falls back rather than
+    rendering a missing component. The level-2 sub-tabs stay in localStorage.
+  - The dashboard is **not centred on games**. Games is one top-level section; a
+    published launcher version and the public website are separate ones with their
+    own lifecycles and their own repositories. The hierarchy is two levels deep and
+    the distinction is load-bearing:
+    - **Top level**: Games · Launcher · Website · Services · Commands.
+    - **Inside a game**: Metadata · Artwork · Builds · News · Prune. All scoped to
+      the selected game, none of them reachable by typing an id.
+    - **Launcher** owns the launcher app's own releases AND the game catalog, since
+      the catalog is the launcher's game index — publishing a launcher build and
+      registering a game are both "what the launcher shows". It has no game
+      selection: it is about the app, not about one game.
+    - **Website** owns `pandawan-launcher-site`, a **separate repository** deployed
+      to Cloudflare Pages. It is a sibling checkout, not a subfolder of this one,
+      and it must never be edited from here. Its content comes from R2
+      (`downloads.json`, written by `publish-launcher.mjs`) proxied through Pages
+      Functions, because R2 sends no CORS header — so the site's data and this
+      repo's publisher are coupled through the bucket, not through the filesystem.
+  - Anything that touches the site repo must fail cleanly when it is absent: it is a
+    sibling checkout that a developer may simply not have. Report that as "site
+    repo not found at <path>" and disable the action, never as a failure.
+- Reads are cached server-side with **two** TTLs, chosen by what is being read.
+  Anything that is a round trip to somebody else's infrastructure — a recursive
+  bucket listing, a CDN document, a `git`/`wrangler` subprocess, a GitHub release
+  list — is cached for **one hour** (`CACHE_TTL_ONLINE_MS`, override
+  `DASHBOARD_CACHE_TTL_MS`). These change rarely and the user asked for them not
+  to refetch. Only `/api/services` gets the **short** one, `CACHE_TTL_LOCAL_MS` =
+  30 s (`DASHBOARD_CACHE_TTL_LOCAL_MS`), because a TCP port probe is a live fact:
+  an hour-long cache would report a dev server you just stopped as still running.
+  `/api/launcher/status` is deliberately **uncached** so it is always current.
+  - `CACHE_TTL_BY_PATH` is the single registry: an endpoint that is not listed is
+    not cached at all, so the failure mode of adding a route is "slower", never
+    "wrong answer". Adding a cached endpoint means choosing its TTL there.
+  - Both TTLs honour **0 as "cache nothing"**. An earlier version used
+    `Number(x) > 0 ? … : default`, which silently ignored `=0` — the one value
+    that exists to disable caching and tell a caching bug apart from a real one.
+  - Cached GETs send `x-cache: hit|miss|stale` and `x-cache-age-ms`. An expired
+    entry is **served as `stale` with its true age** while a replacement loads in
+    the background; it is never presented as a fresh hit. `?refresh=1` always does
+    a real read, including for a value still well inside its TTL — otherwise the
+    one button meant to prove the cache is not lying would be answered by the cache.
+  - There is deliberately **no polling**; Services' client interval is 10 s and
+    the 30 s server cache absorbs it.
+  - **Every write invalidates the reads that consume the document it rewrites**,
+    on request acceptance and never on child exit, and **a dry run invalidates
+    too** — one extra read is cheaper than a panel that lies. Under-invalidation at
+    a one-hour TTL costs an hour of a wrong panel, so the blast radius is the rule:
+    publish-game rewrites `manifest.json`/`latest.json` and can ship artwork, so it
+    drops inventory + meta + art; publish-catalog also re-uploads `news.json`, so
+    it drops news too; catalog create/delete change `launcher/catalog.json`, which
+    `readGameMetadata` resolves, so they drop meta as well.
+- **Editing the dashboard is now three codebases, not one.** The React app lives
+  in `scripts/dashboard/app/src/` and must not import from `src/` (that is the
+  launcher) or from `scripts/lib/*.mjs` (those are Node modules holding R2
+  credentials and use `node:` imports). Contracts that both sides need travel in
+  the API response instead — the news and catalog field lists are served, never
+  hand-copied.
 - A dashboard service with a `bat` field is **opened**, not spawned: `start ""` gives it its own console
   window and the dashboard captures no output from it. A service with `command`/`args` is spawned with
   piped output and keeps a 1500-char `tail`. Do not convert a `bat` service back to a spawn because its
@@ -51,6 +136,33 @@ The few things worth knowing without looking:
   window. The consequence to respect: an opened service has `pid: null`, so `persist()` filters it out of
   the reap manifest and `stop()` cannot kill it (it only stops offering to reopen one). `forceStop` still
   works because it kills whatever holds the port.
+- The dashboard has two invariants that broke silently once and are now guarded by tests. Respect them
+  rather than working around them.
+  - **No CSS rule may be nested inside another rule.** A missing `}` in `style.css` once swallowed 24
+    following rules into `.svc-log`, which only renders when a dev service dies — so the entire
+    game-metadata and news editor shipped unstyled (no padding, no border, the "changed" badge as bare
+    text) and nothing looked broken enough to report. `scripts/dashboard/style.test.ts` walks the postcss
+    AST and fails on any rule that has a rule ancestor, so this cannot come back silently. A CSS-only
+    selector is not automatically dead: the same file also checks for classes present in the CSS but in
+    neither `index.html` nor `app.js`.
+  - **The client must handle every SSE event the server emits.** `runScript` in `dashboard.mjs` sends
+    `output`, `error` and `done`; `stream()` in `app.js` must consume all three. When it matched only
+    `output`, a publisher that exited non-zero rendered identically to one that succeeded — the log just
+    stopped mid-sentence. `scripts/dashboard/client-contract.test.ts` asserts the sets match, that every
+    id `app.js` looks up exists in `index.html`, and that every `data-panel` has a `PAGES` entry.
+- The Games tab is four sub-tabs (`builds` / `metadata` / `prune` / `catalog`) because it was doing four
+  unrelated jobs on one scrolling page. The choice lives in `localStorage` under `pandawan.subtab.games`,
+  deliberately **not** in `location.hash`, so it cannot collide with the top-level tab scheme. When adding
+  a section, add a `.subtab` plus a `.subpanel` and remember `.subpanel[hidden]` needs an explicit
+  `display: none` — any component that sets `display` outranks the UA's `[hidden]` rule.
+- Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
+  is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once at the
+  top of `app.js`. Dry run stays the **default** for every publish verb, and the diff review screen
+  ("Review") is what you read before unticking it — the review is built from the same dirty-tracking
+  predicates the publish payload uses (`metaDirtyFlags` / `newsDirtyFields`), so what it shows and what
+  gets sent cannot disagree. Two rules that must survive: an emptied **list** field is not a change (a
+  comma list cannot express "no genres", and writing `[]` would erase the field), and an image field
+  changed only by a staged file must not also resend its unchanged URL.
 
 ## Coding Style
 
@@ -125,6 +237,27 @@ own sake, but the app is never meant to be opened in a browser: it calls Tauri
 commands that only exist inside the webview, so a browser load fails at the first
 IPC call. Do not add a frontend-only path to the dashboard's service list.
 
+## Dependency Policy
+
+- **Stay current.** Check what is actually installed against the registry rather
+  than trusting the `package.json` range — `npm view <pkg> version` for each, or
+  `npm outdated`. A range like `^5.0.14` says nothing about what is on disk.
+- **Verify a dist-tag is a real release before adopting it.** `npm view <pkg>
+dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
+  release; a version that looks alarming (a major jump) is sometimes just a
+  prerelease tag and vice versa.
+- **Do not bundle a major-version bump with unrelated work.** A red test after
+  bumping TypeScript, ESLint or Vitest cannot be attributed if the same commit
+  also rewrote a UI. Land majors on their own, with the suite as the safety net.
+  `npm audit fix` is different: it stays inside each package's existing major, so
+  it is safe to apply alongside feature work — verify with `npm audit --dry-run`
+  first that nothing crosses a major boundary.
+- **Run `npm audit` and treat production hits as real.** Transitive dev-only
+  advisories are much lower priority, but a production dependency carrying a
+  known CVE is not. As of this writing `react-router-dom` (CSRF bypass in RSC
+  mode), `postcss` (arbitrary `.map` read) and `sharp` (libheif) were all
+  production-reachable and have been fixed; keep it at 0.
+
 ## Important Notes
 
 - Window is frameless with custom title bar (`AppHeader` component)
@@ -135,7 +268,7 @@ IPC call. Do not add a frontend-only path to the dashboard's service list.
 - The `game-exited` event is typed through Tauri Specta and consumed via `events.gameExited` from `src/lib/bindings.ts`. Its payload includes `duration_seconds`; the backend (`record_playtime` in `src-tauri/src/patch.rs`) adds that to the game's accumulated `total_playtime_seconds` and stamps `last_played` on exit. The listener in `App.tsx` refreshes the installation so `GamePage` shows the updated playtime and last-played right away.
 - `src/lib/bindings.ts` is regenerated with `npm run bindings:export`, which runs the `export-bindings` binary (`src-tauri/src/bin/export-bindings.rs`). It calls `create_specta_builder()` directly instead of launching the app, so it works on any machine with cargo — the earlier in-binary auto-export needed the Tauri runtime and could not run in CI. The raw output still needs reconciling: `specta-typescript` 0.0.12 emits tabs, double quotes, snake_case fields, and `| null` where the frontend uses optional. `bindings-parity.test.ts` proves the command list survived that reconciliation; it was last hand-edited for `GameExited.duration_seconds`.
 - News images never resolve to nothing. `resolveNewsImage` in `src/lib/cdn.ts` picks the item's own image, else the game's banner, else the game's icon, else `public/placeholder-news.svg`, and never returns an empty string — so the four call sites render an `<img>` unconditionally instead of guarding. `handleImageError` catches a URL that is present but dead, which is the browser's broken-image glyph rather than a placeholder.
-- Game artwork has the same three-step fallback in two places, and it must stay a fallback *chain*, not
+- Game artwork has the same three-step fallback in two places, and it must stay a fallback _chain_, not
   two independent picks. On a grid card `CardArt` in `src/components/GamesHome.tsx` holds an index into
   `[bannerUrl, iconUrl]` in `useState` and advances it in `onError`, ending on a gamepad glyph. The state
   is the point: `bannerUrl ? ... : ...` cannot tell "no banner configured" from "the banner 404ed", because
@@ -153,7 +286,12 @@ IPC call. Do not add a frontend-only path to the dashboard's service list.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.
   - The shared field contract is `scripts/lib/metadata-fields.mjs` (`FIELDS`, `CHANNELS`, `IMAGE_FIELDS`); the form, the publisher and the tests all import it so they cannot drift apart. `scripts/lib/apply-metadata.mjs` holds the write decision and `scripts/lib/game-metadata.mjs` the read/merge, both extracted so they are testable without R2 credentials.
   - A field is written when _either_ document differs from the requested value. Comparing only the catalog is a real bug: the catalog gets fixed by hand, the manifest keeps the stale name, and every client resolving a build without the catalog renders the old one.
-  - `news.json` lives at `public/news.json` (it ships in the bundle as an offline fallback) and is uploaded by `publish:catalog.mjs`.
+  - Artwork is **content-addressed**: `icon-<hash8>.<ext>`, not `icon.png`. A stable name cannot be cached for long (a client holding it can never learn the file changed), which forced `NO_CACHE` and re-downloaded megabytes of art on every launch; hashing the bytes puts a changed image on a new URL so the old one stays valid forever under the immutable header. Consequences to respect: replacing art never overwrites, superseded objects **accumulate** and cost storage, and the bucket records no mapping from object to field — so the dashboard derives that from the URLs the form loaded. `scripts/lib/artwork.mjs` owns the naming, the extension rules, the upload validation and the listing; `publish-metadata.mjs` imports `artworkObjectName` from it rather than keeping its own copy.
+  - The dashboard's artwork picker posts the bytes to `/api/art/stage` and the server writes them to `dist/artwork-staging/`, handing back an absolute path that the **existing** `--icon-file` flow then uploads. Do not add a second upload path. The declared `sizeBytes` is only a pre-filter; the limit is enforced against the decoded bytes, and `safeLocalName` strips everything but the basename so a chosen filename cannot escape the staging directory. SVG is rejected: artwork renders through `<img>` from a remote origin, where an SVG can carry script — the SVG placeholders are safe only because they ship inside the app bundle.
+  - `news.json` lives at `public/news.json` (it ships in the bundle as an offline fallback) and is uploaded by `publish:catalog.mjs`. Because of that, `scripts/publish-news.mjs` writes **both** copies: the CDN document _and_ `public/news.json`. Editing only the CDN copy would let the next `npm run publish:catalog` silently revert every news edit. `catalog.json` had the same trap and is now **fixed**: `publish-catalog.mjs` merges additively instead of overwriting. The CDN entry wins for any game it already lists, `public/catalog.json` may only add games the CDN does not have, and a game missing locally is never deleted — so it can no longer revert a `publish:meta` edit. The Games → Catalog button is no longer dangerous. The decision is `mergeCatalog` in `scripts/lib/catalog-merge.mjs` (pure, no R2 imports, covered by `catalog-merge.test.ts`); `validateCatalog` keeps the entry checks and an unreadable remote still refuses to publish rather than writing a catalog that drops every game. `--force` lets the local copy win for games both sides know but still never deletes; there is deliberately no flag that can make a live game vanish. `--dry-run` changes nothing.
+  - News editing is `scripts/lib/news-fields.mjs` (the contract) + `scripts/lib/apply-news.mjs` (the ops engine) + `scripts/publish-news.mjs` (the publisher), with the dashboard's News tab driving the last one. Ops are `update`/`create`/`delete`/`move`; `applyNewsOps` never aborts a batch on one bad op but the publisher **fails the whole run** when any op errored, so a rejected edit is never published alongside the accepted ones.
+  - The dashboard client (`scripts/dashboard/app.js`) is plain browser JavaScript with **no bundler**, so it cannot import the `.mjs` contract modules. The news field list therefore travels in the `/api/news` response and the form renders from that; do not add a hand-typed copy to `app.js`. New-item ids are derived server-side by `uniqueNewsId` for the same reason — the browser cannot call the slugger, and a client-chosen id could collide with a published item and merge two announcements.
+  - News and game selection now live beside the form they edit (master–detail, `.split`), not behind an id box: typing an id that does not exist fails deep inside a publishing script, which is the failure mode the visual editor exists to remove.
 - If the remote catalog is unreachable, the launcher falls back to `public/catalog.json` (embedded) and shows a connectivity banner.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB (single previous generation). File writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button; its fs permissions are scoped to `$APPLOG` and the shell `open` regex in `tauri.conf.json` only allows URLs and the app log dir.
 - Tauri auto-updater:
