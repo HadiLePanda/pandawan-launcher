@@ -197,12 +197,27 @@ export async function resolveManifestForPlatform(
     return { status: 'unavailable', reason: 'no-build-for-platform', availableVersions: index };
   }
 
-  return {
-    status: 'ok',
-    manifest: await fetchGameManifest(versionedManifestUrl(id, channel, entry.version)),
-  };
+  // The index can name a version whose manifest is not on the bucket: an
+  // interrupted publish, or a latest.json edited by hand. The channel-root
+  // manifest is still there, so fall back to it rather than throwing - a throw
+  // here drops the game out of the library entirely, artwork and all, over a
+  // stale pointer.
+  try {
+    return {
+      status: 'ok',
+      manifest: await fetchGameManifest(versionedManifestUrl(id, channel, entry.version)),
+    };
+  } catch (err) {
+    logger.warn('Versioned manifest unreadable, falling back to the channel root', {
+      game: id,
+      channel,
+      version: entry.version,
+      error: String(err),
+    });
+    const { manifestUrl } = resolveGameUrls(id, channel);
+    return { status: 'ok', manifest: await fetchGameManifest(manifestUrl) };
+  }
 }
-
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
   const body = await fetchRemoteText(manifestUrl);
   const manifest = JSON.parse(body);
