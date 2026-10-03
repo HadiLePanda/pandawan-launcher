@@ -32,6 +32,12 @@ import {
   restartToApplyUpdate,
 } from '@/lib/updater-service';
 import { listen } from '@tauri-apps/api/event';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
+import { logger } from '@/lib/logger';
 import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
 import { startCatalogPoll } from '@/lib/cdn';
 import { applyLanguage } from '@/lib/i18n';
@@ -53,6 +59,7 @@ function App() {
   const [verifyTarget, setVerifyTarget] = useState<Game | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyRows, setVerifyRows] = useState<VerifyProgress[]>([]);
+  const [trayHintPending, setTrayHintPending] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
   const [staleCatalogFor, setStaleCatalogFor] = useState(activeView);
@@ -208,9 +215,52 @@ function App() {
     await loadCatalog();
   }, [loadCatalog]);
 
-  // The one-time tray tutorial. Marking it shown is a settings write, so it is
-  // persisted with the rest and a cleared webview store cannot bring it back.
+  // The one-time tray hint fires on the first real dock, not on first run: it
+  // only means anything to someone who just lost the window. A notification is
+  // the only thing visible while the window is hidden; if it is denied or
+  // fails, the popover is kept for the next time the window is opened. It is
+  // marked shown only once actually delivered, so a suppressed hint is not
+  // burned.
+  const deliverTrayHint = useCallback(async () => {
+    if (!settings || settings.trayHintShown) return;
+
+    let granted = false;
+    try {
+      granted = await isPermissionGranted();
+      if (!granted) granted = (await requestPermission()) === 'granted';
+    } catch (err) {
+      logger.warn('Notification permission check failed', { error: String(err) });
+    }
+
+    if (granted) {
+      try {
+        sendNotification({
+          title: t('trayHint.notificationTitle'),
+          body: t('trayHint.notificationBody'),
+        });
+        await setSettings({ ...settings, trayHintShown: true });
+        return;
+      } catch (err) {
+        logger.warn('Tray hint notification failed, falling back to the popover', {
+          error: String(err),
+        });
+      }
+    }
+    setTrayHintPending(true);
+  }, [settings, setSettings, t]);
+
+  useEffect(() => {
+    const unlisten = listen('tray-docked', () => {
+      void deliverTrayHint();
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [deliverTrayHint]);
+
   const dismissTrayHint = useCallback(() => {
+    setTrayHintPending(false);
     if (!settings || settings.trayHintShown) return;
     void setSettings({ ...settings, trayHintShown: true });
   }, [settings, setSettings]);
@@ -608,12 +658,12 @@ function App() {
 
       <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-      {/* Shown once, after the first run, while the launcher is still visible -
-          a hint about the tray after it hides would have nothing to render into. */}
-      {settings && !settings.trayHintShown && (
+      {/* Fallback for the tray hint: shown only when the notification could not
+          be delivered, and only once the window is visible again. */}
+      {trayHintPending && settings && !settings.trayHintShown && (
         <div className="toast">
           <div className="toast-content">
-            <div className="toast-message">{t('trayHint.message')}</div>
+            <div className="toast-message">{t('trayHint.popoverMessage')}</div>
             <button
               onClick={() => {
                 dismissTrayHint();
