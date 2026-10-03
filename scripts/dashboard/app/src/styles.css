@@ -367,6 +367,96 @@
   }
 }
 
+.dw-chip-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-edge);
+  border-radius: 0.25rem;
+  background: var(--color-surface-2);
+}
+
+.dw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--color-edge-strong);
+  border-radius: 0.25rem;
+  font-size: 11.5px;
+  color: var(--color-ink);
+}
+
+.dw-chip button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-subtle);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dw-chip button:hover {
+  color: var(--color-ink);
+}
+
+.dw-chip-input {
+  flex: 1;
+  min-width: 6rem;
+  border: 0;
+  outline: none;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--color-ink);
+}
+
+.dw-chip-add {
+  padding: 0.125rem 0.375rem;
+  border: 1px dashed var(--color-edge-strong);
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dw-chip-add:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.dw-art-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.5rem;
+}
+
+.dw-art-tile {
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 1px solid var(--color-edge);
+  border-radius: 0.25rem;
+  background: var(--color-surface-3);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.dw-art-tile[aria-pressed='true'] {
+  border-color: var(--color-accent);
+}
+
+.dw-art-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Animate only opacity and colour. Honouring the preference costs one block
    and avoids a visible transition for anyone who asked for none. */
 @media (prefers-reduced-motion: reduce) {
