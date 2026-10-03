@@ -334,7 +334,12 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       games.map(async (g) => {
         if (g.status !== 'installed') return;
         try {
-          const hasUpdate = await gameService.checkForUpdates(g.info.id, g.info.channel);
+          // The player's channel override decides which manifest this install
+          // follows, so checking the catalog channel reports the wrong build.
+          const hasUpdate = await gameService.checkForUpdates(
+            g.info.id,
+            get().channelFor(g.info.id, g.info.channel)
+          );
           setGameHasUpdate(get, set, g.info.id, hasUpdate);
         } catch (err) {
           logger.warn('Update check failed', { gameId: g.info.id, error: String(err) });
