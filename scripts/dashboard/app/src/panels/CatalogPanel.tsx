@@ -31,7 +31,9 @@ import { apiGet, messageOf } from '@/lib/api';
 import {
   CATALOG_FIELDS,
   CHANNELS,
+  PLATFORMS,
   type CatalogDiff,
+  type CatalogField,
   type CatalogGame,
   type CatalogResponse,
   gameToFields,
@@ -39,6 +41,7 @@ import {
   splitList,
   validateGame,
 } from './catalog-contract';
+import { FieldControl, type FieldControlProps } from './FieldControl';
 import { Thumb } from './Thumb';
 import { cx } from './cx';
 import {
@@ -50,10 +53,10 @@ import {
   Field,
   GlobalPanel,
   Spinner,
-  TextArea,
   TextInput,
 } from './ui';
 import { channelTone } from './channel-tone';
+import { useArtworkObjects } from '@components/tabs/ArtworkTab';
 import { platformTone } from '@lib/platform-hue';
 import { usePublisherStream, verdictLine } from './usePublisherStream';
 
@@ -559,6 +562,55 @@ function PublishLog({ log, verdict }: { log: string; verdict: Parameters<typeof 
 // --- Create / edit --------------------------------------------------------
 
 /**
+ * The chips offered for a list field. Only platforms and channels have a closed
+ * vocabulary in the contract, so genres and screenshots - free text - get none.
+ */
+function suggestionsFor(field: CatalogField): string[] | undefined {
+  if (field.flag === 'supported-platforms') return [...PLATFORMS];
+  if (field.flag === 'available-channels') return [...CHANNELS];
+  return undefined;
+}
+
+/** The catalog entry's URL for one field, or '' when the entry has none. */
+function catalogUrl(game: CatalogGame | null, catalogKey: string): string {
+  const raw = (game as Record<string, unknown> | null)?.[catalogKey];
+  return typeof raw === 'string' ? raw : '';
+}
+
+/**
+ * An image field's control, which needs the bucket listing the plain
+ * FieldControl cannot fetch for itself.
+ *
+ * The listing is marked against this field's CURRENT value rather than the
+ * published one, so a pick the operator just made is highlighted - see
+ * useArtworkObjects. On a new entry the game does not exist yet, so the listing
+ * comes back empty and the paste-a-URL escape is what remains.
+ */
+function CatalogImageField({
+  field,
+  id,
+  value,
+  previewUrl,
+  changed,
+  onChange,
+  gameId,
+  channel,
+}: FieldControlProps & { gameId: string; channel: string }) {
+  const { objects } = useArtworkObjects({ gameId, channel, field: field.flag, value });
+  return (
+    <FieldControl
+      field={field}
+      id={id}
+      value={value}
+      previewUrl={previewUrl}
+      artworks={objects}
+      changed={changed}
+      onChange={onChange}
+    />
+  );
+}
+
+/**
  * The create and edit form, on the same field contract the metadata tab uses.
  *
  * The field list comes from CATALOG_FIELDS, which mirrors FIELDS in
@@ -723,46 +775,31 @@ function CatalogEditor({
           const inputId = `catalog-${field.flag}`;
           const value = values[field.flag] ?? '';
           const isChanged = changed.includes(field.flag);
-          return (
-            <Field
+          const onChange = (next: string) => setValues({ ...values, [field.flag]: next });
+          return field.image ? (
+            <CatalogImageField
               key={field.flag}
-              label={
-                <span className="flex items-center gap-1.5">
-                  {field.label}
-                  {isChanged ? <Badge tone="info">changed</Badge> : null}
-                  {field.list ? <span className="text-ink-subtle">(comma separated)</span> : null}
-                </span>
-              }
-              htmlFor={inputId}
-              hint={
-                field.list
-                  ? 'Stored as a list. It cannot be emptied by a publish - a comma list cannot say "none".'
-                  : undefined
-              }
-            >
-              {field.long ? (
-                <TextArea
-                  id={inputId}
-                  value={value}
-                  onChange={(event) => setValues({ ...values, [field.flag]: event.target.value })}
-                />
-              ) : (
-                <TextInput
-                  id={inputId}
-                  value={value}
-                  onChange={(event) => setValues({ ...values, [field.flag]: event.target.value })}
-                  className={field.image ? 'font-mono text-xs' : undefined}
-                />
-              )}
-              {field.image ? (
-                <div className="mt-1.5">
-                  <Thumb
-                    url={value.trim()}
-                    alt={`${label({ id, name: values.name })} ${field.flag}`}
-                  />
-                </div>
-              ) : null}
-            </Field>
+              field={field}
+              id={inputId}
+              value={value}
+              // The catalog holds the resolved URL this field renders; fall back
+              // to the raw value (which may already be that URL, or a bare key).
+              previewUrl={catalogUrl(game, field.catalog) || value}
+              changed={isChanged}
+              onChange={onChange}
+              gameId={id.trim()}
+              channel={channel.trim()}
+            />
+          ) : (
+            <FieldControl
+              key={field.flag}
+              field={field}
+              id={inputId}
+              value={value}
+              onChange={onChange}
+              suggestions={suggestionsFor(field)}
+              changed={isChanged}
+            />
           );
         })}
       </div>
