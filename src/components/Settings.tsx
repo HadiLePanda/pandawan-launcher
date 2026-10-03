@@ -61,6 +61,12 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // What the editor was seeded from, so a later open can tell a real settings
+  // change apart from the same object being handed back by the store.
+  const [seededFrom, setSeededFrom] = useState<{
+    isOpen: boolean;
+    settings: LauncherSettings | null;
+  }>({ isOpen, settings });
 
   const tabLabels: Record<SettingsTab, string> = {
     general: t('settings.tabs.general'),
@@ -70,12 +76,20 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     about: t('settings.tabs.about'),
   };
 
-  useEffect(() => {
+  // Reseeding the editor from the store. Done during render instead of in an
+  // effect so the modal never paints one frame with the previous session's
+  // edits still in the fields - an effect would commit them to screen first.
+  // `seededFrom` holds what the current edit buffer was seeded from; a
+  // difference means the store moved under us, or the modal was (re)opened, and
+  // the buffer is stale by definition. Closed, this never fires, matching the
+  // old guard that only seeded while open.
+  if (isOpen !== seededFrom.isOpen || (isOpen && seededFrom.settings !== settings)) {
+    setSeededFrom({ isOpen, settings });
     if (isOpen) {
       setEditedSettings(settings || DEFAULT_SETTINGS);
       setSaveError(null);
     }
-  }, [isOpen, settings]);
+  }
 
   if (!isOpen) return null;
 

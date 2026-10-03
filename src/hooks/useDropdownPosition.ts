@@ -22,11 +22,12 @@ export function useDropdownPosition(
 ): DropdownPosition | null {
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
+  // While closed, the hook reports no position rather than a cached one. The
+  // old effect nulled the stored value on close; here the closed case is simply
+  // masked on read, so the menu can never render from a stale measurement
+  // between closing and the next open's layout effect running.
   useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
+    if (!open) return;
 
     const update = () => {
       const trigger = triggerRef.current?.getBoundingClientRect();
@@ -71,5 +72,5 @@ export function useDropdownPosition(
     };
   }, [open, triggerRef, menuRef]);
 
-  return position;
+  return open ? position : null;
 }

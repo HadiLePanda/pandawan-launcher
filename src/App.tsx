@@ -48,6 +48,7 @@ function App() {
   const [verifyRows, setVerifyRows] = useState<VerifyProgress[]>([]);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
+  const [staleCatalogFor, setStaleCatalogFor] = useState(activeView);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(
@@ -188,9 +189,15 @@ function App() {
   // The flag is only meaningful until the user acts on it: either they refresh
   // and get the new content, or they keep working. Clearing it on view change
   // stops a stale dot from outliving the thing it pointed at.
-  useEffect(() => {
+  //
+  // Adjusted during render rather than in an effect so the dot never paints once
+  // against the old view first. `staleCatalogFor` records which view the current
+  // flag belongs to; a mismatch means the user navigated and the flag is spent.
+  // Mounting is a no-op because the state starts out on this same view.
+  if (staleCatalogFor !== activeView) {
+    setStaleCatalogFor(activeView);
     setIsCatalogStale(false);
-  }, [activeView]);
+  }
 
   // Applies a flagged catalog change. Deferred a tick so the dot clears even if
   // the reload fails, and so the click does not fight the poll that set it.

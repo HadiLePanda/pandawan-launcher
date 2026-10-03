@@ -77,12 +77,20 @@ export interface SmoothDownload {
  * instantaneous rate, because a single sample can be a burst that never repeats
  * and would produce a wildly optimistic countdown.
  */
+const SAMPLE_WINDOW = 12;
+
+type Sample = { at: number; bytes: number };
+
 export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined): SmoothDownload {
   const target = snapshot?.overallProgress ?? 0;
   const [percent, setPercent] = useState(target);
 
   const displayedRef = useRef(target);
-  const samplesRef = useRef<Array<{ at: number; bytes: number }>>([]);
+  // Throughput samples for the ETA, in state rather than a ref: the ETA is
+  // derived from them during render, and a value read out of a ref during render
+  // is whatever happened to be there - which is how the countdown came to update
+  // on unrelated re-renders and to lag a genuine change in transfer speed.
+  const [samples, setSamples] = useState<Sample[]>([]);
   // The bytes for the current snapshot, held in a ref so the animation effect
   // does not depend on the snapshot object. It is a fresh object on every
   // backend event, so depending on it would restart the loop several times a
@@ -94,10 +102,19 @@ export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined
   }, [snapshot?.downloadedBytes]);
 
   useEffect(() => {
-    samplesRef.current.push({ at: Date.now(), bytes: bytesRef.current });
-    // Keep a short window; older samples describe a transfer that is done.
-    if (samplesRef.current.length > 12) samplesRef.current.shift();
+    // Push a throughput sample when bytes actually move. Kept in state rather
+    // than a ref so the ETA below is DERIVED during render from the current
+    // window - reading samplesRef.current here meant the figure was recomputed
+    // on whatever render happened to occur, so it could update for reasons that
+    // had nothing to do with the transfer and could lag a real change in speed.
+    setSamples((prev) => {
+      const next = [...prev, { at: Date.now(), bytes: bytesRef.current }];
+      // Keep a short window; older samples describe a transfer that is done.
+      return next.length > SAMPLE_WINDOW ? next.slice(next.length - SAMPLE_WINDOW) : next;
+    });
+  }, [target]);
 
+  useEffect(() => {
     let frame = 0;
     const step = () => {
       const current = displayedRef.current;
@@ -124,19 +141,19 @@ export function useSmoothDownload(snapshot: DownloadProgressSnapshot | undefined
     return () => cancelAnimationFrame(frame);
     // Deliberately keyed on the reported percentage rather than the whole
     // snapshot object: the snapshot is a fresh object on every backend event, so
-    // depending on it would restart the animation loop several times a second
-    // and the easing would never get anywhere. The sample push reads only the
-    // bytes, which change exactly when `target` does.
+    // depending on it would restart the loop several times a second and the
+    // easing would never get anywhere.
   }, [target]);
 
   // ETA from average throughput across the sample window.
   const etaSeconds = (() => {
     if (!snapshot || target >= 100 || !snapshot.totalBytes) return null;
-    const samples = samplesRef.current;
     if (samples.length < 2) return null;
 
     const first = samples[0];
     const last = samples[samples.length - 1];
+    // `noUncheckedIndexedAccess` makes both of these `Sample | undefined`.
+    if (!first || !last) return null;
     const elapsedMs = last.at - first.at;
     if (elapsedMs <= 0) return null;
 

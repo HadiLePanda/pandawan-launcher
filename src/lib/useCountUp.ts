@@ -1,13 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
+
 export function useCountUp(target: number, durationMs = 260): number {
   const [value, setValue] = useState(target);
   const fromRef = useRef(target);
 
+  // Under prefers-reduced-motion the number must land on its target without
+  // animating, so the snap is applied during render rather than from an effect -
+  // an effect would paint the pre-change number for one frame first. The effect
+  // below still runs, and skips the animation, so `fromRef` is kept in step
+  // either way.
+  if (prefersReducedMotion() && value !== target) {
+    setValue(target);
+  }
+
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
-      setValue(target);
+    if (prefersReducedMotion()) {
       fromRef.current = target;
       return;
     }
