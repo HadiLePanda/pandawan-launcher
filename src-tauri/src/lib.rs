@@ -682,6 +682,14 @@ pub fn run() {
     let invoke_handler = builder.invoke_handler();
 
     tauri::Builder::default()
+        // Must be registered first: Tauri requires the single-instance plugin to
+        // see every launch before any other plugin handles it.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // The running instance may be hidden in the tray, so restore it
+            // rather than starting a second process that would fight over the
+            // settings file and the log.
+            tray::focus_main_window(app);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
