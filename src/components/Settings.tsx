@@ -23,7 +23,12 @@ import * as gameService from '@/lib/game-service';
 import { commands } from '@/lib/commands';
 import { unwrapResult } from '@/lib/errors';
 import { logger } from '@/lib/logger';
-import { useUpdaterStore, checkForUpdates } from '@/lib/updater-service';
+import {
+  useUpdaterStore,
+  checkForUpdates,
+  downloadAndInstall,
+  restartToApplyUpdate,
+} from '@/lib/updater-service';
 import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
@@ -532,6 +537,22 @@ function AboutSettings() {
             >
               {t('settings.about.updates.checkButton')}
             </button>
+            {/* The update is found here, so installing it belongs here too:
+                sending the user to the top-right button to act on what this
+                panel just told them was the wrong place to look. */}
+            {updaterStatus === 'available' && (
+              <button onClick={() => void downloadAndInstall()} className="btn btn-primary btn-sm">
+                {t('settings.about.updates.installButton')}
+              </button>
+            )}
+            {updaterStatus === 'ready' && (
+              <button
+                onClick={() => void restartToApplyUpdate()}
+                className="btn btn-primary btn-sm"
+              >
+                {t('settings.about.updates.restartButton')}
+              </button>
+            )}
             <button
               onClick={() => void handleOpenLogs()}
               disabled={openingLogs}

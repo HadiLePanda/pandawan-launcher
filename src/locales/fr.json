@@ -150,7 +150,9 @@
         "checking": "Vérification…",
         "downloading": "Téléchargement de la mise à jour…",
         "error": "Échec de la vérification des mises à jour : {{error}}",
+        "installButton": "Installer la mise à jour",
         "ready": "Redémarre le launcher pour appliquer la mise à jour.",
+        "restartButton": "Redémarrer pour appliquer",
         "upToDate": "Le launcher est à jour{{suffix}}"
       }
     },
