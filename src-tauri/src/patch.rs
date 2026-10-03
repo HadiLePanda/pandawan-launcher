@@ -345,6 +345,20 @@ impl PatchManager {
         self.download_manager.read().await.cancel();
     }
 
+    /// Apply new download limits without disturbing work in flight.
+    ///
+    /// The limits live on the download manager rather than being passed per
+    /// call so a saved setting has exactly one place to take effect. A download
+    /// already running keeps the limits it started with: its batch has taken
+    /// the permits and swapping the limiter mid-transfer would report a rate
+    /// that is not the one being applied.
+    pub async fn reconfigure(&self, max_concurrent: usize, speed_limit: Option<u64>) {
+        self.download_manager
+            .write()
+            .await
+            .set_limits(max_concurrent, speed_limit);
+    }
+
     pub async fn get_status(&self) -> PatchStatus {
         self.state.lock().await.clone()
     }
@@ -468,7 +482,13 @@ pub fn save_installation(
 
     let file_path = installs_dir.join(format!("{}.json", installation.game_id));
     let json = serde_json::to_string_pretty(installation)?;
-    fs::write(file_path, json)?;
+
+    // Written to a sibling and renamed into place. install_game and
+    // record_playtime both write this file, so a crash or a full disk mid-write
+    // would otherwise leave unparseable JSON and the game reads as uninstalled.
+    let tmp_path = file_path.with_extension("json.tmp");
+    fs::write(&tmp_path, json)?;
+    fs::rename(&tmp_path, &file_path)?;
 
     Ok(())
 }
