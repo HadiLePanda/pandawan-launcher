@@ -411,7 +411,11 @@ export default function LauncherPanel() {
 
             {liveVersion ? (
               <span className="text-[12px] text-ink-muted">
-                {liveVersion} &rarr; {nextVersion(liveVersion, releaseLevel)}
+                {/* Derived from the repo version: the release bumps package.json,
+                    so previewing from the live version names a number the release
+                    will never write. */}
+                {data?.packageVersion ?? liveVersion} &rarr;{' '}
+                {nextVersion(data?.packageVersion ?? liveVersion, releaseLevel)}
               </span>
             ) : null}
 
