@@ -51,10 +51,12 @@ The few things worth knowing without looking:
   separate `outDir` is what makes the ship guarantee structural rather than a
   convention — do not point this build at the launcher's `dist/`, and do not add
   a `bundle.resources` entry for it.
-  - `npm run dashboard:build` builds it. The server serves that output when it
-    exists and logs once at startup which UI is live; the previous hand-written
-    `index.html` / `app.js` / `style.css` remain at `/legacy.html` as the
-    fallback until that log line is no longer needed.
+  - `npm run dashboard:build` builds it (typecheck, then Vite), and CI runs the
+    same command — the repo's own `tsc` only sees the launcher's `src/`, so
+    without that step nothing type-checks this app. It is the **only** dashboard
+    client: the hand-written `index.html` / `app.js` / `style.css` it replaced are
+    gone. A request for a page when no build is present gets an explicit 503
+    naming the build command, not a 404 that reads like a broken route.
   - Adding navigation is a three-step procedure, and it starts by asking **which
     level** the thing belongs to. There is no `panel: true` flag any more: the
     split is enforced by the type system instead.
@@ -138,26 +140,26 @@ The few things worth knowing without looking:
   works because it kills whatever holds the port.
 - The dashboard has two invariants that broke silently once and are now guarded by tests. Respect them
   rather than working around them.
-  - **No CSS rule may be nested inside another rule.** A missing `}` in `style.css` once swallowed 24
-    following rules into `.svc-log`, which only renders when a dev service dies — so the entire
-    game-metadata and news editor shipped unstyled (no padding, no border, the "changed" badge as bare
-    text) and nothing looked broken enough to report. `scripts/dashboard/style.test.ts` walks the postcss
-    AST and fails on any rule that has a rule ancestor, so this cannot come back silently. A CSS-only
-    selector is not automatically dead: the same file also checks for classes present in the CSS but in
-    neither `index.html` nor `app.js`.
+  - **No CSS rule may be nested inside another rule.** A missing `}` in a hand-written stylesheet once
+    swallowed 24 following rules into `.svc-log`, which only renders when a dev service dies — so the
+    entire game-metadata and news editor shipped unstyled (no padding, no border, the "changed" badge as
+    bare text) and nothing looked broken enough to report. `scripts/dashboard/app/styles.test.ts` walks
+    the postcss AST of `app/src/styles.css` and fails on any rule that has a rule ancestor, so this
+    cannot come back silently. A CSS-only selector is not automatically dead: the same file also checks
+    for classes present in the CSS but in no source file under `app/src/`.
   - **The client must handle every SSE event the server emits.** `runScript` in `dashboard.mjs` sends
-    `output`, `error` and `done`; `stream()` in `app.js` must consume all three. When it matched only
-    `output`, a publisher that exited non-zero rendered identically to one that succeeded — the log just
-    stopped mid-sentence. `scripts/dashboard/client-contract.test.ts` asserts the sets match, that every
-    id `app.js` looks up exists in `index.html`, and that every `data-panel` has a `PAGES` entry.
+    `output`, `error` and `done`; `streamScript` in `app/src/lib/api.ts` must consume all three. When it
+    matched only `output`, a publisher that exited non-zero rendered identically to one that succeeded —
+    the log just stopped mid-sentence. `scripts/dashboard/app/client-contract.test.ts` asserts the event
+    sets match and that every `/api/...` path the client calls exists in `dashboard.mjs`.
 - The Games tab is four sub-tabs (`builds` / `metadata` / `prune` / `catalog`) because it was doing four
   unrelated jobs on one scrolling page. The choice lives in `localStorage` under `pandawan.subtab.games`,
   deliberately **not** in `location.hash`, so it cannot collide with the top-level tab scheme. When adding
   a section, add a `.subtab` plus a `.subpanel` and remember `.subpanel[hidden]` needs an explicit
   `display: none` — any component that sets `display` outranks the UA's `[hidden]` rule.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
-  is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once at the
-  top of `app.js`. Dry run stays the **default** for every publish verb, and the diff review screen
+  is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
+  `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen
   ("Review") is what you read before unticking it — the review is built from the same dirty-tracking
   predicates the publish payload uses (`metaDirtyFlags` / `newsDirtyFields`), so what it shows and what
   gets sent cannot disagree. Two rules that must survive: an emptied **list** field is not a change (a
@@ -290,7 +292,7 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   - The dashboard's artwork picker posts the bytes to `/api/art/stage` and the server writes them to `dist/artwork-staging/`, handing back an absolute path that the **existing** `--icon-file` flow then uploads. Do not add a second upload path. The declared `sizeBytes` is only a pre-filter; the limit is enforced against the decoded bytes, and `safeLocalName` strips everything but the basename so a chosen filename cannot escape the staging directory. SVG is rejected: artwork renders through `<img>` from a remote origin, where an SVG can carry script — the SVG placeholders are safe only because they ship inside the app bundle.
   - `news.json` lives at `public/news.json` (it ships in the bundle as an offline fallback) and is uploaded by `publish:catalog.mjs`. Because of that, `scripts/publish-news.mjs` writes **both** copies: the CDN document _and_ `public/news.json`. Editing only the CDN copy would let the next `npm run publish:catalog` silently revert every news edit. `catalog.json` had the same trap and is now **fixed**: `publish-catalog.mjs` merges additively instead of overwriting. The CDN entry wins for any game it already lists, `public/catalog.json` may only add games the CDN does not have, and a game missing locally is never deleted — so it can no longer revert a `publish:meta` edit. The Games → Catalog button is no longer dangerous. The decision is `mergeCatalog` in `scripts/lib/catalog-merge.mjs` (pure, no R2 imports, covered by `catalog-merge.test.ts`); `validateCatalog` keeps the entry checks and an unreadable remote still refuses to publish rather than writing a catalog that drops every game. `--force` lets the local copy win for games both sides know but still never deletes; there is deliberately no flag that can make a live game vanish. `--dry-run` changes nothing.
   - News editing is `scripts/lib/news-fields.mjs` (the contract) + `scripts/lib/apply-news.mjs` (the ops engine) + `scripts/publish-news.mjs` (the publisher), with the dashboard's News tab driving the last one. Ops are `update`/`create`/`delete`/`move`; `applyNewsOps` never aborts a batch on one bad op but the publisher **fails the whole run** when any op errored, so a rejected edit is never published alongside the accepted ones.
-  - The dashboard client (`scripts/dashboard/app.js`) is plain browser JavaScript with **no bundler**, so it cannot import the `.mjs` contract modules. The news field list therefore travels in the `/api/news` response and the form renders from that; do not add a hand-typed copy to `app.js`. New-item ids are derived server-side by `uniqueNewsId` for the same reason — the browser cannot call the slugger, and a client-chosen id could collide with a published item and merge two announcements.
+  - The dashboard client cannot import the server's `.mjs` contract modules (they hold R2 credentials and use `node:` imports), so the news field list travels in the `/api/news` response and the form renders from that; do not add a hand-typed copy under `scripts/dashboard/app/`. New-item ids are derived server-side by `uniqueNewsId` for the same reason — the client cannot call the slugger, and a client-chosen id could collide with a published item and merge two announcements.
   - News and game selection now live beside the form they edit (master–detail, `.split`), not behind an id box: typing an id that does not exist fails deep inside a publishing script, which is the failure mode the visual editor exists to remove.
 - If the remote catalog is unreachable, the launcher falls back to `public/catalog.json` (embedded) and shows a connectivity banner.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB (single previous generation). File writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button; its fs permissions are scoped to `$APPLOG` and the shell `open` regex in `tauri.conf.json` only allows URLs and the app log dir.

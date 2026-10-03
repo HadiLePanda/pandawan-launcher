@@ -134,35 +134,12 @@ rm(artStagingDir, { recursive: true, force: true }).catch(() => {});
 /**
  * Whether the React dashboard app has been built.
  *
- * Checked once at startup and reported once, rather than per request: until the
- * cutover the hand-written page is the live one, and a dashboard that printed
- * "no React build found" on every page load would be nagging about a deliberate,
- * temporary state. Decided here so `serveAppDist` stays a pure read of the
- * filesystem and cannot start answering differently halfway through a session.
+ * There is one client and no fallback, so a missing build has nothing to serve.
+ * Checked once at startup and reported once rather than per request, so
+ * `serveAppDist` stays a pure read of the filesystem and cannot change its answer
+ * halfway through a session.
  */
 const appBuilt = existsSync(path.join(here, 'dashboard', 'app', 'dist', 'index.html'));
-
-/**
- * The hand-written page's own filenames, served exactly as they always were.
- *
- * Kept ahead of the React build so the fallback stays reachable and comparable
- * during the cutover: `/` serves the new app once it is built, but `/index.html`,
- * `/app.js` and `/style.css` still resolve to the files that have always been
- * there. Removing this is the cutover, not a cleanup.
- */
-const LEGACY_FILES = new Set(['index.html', 'app.js', 'style.css']);
-
-/**
- * Where the old page stays reachable once the React app owns `/index.html`.
- *
- * The two collide on one name: `scripts/dashboard/index.html` and
- * `scripts/dashboard/app/dist/index.html` are both "the page". Only one can answer
- * `/index.html`, and it has to be the live one. Without this alias the old page
- * would become unreachable the moment the React build lands, which would leave no
- * way to compare the two during the cutover - the one thing the fallback exists
- * for. Underscored so it cannot collide with a hashed asset.
- */
-const LEGACY_INDEX_ALIAS = 'legacy.html';
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -1198,13 +1175,7 @@ async function uploadCatalog(catalog) {
 const appDistDir = path.join(assetDir, 'app', 'dist');
 
 /**
- * Serve a file from the React build, or fall through to the old page.
- *
- * The fallback is the reason this function returns a boolean. Until the React app
- * is cut over, or in the window before its first build, there is nothing in
- * app/dist - and serving a bare 404 at `/` would take the dashboard away from
- * someone who was using it a minute ago. So a miss here means "not the React
- * app", and the caller continues to the hand-written index.html.
+ * Serve a file from the React build, or the app shell for a client-side route.
  *
  * `no-store` on everything, including the hashed asset filenames: this is a local
  * tool built in place, and a cached index.html pointing at assets that no longer
@@ -1238,17 +1209,13 @@ async function serveAppDist(res, pathname) {
     // SPA fallback: a client-side route like /games/catalog is not a file, so the
     // app shell is served for any path that did not resolve to one.
     //
-    // Three kinds of path must NOT get the shell, and each would otherwise fail
-    // in a way that looks like a different problem entirely:
+    // Two kinds of path must NOT get the shell, and each would otherwise fail in a
+    // way that looks like a different problem entirely:
     //
-    //   - the hand-written files. `/app.js` asking for the shell yields HTML with
-    //     a JS content type, and the browser reports a syntax error in code the
-    //     operator can see in the file on disk.
     //   - `/api/...`. A missing endpoint answered with a 200 of HTML looks like a
     //     server bug at the fetch call, not a typo in the path.
     //   - the app's own index.html, which resolved or there would be no build.
-    if (relative === 'index.html' || LEGACY_FILES.has(relative)) return false;
-    if (relative === LEGACY_INDEX_ALIAS) return false;
+    if (relative === 'index.html') return false;
     if (pathname === '/api' || pathname.startsWith('/api/')) return false;
     if (!appBuilt) return false;
 
@@ -1306,35 +1273,6 @@ async function catalogWrite(res, catalog) {
   }
 }
 
-async function serveStatic(res, name) {
-  // Only ever a file inside the dashboard directory. The request path is attacker-
-  // controlled and this process holds the R2 secret key, so a `..` that reached
-  // readFile() would serve ../.env to any page the user visits. The URL parser
-  // already collapses `..` in the path, which is why this has never fired - but
-  // that is a property of a parser, not of this code, and it is not the only way a
-  // name can point somewhere else. Checked here so the guarantee belongs to the
-  // function that does the reading.
-  const target = path.resolve(assetDir, name);
-  if (target !== assetDir && !target.startsWith(assetDir + path.sep)) {
-    res.writeHead(403, { 'content-type': 'text/plain' });
-    res.end('not found');
-    return;
-  }
-
-  try {
-    const body = await readFile(target);
-    res.writeHead(200, {
-      'content-type': mimeTypes[path.extname(target)] ?? 'text/plain',
-      // Never cache the dashboard's own files. It is a local admin tool edited in
-      // place, and without this a browser silently serves a stale index.html after
-      // an edit, which looks exactly like a missing or broken feature.
-      'cache-control': 'no-store',
-    });
-    res.end(body);
-  } catch {
-    res.writeHead(404).end('not found');
-  }
-}
 /**
  * Parse a JSON request body, answering the request itself on malformed input.
  * `maxBytes` bounds it; chunks past the cap are drained but not stored, so the
@@ -2629,32 +2567,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- Static files -------------------------------------------------------
   //
-  // Three sources, in this order:
-  //
-  //   1. the React build's own files, and its app shell for any path that is not
-  //      a file - so `/` and a deep client-side link like /games/catalog both
-  //      load;
-  //   2. the hand-written index.html / app.js / style.css, served exactly as they
-  //      always were. They are the live UI until the React app is cut over, and
-  //      they stay reachable afterwards for comparison;
-  //   3. a plain 404.
-  //
-  // The order matters. `/` must reach the React build first, otherwise the legacy
-  // index.html wins and the cutover silently never happens; but `/index.html`,
-  // `/app.js` and `/style.css` are asked for by name and must keep resolving to
-  // the hand-written files, since that is the one thing worth being able to
-  // compare during the cutover.
+  // The React build's own files, and its app shell for any path that is not a
+  // file - so `/` and a deep client-side link like /games/catalog both load.
   if (await serveAppDist(res, url.pathname)) return;
-
-  const legacy = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
-  if (legacy === LEGACY_INDEX_ALIAS) {
-    await serveStatic(res, 'index.html');
-    return;
-  }
-  if (LEGACY_FILES.has(legacy)) {
-    await serveStatic(res, legacy);
-    return;
-  }
 
   // An unknown /api/ path is a bug in the caller, not a client-side route, and
   // answering it with the app shell would turn "this endpoint does not exist"
@@ -2666,7 +2581,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  await serveStatic(res, legacy);
+  // The only remaining explanation is a build that is not there, and saying so
+  // beats a bare 404 that reads like a broken route.
+  res.writeHead(appBuilt ? 404 : 503, { 'content-type': 'text/plain; charset=utf-8' });
+  res.end(
+    appBuilt
+      ? 'not found'
+      : 'The dashboard app is not built. Run `npm run dashboard:build`, then reload.'
+  );
 });
 
 for (const signal of ['exit', 'SIGINT', 'SIGTERM']) {
@@ -2684,14 +2606,12 @@ server.listen(PORT, '127.0.0.1', () => {
   if (reaped) console.log(`Stopped ${reaped} leftover service tree(s) from a previous run`);
   console.log(`Dashboard on http://127.0.0.1:${PORT}`);
   console.log(`Bucket: ${bucket}`);
-  // Once, at startup, and only when it is actually the case. Until the React app
-  // is cut over its absence is the expected state, so this is a note about which
-  // page is live rather than a warning about a broken build - and saying it per
-  // request would bury it in scrollback nobody reads.
+  // Once, at startup. A missing build is now the only thing that can serve
+  // nothing, so it is stated plainly rather than buried per request in scrollback.
   console.log(
     appBuilt
       ? 'UI: React build (scripts/dashboard/app/dist)'
-      : 'UI: hand-written page (no React build found)'
+      : 'UI: NOT BUILT - run `npm run dashboard:build`'
   );
   // Both TTLs are printed, and their values are what an operator needs when a
   // panel looks stale: "which cache was this, and how old can it get". The
