@@ -453,6 +453,34 @@ function NewsForm({
   const [original] = useState<Record<string, string>>(() => item?.fields ?? {});
   const [problem, setProblem] = useState<string | null>(null);
   const [imageStatus, setImageStatus] = useState('');
+
+  // The catalog is where every game's banner lives, so an item can borrow art its
+  // game already published rather than uploading a second copy of it.
+  const [gameArt, setGameArt] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<unknown>('/api/catalog')
+      .then(({ data }) => {
+        if (cancelled) return;
+        const record = data as {
+          games?: { id: string; bannerUrl?: string; iconUrl?: string }[];
+          catalog?: { games?: { id: string; bannerUrl?: string; iconUrl?: string }[] };
+        };
+        const games = record?.games ?? record?.catalog?.games ?? [];
+        const map: Record<string, string> = {};
+        for (const game of games) {
+          const art = game.bannerUrl?.trim() || game.iconUrl?.trim();
+          if (art) map[game.id] = art;
+        }
+        setGameArt(map);
+      })
+      .catch(() => {
+        // A convenience, not a requirement: without it the field is simply typed.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const titleRef = useRef<HTMLInputElement | null>(null);
   // A textarea cannot take the input's ref type, so the first long field has its
   // own ref purely so the focus call typechecks.
@@ -471,6 +499,8 @@ function NewsForm({
 
   /** A chosen file counts as a change on its own, because the upload rewrites the URL. */
   const imagePath = String(values[IMAGE_INPUT] ?? '').trim();
+  // The art the item's own game published, or '' when it has none to borrow.
+  const gameBanner = gameArt[String(values['game-id'] ?? '').trim()] ?? '';
   const changed = fields.filter((field) => isDirty(field.flag)).map((field) => field.flag);
 
   function persistDraft() {
@@ -648,6 +678,21 @@ function NewsForm({
                   />
                 )}
               </div>
+
+              {field.flag === 'image-url' && gameBanner ? (
+                // One click instead of re-uploading art the game already has. The
+                // key is stored, never a copy, so the two cannot drift apart.
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setValues({ ...values, [field.flag]: gameBanner });
+                    persistDraft();
+                  }}
+                >
+                  Use the game banner
+                </Button>
+              ) : null}
 
               {field.flag === 'image-url' ? (
                 <ImageControl
