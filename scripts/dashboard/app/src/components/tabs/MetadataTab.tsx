@@ -24,8 +24,8 @@
  * into a metadata form was the failure mode this whole redesign removes.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Undo2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Info, Undo2 } from 'lucide-react';
 
 import { streamScript } from '@lib/api';
 import { previewUrlFor, releasePreviewUrl, stageArtwork } from '@lib/artwork';
@@ -67,6 +67,13 @@ const SUGGESTIONS: Record<string, string[]> = {
   'supported-platforms': [...PLATFORMS],
   'available-channels': [...KNOWN_CHANNELS],
 };
+
+/**
+ * Which column a field belongs to. Media holds the images; everything else is
+ * Identity, so a field added to the server contract lands in Identity without a
+ * client change rather than disappearing from the form.
+ */
+const MEDIA_FLAGS = new Set(['icon-url', 'banner-url', 'screenshots']);
 
 const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
@@ -162,6 +169,73 @@ function ArtworkUpload({
 
       {error && <ErrorLine>{error}</ErrorLine>}
     </div>
+  );
+}
+
+/**
+ * A small info affordance, so an explanation does not sit in the form as prose.
+ *
+ * Revealed on hover (the native `title`) and on click/tap (the toggle), because
+ * a hover-only note is unreachable by touch and a click-only one is invisible
+ * until it is needed.
+ */
+function InfoNote({ note }: { note: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        title={note}
+        aria-label={`More: ${note}`}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="border-none bg-none p-0 text-ink-subtle transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+      >
+        <Info aria-hidden size={13} />
+      </button>
+      {open ? (
+        <span
+          role="note"
+          className="absolute top-5 left-0 z-10 w-64 rounded-sm border border-edge bg-surface-3 px-2 py-1.5 text-[11.5px] leading-[1.5] text-ink-muted shadow-lg"
+        >
+          {note}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** A value the operator cannot type here, shown as a fact rather than an input. */
+function FixedFact({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-sm border border-edge bg-surface-2 px-3 py-2">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] text-ink-subtle">
+        {label}
+        <InfoNote note={note} />
+      </div>
+      <code className="font-mono text-[12px] text-ink">{value || '—'}</code>
+    </div>
+  );
+}
+
+/** One labelled column of the form. The heading is what makes the grouping scan. */
+function MetadataGroup({
+  title,
+  help,
+  children,
+}: {
+  title: string;
+  help: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div>
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <p className="mt-0.5 text-[11.5px] text-ink-subtle">{help}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -440,6 +514,31 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
     .filter((spec) => original[spec.flag]?.inherited)
     .map((spec) => original[spec.flag]?.label ?? spec.flag);
 
+  const mediaFields = fieldSpec.filter((spec) => MEDIA_FLAGS.has(spec.flag));
+  const identityFields = fieldSpec.filter((spec) => !MEDIA_FLAGS.has(spec.flag));
+
+  const renderField = (spec: MetaFieldSpec) => {
+    const field = original[spec.flag];
+    // The server ships the contract; a flag it does not also resolve a current
+    // value for is skipped rather than rendered as a nameless input.
+    if (!field) return null;
+    return (
+      <MetaFieldRow
+        key={spec.flag}
+        spec={spec}
+        field={field}
+        value={values[spec.flag] ?? ''}
+        artworks={artworks.objects}
+        dirty={isImageDirty(original, values, spec.flag)}
+        onChange={(next) => setValue(spec.flag, next)}
+        onPathChange={(next) =>
+          setValue(IMAGE_INPUTS[spec.flag as keyof typeof IMAGE_INPUTS], next)
+        }
+        onRevert={() => revert(spec.flag)}
+      />
+    );
+  };
+
   // The review summary names what happens on publish, which depends on whether
   // preview-only is ticked. The rows below do not change either way.
   const summary = [
@@ -483,28 +582,31 @@ export function MetadataTab({ gameId, channel, onPublished }: GameTabProps) {
         inheritedLabels={inheritedLabels}
       />
 
-      <div className="mt-3 flex flex-col gap-2">
-        {fieldSpec.map((spec) => {
-          const field = original[spec.flag];
-          // The server ships the contract; a flag it does not also resolve a
-          // current value for is skipped rather than rendered as a nameless input.
-          if (!field) return null;
-          return (
-            <MetaFieldRow
-              key={spec.flag}
-              spec={spec}
-              field={field}
-              value={values[spec.flag] ?? ''}
-              artworks={artworks.objects}
-              dirty={isImageDirty(original, values, spec.flag)}
-              onChange={(next) => setValue(spec.flag, next)}
-              onPathChange={(next) =>
-                setValue(IMAGE_INPUTS[spec.flag as keyof typeof IMAGE_INPUTS], next)
-              }
-              onRevert={() => revert(spec.flag)}
-            />
-          );
-        })}
+      <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
+        <MetadataGroup
+          title="Identity"
+          help="What the game is called and who made it. These display values live here alone."
+        >
+          <FixedFact
+            label="Id"
+            value={gameId}
+            note="Fixed. It is the key every manifest URL and artwork object name is built from, so renaming it in place would orphan both."
+          />
+          <FixedFact
+            label="Channel"
+            value={channel}
+            note="Fixed by the game you picked in the rail. An edit writes this channel only."
+          />
+          {identityFields.map(renderField)}
+        </MetadataGroup>
+
+        <MetadataGroup title="Media" help="The images the launcher shows for this game.">
+          {mediaFields.length ? (
+            mediaFields.map(renderField)
+          ) : (
+            <p className="text-[12.5px] text-ink-subtle">No media fields in the contract.</p>
+          )}
+        </MetadataGroup>
       </div>
 
       <DiffReview rows={rows} summary={summary} target={target} />
