@@ -56,7 +56,7 @@ for (const platform of platforms) {
 
 console.log(`\n${JSON.stringify(latest, null, 2)}`);
 
-if (args['dry-run'] === 'true') {
+if (Boolean(args['dry-run'])) {
   console.log('\n--dry-run, nothing uploaded.');
   process.exit(0);
 }

@@ -44,11 +44,20 @@ export function requireEnv(name, hint) {
   return value;
 }
 
-export function run(command, args, label) {
+/** `throwOnFailure` lets the in-process dashboard caller report the error instead of exiting. */
+export function run(command, args, label, { throwOnFailure = false } = {}) {
   console.log(`\n→ ${label}`);
   const res = spawnSync(command, args, { stdio: 'inherit', shell: false });
-  if (res.error) fail(`could not run ${command}: ${res.error.message}`);
-  if (res.status !== 0) fail(`${label} failed (exit ${res.status})`);
+  if (res.error) {
+    const message = `could not run ${command}: ${res.error.message}`;
+    if (throwOnFailure) throw new Error(message);
+    fail(message);
+  }
+  if (res.status !== 0) {
+    const message = `${label} failed (exit ${res.status})`;
+    if (throwOnFailure) throw new Error(message);
+    fail(message);
+  }
 }
 
 /**
@@ -92,11 +101,11 @@ export function r2Config() {
  * contain a version. Mutable indices (catalog, manifest) must pass
  * `cacheControl: NO_CACHE` or clients keep reading a stale copy.
  */
-export function upload(source, key, { endpoint, cacheControl, contentType } = {}) {
+export function upload(source, key, { endpoint, cacheControl, contentType, throwOnFailure } = {}) {
   const args = ['s3', 'cp', source, key, '--endpoint-url', endpoint, '--no-progress'];
   if (cacheControl) args.push('--cache-control', cacheControl);
   if (contentType) args.push('--content-type', contentType);
-  run('aws', args, `Uploading ${path.basename(source)} -> ${key}`);
+  run('aws', args, `Uploading ${path.basename(source)} -> ${key}`, { throwOnFailure });
 }
 
 export function sync(sourceDir, keyPrefix, { endpoint, cacheControl, exclude } = {}) {

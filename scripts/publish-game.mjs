@@ -194,10 +194,16 @@ try {
   if (res.ok) {
     const parsed = await res.json();
     if (parsed && typeof parsed === 'object') latest = parsed;
+  } else if (res.status !== 404) {
+    fail(
+      `could not read ${prefix}/latest.json (HTTP ${res.status}); refusing to drop the other platforms' pins.`
+    );
   }
-} catch {
-  // A missing or unreadable pointer means "nothing published yet", not a
-  // failure: the first publish has nothing to merge with.
+} catch (err) {
+  // Only a 404 means "nothing published yet"; a network error must not become an empty pointer.
+  fail(
+    `could not read ${prefix}/latest.json (${err.message}); refusing to drop the other platforms' pins.`
+  );
 }
 
 for (const platform of attributed) {

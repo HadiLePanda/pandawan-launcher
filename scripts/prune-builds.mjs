@@ -68,12 +68,31 @@ const keys = listKeysWithMeta(S3.s3Uri(bucket, prefix), { endpoint });
 // every run - which meant the script could not even do a dry run.
 const activeVersions = (() => {
   const origin = process.env.R2_CDN_ORIGIN || process.env.VITE_CDN_ORIGIN;
-  const read = (path) => {
-    const res = spawnSync('curl', ['-sf', `${origin}/games/${gameId}/${channel}/${path}`], {
+  // A network failure must not read the same as "the document is absent": an
+  // empty pin list unprotects a pinned older build, which prune then deletes.
+  const read = (file) => {
+    const url = `${origin}/games/${gameId}/${channel}/${file}`;
+    const res = spawnSync('curl', ['-s', '-o', '-', '-w', '\n%{http_code}', url], {
       encoding: 'utf8',
       shell: false,
     });
-    return res.status === 0 ? res.stdout : null;
+    if (res.status !== 0) {
+      fail(
+        `could not read ${file} from the CDN (curl exit ${res.status}). Refusing to prune: ` +
+          'without the pins, a build a platform is live on could be deleted.'
+      );
+    }
+    const out = res.stdout ?? '';
+    const split = out.lastIndexOf('\n');
+    const status = Number(out.slice(split + 1));
+    if (status === 404) return null;
+    if (status !== 200) {
+      fail(
+        `reading ${file} returned HTTP ${status}. Refusing to prune: ` +
+          'without the pins, a build a platform is live on could be deleted.'
+      );
+    }
+    return out.slice(0, split);
   };
 
   const pinned = Object.values(readPinnedVersions(read('latest.json')) ?? {});
