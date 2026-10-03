@@ -2,21 +2,11 @@ import { ArrowUpCircle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
 
-interface UpdateBannerProps {
-  /**
-   * The nav bar now carries the primary update button. The banner is kept for
-   * its download progress bar, and shown only when the user dismissed the
-   * button's banner-equivalent, so the two never compete for the same message.
-   */
-  hidden?: boolean;
-}
-
-export function UpdateBanner({ hidden = false }: UpdateBannerProps) {
+export function UpdateBanner() {
   const { t } = useTranslation();
   const { status, version, downloadedBytes, totalBytes, dismissed, error, dismissBanner } =
     useUpdaterStore();
 
-  if (hidden) return null;
   if (dismissed) return null;
   if (status !== 'available' && status !== 'downloading' && status !== 'ready') return null;
 

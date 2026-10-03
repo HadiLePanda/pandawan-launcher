@@ -201,11 +201,11 @@ function App() {
   }, [loadCatalog]);
 
   // The nav button and the banner are two views of the same updater state. The
-  // button is the primary affordance now; the banner is kept only for the
-  // download progress it shows, and hidden once the button is on screen.
+  // button is the persistent affordance; the banner is the launch-time prompt
+  // that an update exists (and carries download progress), dismissible for the
+  // session.
   const updaterStatus = useUpdaterStore((s) => s.status);
   const updaterVersion = useUpdaterStore((s) => s.version);
-  const updaterDismissed = useUpdaterStore((s) => s.dismissed);
 
   const handleLauncherUpdateClick = useCallback(() => {
     if (updaterStatus === 'ready') {
@@ -533,7 +533,7 @@ function App() {
           />
         )}
 
-        <UpdateBanner hidden={!updaterDismissed} />
+        <UpdateBanner />
 
         <div className="app-body flex flex-row flex-1 overflow-hidden">
           {activeView === 'games' && !selectedGameId && (
