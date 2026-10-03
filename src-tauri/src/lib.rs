@@ -333,12 +333,18 @@ async fn launch_game(
         None => return Err(LauncherError::NotInstalled),
     };
 
-    {
-        let running = state.running_games.lock().await;
-        if running.contains_key(&game_id) {
-            return Err(LauncherError::AlreadyRunning);
-        }
-    }
+    // install_path comes from the on-disk record, so it is not trusted on its
+    // own: a tampered or stale record could point anywhere and the assertions
+    // below would only be comparing a path against itself. Check it against the
+    // configured games root first.
+    let allowed_root = {
+        let settings = state.settings.lock().await;
+        settings
+            .games_install_path
+            .clone()
+            .unwrap_or_else(get_default_games_path)
+    };
+    assert_path_inside_root(&installation.install_path, &allowed_root)?;
 
     let exe_path = installation.install_path.join(&installation.executable);
 
@@ -349,6 +355,27 @@ async fn launch_game(
     }
 
     assert_path_inside_root(&exe_path, &installation.install_path)?;
+
+    let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
+    let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
+
+    // Check and reserve in one critical section. Releasing the lock between
+    // them lets a second launch pass the check and spawn a duplicate, and the
+    // loser's RunningProcess is overwritten rather than owned, so its playtime
+    // is never recorded and neither child can be stopped.
+    {
+        let mut running = state.running_games.lock().await;
+        if running.contains_key(&game_id) {
+            return Err(LauncherError::AlreadyRunning);
+        }
+        running.insert(
+            game_id.clone(),
+            RunningProcess {
+                kill: kill_tx,
+                done: done_rx,
+            },
+        );
+    }
 
     let mut command = TokioCommand::new(&exe_path);
     command
@@ -363,19 +390,6 @@ async fn launch_game(
         Ok(mut child) => {
             let pid = child.id();
             let launched_at = Instant::now();
-            let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
-            let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
-
-            {
-                let mut running = state.running_games.lock().await;
-                running.insert(
-                    game_id.clone(),
-                    RunningProcess {
-                        kill: kill_tx,
-                        done: done_rx,
-                    },
-                );
-            }
 
             app.state::<tray::TrayState>()
                 .add_running(tray::RunningGame {
@@ -429,7 +443,13 @@ async fn launch_game(
                 process_id: pid,
             })
         }
-        Err(e) => Err(LauncherError::Io(format!("Failed to launch game: {e}"))),
+        Err(e) => {
+            // The reservation was taken before spawn so the check could not
+            // race. Nothing is running, so give it back rather than leave the
+            // game permanently "already running".
+            state.running_games.lock().await.remove(&game_id);
+            Err(LauncherError::Io(format!("Failed to launch game: {e}")))
+        }
     }
 }
 
@@ -540,6 +560,16 @@ async fn save_settings(
 
     let mut settings = state.settings.lock().await;
     *settings = new_settings.clone();
+
+    // The download limits are read by the patch manager, not from settings, so a
+    // save has to hand them over or they would only take effect on a restart.
+    state
+        .patch_manager
+        .reconfigure(
+            new_settings.max_concurrent_downloads,
+            new_settings.max_download_speed,
+        )
+        .await;
 
     // Keep the synchronous close handler's copy of the close policy current.
     app.state::<tray::TrayState>()
