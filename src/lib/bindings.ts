@@ -31,8 +31,10 @@ export const commands = {
       __TAURI_INVOKE('verify_game', { manifest, installPath, onEvent })
     ),
 
-  launchGame: (gameId: string) =>
-    typedError<LaunchResult, LauncherError>(__TAURI_INVOKE('launch_game', { gameId })),
+  launchGame: (gameId: string, gameName?: string | null) =>
+    typedError<LaunchResult, LauncherError>(
+      __TAURI_INVOKE('launch_game', { gameId, gameName: gameName ?? null })
+    ),
 
   closeGame: (gameId: string) =>
     typedError<void, LauncherError>(__TAURI_INVOKE('close_game', { gameId })),

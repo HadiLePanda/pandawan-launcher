@@ -100,8 +100,8 @@ export async function uninstallGame(gameId: string): Promise<void> {
   unwrapResult(await commands.uninstallGame(gameId));
 }
 
-export async function launchGame(gameId: string): Promise<LaunchResult> {
-  const result = unwrapResult(await commands.launchGame(gameId));
+export async function launchGame(gameId: string, gameName?: string): Promise<LaunchResult> {
+  const result = unwrapResult(await commands.launchGame(gameId, gameName ?? null));
   if (!result.success) {
     throw new Error(result.message);
   }

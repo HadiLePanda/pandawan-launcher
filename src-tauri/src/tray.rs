@@ -19,11 +19,41 @@ pub struct TrayData {
     /// Mirrors the `close_to_tray` setting so the window-close handler can
     /// decide synchronously whether to hide the window or let the app exit.
     pub close_to_tray: bool,
+    /// Games the launcher is currently running. The launcher can run more than
+    /// one at a time, so this is a list and not an Option.
+    pub running: Vec<RunningGame>,
+}
+
+#[derive(Clone)]
+pub struct RunningGame {
+    pub game_id: String,
+    pub name: String,
 }
 
 impl TrayState {
     pub fn new(close_to_tray: bool) -> Self {
-        Self(Mutex::new(TrayData { close_to_tray }))
+        Self(Mutex::new(TrayData {
+            close_to_tray,
+            running: Vec::new(),
+        }))
+    }
+
+    /// The close policy and whether a game is running, read together so the
+    /// window handler cannot observe a half-updated pair.
+    pub fn close_policy(&self) -> (bool, bool) {
+        let data = self.0.lock().unwrap();
+        (data.close_to_tray, !data.running.is_empty())
+    }
+
+    pub fn add_running(&self, game: RunningGame) {
+        let mut data = self.0.lock().unwrap();
+        data.running.retain(|g| g.game_id != game.game_id);
+        data.running.push(game);
+    }
+
+    pub fn remove_running(&self, game_id: &str) {
+        let mut data = self.0.lock().unwrap();
+        data.running.retain(|g| g.game_id != game_id);
     }
 }
 

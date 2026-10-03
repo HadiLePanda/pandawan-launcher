@@ -257,7 +257,10 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     const { updateGameStatus } = get();
     try {
       updateGameStatus(gameId, 'running');
-      await gameService.launchGame(gameId);
+      // The display name rides along so the tray's "Stop game" item and tooltip
+      // can name the game instead of its slug.
+      const name = get().games.find((g) => g.info.id === gameId)?.info.name;
+      await gameService.launchGame(gameId, name);
     } catch (err) {
       updateGameStatus(gameId, 'installed');
       handleStoreError(err, set, 'launchGame');

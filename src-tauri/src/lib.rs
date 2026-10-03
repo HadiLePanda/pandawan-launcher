@@ -13,6 +13,7 @@ pub mod patch;
 pub mod path_utils;
 pub mod tray;
 pub mod types;
+pub mod window_behavior;
 
 #[cfg(test)]
 pub mod test_utils;
@@ -289,6 +290,7 @@ async fn launch_game(
     app: AppHandle,
     state: State<'_, LauncherState>,
     game_id: String,
+    game_name: Option<String>,
 ) -> Result<LaunchResult, LauncherError> {
     let app_data_dir = app
         .path()
@@ -337,6 +339,12 @@ async fn launch_game(
                 running.insert(game_id.clone(), kill_tx);
             }
 
+            app.state::<tray::TrayState>()
+                .add_running(tray::RunningGame {
+                    game_id: game_id.clone(),
+                    name: game_name.unwrap_or_else(|| game_id.clone()),
+                });
+
             let app_handle = app.clone();
             let app_data_dir = app_data_dir.clone();
             let running_games = Arc::clone(&state.running_games);
@@ -356,6 +364,9 @@ async fn launch_game(
                     let mut running = running_games.lock().await;
                     running.remove(&game_id_clone);
                 }
+                app_handle
+                    .state::<tray::TrayState>()
+                    .remove_running(&game_id_clone);
                 let duration_seconds = launched_at.elapsed().as_secs();
                 // Playtime loss must not break the exit event
                 if let Err(e) = record_playtime(&app_data_dir, &game_id_clone, duration_seconds) {
@@ -670,14 +681,11 @@ pub fn run() {
                 if window.label() != "main" {
                     return;
                 }
-                let close_to_tray = window
-                    .app_handle()
-                    .state::<tray::TrayState>()
-                    .0
-                    .lock()
-                    .unwrap()
-                    .close_to_tray;
-                if close_to_tray {
+                let (close_to_tray, game_running) = {
+                    let state = window.app_handle().state::<tray::TrayState>();
+                    state.close_policy()
+                };
+                if window_behavior::should_dock_on_close(close_to_tray, game_running) {
                     // Hide rather than exit: the app keeps running in the tray.
                     api.prevent_close();
                     let _ = window.hide();
