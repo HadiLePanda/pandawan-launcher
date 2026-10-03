@@ -232,7 +232,9 @@ export const useSession = create<SessionState>((set, get) => ({
     const key = scopeKey(gameId, channel);
     writeRaw(SESSION_KEYS.game, gameId);
     writeRaw(SESSION_KEYS.channel, channel);
-    set({ selectedKey: key });
+    // Picking a game is leaving the create dialog, whatever opened it: the two
+    // are alternatives and can never be true at once.
+    set({ selectedKey: key, creating: false });
   },
 
   clearSelection: () => {
