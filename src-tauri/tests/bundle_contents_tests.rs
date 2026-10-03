@@ -50,9 +50,16 @@ fn test_bundle_does_not_include_developer_scripts_or_secrets() {
 #[test]
 fn test_frontend_dist_contains_no_developer_files() {
     let dist = repo_root().join("dist");
-    // dist/ only exists after a frontend build. Skipping is correct here: this
-    // guards the artifact, it does not require one to exist.
+    // dist/ only exists after a frontend build, so a local run has nothing to
+    // inspect. CI builds it first, and there a missing dist means the guard
+    // would pass while inspecting nothing, which is the failure mode worth
+    // refusing rather than skipping.
     if !dist.exists() {
+        assert!(
+            !std::env::var("CI").is_ok_and(|v| !v.is_empty()),
+            "dist/ is missing on CI, so this guard inspected nothing. Run the \
+             frontend build before cargo test."
+        );
         return;
     }
 
