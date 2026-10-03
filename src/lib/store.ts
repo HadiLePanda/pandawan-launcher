@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Game, GameInstallation, GameInfo, LauncherSettings, NewsItem } from '@/types';
+import type { Game, GameInstallation, LauncherSettings, NewsItem } from '@/types';
 import * as catalogService from './catalog-service';
 import * as newsService from './news-service';
 import * as gameService from './game-service';
@@ -38,8 +38,6 @@ type GetState = () => LauncherState;
 interface LauncherState {
   games: Game[];
   news: NewsItem[];
-  selectedGameId: string | null;
-  isLoading: boolean;
   error: string | null;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   /** A cancel has been sent and the backend is winding down. */
@@ -55,7 +53,6 @@ interface LauncherState {
   channelOverrides: Record<string, Channel>;
 
   // Actions
-  setGames: (games: Game[]) => void;
   setAvatarId: (avatarId: string) => void;
   toggleGamePinned: (gameId: string) => void;
   setGameChannel: (gameId: string, channel: Channel) => void;
@@ -64,8 +61,6 @@ interface LauncherState {
   pushNotification: (notification: Omit<LauncherNotification, 'id' | 'date' | 'read'>) => void;
   markAllNotificationsRead: () => void;
   clearNotifications: () => void;
-  selectGame: (gameId: string | null) => void;
-  addGame: (gameInfo: GameInfo) => void;
   updateGameStatus: (
     gameId: string,
     status: Game['status'],
@@ -74,7 +69,6 @@ interface LauncherState {
   setDownloadProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
   removeDownload: (gameId: string) => void;
   setSettings: (settings: LauncherSettings) => Promise<void>;
-  setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
   setGameFilters: (partial: Partial<GameFilters>) => void;
@@ -98,8 +92,6 @@ interface LauncherState {
 export const useLauncherStore = create<LauncherState>((set, get) => ({
   games: [],
   news: [],
-  selectedGameId: null,
-  isLoading: false,
   error: null,
   activeDownloads: new Map(),
   cancelling: false,
@@ -111,8 +103,6 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   avatarId: loadAvatarId(),
   unpinnedGameIds: loadUnpinnedGameIds(),
   channelOverrides: loadChannelOverrides(),
-
-  setGames: (games) => set({ games }),
 
   channelFor: (gameId, catalogChannel) =>
     resolveChannel(gameId, catalogChannel, get().channelOverrides),
@@ -158,17 +148,6 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     })),
 
   clearNotifications: () => set({ notifications: [] }),
-  selectGame: (gameId) => set({ selectedGameId: gameId }),
-
-  addGame: (gameInfo) => {
-    const game: Game = {
-      info: gameInfo,
-      installation: null,
-      status: 'not_installed',
-      hasUpdate: false,
-    };
-    set((state) => ({ games: [...state.games, game] }));
-  },
 
   updateGameStatus: (gameId, status, installation) => {
     set((state) => ({
@@ -194,7 +173,6 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     });
   },
 
-  setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
   setGameFilters: (partial) =>
@@ -210,18 +188,17 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   },
 
   loadSettings: async () => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       const settings = await gameService.loadSettings();
-      set({ settings, isLoading: false });
+      set({ settings });
     } catch (err) {
       handleStoreError(err, set, 'loadSettings');
-      set({ isLoading: false });
     }
   },
 
   loadCatalog: async () => {
-    set({ isLoading: true, error: null, catalogSource: null, catalogUnreachable: false });
+    set({ error: null, catalogSource: null, catalogUnreachable: false });
     try {
       const { games, source, unreachable } = await catalogService.loadCatalog();
       const gamesState: Game[] = games.map((gameInfo) => ({
@@ -232,13 +209,12 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       }));
       set({
         games: gamesState,
-        isLoading: false,
         catalogSource: source,
         catalogUnreachable: !!unreachable,
       });
     } catch (err) {
       handleStoreError(err, set, 'loadCatalog');
-      set({ isLoading: false, catalogSource: null, catalogUnreachable: true });
+      set({ catalogSource: null, catalogUnreachable: true });
     }
   },
 
@@ -252,10 +228,10 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   },
 
   loadGames: async () => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       const installations = await gameService.loadInstalledGames();
-      set((state) => ({ games: mergeInstallations(state.games, installations), isLoading: false }));
+      set((state) => ({ games: mergeInstallations(state.games, installations) }));
       // The install path needs each game's declared platforms to judge a flat,
       // pre-platform manifest. Cached here rather than re-fetched per install.
       gameService.rememberSupportedPlatforms(get().games.map((g) => g.info));
@@ -266,7 +242,6 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       }
     } catch (err) {
       handleStoreError(err, set, 'loadGames');
-      set({ isLoading: false });
     }
   },
 

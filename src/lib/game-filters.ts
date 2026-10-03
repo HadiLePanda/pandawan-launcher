@@ -50,10 +50,3 @@ export const PLATFORM_LABELS: Record<string, string> = {
 export function platformLabel(platform: string): string {
   return PLATFORM_LABELS[platform] ?? platform.charAt(0).toUpperCase() + platform.slice(1);
 }
-
-/**
- * Extensibility contract for adding a new filter:
- * 1. Add the field to `GameFilters` and `emptyFilters`/`isDefaultFilters`.
- * 2. Add the matching predicate inside `filterGames`.
- * 3. Add a new section to the declarative `sections` array in `FiltersPanel`.
- */

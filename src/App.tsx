@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { filterGames } from '@/lib/game-filters';
 import { events } from '@/lib/bindings';
@@ -26,7 +26,7 @@ import * as gameService from '@/lib/game-service';
 import { checkForUpdatesOnStartup as checkForLauncherUpdate } from '@/lib/updater-service';
 import { useUpdaterStore, downloadAndInstall, restartToApplyUpdate } from '@/lib/updater-service';
 import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
-import { startCatalogPoll, type CatalogPollHandle } from '@/lib/cdn';
+import { startCatalogPoll } from '@/lib/cdn';
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
@@ -169,7 +169,6 @@ function App() {
   // desktop app has no push channel from the CDN, so this polls a cheap
   // fingerprint every few minutes and only flags a change once something
   // actually moved. Polling pauses while a download or game run is in progress.
-  const pollRef = useRef<CatalogPollHandle | null>(null);
   useEffect(() => {
     const handle = startCatalogPoll({
       loadCatalog: async () => {
@@ -179,11 +178,7 @@ function App() {
       onChange: () => setIsCatalogStale(true),
       isBusy: () => activeDownloads.size > 0 || games.some((g) => g.status === 'running'),
     });
-    pollRef.current = handle;
-    return () => {
-      handle.stop();
-      pollRef.current = null;
-    };
+    return () => handle.stop();
   }, [activeDownloads.size, games]);
 
   // The flag is only meaningful until the user acts on it: either they refresh
@@ -199,8 +194,7 @@ function App() {
     setIsCatalogStale(false);
   }
 
-  // Applies a flagged catalog change. Deferred a tick so the dot clears even if
-  // the reload fails, and so the click does not fight the poll that set it.
+  // Clears the dot before the reload so it disappears even if the reload fails.
   const handleRefreshCatalog = useCallback(async () => {
     setIsCatalogStale(false);
     await loadCatalog();

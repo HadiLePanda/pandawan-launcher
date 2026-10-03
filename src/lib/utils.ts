@@ -18,20 +18,6 @@ export function formatBytes(bytes: number, decimals = 0): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export function formatSpeed(bps: number): string {
-  return formatBytes(bps) + '/s';
-}
-
-export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
-
 export function formatPlaytime(seconds: number): string {
   if (seconds <= 0) return '0 min';
 

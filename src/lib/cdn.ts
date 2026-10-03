@@ -126,10 +126,6 @@ export const CdnUrl = {
     return `${CDN_ORIGIN}/games/${id}/${channel}`;
   },
 
-  manifest(id: string, channel: string = 'stable'): string {
-    return `${CdnUrl.gamesPath(id, channel)}/manifest.json`;
-  },
-
   news(): string {
     return `${CDN_ORIGIN}/launcher/news.json`;
   },

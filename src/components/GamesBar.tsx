@@ -4,7 +4,7 @@ import { Gamepad2, LayoutGrid, Plus } from 'lucide-react';
 import { isGamePinned } from '@/lib/pins';
 import type { GameInfo } from '@/types';
 
-export interface GamesBarProps {
+interface GamesBarProps {
   games: GameInfo[];
   installedIds: Set<string>;
   unpinnedGameIds: string[];
@@ -86,8 +86,7 @@ export function GamesBar({
   // overflow has to be visible somewhere or the cap looks like data loss.
   const overflow = pinned.length - visibleGames.length;
 
-  // The bar carries no `no-scrollbar` class: it no longer scrolls, so hiding a
-  // scrollbar would only conceal the cap from anyone who goes looking for it.
+  // The bar is capped rather than scrollable, so no scrollbar is hidden.
   return (
     <div className="games-bar" data-testid="games-bar">
       <div className="games-bar-item">

@@ -1,10 +1,5 @@
 export type FileCheck = 'valid' | 'invalid' | 'missing';
 
-export interface VerifyFileRow {
-  path: string;
-  state: FileCheck;
-}
-
 export interface VerifyProgress {
   path: string;
   state: FileCheck;
@@ -121,38 +116,6 @@ export type DownloadEvent =
     }
   | { event: 'complete'; data: { completedFiles: number; totalFiles: number } }
   | { event: 'error'; data: { message: string } };
-
-export type PatchState =
-  'idle' | 'checking' | 'downloading' | 'verifying' | 'installing' | 'complete' | 'error';
-
-export interface PatchProgress {
-  totalFiles: number;
-  completedFiles: number;
-  totalBytes: number;
-  downloadedBytes: number;
-  currentFile: string | null;
-}
-
-export interface DownloadProgress {
-  gameId: string;
-  isDownloading: boolean;
-  progress: number;
-  overallProgress: number;
-  speed: string;
-  downloadedBytes: number;
-  totalBytes: number;
-  completedFiles: number;
-  totalFiles: number;
-  currentFile: string | null;
-}
-
-export interface PatchStatus {
-  gameId: string;
-  currentVersion: string;
-  targetVersion: string;
-  status: PatchState;
-  progress: PatchProgress;
-}
 
 export interface LaunchResult {
   success: boolean;

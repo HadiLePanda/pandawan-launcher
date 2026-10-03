@@ -1,11 +1,5 @@
-import type {
-  GameCatalog,
-  CatalogGameEntry,
-  GameInfo,
-  GameManifest,
-  PlatformVersion,
-} from '@/types';
-import { readTextFile, writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import type { GameCatalog, GameInfo, GameManifest, PlatformVersion } from '@/types';
+import { readTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { detectPlatform, type Platform } from './platform';
 import {
   CdnUrl,
@@ -143,13 +137,6 @@ export async function loadLocalOverrideCatalog(): Promise<GameCatalog | null> {
   }
 }
 
-export async function saveLocalOverrideCatalog(catalog: GameCatalog): Promise<void> {
-  validateCatalog(catalog);
-  await writeTextFile(CATALOG_OVERRIDE_FILE_NAME, JSON.stringify(catalog, null, 2), {
-    baseDir: BaseDirectory.AppData,
-  });
-}
-
 /** Why a manifest could not be resolved for this machine. */
 export type UnavailableReason = 'no-build-for-platform' | 'platform-unknown';
 
@@ -280,15 +267,5 @@ export function validateCatalog(catalog: unknown): asserts catalog is GameCatalo
     if (typeof g.id !== 'string' || !g.id) {
       throw new Error('Catalog game is missing a valid id');
     }
-  }
-}
-
-export function validateCatalogEntry(entry: unknown): asserts entry is CatalogGameEntry {
-  if (!entry || typeof entry !== 'object') {
-    throw new Error('Catalog entry must be an object');
-  }
-  const e = entry as Record<string, unknown>;
-  if (typeof e.id !== 'string' || !e.id) {
-    throw new Error('Catalog entry is missing a valid id');
   }
 }

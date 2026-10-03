@@ -52,7 +52,6 @@ function TopBarButton({
   wide,
   variant,
   onClick,
-  children,
   testId,
 }: {
   icon: React.ReactNode;
@@ -63,7 +62,6 @@ function TopBarButton({
   wide?: boolean;
   variant?: 'notifications';
   onClick?: () => void;
-  children?: React.ReactNode;
   testId?: string;
 }) {
   return (
@@ -90,7 +88,6 @@ function TopBarButton({
           </span>
         )}
       </span>
-      {children}
     </button>
   );
 }

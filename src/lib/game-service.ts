@@ -15,8 +15,6 @@ import { resolveBaseUrl } from './cdn';
 import { detectPlatform, selectPlatformBuild } from './platform';
 import type { GameInfo } from '@/types';
 
-export type { DownloadProgressSnapshot } from './download-channel';
-
 export interface PatchCallbacks {
   onProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
   onComplete: (gameId: string) => void;

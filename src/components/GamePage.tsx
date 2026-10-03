@@ -380,10 +380,6 @@ export function GamePage({
                   <span>{downloadPct}%</span>
                 </>
               ) : isRunning ? (
-                // Stop, not a greyed-out stand-in. Running was previously
-                // treated as "not installed" by the label, while the button was
-                // simultaneously disabled for running - so an open game showed a
-                // disabled "Install".
                 <>
                   <X className="w-5 h-5" />
                   <span>{primaryLabel()}</span>
