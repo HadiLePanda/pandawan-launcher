@@ -55,7 +55,7 @@ function bump(version, level) {
 }
 
 const argv = process.argv.slice(2);
-const dryRun = argv.includes('--dry-run');
+const dryRun = !argv.includes('--confirm') || argv.includes('--dry-run');
 const level = argv.find((a) => a === 'major' || a === 'minor' || a === 'patch');
 
 const from = currentVersion();
