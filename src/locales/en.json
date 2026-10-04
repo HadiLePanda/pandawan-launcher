@@ -67,7 +67,6 @@
     },
     "close": "Close",
     "developer": "Developer",
-    "filesProgress": "{{completed}} / {{total}} files",
     "gameInfo": "Game Info",
     "install": "Install",
     "installing": "Installing",
@@ -109,11 +108,11 @@
     "cancel": "Cancel",
     "empty": "No active downloads",
     "eta": "{{time}} left",
-    "filesProgress": "{{completed}} of {{total}} files",
     "ofSize": "{{done}} of {{total}}",
     "preparing": "Preparing…",
     "title": "Downloads",
-    "cancelling": "Cancelling…"
+    "cancelling": "Cancelling…",
+    "viewAll": "View all"
   },
   "errors": {
     "alreadyRunning": "Game is already running.",

@@ -268,7 +268,9 @@ export function GamePage({
 
   const handlePrimaryClick = () => {
     if (unavailable) return;
-    if (isDownloading) return;
+    // While a transfer runs the button reads Cancel, so the click cancels. This
+    // is what makes the label true; the button is enabled for exactly this case.
+    if (isDownloading) return onCancel?.();
     if (isRunning) {
       if (!onClose) return; // No stop handler: do not fall through to play.
       return onClose();
@@ -395,11 +397,22 @@ export function GamePage({
             <button
               type="button"
               onClick={handlePrimaryClick}
-              disabled={isDownloading || unavailable}
+              /* Not disabled while downloading: the button IS the cancel then, and
+                             a disabled button cannot be the thing you press to stop a
+                             transfer. Everything else keeps its guard. */
+              disabled={unavailable || (isDownloading && !onCancel)}
               title={unavailableTitle()}
               className={cn('game-detail-play-btn', primaryColorClass())}
             >
-              {isDownloading ? (
+              {isDownloading && onCancel ? (
+                /* Steam turns the primary action into the cancel while a transfer
+                               runs. A disabled button showing only a percentage gave no way
+                               to stop the download from the page you started it on. */
+                <>
+                  <X className="w-5 h-5" />
+                  <span>{t('common.cancel')}</span>
+                </>
+              ) : isDownloading ? (
                 <>
                   <Download className="w-5 h-5" />
                   <span>{downloadPct}%</span>
@@ -483,34 +496,43 @@ export function GamePage({
             </span>
           </div>
         </div>
-        {isDownloading && (
-          <div className="game-detail-download">
-            <div className="game-detail-download-bar">
-              <div className="game-detail-download-fill" style={{ width: `${downloadPct}%` }} />
-            </div>
-            <div className="game-detail-download-meta">
-              <span>
-                {t('gamePage.filesProgress', {
-                  completed: downloadProgress?.completedFiles ?? 0,
-                  total: downloadProgress?.totalFiles ?? 0,
-                })}
-              </span>
-              <span>{downloadProgress?.speed}</span>
-              {onCancel && (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="game-detail-download-cancel"
-                  title={t('common.cancel')}
-                  aria-label={t('common.cancel')}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Footer, not a panel in the left column. A transfer is state about the
+          page, not about the game's description, and scrolling it out of sight
+          meant a long page could not tell you a download was still running. It
+          is the last child of .game-detail so the grid's own row places it under
+          both columns, and it only exists while something is transferring. */}
+      {isDownloading && (
+        <div className="game-detail-download">
+          <div className="game-detail-download-info">
+            <span className="game-detail-download-name">{game.info.name}</span>
+            <span className="game-detail-download-speed">{downloadProgress?.speed}</span>
+          </div>
+          <div
+            className="game-detail-download-bar"
+            role="progressbar"
+            aria-valuenow={downloadPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={game.info.name}
+          >
+            <div className="game-detail-download-fill" style={{ width: `${downloadPct}%` }} />
+          </div>
+          <span className="game-detail-download-pct">{downloadPct}%</span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="game-detail-download-cancel"
+              title={t('common.cancel')}
+              aria-label={t('common.cancel')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* No heading and no panel behind the news. The article titles are the
           headings, and a card background in a column of other cards made the

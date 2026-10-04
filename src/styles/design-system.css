@@ -514,20 +514,6 @@ Component Design System
   }
 }
 
-/* Marks "a transfer is running" on the downloads button. Positioned bottom-left
-   rather than top-right so it does not collide with the count badge. */
-.topbar-btn-active-dot {
-  position: absolute;
-  left: 4px;
-  bottom: 4px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--action, #22c55e);
-  box-shadow: 0 0 0 2px var(--canvas-default, #0e1013);
-  animation: pandawan-breathe 2s ease-in-out infinite;
-}
-
 @keyframes pandawan-breathe {
   0%,
   100% {
@@ -599,9 +585,13 @@ Component Design System
   line-height: 1;
 }
 
+/* One badge position for every top-bar button, so Downloads and Notifications
+   read as the same control. The alert variant used to sit at -7px/-8px while
+   the plain one sat at 2px/4px, which put two dots at visibly different corners
+   of buttons that are otherwise identical. */
 .topbar-badge-alert {
-  top: -7px;
-  right: -8px;
+  top: 2px;
+  right: 4px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

@@ -170,12 +170,12 @@
 .downloads-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .download-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px;
   background: var(--surface-default);
@@ -207,20 +207,25 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* Title, percentage and cancel share one line, with the cancel last. Centring it
+   down the row's right edge put it beside the byte counter instead of beside the
+   title it acts on, which read as an unrelated control. */
 .download-row-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .download-row-name {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--ink-default);
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,6 +235,8 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--blue);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .download-row-bar {
@@ -265,31 +272,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The file being pulled right now. Without it a slow transfer looks identical to
-   a frozen one, which is exactly the misread this row is here to prevent. */
-/* No margin-top: .download-row-body is a column with gap:6px, so a margin here
-   stacks on top of the gap and the row ends up with three different gaps
-   (6px, 12px, 10px) for what is one uniform rhythm. */
-.download-row-file {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.6875rem;
-  color: var(--ink-muted);
-  font-family: var(--font-mono, monospace);
-  min-width: 0;
-}
-
-/* Spacing comes from .download-row-body's gap, same as its siblings. */
-.download-row-files {
-  font-size: 0.6875rem;
-  color: var(--ink-muted);
-  opacity: 0.8;
-}
-
 .download-row-cancel {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -304,9 +289,163 @@
     color 0.15s ease;
 }
 
-.download-row-cancel:hover {
+.download-row-cancel:hover:not(:disabled) {
   background: var(--surface-hover);
   color: var(--ink-default);
+}
+
+.download-row-cancel:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ----- Header download panel (Steam-style) ----- */
+.download-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  padding: 8px;
+  background: var(--surface-default);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  z-index: 60;
+}
+
+.download-panel-empty {
+  padding: 12px;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.download-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.download-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.download-panel-row:hover {
+  background: var(--surface-hover);
+}
+
+.download-panel-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.download-panel-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.download-panel-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.download-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.download-panel-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ink-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.download-panel-percent {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.download-panel-cancel {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.download-panel-cancel:hover:not(:disabled) {
+  background: var(--surface-light);
+  color: var(--ink-default);
+}
+
+.download-panel-cancel:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.download-panel-bar {
+  height: 3px;
+  background: var(--surface-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.download-panel-fill {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.2s ease;
+}
+
+.download-panel-viewall {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-default);
+  cursor: pointer;
+}
+
+.download-panel-viewall:hover {
+  color: var(--ink-default);
+  background: var(--surface-hover);
 }
 
 .downloads-empty {

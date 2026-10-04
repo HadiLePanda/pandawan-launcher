@@ -690,6 +690,9 @@ function App() {
           setIsSettingsOpen(true);
         }}
         activeDownloads={activeDownloads}
+        onDownloadsCancel={cancelOperation}
+        games={games.map((g) => g.info)}
+        cancelling={cancelling}
         notificationsBadge={unreadCount}
         avatarUrl={avatarUrl(avatarId)}
         onNavigatePrev={() => handleNavigate(-1)}

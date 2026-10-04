@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Download, X, Gamepad2, FileDown, Loader2 } from 'lucide-react';
+import { Download, X, Gamepad2, Loader2 } from 'lucide-react';
 
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 import { formatBytes, useSmoothDownload } from '@/lib/utils';
@@ -21,13 +21,6 @@ function formatEta(seconds: number): string {
   const s = Math.floor(seconds % 60);
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
   return `${m}m ${String(s).padStart(2, '0')}s`;
-}
-
-/** Last path segment, so a full install path does not fill the row. */
-function fileNameOf(path: string | null): string | null {
-  if (!path) return null;
-  const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts.at(-1) ?? null;
 }
 
 export function DownloadsPage({ downloads, games, onCancel, cancelling }: DownloadsPageProps) {
@@ -83,7 +76,6 @@ function DownloadRow({
   const { t } = useTranslation();
   const { percent, etaSeconds } = useSmoothDownload(progress);
   const whole = Math.floor(percent);
-  const currentFile = fileNameOf(progress.currentFile);
   const eta = etaSeconds !== null ? formatEta(etaSeconds) : '';
 
   return (
@@ -93,9 +85,23 @@ function DownloadRow({
       </div>
 
       <div className="download-row-body">
+        {/* Cancel sits on the title line, at the far end, rather than centred
+                  down the right edge of the row. It reads as the control belonging to
+                  this title and percentage instead of floating beside whatever line
+                  happens to be at its own height. */}
         <div className="download-row-header">
           <span className="download-row-name">{name}</span>
           <span className="download-row-percent">{whole}%</span>
+          <button
+            type="button"
+            onClick={() => onCancel(gameId)}
+            className="download-row-cancel"
+            disabled={cancelling}
+            title={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
+            aria-label={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
+          >
+            {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+          </button>
         </div>
 
         <div
@@ -108,9 +114,10 @@ function DownloadRow({
           <div className="download-row-fill" style={{ width: `${percent}%` }} />
         </div>
 
-        {/* The numbers that actually answer "is this working?": how much is
-            done, how fast, how long left. A bare percentage answers none of
-            those. */}
+        {/* Only the numbers that answer "is this working?". The filename and the
+                    file counter were dropped deliberately: a 267-file Unity build
+                    scrolled a path past every few frames and turned the row into noise
+                    nobody read. Speed and ETA are what a player actually acts on. */}
         <div className="download-row-meta">
           {progress.totalBytes > 0 ? (
             <span>
@@ -127,36 +134,7 @@ function DownloadRow({
 
           {eta && <span className="download-row-eta">{t('downloads.eta', { time: eta })}</span>}
         </div>
-
-        {/* The filename is the strongest liveness signal there is: without it a
-            slow transfer looks identical to a frozen one. */}
-        {currentFile && (
-          <div className="download-row-file" title={progress.currentFile ?? undefined}>
-            <FileDown className="w-3 h-3 shrink-0" aria-hidden="true" />
-            <span className="truncate">{currentFile}</span>
-          </div>
-        )}
-
-        {progress.totalFiles > 0 && (
-          <div className="download-row-files">
-            {t('downloads.filesProgress', {
-              completed: progress.completedFiles,
-              total: progress.totalFiles,
-            })}
-          </div>
-        )}
       </div>
-
-      <button
-        type="button"
-        onClick={() => onCancel(gameId)}
-        className="download-row-cancel"
-        disabled={cancelling}
-        title={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
-        aria-label={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
-      >
-        {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-      </button>
     </div>
   );
 }

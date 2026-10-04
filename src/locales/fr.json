@@ -67,7 +67,6 @@
     },
     "close": "Fermer",
     "developer": "Développeur",
-    "filesProgress": "{{completed}} / {{total}} fichiers",
     "gameInfo": "Infos du jeu",
     "install": "Installer",
     "installing": "Installation",
@@ -109,11 +108,11 @@
     "cancel": "Annuler",
     "empty": "Aucun téléchargement actif",
     "eta": "encore {{time}}",
-    "filesProgress": "{{completed}} sur {{total}} fichiers",
     "ofSize": "{{done}} sur {{total}}",
     "preparing": "Préparation…",
     "title": "Téléchargements",
-    "cancelling": "Annulation…"
+    "cancelling": "Annulation…",
+    "viewAll": "Tout voir"
   },
   "errors": {
     "alreadyRunning": "Le jeu est déjà en cours d'exécution.",
