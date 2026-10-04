@@ -35,13 +35,25 @@ export function News({ onSelectArticle }: NewsProps) {
             key={item.id}
             className="news-card cursor-pointer"
             onClick={() => onSelectArticle?.(item)}
+            // Not a button but acts as one: it is the only route into the article, so
+            // it has to be focusable and openable from a keyboard.
+            role="button"
+            tabIndex={0}
+            aria-label={item.title}
+            title={item.title}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectArticle?.(item);
+              }
+            }}
           >
             <div className="news-body">
               <div>
                 <div className="news-meta">
                   {item.category && <span className="badge badge-default">{item.category}</span>}
                   <span className="cluster cluster-sm caption">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4" aria-hidden="true" />
                     {new Date(item.date).toLocaleDateString()}
                   </span>
                 </div>

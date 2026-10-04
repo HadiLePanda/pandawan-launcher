@@ -3,6 +3,7 @@ import { X, Search, Pin, PinOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { isGamePinned } from '@/lib/pins';
+import { useModalDialog } from '@components/modalFocus';
 import type { GameInfo } from '@/types';
 
 interface PinManagerModalProps {
@@ -22,6 +23,7 @@ export function PinManagerModal({
 }: PinManagerModalProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const dialogRef = useModalDialog<HTMLDivElement>({ open: isOpen, onClose });
 
   if (!isOpen) return null;
 
@@ -33,23 +35,37 @@ export function PinManagerModal({
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="modal modal-pin-manager animate-slide-up">
+      <div
+        ref={dialogRef}
+        className="modal modal-pin-manager animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pin-modal-title"
+      >
         <div className="modal-header">
           <div>
-            <h2 className="title-2">{t('pinModal.title')}</h2>
+            <h2 className="title-2" id="pin-modal-title">
+              {t('pinModal.title')}
+            </h2>
             <p className="caption mt-1">{t('pinModal.subtitle')}</p>
           </div>
-          <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
+          <button
+            onClick={onClose}
+            className="icon-btn"
+            aria-label={t('common.close')}
+            title={t('common.close')}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="px-6 pb-4">
           <div className="pin-search-wrap">
-            <Search className="pin-search-icon" />
+            <Search className="pin-search-icon" aria-hidden="true" />
             <input
               type="text"
               placeholder={t('pinModal.searchPlaceholder')}
+              aria-label={t('pinModal.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pin-search"
@@ -97,6 +113,9 @@ function PinCard({ game, pinned, onToggle }: PinCardProps) {
       onClick={onToggle}
       className={cn('pin-card', pinned ? 'pin-card-pinned' : 'pin-card-unpinned')}
       title={game.name}
+      // The pin glyph is the only thing distinguishing the two states and it is
+      // aria-hidden, so without this the button announces as just a game name.
+      aria-pressed={pinned}
     >
       <div className="pin-card-icon">
         {game.iconUrl ? (

@@ -92,6 +92,10 @@ export function FiltersPanel({ games, filters, onFilterChange }: FiltersPanelPro
                   key={`${section.key}-${option.value}`}
                   type="button"
                   className={cn('filter-option', selected && 'selected')}
+                  // Selection here is a background colour and nothing else, so it is
+                  // invisible without the state exposed. A pressed toggle is what the
+                  // styling was already drawing.
+                  aria-pressed={selected}
                   onClick={() =>
                     option.kind === 'status'
                       ? handleStatusClick(option.value)

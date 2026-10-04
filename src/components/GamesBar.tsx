@@ -50,6 +50,13 @@ function GamesBarGameButton({
         ].join(' ')}
         data-art-failed={artFailed ? 'true' : undefined}
         aria-label={game.name}
+        // The bar already renders the name in a hover tip; this makes it a real
+        // tooltip too, and is the rule's other half for an icon-only control.
+        title={game.name}
+        // Installed is opacity and greyscale, selected is a blue underline. Both are
+        // colour alone, so both states are stated rather than only drawn.
+        aria-pressed={selected}
+        aria-current={installed ? 'true' : undefined}
         onClick={() => onSelect(game.id)}
         onContextMenu={(e) => onContextMenu(e, game.id)}
       >
@@ -96,6 +103,8 @@ export function GamesBar({
             ' '
           )}
           aria-label={t('gamesBar.allGames')}
+          title={t('gamesBar.allGames')}
+          aria-pressed={isOverviewSelected}
           onClick={() => onSelect(null)}
         >
           <LayoutGrid size={20} />

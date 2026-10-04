@@ -74,6 +74,9 @@ function GameCard({
         unavailable && 'game-card-unavailable'
       )}
       title={unavailable ? t('gamesHome.unavailableOnPlatform') : game.info.name}
+      // Unavailable is opacity and desaturation only, so without a stated reason the
+      // greyed card is just a dim card to anyone not reading the colour.
+      aria-disabled={unavailable}
     >
       <div className="game-card-art">
         <CardArt bannerUrl={game.info.bannerUrl} iconUrl={game.info.iconUrl} />

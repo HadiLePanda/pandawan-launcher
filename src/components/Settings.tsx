@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   X,
   Folder,
@@ -19,7 +19,7 @@ import { open } from '@tauri-apps/plugin-shell';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
-import { AVATAR_IDS, avatarUrl } from '@/lib/avatars';
+import { avatarUrl } from '@/lib/avatars';
 import * as gameService from '@/lib/game-service';
 import { commands } from '@/lib/commands';
 import { unwrapResult } from '@/lib/errors';
@@ -30,6 +30,7 @@ import {
   downloadAndInstall,
   restartToApplyUpdate,
 } from '@/lib/updater-service';
+import { useModalDialog } from '@components/modalFocus';
 import type { LauncherSettings } from '@/types';
 
 interface SettingsProps {
@@ -67,6 +68,8 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [editedSettings, setEditedSettings] = useState<LauncherSettings>(DEFAULT_SETTINGS);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Arrow-key navigation needs a handle on each tab so focus follows the change.
+  const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({});
   // What the editor was seeded from, so a later open can tell a real settings
   // change apart from the same object being handed back by the store.
   const [seededFrom, setSeededFrom] = useState<{
@@ -97,6 +100,10 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     }
   }
 
+  // Escape, focus-in and focus-return for the whole dialog. Hooked above the
+  // `!isOpen` bail-out so a close is not left waiting on an unmount.
+  const dialogRef = useModalDialog<HTMLDivElement>({ open: isOpen, onClose });
+
   if (!isOpen) return null;
 
   const handleUpdate = (updates: Partial<LauncherSettings>) => {
@@ -117,19 +124,57 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="modal settings-modal animate-slide-up">
+      <div
+        ref={dialogRef}
+        className="modal settings-modal animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-dialog-title"
+      >
         <div className="modal-sidebar">
-          <h2 className="modal-title">{t('settings.title')}</h2>
-          <nav className="stack-sm">
+          <h2 className="modal-title" id="settings-dialog-title">
+            {t('settings.title')}
+          </h2>
+          {/* Arrow keys move between tabs, Home/End jump to the ends. A tablist owes
+              the whole tab keyboard contract, not just five focusable buttons. */}
+          <nav
+            className="stack-sm"
+            role="tablist"
+            aria-orientation="vertical"
+            aria-label={t('settings.title')}
+            onKeyDown={(e) => {
+              const order = tabs.map((tab) => tab.id);
+              const at = order.indexOf(activeTab);
+              if (at === -1) return;
+              let next: number | null = null;
+              if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = at + 1;
+              else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = at - 1;
+              else if (e.key === 'Home') next = 0;
+              else if (e.key === 'End') next = order.length - 1;
+              if (next === null) return;
+              e.preventDefault();
+              const id = order[(next + order.length) % order.length];
+              setActiveTab(id);
+              tabRefs.current[id]?.focus();
+            }}
+          >
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
+                  ref={(node) => {
+                    tabRefs.current[tab.id] = node;
+                  }}
                   onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  id={`settings-tab-${tab.id}`}
+                  aria-selected={activeTab === tab.id}
+                  aria-controls="settings-tabpanel"
+                  tabIndex={activeTab === tab.id ? 0 : -1}
                   className={cn('modal-nav-item', activeTab === tab.id && 'modal-nav-item-active')}
                 >
-                  <Icon className="modal-nav-icon" />
+                  <Icon className="modal-nav-icon" aria-hidden="true" />
                   {tabLabels[tab.id]}
                 </button>
               );
@@ -140,12 +185,23 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="modal-header">
             <h3 className="title-3">{tabLabels[activeTab]}</h3>
-            <button onClick={onClose} className="icon-btn">
+            <button
+              onClick={onClose}
+              className="icon-btn"
+              aria-label={t('common.close')}
+              title={t('common.close')}
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="modal-body">
+          <div
+            className="modal-body"
+            role="tabpanel"
+            id="settings-tabpanel"
+            aria-labelledby={`settings-tab-${activeTab}`}
+            tabIndex={0}
+          >
             {saveError && <div className="settings-error-toast">{saveError}</div>}
             {activeTab === 'general' && (
               <GeneralSettings settings={editedSettings} onChange={handleUpdate} />
@@ -435,6 +491,18 @@ function AccountSettings() {
   const { t } = useTranslation();
   const avatarId = useLauncherStore((s) => s.avatarId);
   const setAvatarId = useLauncherStore((s) => s.setAvatarId);
+  // The picker tells five near-identical pandas apart by colour, so the colour is
+  // the name. The id is an internal key that would be announced as "panda-blue", so
+  // each one is translated. Listed rather than looked up by key: the coverage
+  // scanner only sees `t()` calls with a literal key, and a template literal would
+  // leave all five keys looking unused and fail the parity test.
+  const options = [
+    { id: 'panda', label: t('settings.account.avatar.options.panda') },
+    { id: 'panda-blue', label: t('settings.account.avatar.options.panda-blue') },
+    { id: 'panda-coral', label: t('settings.account.avatar.options.panda-coral') },
+    { id: 'panda-mint', label: t('settings.account.avatar.options.panda-mint') },
+    { id: 'panda-gold', label: t('settings.account.avatar.options.panda-gold') },
+  ];
   return (
     <div className="setting-group">
       <SettingItem
@@ -443,16 +511,18 @@ function AccountSettings() {
         description={t('settings.account.avatar.description')}
       >
         <div className="avatar-picker">
-          {AVATAR_IDS.map((id) => (
+          {options.map(({ id, label }) => (
             <button
               key={id}
               type="button"
               onClick={() => setAvatarId(id)}
               className={cn('avatar-option', avatarId === id && 'avatar-option-selected')}
-              aria-label={id}
-              title={id}
+              // Selection is a green ring around the image and nothing else.
+              aria-pressed={avatarId === id}
+              aria-label={label}
+              title={label}
             >
-              <img src={avatarUrl(id)} alt={id} className="avatar-image" />
+              <img src={avatarUrl(id)} alt="" className="avatar-image" />
             </button>
           ))}
         </div>
@@ -653,6 +723,8 @@ interface ToggleSettingProps {
 }
 
 function ToggleSetting({ title, description, checked, onChange }: ToggleSettingProps) {
+  const { t } = useTranslation();
+  const label = `${title} - ${checked ? t('settings.toggle.on') : t('settings.toggle.off')}`;
   return (
     <div className="toggle-row">
       <div>
@@ -663,6 +735,10 @@ function ToggleSetting({ title, description, checked, onChange }: ToggleSettingP
         onClick={() => onChange(!checked)}
         className={cn('toggle', checked && 'toggle-active')}
         aria-pressed={checked}
+        // A bare switch with a thumb in it names nothing, and its on/off state is
+        // green versus white: colour alone. The setting's title and the word carry both.
+        aria-label={label}
+        title={label}
       >
         <span className="toggle-thumb" />
       </button>

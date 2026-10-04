@@ -62,6 +62,7 @@ export function WindowControls() {
         onClick={handleMinimize}
         className="window-control"
         aria-label={t('windowControls.minimize')}
+        title={t('windowControls.minimize')}
       >
         <Minus className="w-4 h-4" />
       </button>
@@ -69,6 +70,7 @@ export function WindowControls() {
         onClick={handleMaximize}
         className="window-control"
         aria-label={isMaximized ? t('windowControls.restore') : t('windowControls.maximize')}
+        title={isMaximized ? t('windowControls.restore') : t('windowControls.maximize')}
       >
         {isMaximized ? <Copy className="w-4 h-4" /> : <Square className="w-4 h-4" />}
       </button>
@@ -76,6 +78,7 @@ export function WindowControls() {
         onClick={handleClose}
         className="window-control window-control-close"
         aria-label={t('windowControls.close')}
+        title={t('windowControls.close')}
       >
         <X className="w-4 h-4" />
       </button>

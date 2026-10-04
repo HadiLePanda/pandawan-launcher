@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
 import { cn } from '@/lib/utils';
 import { useCountUp } from '@/lib/useCountUp';
+import { useModalDialog } from '@components/modalFocus';
 
 interface VerifyGameModalProps {
   game: Game | null;
@@ -16,15 +17,24 @@ export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGa
   const { t } = useTranslation();
   const running = !result && !error;
   const total = rows.length ? rows[rows.length - 1].total : 0;
+  const dialogRef = useModalDialog<HTMLDivElement>({ open: game !== null, onClose });
 
   if (!game) return null;
 
   return (
     <div className="modal-overlay">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="modal modal-auto animate-slide-up" role="dialog" aria-modal="true">
+      <div
+        ref={dialogRef}
+        className="modal modal-auto animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="verify-modal-title"
+      >
         <div className="verify-head">
-          <h3 className="verify-title">{t('verifyGameModal.title')}</h3>
+          <h3 className="verify-title" id="verify-modal-title">
+            {t('verifyGameModal.title')}
+          </h3>
           {/* In the title row rather than pinned to the panel corner: the title is
               what identifies the dialog, so the close control belongs beside it.
               Shown while the scan runs too - closing only hides the progress, it

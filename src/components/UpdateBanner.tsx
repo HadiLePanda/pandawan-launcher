@@ -68,6 +68,7 @@ export function UpdateBanner() {
           onClick={dismissBanner}
           className="btn btn-sm btn-ghost"
           aria-label={t('updateBanner.dismiss')}
+          title={t('updateBanner.dismiss')}
         >
           <X className="w-4 h-4" />
         </button>

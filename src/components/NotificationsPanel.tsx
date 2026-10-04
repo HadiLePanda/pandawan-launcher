@@ -89,6 +89,9 @@ export function NotificationsPanel({
                 'notifications-panel-item',
                 !n.read && 'notifications-panel-item-unread'
               )}
+              // Unread is a 2px blue border and nothing else, so it is invisible to
+              // anyone not distinguishing that blue. The word is the signal.
+              aria-label={!n.read ? `${n.title} - ${t('notificationsPanel.unread')}` : n.title}
             >
               <div className="notifications-panel-item-body">
                 <span className="notifications-panel-item-title">{n.title}</span>

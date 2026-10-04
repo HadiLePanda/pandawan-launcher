@@ -132,7 +132,8 @@
     "clear": "Tout effacer",
     "empty": "Aucune notification",
     "markAllRead": "Tout marquer comme lu",
-    "title": "Notifications"
+    "title": "Notifications",
+    "unread": "Non lu"
   },
   "settings": {
     "about": {
@@ -177,7 +178,14 @@
     "account": {
       "avatar": {
         "description": "Choisis ton apparence dans le launcher",
-        "title": "Photo de profil"
+        "title": "Photo de profil",
+        "options": {
+          "panda": "Noir et blanc",
+          "panda-blue": "Bleu",
+          "panda-coral": "Corail",
+          "panda-mint": "Menthe",
+          "panda-gold": "Or"
+        }
       },
       "comingSoon": "Les fonctionnalités de compte arrivent bientôt."
     },
@@ -225,7 +233,11 @@
       "general": "Général",
       "notifications": "Notifications"
     },
-    "title": "Paramètres"
+    "title": "Paramètres",
+    "toggle": {
+      "on": "Activé",
+      "off": "Désactivé"
+    }
   },
   "timeAgo": {
     "dayAgo": "il y a {{count}} jour",
@@ -254,8 +266,9 @@
     "updateTooltip": "Pandawan Launcher v{{version}}",
     "restartToUpdate": "Redémarrer pour mettre à jour",
     "updating": "Mise à jour…",
-    "restartWhileGameRunning": "Un jeu est en cours. Redémarrer maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Redémarrer quand même\u00a0?",
-    "catalogStale": "De nouveaux jeux ou mises à jour sont disponibles — actualise pour les charger"
+    "restartWhileGameRunning": "Un jeu est en cours. Redémarrer maintenant arrêtera le suivi de cette session — son temps de jeu ne sera pas enregistré. Redémarrer quand même ?",
+    "catalogStale": "De nouveaux jeux ou mises à jour sont disponibles — actualise pour les charger",
+    "mainNavigation": "Navigation principale"
   },
   "updateBanner": {
     "available": "Mise à jour v{{version}} disponible",
@@ -289,11 +302,11 @@
     "issueMany": "{{count}} fichiers à vérifier"
   },
   "tray": {
-    "quitWhileGameRunning": "Un jeu est en cours. Quitter l'arrêtera. Quitter quand même\u00a0?"
+    "quitWhileGameRunning": "Un jeu est en cours. Quitter l'arrêtera. Quitter quand même ?"
   },
   "trayHint": {
     "notificationTitle": "Le launcher Pandawan tourne toujours",
-    "notificationBody": "Il est dans la barre d'état près de l'horloge. Tu ne le vois pas\u00a0? Clique sur ^ pour afficher les icônes masquées, puis fais glisser l'icône du launcher sur la barre des tâches pour la garder visible.",
+    "notificationBody": "Il est dans la barre d'état près de l'horloge. Tu ne le vois pas ? Clique sur ^ pour afficher les icônes masquées, puis fais glisser l'icône du launcher sur la barre des tâches pour la garder visible.",
     "popoverMessage": "Le launcher continue de tourner dans la barre d'état quand tu le fermes. Si l'icône n'est pas près de l'horloge, clique sur ^ pour afficher les icônes masquées, puis fais-la glisser sur la barre des tâches pour l'épingler. Modifie ce comportement dans Paramètres > Général.",
     "changeSetting": "Modifier ce réglage"
   },

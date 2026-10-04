@@ -15,6 +15,7 @@ import { cn, formatBytes, formatPlaytimeDecimal, getTimeAgo } from '@/lib/utils'
 import { handleImageError, resolveNewsImage } from '@/lib/cdn';
 import { KNOWN_CHANNELS, type Channel } from '@/lib/channels';
 import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
+import { useModalDialog } from '@components/modalFocus';
 import type { GameContextAction } from '@/lib/game-context';
 import type { Game, NewsItem } from '@/types';
 
@@ -133,7 +134,25 @@ function ChannelPicker({
   }, [onClose, triggerRef]);
 
   return (
-    <div ref={ref} className="game-channel-menu" role="menu">
+    <div
+      ref={ref}
+      className="game-channel-menu"
+      role="menu"
+      aria-label={t('gamePage.channelMenu.title')}
+      onKeyDown={(e) => {
+        // A role=menu owes arrow-key traversal, or it is a list of buttons claiming
+        // to be a menu that cannot be walked like one.
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const items = Array.from(
+          ref.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') ?? []
+        );
+        if (items.length === 0) return;
+        const at = items.indexOf(document.activeElement as HTMLButtonElement);
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        items[(at + step + items.length) % items.length].focus();
+      }}
+    >
       <p className="game-channel-menu-title">{t('gamePage.channelMenu.title')}</p>
       {availableChannels.map((channel) => {
         const active = currentChannel === channel;
@@ -149,6 +168,8 @@ function ChannelPicker({
               onClose();
             }}
           >
+            {/* The dot is the channel's colour and nothing else, so it is decorative;
+                the word beside it names the channel and aria-checked states the choice. */}
             <span
               className={cn('game-channel-dot', `game-channel-dot-${channel}`)}
               aria-hidden="true"
@@ -348,7 +369,7 @@ export function GamePage({
                   // The menu positions its own left edge, so passing rect.left keeps
                   // it flush beneath the icon instead of drifting toward the
                   // centre of the window.
-                  const next = { x: rect.left, y: rect.bottom + 6, placement: 'below' as const };
+                  const next = { x: rect.left, y: rect.bottom + 6 };
                   // Toggle: clicking the button that opened the menu closes it
                   // again. Re-measuring first means the same click closes rather
                   // than re-anchoring the menu where it already is.
@@ -499,6 +520,19 @@ export function GamePage({
                 key={item.id}
                 className="game-detail-news-card"
                 onClick={() => onSelectNewsArticle?.(item.id)}
+                // The card is the only way into the article, so it has to behave as a
+                // control: an article with onClick is not focusable and cannot be
+                // opened from a keyboard at all.
+                role="button"
+                tabIndex={0}
+                aria-label={item.title}
+                title={item.title}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectNewsArticle?.(item.id);
+                  }
+                }}
               >
                 {/* The game's own artwork stands in when an item has no image of its
                     own, so this list never shows ragged thumbnails. */}
@@ -553,17 +587,28 @@ export function GameDetailsModal({
       : view === 'news'
         ? t('gamePage.news')
         : t('gamePage.gameInfo');
+  const dialogRef = useModalDialog<HTMLDivElement>({ open: true, onClose });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="game-details-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="game-details-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="game-details-modal-title"
+      >
         <div className="modal-header">
-          <h3 className="title-3">{title}</h3>
+          <h3 className="title-3" id="game-details-modal-title">
+            {title}
+          </h3>
           <button
             type="button"
             onClick={onClose}
             className="icon-btn"
             aria-label={t('common.close')}
+            title={t('common.close')}
           >
             <X className="w-5 h-5" />
           </button>

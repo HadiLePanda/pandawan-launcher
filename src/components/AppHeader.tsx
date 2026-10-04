@@ -180,6 +180,10 @@ export function MainNav({
   const [isRestarting, setIsRestarting] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const updateMenuRef = useRef<HTMLDivElement>(null);
+  // Arrow-key navigation needs a handle on each tab so focus follows the change.
+  const navTabRefs = useRef<Partial<Record<'games' | 'news' | 'store', HTMLButtonElement | null>>>(
+    {}
+  );
 
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -324,28 +328,63 @@ export function MainNav({
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <nav className="cluster cluster-lg">
+        <nav
+          className="cluster cluster-lg"
+          role="tablist"
+          aria-label={t('topBar.mainNavigation')}
+          onKeyDown={(e) => {
+            // The strip is a tablist, so it owes arrow-key traversal; otherwise it is
+            // three buttons claiming to be tabs that Tab alone can reach.
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const order: Array<'games' | 'news' | 'store'> = ['games', 'news', 'store'];
+            // Downloads is a view with no tab in this strip (it is the icon in the
+            // right-hand cluster), so a strip left on it starts from Games.
+            const at = Math.max(order.indexOf(activeView as 'games' | 'news' | 'store'), 0);
+            const step = e.key === 'ArrowRight' ? 1 : -1;
+            const next = order[(at + step + order.length) % order.length];
+            if (next === 'games') onGamesClick();
+            else if (next === 'news') onNewsClick();
+            else onStoreClick();
+            navTabRefs.current[next]?.focus();
+          }}
+        >
           {/* Games is a plain tab now. The hover dropdown only ever offered
               "Library", which is the same destination as clicking the tab, so the
               hover state was pure friction - it delayed the click and hid a
               duplicate entry. */}
           <button
             type="button"
+            ref={(node) => {
+              navTabRefs.current.games = node;
+            }}
             onClick={onGamesClick}
+            role="tab"
+            aria-selected={activeView === 'games'}
             className={cn('nav-tab', activeView === 'games' && 'nav-tab-active')}
           >
             {t('topBar.games')}
           </button>
           <button
             type="button"
+            ref={(node) => {
+              navTabRefs.current.news = node;
+            }}
             onClick={onNewsClick}
+            role="tab"
+            aria-selected={activeView === 'news'}
             className={cn('nav-tab', activeView === 'news' && 'nav-tab-active')}
           >
             {t('topBar.news')}
           </button>
           <button
             type="button"
+            ref={(node) => {
+              navTabRefs.current.store = node;
+            }}
             onClick={onStoreClick}
+            role="tab"
+            aria-selected={activeView === 'store'}
             className={cn('nav-tab', activeView === 'store' && 'nav-tab-active')}
           >
             {t('topBar.store')}
@@ -444,16 +483,17 @@ export function MainNav({
             </span>
           </button>
           {isProfileMenuOpen && (
-            <div className="profile-menu">
+            <div className="profile-menu" role="menu" aria-label={t('topBar.playerProfile')}>
               <button
                 type="button"
+                role="menuitem"
                 className="profile-menu-item"
                 onClick={() => {
                   setIsProfileMenuOpen(false);
                   onSettingsClick();
                 }}
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4" aria-hidden="true" />
                 <span>{t('topBar.profileSettings')}</span>
               </button>
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useModalDialog } from '@components/modalFocus';
 import { useUpdaterStore, downloadAndInstall } from '@/lib/updater-service';
 import { formatBytes, cn } from '@/lib/utils';
 import { formatSpeed } from '@/lib/download-channel';
@@ -47,6 +48,11 @@ export function UpdatePopover({ open, onRestart, gameRunning }: UpdatePopoverPro
     return () => window.clearInterval(id);
   }, [open]);
 
+  // Focus lands on the action and returns to the chip on close. Escape is left to
+  // MainNav's document listener, which owns the popover's open state. Not
+  // trapped: it overlays the page, it is not a modal dialog over it.
+  const popoverRef = useModalDialog<HTMLDivElement>({ open, trap: false });
+
   if (!open) return null;
 
   const pct =
@@ -56,7 +62,12 @@ export function UpdatePopover({ open, onRestart, gameRunning }: UpdatePopoverPro
   const staged = status === 'ready';
 
   return (
-    <div className="update-popover" role="dialog" aria-label={t('updatePopover.title')}>
+    <div
+      ref={popoverRef}
+      className="update-popover"
+      role="dialog"
+      aria-label={t('updatePopover.title')}
+    >
       <div className="update-popover-title">
         {staged
           ? t('updatePopover.readyTitle', { version: version ?? '' })

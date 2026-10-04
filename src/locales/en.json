@@ -132,7 +132,8 @@
     "clear": "Clear all",
     "empty": "No notifications",
     "markAllRead": "Mark all as read",
-    "title": "Notifications"
+    "title": "Notifications",
+    "unread": "Unread"
   },
   "settings": {
     "about": {
@@ -177,7 +178,14 @@
     "account": {
       "avatar": {
         "description": "Choose how you appear in the launcher",
-        "title": "Profile picture"
+        "title": "Profile picture",
+        "options": {
+          "panda": "Black and white",
+          "panda-blue": "Blue",
+          "panda-coral": "Coral",
+          "panda-mint": "Mint",
+          "panda-gold": "Gold"
+        }
       },
       "comingSoon": "Full account features are coming soon."
     },
@@ -225,7 +233,11 @@
       "general": "General",
       "notifications": "Notifications"
     },
-    "title": "Settings"
+    "title": "Settings",
+    "toggle": {
+      "on": "On",
+      "off": "Off"
+    }
   },
   "timeAgo": {
     "dayAgo": "{{count}} day ago",
@@ -255,7 +267,8 @@
     "restartToUpdate": "Restart to update",
     "updating": "Updating…",
     "restartWhileGameRunning": "A game is running. Restarting now stops tracking this session — its playtime will not be recorded. Restart anyway?",
-    "catalogStale": "New games or updates are available — refresh to load"
+    "catalogStale": "New games or updates are available — refresh to load",
+    "mainNavigation": "Main navigation"
   },
   "updateBanner": {
     "available": "Update v{{version}} available",
