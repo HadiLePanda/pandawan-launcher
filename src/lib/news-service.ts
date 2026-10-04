@@ -5,7 +5,6 @@ import { logger } from './logger';
 
 export interface NewsFeed {
   items: NewsItem[];
-  updatedAt?: string;
 }
 
 /**
@@ -49,7 +48,6 @@ function validateNewsFeed(feed: unknown): NewsFeed {
 
   return {
     items: items.filter(isValidNewsItem).map((item) => item as NewsItem),
-    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
   };
 }
 

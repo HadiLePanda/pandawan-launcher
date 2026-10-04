@@ -37,13 +37,6 @@ function actionLabel(t: (key: string) => string, action: GameContextAction): str
 export interface MenuAnchor {
   x: number;
   y: number;
-  /**
-   * 'below' aligns the menu's left edge with the trigger and opens it underneath.
-   * 'cursor' opens at the pointer, for right-click menus with no trigger to
-   * measure. Either way the menu is positioned by its own left edge, which is
-   * what stops it drifting toward the centre of the window.
-   */
-  placement?: 'below' | 'cursor';
 }
 
 interface GameContextMenuProps {
