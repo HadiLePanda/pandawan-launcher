@@ -50,11 +50,14 @@ export async function patchGame(
 /**
  * Narrow a manifest to this machine's build before handing it to the backend.
  *
- * Both the downloader and the verifier read executable/files/base_url, and a
- * multi-platform manifest keeps those under `platforms` with a null top-level
- * `files`. Passing the raw manifest through would make the Rust side reject the
- * call outright ("invalid type: null, expected a sequence"), which is what
- * broke file verification.
+ * Every command taking a `GameManifest` needs this, not just the two that
+ * read files. A multi-platform manifest keeps the per-platform builds under
+ * `platforms` with a null top-level `files`, and the Rust type is
+ * `files: Vec<FileEntry>`, so passing the raw manifest through makes serde
+ * reject the call ("invalid type: null, expected a sequence") before the
+ * command runs. `install_game` and `verify_game` were narrowed for exactly
+ * that reason; `check_game_update` was missed, so every update check on a
+ * multi-platform build failed and left the card silently reporting "up to date".
  */
 function toPlatformManifest(gameId: string, manifest: GameManifest): GameManifest {
   const build = selectPlatformBuild(manifest, detectPlatform(), supportedPlatformsFor(gameId));
@@ -117,7 +120,7 @@ export async function checkForUpdates(gameId: string, channel: string): Promise<
   if (resolved.status === 'unavailable') {
     throw new Error('No build of ' + gameId + ' is available for this platform.');
   }
-  const manifest = resolved.manifest;
+  const manifest = toPlatformManifest(gameId, resolved.manifest);
   return unwrapResult(await commands.checkGameUpdate(gameId, manifest));
 }
 
