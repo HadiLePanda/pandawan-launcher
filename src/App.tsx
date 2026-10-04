@@ -83,6 +83,8 @@ function App() {
     games,
     news,
     activeDownloads,
+    finishedDownloads,
+    dismissFinishedDownload,
     cancelling,
     error,
     installGame,
@@ -106,6 +108,7 @@ function App() {
     setGameFilters,
     notifications,
     markAllNotificationsRead,
+    dismissNotification,
     clearNotifications,
     avatarId,
     unpinnedGameIds,
@@ -575,8 +578,10 @@ function App() {
       return (
         <DownloadsPage
           downloads={activeDownloads}
+          finished={finishedDownloads}
           games={games.map((g) => g.info)}
           onCancel={cancelOperation}
+          onDismiss={dismissFinishedDownload}
           cancelling={cancelling}
         />
       );
@@ -688,6 +693,9 @@ function App() {
           setSelectedGameId(lastSelectedGameId);
         }}
         onNotificationsClick={() => {
+          // Opening the panel is the read receipt: the bell's badge and its
+          // highlight both mean "unread", and this is the user reading them.
+          markAllNotificationsRead();
           setIsNotificationsOpen((v) => !v);
         }}
         onSettingsClick={() => {
@@ -737,7 +745,8 @@ function App() {
           <NotificationsPanel
             notifications={notifications}
             onMarkAllRead={markAllNotificationsRead}
-            onClear={clearNotifications}
+            onDismiss={dismissNotification}
+            onClearAll={clearNotifications}
             onClose={() => setIsNotificationsOpen(false)}
           />
         )}

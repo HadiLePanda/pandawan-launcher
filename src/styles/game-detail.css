@@ -572,6 +572,10 @@ input.pin-search {
 .game-detail {
   display: grid;
   grid-template-columns: 1fr 420px;
+  /* One row, explicitly. Without this both columns are implicit rows, so the
+     aside landed on a second row underneath the main column - which is exactly
+     what happened when the footer work gave this element flex:1. */
+  grid-template-rows: 100%;
   gap: 32px;
   padding: 24px;
   flex: 1;
@@ -584,6 +588,7 @@ input.pin-search {
   flex-direction: column;
   gap: 0;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -1031,6 +1036,36 @@ input.pin-search {
   background: var(--surface-hover);
 }
 
+/* Screenshots. One row of equal-height crops at the bottom of the left column,
+   which is where the empty space was. Fixed 16/9 crops keep the row aligned
+   whatever the source aspect ratios are, so a mixed set does not stagger. */
+.game-detail-shots {
+  margin-top: 24px;
+}
+
+.game-detail-shots-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.game-detail-shots-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.game-detail-shot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-light);
+}
+
 .game-detail-news {
   width: 420px;
   flex-shrink: 0;
@@ -1129,7 +1164,14 @@ input.pin-search {
 @media (max-width: 1024px) {
   .game-detail {
     grid-template-columns: 1fr;
+    /* Two stacked rows need auto, not the 100% the wide layout uses. */
+    grid-template-rows: auto auto;
     overflow-y: auto;
+  }
+
+  .game-detail-main,
+  .game-detail-news {
+    overflow-y: visible;
   }
 
   .game-detail-news {

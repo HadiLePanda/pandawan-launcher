@@ -31,6 +31,21 @@ export interface LauncherNotification {
   read: boolean;
 }
 
+/**
+ * A transfer that reached 100% and is waiting to be dismissed. Kept apart from
+ * `activeDownloads` so "is anything running" and "what has happened this
+ * session" stay two different questions, each with one owner.
+ */
+export interface FinishedDownload {
+  gameId: string;
+  name: string;
+  iconUrl?: string;
+  bannerUrl?: string;
+  totalBytes: number;
+  /** When it finished, for the row's timestamp. */
+  finishedAt: number;
+}
+
 type SetState = (fn: (state: LauncherState) => Partial<LauncherState>) => void;
 
 type GetState = () => LauncherState;
@@ -40,6 +55,8 @@ interface LauncherState {
   news: NewsItem[];
   error: string | null;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
+  /** Transfers that finished this session, newest last. Dismissed by the X. */
+  finishedDownloads: FinishedDownload[];
   /** A cancel has been sent and the backend is winding down. */
   cancelling: boolean;
   settings: LauncherSettings | null;
@@ -60,6 +77,8 @@ interface LauncherState {
   channelFor: (gameId: string, catalogChannel: string) => string;
   pushNotification: (notification: Omit<LauncherNotification, 'id' | 'date' | 'read'>) => void;
   markAllNotificationsRead: () => void;
+  /** Remove one notification, read or not. */
+  dismissNotification: (id: string) => void;
   clearNotifications: () => void;
   updateGameStatus: (
     gameId: string,
@@ -68,6 +87,10 @@ interface LauncherState {
   ) => void;
   setDownloadProgress: (gameId: string, snapshot: DownloadProgressSnapshot) => void;
   removeDownload: (gameId: string) => void;
+  /** Move a finished transfer to the finished list, so its row survives. */
+  completeDownload: (gameId: string) => void;
+  /** Dismiss one finished row. */
+  dismissFinishedDownload: (gameId: string) => void;
   setSettings: (settings: LauncherSettings) => Promise<void>;
   setError: (error: string | null) => void;
   clearError: () => void;
@@ -94,6 +117,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   news: [],
   error: null,
   activeDownloads: new Map(),
+  finishedDownloads: [],
   cancelling: false,
   settings: null,
   catalogSource: null,
@@ -147,6 +171,9 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       notifications: state.notifications.map((n) => (n.read ? n : { ...n, read: true })),
     })),
 
+  dismissNotification: (id) =>
+    set((state) => ({ notifications: state.notifications.filter((n) => n.id !== id) })),
+
   clearNotifications: () => set({ notifications: [] }),
 
   updateGameStatus: (gameId, status, installation) => {
@@ -177,6 +204,38 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       };
     });
   },
+
+  completeDownload: (gameId) => {
+    set((state) => {
+      const snapshot = state.activeDownloads.get(gameId);
+      const game = state.games.find((g) => g.info.id === gameId);
+      if (!snapshot) return {};
+      const newDownloads = new Map(state.activeDownloads);
+      newDownloads.delete(gameId);
+      return {
+        activeDownloads: newDownloads,
+        cancelling: false,
+        // Re-completing the same game replaces its row instead of stacking a
+        // second one: a row per attempt is history nobody asked for.
+        finishedDownloads: [
+          ...state.finishedDownloads.filter((f) => f.gameId !== gameId),
+          {
+            gameId,
+            name: game?.info.name ?? gameId,
+            iconUrl: game?.info.iconUrl,
+            bannerUrl: game?.info.bannerUrl,
+            totalBytes: snapshot.totalBytes,
+            finishedAt: Date.now(),
+          },
+        ],
+      };
+    });
+  },
+
+  dismissFinishedDownload: (gameId) =>
+    set((state) => ({
+      finishedDownloads: state.finishedDownloads.filter((f) => f.gameId !== gameId),
+    })),
 
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
@@ -429,13 +488,13 @@ async function runPatchFlow(
   channel: string,
   activeStatus: 'downloading' | 'updating'
 ) {
-  const { updateGameStatus, setDownloadProgress, removeDownload } = get();
+  const { updateGameStatus, setDownloadProgress, completeDownload } = get();
   updateGameStatus(gameId, activeStatus);
 
   try {
     const { installation } = await gameService.patchGame(gameId, channel, {
       onProgress: (id, snapshot) => setDownloadProgress(id, snapshot),
-      onComplete: (id) => removeDownload(id),
+      onComplete: (id) => completeDownload(id),
       onError: (message) => set((state) => ({ ...state, error: message })),
     });
 
@@ -470,7 +529,7 @@ async function runPatchFlow(
     updateGameStatus(gameId, fallbackStatus);
     // Cancelling and failing both land here, and only 'complete' removes the
     // entry. Without this the row stayed in Downloads forever after a cancel.
-    removeDownload(gameId);
+    get().removeDownload(gameId);
     handleStoreError(err, set, `runPatchFlow:${activeStatus}`);
   }
 }

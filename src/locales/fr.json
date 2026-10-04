@@ -84,7 +84,8 @@
     "unavailableOnPlatform": "Indisponible sur cet appareil",
     "update": "Mettre à jour",
     "updating": "Mise à jour",
-    "version": "Version"
+    "version": "Version",
+    "screenshots": "Captures d'écran"
   },
   "gamesHome": {
     "unknownGenre": "Genre inconnu",
@@ -111,7 +112,11 @@
     "ofSize": "{{done}} sur {{total}}",
     "preparing": "Préparation…",
     "title": "Téléchargements",
-    "cancelling": "Annulation…"
+    "cancelling": "Annulation…",
+    "downloading": "Téléchargement",
+    "finished": "Terminé",
+    "complete": "Téléchargement terminé",
+    "dismiss": "Ignorer"
   },
   "errors": {
     "alreadyRunning": "Le jeu est déjà en cours d'exécution.",
@@ -131,7 +136,8 @@
     "empty": "Aucune notification",
     "markAllRead": "Tout marquer comme lu",
     "title": "Notifications",
-    "unread": "Non lu"
+    "unread": "Non lu",
+    "dismiss": "Ignorer"
   },
   "settings": {
     "about": {

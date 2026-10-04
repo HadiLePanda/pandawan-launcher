@@ -507,6 +507,26 @@ export function GamePage({
             </div>
           </div>
 
+          {/* Screenshots fill the space the description and stats leave. A
+                            quiet label and one row: no lightbox, no carousel, because a
+                            gallery that needs its own interaction is a second feature. */}
+          {game.info.screenshots.length > 0 && (
+            <section className="game-detail-shots">
+              <h2 className="game-detail-shots-title">{t('gamePage.screenshots')}</h2>
+              <div className="game-detail-shots-row">
+                {game.info.screenshots.map((shot, i) => (
+                  <img
+                    key={shot}
+                    src={shot}
+                    alt={`${game.info.name} ${i + 1}`}
+                    className="game-detail-shot"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* No heading and no panel behind the news. The article titles are the
           headings, and a card background in a column of other cards made the
           aside read as a fourth surface competing with the banner. */}
