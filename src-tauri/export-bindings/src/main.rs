@@ -5,30 +5,36 @@
 //! launching the whole Tauri application just to print a file. This calls
 //! `create_specta_builder()` directly and never opens a window.
 //!
-//! ## Run it with --release
+//! ## This binary does not run on this machine
 //!
-//! `cargo run --manifest-path src-tauri/export-bindings/Cargo.toml` builds a
-//! DEBUG binary that dies at load on Windows with STATUS_ENTRYPOINT_NOT_FOUND
-//! (0xC0000139), before main() prints a line. The release binary of the same
-//! source runs fine on the same machine, so this is not a missing WebView2
-//! runtime - it is the debug build's own import of it.
+//! It dies at load on Windows with STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139),
+//! before main() prints a line. This is NOT fixed by --release: a release build
+//! from this exact source fails identically (verified 2026-10-04). A release
+//! binary built earlier does run, so the difference is a stale artifact, not the
+//! profile - do not trust an old exe as evidence that the current source works.
 //!
-//! It is not a missing DLL either: the binary's 339 static imports all resolve,
-//! and webview2-com-sys is not in the import table at all. `collect_commands!`
-//! expands to `tauri::generate_handler!`, whose static per-command table pins
-//! webview2-com-sys's DllMain - registered through the `ctor` crate - into any
-//! process that links it. Debug builds link the unwinding/runtime paths that
-//! pull that entrypoint in; release builds do not.
+//! What is ruled out, so none of it is re-tried:
 //!
-//! Turning off tauri's default features does not help: the launcher is a GUI
-//! app and its lib genuinely uses wry types, so `default-features = false`
-//! fails to compile with 30 errors. The handler table cannot be dropped either -
-//! `Commands<R>` stores an `Arc<dyn Fn(Invoke<R>)>`, so the runtime comes with
-//! the type collection.
+//!   - A missing WebView2 runtime. The runtime is installed (154.0.4258.53), and
+//!     the binary's 339 static imports all resolve.
+//!   - A missing WebView2Loader.dll. webview2-com-sys is not in the import table
+//!     at all, and putting the DLL beside the binary changes nothing.
+//!   - A missing MSVC runtime. VCRUNTIME140 and friends all load.
+//!   - default-features = false on tauri. The launcher is a GUI app whose lib uses
+//!     wry types, so this fails to compile with 30 errors.
+//!   - Dropping the handler table. Commands<R> stores an Arc<dyn Fn(Invoke<R>)>,
+//!     so the runtime arrives with the type collection.
 //!
-//! So the fix is the profile, not the dependency graph. If the debug build ever
-//! starts failing here again, do not re-derive this: run
-//! `cargo run --release --manifest-path src-tauri/export-bindings/Cargo.toml`.
+//! `collect_commands!` expands to `tauri::generate_handler!`, whose static
+//! per-command table pins webview2-com-sys's DllMain - registered through the
+//! `ctor` crate - into any process that links it, and that DllMain is what fails
+//! to resolve. Any process referencing create_specta_builder dies the same way,
+//! including a test binary, which is why this cannot be probed from a unit test.
+//!
+//! Working around it means regenerating bindings on a machine where this runs,
+//! or getting a WebView2 fix upstream. Run it, reconcile the output against
+//! src/types/index.ts, and let bindings-parity.test.ts prove the command list
+//! survived - that test is the guard, and it passes on the committed file.
 //!
 //! It lives in `src-tauri/export-bindings/` rather than as `src-tauri/src/bin/`
 //! because a second binary in the app crate breaks the macOS bundle - see this
