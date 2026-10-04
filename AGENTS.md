@@ -189,6 +189,29 @@ The few things worth knowing without looking:
 
 ## Coding Style
 
+### Writing voice
+
+Aim for **80% of ASD-STE100**. Applies to comments, commit messages, docs,
+prose and every response to the user. The style forbids contraction-free
+legalese, needless words, parentheticals, and inflated claims, so write the
+shortest true sentence instead.
+
+- One idea per sentence. Split rather than join with "and", "also", "but".
+- Say what a thing does, not that it "helps" or "allows you to". "Narrow the
+  manifest before the check" beats "ensures a valid manifest is passed".
+- Drop hedges and filler: "basically", "actually", "simply", "just", "very",
+  "quite", "in order to" -> "to".
+- No em or en dashes in prose. Use a full stop or a real clause.
+- Numbers over adjectives: "442 MB across 267 files", not "huge".
+- No opening throat-clearing: "Great question", "I'd be happy to", "Certainly".
+- Lead with the answer or the change. Do not restate the request.
+- Tables and short lists over paragraphs, and delete a paragraph rather than
+  shorten it.
+
+This is a ceiling, not a quota. Clarity beats the rule when the rule produces
+an unclear sentence. "Use `?` for error propagation" is short and clear, so it
+stays; "Ensure that you make sure to possibly check the value" does not.
+
 ### Comments
 
 Rare, and only where the code cannot say it: an invariant, a non-obvious
