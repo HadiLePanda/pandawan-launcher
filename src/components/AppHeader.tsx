@@ -35,6 +35,8 @@ interface MainNavProps {
   onSettingsClick: () => void;
   onNavigatePrev: () => void;
   onNavigateNext: () => void;
+  canNavigatePrev: boolean;
+  canNavigateNext: boolean;
   activeDownloads: Map<string, DownloadProgressSnapshot>;
   notificationsBadge?: number;
   avatarUrl?: string;
@@ -165,6 +167,8 @@ export function MainNav({
   onSettingsClick,
   onNavigatePrev,
   onNavigateNext,
+  canNavigatePrev,
+  canNavigateNext,
   activeDownloads,
   notificationsBadge,
   avatarUrl,
@@ -313,7 +317,7 @@ export function MainNav({
             type="button"
             className="nav-arrow"
             onClick={onNavigatePrev}
-            disabled={activeView !== 'games'}
+            disabled={!canNavigatePrev}
             aria-label={t('topBar.previous')}
             title={t('topBar.previous')}
           >
@@ -323,7 +327,7 @@ export function MainNav({
             type="button"
             className="nav-arrow"
             onClick={onNavigateNext}
-            disabled={activeView !== 'games'}
+            disabled={!canNavigateNext}
             aria-label={t('topBar.next')}
             title={t('topBar.next')}
           >

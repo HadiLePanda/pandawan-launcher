@@ -41,6 +41,8 @@ import {
 import { logger } from '@/lib/logger';
 import { loadCatalog as loadCatalogService } from '@/lib/catalog-service';
 import { startCatalogPoll } from '@/lib/cdn';
+import * as nav from '@/lib/nav-history';
+import type { NavEntry, NavView } from '@/lib/nav-history';
 import { applyLanguage } from '@/lib/i18n';
 import { windowTitlebarToggleMaximize } from '@/lib/window';
 import type { Game, VerificationResult, VerifyProgress } from '@/types';
@@ -64,10 +66,15 @@ function App() {
   const verifyRunRef = useRef(0);
   const [trayHintPending, setTrayHintPending] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'games' | 'news' | 'store' | 'downloads'>('games');
-  const [staleCatalogFor, setStaleCatalogFor] = useState(activeView);
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
-  const [lastSelectedGameId, setLastSelectedGameId] = useState<string | null>(null);
+  const [history, setHistory] = useState<nav.NavHistory>(() =>
+    nav.initialHistory({ view: 'games', gameId: null, article: null })
+  );
+
+  const surface = nav.current(history);
+  const activeView = surface.view;
+  const selectedGameId = surface.gameId;
+  const newsArticle = surface.article;
+  const [staleCatalogFor, setStaleCatalogFor] = useState<NavView>('games');
   const [contextMenu, setContextMenu] = useState<{ gameId: string; x: number; y: number } | null>(
     null
   );
@@ -75,9 +82,6 @@ function App() {
     gameId: string;
     view: 'patchNotes' | 'news' | 'info';
   } | null>(null);
-  const [newsArticle, setNewsArticle] = useState<{ gameId: string; articleId: string } | null>(
-    null
-  );
 
   const {
     games,
@@ -398,20 +402,58 @@ function App() {
 
   const selectedGame = games.find((g) => g.info.id === selectedGameId);
 
-  const handleSelectGame = (gameId: string | null) => {
-    setSelectedGameId(gameId);
-    // Picking a game is leaving whatever you were reading: the article shows over
-    // the game page, so without this it stays up over the game you just chose.
-    setNewsArticle(null);
-    if (gameId) {
-      setLastSelectedGameId(gameId);
-    }
-  };
+  const goTo = useCallback((entry: NavEntry) => {
+    setHistory((prev) => nav.push(prev, entry));
+  }, []);
 
-  const handleSelectGameIcon = (gameId: string | null) => {
-    setActiveView('games');
-    handleSelectGame(gameId);
-  };
+  const handleNavigateBack = useCallback(() => {
+    setHistory((prev) => nav.goBack(prev));
+  }, []);
+
+  const handleNavigateForward = useCallback(() => {
+    setHistory((prev) => nav.goForward(prev));
+  }, []);
+
+  /** Leaving Games and coming back lands on the games surface actually left. */
+  const goToView = useCallback((view: NavView) => {
+    setHistory((prev) => {
+      const live = nav.current(prev);
+      if (live.view === view) {
+        return nav.push(prev, { view, gameId: null, article: null });
+      }
+      const restored = view === 'games' ? nav.lastGamesEntry(prev) : null;
+      return nav.push(prev, {
+        view,
+        gameId: restored?.gameId ?? null,
+        article: restored?.article ?? null,
+      });
+    });
+  }, []);
+
+  const handleSelectGame = useCallback(
+    (gameId: string | null) => {
+      goTo({ view: 'games', gameId, article: null });
+    },
+    [goTo]
+  );
+
+  const handleSelectGameIcon = useCallback(
+    (gameId: string | null) => {
+      goTo({ view: 'games', gameId, article: null });
+    },
+    [goTo]
+  );
+
+  const handleOpenArticle = useCallback((gameId: string, articleId: string) => {
+    setHistory((prev) => {
+      const article = { gameId, articleId };
+      return nav.push(prev, { ...nav.current(prev), gameId, article });
+    });
+  }, []);
+
+  const handleCloseArticle = useCallback(() => {
+    setHistory((prev) => nav.replaceEntry(prev, { ...nav.current(prev), article: null }));
+  }, []);
 
   const handleContextMenu = (e: React.MouseEvent, gameId: string) => {
     e.preventDefault();
@@ -459,7 +501,12 @@ function App() {
   const handleUninstallGame = async (gameId: string) => {
     if (confirm(t('app.confirmUninstall'))) {
       await uninstallGame(gameId);
-      setSelectedGameId(null);
+      setHistory((prev) => ({
+        ...prev,
+        entries: prev.entries.map((entry) =>
+          entry.gameId === gameId ? { view: entry.view, gameId: null, article: null } : entry
+        ),
+      }));
     }
   };
 
@@ -520,27 +567,7 @@ function App() {
     [games, unpinnedGameIds]
   );
 
-  const handleNavigate = (dir: -1 | 1) => {
-    const ids = pinnedGames.map((g) => g.id);
-    if (ids.length === 0) return;
-    if (!selectedGameId) {
-      setSelectedGameId(ids[0] ?? null);
-      return;
-    }
-    const idx = ids.indexOf(selectedGameId);
-    const base = idx === -1 ? 0 : idx;
-    setSelectedGameId(ids[(base + dir + ids.length) % ids.length] ?? null);
-  };
-
   const renderContent = () => {
-    // The article view wins over the tab underneath it, which means navigating to
-    // another tab has to close it explicitly or it stays on screen - the store
-    // looked like it was rendering the news article.
-    //
-    // It shows on the news tab, and on the game page it was opened from: a news
-    // card on a game page set the state and rendered nothing at all, because the
-    // game page is not the news tab. Those two cases are what keep an article from
-    // outliving the surface it was opened on.
     const articleFromGame =
       newsArticle !== null && activeView === 'games' && newsArticle.gameId === selectedGameId;
     if (newsArticle && (activeView === 'news' || articleFromGame)) {
@@ -557,19 +584,20 @@ function App() {
             gameName={articleGame?.info.name}
             gameIconUrl={articleGame?.info.iconUrl}
             gameBannerUrl={articleGame?.info.bannerUrl}
-            onBack={() => setNewsArticle(null)}
-            onClose={() => setNewsArticle(null)}
+            onBack={handleCloseArticle}
+            onClose={handleCloseArticle}
           />
         );
       }
-      setNewsArticle(null);
+      setHistory((prev) => nav.replaceEntry(prev, { ...nav.current(prev), article: null }));
+      return null;
     }
 
     if (activeView === 'news') {
       return (
         <News
           onSelectArticle={(article) => {
-            setNewsArticle({ articleId: article.id, gameId: article.gameId ?? '' });
+            handleOpenArticle(article.gameId ?? '', article.id);
           }}
         />
       );
@@ -612,14 +640,8 @@ function App() {
               // than leaving a stale "update available" on screen.
               void refreshUpdateStatus();
             }}
-            onSelectNewsArticle={(articleId) =>
-              setNewsArticle({ articleId, gameId: selectedGame.info.id })
-            }
-            onGoToDownloads={() => {
-              setNewsArticle(null);
-              setActiveView('downloads');
-              setSelectedGameId(lastSelectedGameId);
-            }}
+            onSelectNewsArticle={(articleId) => handleOpenArticle(selectedGame.info.id, articleId)}
+            onGoToDownloads={() => goToView('downloads')}
             onCancel={cancelOperation}
           />
         ) : (
@@ -667,31 +689,10 @@ function App() {
       />
       <MainNav
         activeView={activeView}
-        onGamesClick={() => {
-          if (activeView === 'games') {
-            setSelectedGameId(null);
-          } else {
-            setActiveView('games');
-            setSelectedGameId(lastSelectedGameId);
-          }
-        }}
-        onNewsClick={() => {
-          // Cleared, not just hidden: leaving it set means coming back to News
-          // reopens the article the user walked away from.
-          setNewsArticle(null);
-          setActiveView('news');
-          setSelectedGameId(lastSelectedGameId);
-        }}
-        onStoreClick={() => {
-          setNewsArticle(null);
-          setActiveView('store');
-          setSelectedGameId(lastSelectedGameId);
-        }}
-        onDownloadsNavigate={() => {
-          setNewsArticle(null);
-          setActiveView('downloads');
-          setSelectedGameId(lastSelectedGameId);
-        }}
+        onGamesClick={() => goToView('games')}
+        onNewsClick={() => goToView('news')}
+        onStoreClick={() => goToView('store')}
+        onDownloadsNavigate={() => goToView('downloads')}
         onNotificationsClick={() => {
           // Opening the panel is the read receipt: the bell's badge and its
           // highlight both mean "unread", and this is the user reading them.
@@ -705,8 +706,10 @@ function App() {
         activeDownloads={activeDownloads}
         notificationsBadge={unreadCount}
         avatarUrl={avatarUrl(avatarId)}
-        onNavigatePrev={() => handleNavigate(-1)}
-        onNavigateNext={() => handleNavigate(1)}
+        onNavigatePrev={handleNavigateBack}
+        canNavigatePrev={nav.canGoBack(history)}
+        onNavigateNext={handleNavigateForward}
+        canNavigateNext={nav.canGoForward(history)}
         catalogStale={isCatalogStale}
         onCatalogRefresh={handleRefreshCatalog}
         launcherUpdate={
