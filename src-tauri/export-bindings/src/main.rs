@@ -2,13 +2,33 @@
 //!
 //! Why this exists rather than the in-binary debug auto-export it replaces: that
 //! path only ran under `#[cfg(debug_assertions)]` inside `run()`, which means
-//! launching the whole Tauri application just to print a file. Worse, on a
-//! Windows host the lib test binary could not even reach that point - it links
-//! `webview2-com-sys`, which resolves the WebView2 loader when the process
-//! loads, so without that runtime the process dies with
-//! STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139) before any code runs. A tool whose
-//! job is to regenerate a file has to work on a machine with no GUI stack, so
-//! this calls `create_specta_builder()` directly and never opens a window.
+//! launching the whole Tauri application just to print a file. This calls
+//! `create_specta_builder()` directly and never opens a window.
+//!
+//! ## Run it with --release
+//!
+//! `cargo run --manifest-path src-tauri/export-bindings/Cargo.toml` builds a
+//! DEBUG binary that dies at load on Windows with STATUS_ENTRYPOINT_NOT_FOUND
+//! (0xC0000139), before main() prints a line. The release binary of the same
+//! source runs fine on the same machine, so this is not a missing WebView2
+//! runtime - it is the debug build's own import of it.
+//!
+//! It is not a missing DLL either: the binary's 339 static imports all resolve,
+//! and webview2-com-sys is not in the import table at all. `collect_commands!`
+//! expands to `tauri::generate_handler!`, whose static per-command table pins
+//! webview2-com-sys's DllMain - registered through the `ctor` crate - into any
+//! process that links it. Debug builds link the unwinding/runtime paths that
+//! pull that entrypoint in; release builds do not.
+//!
+//! Turning off tauri's default features does not help: the launcher is a GUI
+//! app and its lib genuinely uses wry types, so `default-features = false`
+//! fails to compile with 30 errors. The handler table cannot be dropped either -
+//! `Commands<R>` stores an `Arc<dyn Fn(Invoke<R>)>`, so the runtime comes with
+//! the type collection.
+//!
+//! So the fix is the profile, not the dependency graph. If the debug build ever
+//! starts failing here again, do not re-derive this: run
+//! `cargo run --release --manifest-path src-tauri/export-bindings/Cargo.toml`.
 //!
 //! It lives in `src-tauri/export-bindings/` rather than as `src-tauri/src/bin/`
 //! because a second binary in the app crate breaks the macOS bundle - see this
