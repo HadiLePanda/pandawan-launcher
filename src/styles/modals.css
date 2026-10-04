@@ -291,6 +291,17 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  /* Check for updates grows this row with an Install or Restart button once a
+     check finds something. Wrapping onto a second line moved the panel below it,
+     so the row holds two lines' worth whether or not the second one is used. */
+  min-height: calc(2 * 2rem + 0.5rem);
+  align-content: flex-start;
+}
+
+/* The line the update result is reported on, held open so it appearing does not
+   shift the rows under it. Height matches one .caption line-height. */
+.about-status {
+  min-height: 1.25rem;
 }
 
 .setting-item {

@@ -663,7 +663,13 @@ function AboutSettings() {
             </button>
           </div>
         </div>
-        {statusText && <p className="caption">{statusText}</p>}
+        {/* Reserved rather than conditional: the status line appears the moment a
+            check finishes, and a paragraph that is absent until then moves every
+            row below it. One line of .caption is held open so the result fills
+            space that was already there. */}
+        <p className="caption about-status" aria-live="polite">
+          {statusText ?? ''}
+        </p>
         {showDevHint && <p className="caption">{t('settings.about.updates.devHint')}</p>}
         {logsError && <p className="caption text-red-400">{logsError}</p>}
       </div>
