@@ -4,14 +4,6 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useModalDialog } from './modalFocus';
 import { cn } from '@/lib/utils';
 
-/**
- * Full-screen screenshot viewer.
- *
- * A real modal: it covers the page and traps Tab, because Escape and the arrow
- * keys are the only ways to leave or move through it and a keyboard user has to
- * reach both. Backdrop click and the close button also work, since a modal that
- * can only be escaped with a key is a trap for anyone who does not know that.
- */
 export function ScreenshotLightbox({
   shots,
   name,
@@ -30,6 +22,13 @@ export function ScreenshotLightbox({
 
   const multiple = shots.length > 1;
   const go = (delta: number) => onIndex((index + delta + shots.length) % shots.length);
+
+  // Measured on the stage, not the image: a letterboxed shot still splits evenly.
+  const step = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!multiple) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    go(event.clientX - box.left < box.width / 2 ? -1 : 1);
+  };
 
   return (
     <div className="shot-lightbox-backdrop" onClick={onClose}>
@@ -56,32 +55,43 @@ export function ScreenshotLightbox({
           </button>
         </div>
 
-        <img src={shots[index]} alt={`${name} ${index + 1}`} className="shot-lightbox-image" />
+        <div className="shot-lightbox-stage" onClick={step}>
+          <img
+            src={shots[index]}
+            alt={`${name} ${index + 1}`}
+            className="shot-lightbox-image"
+            draggable={false}
+          />
 
-        {/* Arrows only when there is somewhere to go. A single screenshot with
-            two arrows that both do nothing is a broken control, not a viewer. */}
-        {multiple && (
-          <>
-            <button
-              type="button"
-              onClick={() => go(-1)}
-              className="shot-lightbox-nav shot-lightbox-prev"
-              title={t('gamePage.previousScreenshot')}
-              aria-label={t('gamePage.previousScreenshot')}
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(1)}
-              className="shot-lightbox-nav shot-lightbox-next"
-              title={t('gamePage.nextScreenshot')}
-              aria-label={t('gamePage.nextScreenshot')}
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </>
-        )}
+          {multiple && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go(-1);
+                }}
+                className="shot-lightbox-nav shot-lightbox-prev"
+                title={t('gamePage.previousScreenshot')}
+                aria-label={t('gamePage.previousScreenshot')}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go(1);
+                }}
+                className="shot-lightbox-nav shot-lightbox-next"
+                title={t('gamePage.nextScreenshot')}
+                aria-label={t('gamePage.nextScreenshot')}
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Thumbnails, so a shot is reachable without stepping through every one. */}

@@ -592,11 +592,14 @@ input.pin-search {
   overflow-y: auto;
 }
 
+/* Fixed height, not an aspect ratio. With `width: 100%` and `aspect-ratio: 16/9`
+   the height was a function of the window width: a wider window gave a taller
+   banner, and past the 420px cap it stopped being 16:9 at all. The band now has
+   the same height at every window size, and object-fit does the cropping. */
 .game-detail-banner {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 420px;
+  height: 360px;
   overflow: hidden;
   background: var(--surface-default);
 }
@@ -1145,42 +1148,67 @@ input.pin-search {
   color: var(--ink-default);
 }
 
-.shot-lightbox-image {
-  display: block;
-  max-width: 100%;
-  max-height: calc(100vh - 160px);
-  object-fit: contain;
-  background: #000;
-}
-
-/* Arrows sit on the image's own vertical centre, half over it, so they do not
-   claim a row of their own. */
-.shot-lightbox-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+/* Fixed stage box. The arrows are positioned against this, not against the
+   image, so they stay put whatever the screenshot's aspect ratio is. Sizing them
+   off the rendered image made them drift with every shot. */
+.shot-lightbox-stage {
+  position: relative;
+  width: min(1100px, calc(100vw - 48px));
+  height: min(70vh, calc(100vh - 200px));
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  color: var(--ink-default);
-  background: rgba(0, 0, 0, 0.55);
-  border: none;
+  background: #000;
   cursor: pointer;
 }
 
-.shot-lightbox-nav:hover {
-  background: rgba(0, 0, 0, 0.75);
+.shot-lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+}
+
+/* Full-height, generously wide, and a transparent target: the visible pill is
+   only the glyph, but the button is the whole column, so there is no precision
+   clicking. */
+.shot-lightbox-nav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  min-width: 72px;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-default);
+}
+
+.shot-lightbox-nav svg {
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  box-sizing: content-box;
+  transition: background 0.15s ease;
+}
+
+.shot-lightbox-nav:hover svg {
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .shot-lightbox-prev {
-  left: 8px;
+  left: 0;
+  justify-content: flex-start;
+  padding-left: 12px;
 }
 
 .shot-lightbox-next {
-  right: 8px;
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 12px;
 }
 
 .shot-lightbox-thumbs {
