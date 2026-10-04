@@ -1190,7 +1190,6 @@ mod tests {
                 url: "keep.dat".to_string(),
                 compress: None,
             }],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1254,7 +1253,6 @@ mod tests {
                 url: "data/config.json".to_string(),
                 compress: None,
             }],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1376,7 +1374,6 @@ mod tests {
                     compress: None,
                 },
             ],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,

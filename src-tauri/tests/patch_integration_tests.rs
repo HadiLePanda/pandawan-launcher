@@ -469,7 +469,6 @@ fn test_manifest_file_validation() {
                 compress: None,
             },
         ],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -530,7 +529,6 @@ fn test_complete_installation_scenario() {
                 compress: None,
             },
         ],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -689,7 +687,6 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
             url: "files/game.exe".to_string(),
             compress: None,
         }],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -803,7 +800,6 @@ async fn test_patch_preserves_metadata_across_update_download() {
             url: "files/game.exe".to_string(),
             compress: None,
         }],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,

@@ -300,7 +300,6 @@ def generate_manifest(args) -> dict:
         "icon_url": args.icon_url or None,
         "banner_url": args.banner_url or None,
         "release_date": args.release_date or datetime.now(timezone.utc).isoformat(),
-        "launch_args": args.launch_args.split() if args.launch_args else None,
         "size_bytes": total_size,
         "patch_notes": patch_notes,
         "files": single_entries,
@@ -349,7 +348,6 @@ def main():
     parser.add_argument("--icon-url", default=None, help="URL to game icon")
     parser.add_argument("--banner-url", default=None, help="URL to game banner")
     parser.add_argument("--release-date", default=None, help="ISO release date")
-    parser.add_argument("--launch-args", default=None, help="Default launch arguments")
     parser.add_argument("--patch-notes", default=None, help="Path to a JSON patch notes file")
     parser.add_argument(
         "--exclude",

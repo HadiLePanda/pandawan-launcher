@@ -66,7 +66,6 @@ fn test_complete_new_installation_workflow() {
                 compress: Some(true),
             },
         ],
-        launch_args: Some(vec!["--fullscreen".to_string()]),
         channel: "stable".to_string(),
 
         platforms: None,
@@ -187,7 +186,6 @@ fn test_update_workflow_with_version_change() {
                 compress: None,
             },
         ],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -297,7 +295,6 @@ fn test_verification_workflow() {
                 compress: None,
             },
         ],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -382,7 +379,6 @@ fn test_corrupted_file_recovery_workflow() {
             url: "game.dat".to_string(),
             compress: None,
         }],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -647,7 +643,6 @@ fn test_recovery_from_partial_failure() {
                 compress: None,
             },
         ],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,

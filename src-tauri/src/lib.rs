@@ -936,8 +936,7 @@ mod tests {
             "icon_url": null,
             "banner_url": null,
             "executable": "game.exe",
-            "files": [],
-            "launch_args": null
+            "files": []
         }"#;
 
         let manifest: GameManifest =
@@ -1048,7 +1047,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1091,7 +1089,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1133,7 +1130,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1175,7 +1171,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1231,7 +1226,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,
@@ -1277,7 +1271,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             channel: "stable".to_string(),
 
             platforms: None,

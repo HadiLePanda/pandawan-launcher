@@ -162,7 +162,6 @@ export type GameManifest = {
   banner_url?: string;
   executable: string;
   files: FileEntry[];
-  launch_args?: string[];
 };
 
 export type LauncherError =

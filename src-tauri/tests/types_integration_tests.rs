@@ -41,10 +41,6 @@ fn test_game_manifest_full_serialization() {
                 compress: Some(true),
             },
         ],
-        launch_args: Some(vec![
-            "--fullscreen".to_string(),
-            "--resolution=1920x1080".to_string(),
-        ]),
         channel: "stable".to_string(),
 
         platforms: None,
@@ -59,7 +55,6 @@ fn test_game_manifest_full_serialization() {
     assert!(json.contains("1.2.3-beta"));
     assert!(json.contains("12345"));
     assert!(json.contains("game.exe"));
-    assert!(json.contains("--fullscreen"));
 
     // Deserialize
     let deserialized: GameManifest = serde_json::from_str(&json).expect("Failed to deserialize");
@@ -68,7 +63,6 @@ fn test_game_manifest_full_serialization() {
     assert_eq!(deserialized.version, manifest.version);
     assert_eq!(deserialized.build_number, manifest.build_number);
     assert_eq!(deserialized.files.len(), manifest.files.len());
-    assert_eq!(deserialized.launch_args, manifest.launch_args);
 }
 
 #[test]
@@ -84,7 +78,6 @@ fn test_game_manifest_minimal_serialization() {
         banner_url: None,
         executable: "run.exe".to_string(),
         files: vec![],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -97,7 +90,6 @@ fn test_game_manifest_minimal_serialization() {
     assert_eq!(deserialized.description, None);
     assert_eq!(deserialized.icon_url, None);
     assert!(deserialized.files.is_empty());
-    assert_eq!(deserialized.launch_args, None);
 }
 
 #[test]
@@ -120,8 +112,7 @@ fn test_game_manifest_deserialization_from_json() {
                 "url": "files/start.exe",
                 "compress": false
             }
-        ],
-        "launch_args": ["--windowed"]
+        ]
     }
     "#;
 
@@ -762,7 +753,6 @@ fn test_full_data_flow() {
             url: "game.exe".to_string(),
             compress: None,
         }],
-        launch_args: None,
         channel: "stable".to_string(),
 
         platforms: None,
@@ -812,10 +802,6 @@ fn test_serialization_with_special_characters() {
         banner_url: None,
         executable: "game.exe".to_string(),
         files: vec![],
-        launch_args: Some(vec![
-            "--path=C:\\Program Files\\Game".to_string(),
-            "--name=Test User".to_string(),
-        ]),
         channel: "stable".to_string(),
 
         platforms: None,
@@ -828,7 +814,6 @@ fn test_serialization_with_special_characters() {
     assert_eq!(deserialized.name, manifest.name);
     assert_eq!(deserialized.version, manifest.version);
     assert_eq!(deserialized.description, manifest.description);
-    assert_eq!(deserialized.launch_args, manifest.launch_args);
 }
 
 #[test]
@@ -843,7 +828,6 @@ fn test_unicode_handling() {
         banner_url: None,
         executable: "game.exe".to_string(),
         files: vec![],
-        launch_args: Some(vec!["--path=C:\\Program Files\\Game".to_string()]),
         channel: "stable".to_string(),
 
         platforms: None,

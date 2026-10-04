@@ -27,7 +27,6 @@ export interface GameManifest {
    * falls back to the flat channel directory. */
   base_url?: string;
   files: FileEntry[];
-  launch_args?: string[];
 
   /**
    * Per-platform builds. Absent on single-platform manifests, which keep the

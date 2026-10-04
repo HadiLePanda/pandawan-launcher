@@ -25,7 +25,6 @@ pub struct GameManifest {
     pub banner_url: Option<String>,
     pub executable: String,
     pub files: Vec<FileEntry>,
-    pub launch_args: Option<Vec<String>>,
     /// One platform's slice of a multi-platform manifest. Each platform's files
     /// live under its own subdirectory of the version, so builds for different
     /// platforms cannot overwrite each other.
@@ -503,7 +502,6 @@ impl GameManifest {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: None,
             platforms: None,
             size_bytes: None,
         }
@@ -532,7 +530,6 @@ mod tests {
             banner_url: None,
             executable: "game.exe".to_string(),
             files: vec![],
-            launch_args: Some(vec!["--fullscreen".to_string()]),
             platforms: None,
             size_bytes: None,
             channel: "stable".to_string(),
@@ -560,8 +557,7 @@ mod tests {
             "build_number": 100,
             "description": "Test description",
             "executable": "run.exe",
-            "files": [],
-            "launch_args": ["--windowed"]
+            "files": []
         }
         "#;
 
@@ -591,7 +587,6 @@ mod tests {
                 url: "files/file.txt".to_string(),
                 compress: None,
             }],
-            launch_args: None,
             platforms: None,
             size_bytes: None,
             channel: "stable".to_string(),
@@ -646,7 +641,6 @@ mod tests {
                     compress: None,
                 },
             ],
-            launch_args: None,
             platforms: None,
             size_bytes: None,
             channel: "stable".to_string(),
