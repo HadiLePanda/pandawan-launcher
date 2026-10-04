@@ -108,8 +108,21 @@ describe('the watchdog', () => {
 
     parent.stdin!.end();
 
-    expect(await waitFor(() => !alive(child.pid!), 15000)).toBe(true);
-    expect(JSON.parse(readFileSync(manifest, 'utf8'))).toEqual([]);
+    // Wait on the manifest rather than the child's liveness. taskkill returns as
+    // soon as it has asked, so the process can be gone a moment before
+    // writeManifest runs; polling `alive()` reports the kill done while the
+    // manifest still lists the pid, which failed about one run in five.
+    // writeFileSync truncates before it writes, so a read can catch it empty or
+    // half-written; that is not a failure, it is just not finished yet.
+    const manifestEmptied = () => {
+      try {
+        return JSON.parse(readFileSync(manifest, 'utf8')).length === 0;
+      } catch {
+        return false;
+      }
+    };
+    expect(await waitFor(manifestEmptied, 15000)).toBe(true);
+    expect(alive(child.pid!)).toBe(false);
   }, 40000);
 
   it('reaps on the spot with --now, without waiting for a parent to die', async () => {
