@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Download, X, Gamepad2, Loader2 } from 'lucide-react';
+import { Download, X, Loader2 } from 'lucide-react';
 
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 import { formatBytes, useSmoothDownload } from '@/lib/utils';
@@ -48,6 +48,7 @@ export function DownloadsPage({ downloads, games, onCancel, cancelling }: Downlo
               progress={progress}
               name={game?.name ?? gameId}
               iconUrl={game?.iconUrl}
+              bannerUrl={game?.bannerUrl}
               onCancel={onCancel}
               cancelling={cancelling}
             />
@@ -63,6 +64,7 @@ function DownloadRow({
   progress,
   name,
   iconUrl,
+  bannerUrl,
   onCancel,
   cancelling,
 }: {
@@ -70,6 +72,7 @@ function DownloadRow({
   progress: DownloadProgressSnapshot;
   name: string;
   iconUrl?: string;
+  bannerUrl?: string;
   onCancel: (gameId: string) => void;
   cancelling?: boolean;
 }) {
@@ -80,47 +83,42 @@ function DownloadRow({
 
   return (
     <div className="download-row">
-      <div className="download-row-icon">
-        {iconUrl ? <img src={iconUrl} alt="" /> : <Gamepad2 className="w-5 h-5" />}
+      {/* Banner carries the game's identity, the icon the transfer. Banner-first
+          is what makes a list of three downloads scannable at a glance; a row of
+          identical 40px icons does not. */}
+      <div className="download-row-head">
+        {bannerUrl ? (
+          <img className="download-row-banner" src={bannerUrl} alt="" />
+        ) : (
+          <div className="download-row-banner download-row-banner-fallback" />
+        )}
+        <div className="download-row-banner-scrim" />
+        <div className="download-row-banner-content">
+          {iconUrl && <img className="download-row-icon" src={iconUrl} alt="" />}
+          <span className="download-row-banner-name">{name}</span>
+        </div>
+        <span className="download-row-percent">{whole}%</span>
       </div>
 
       <div className="download-row-body">
-        {/* Cancel sits on the title line, at the far end, rather than centred
-                  down the right edge of the row. It reads as the control belonging to
-                  this title and percentage instead of floating beside whatever line
-                  happens to be at its own height. */}
-        <div className="download-row-header">
-          <span className="download-row-name">{name}</span>
-          <span className="download-row-percent">{whole}%</span>
-          <button
-            type="button"
-            onClick={() => onCancel(gameId)}
-            className="download-row-cancel"
-            disabled={cancelling}
-            title={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
-            aria-label={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
-          >
-            {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-          </button>
-        </div>
-
         <div
           className="download-row-bar"
           role="progressbar"
           aria-valuenow={whole}
           aria-valuemin={0}
           aria-valuemax={100}
+          aria-label={name}
         >
           <div className="download-row-fill" style={{ width: `${percent}%` }} />
         </div>
 
         {/* Only the numbers that answer "is this working?". The filename and the
-                    file counter were dropped deliberately: a 267-file Unity build
-                    scrolled a path past every few frames and turned the row into noise
-                    nobody read. Speed and ETA are what a player actually acts on. */}
+            file counter were dropped deliberately: a 267-file Unity build
+            scrolled a path past every few frames and turned the row into noise
+            nobody read. Speed and ETA are what a player actually acts on. */}
         <div className="download-row-meta">
           {progress.totalBytes > 0 ? (
-            <span>
+            <span className="download-row-bytes">
               {t('downloads.ofSize', {
                 done: formatBytes(progress.downloadedBytes),
                 total: formatBytes(progress.totalBytes),
@@ -133,6 +131,17 @@ function DownloadRow({
           {progress.speed && <span className="download-row-speed">{progress.speed}</span>}
 
           {eta && <span className="download-row-eta">{t('downloads.eta', { time: eta })}</span>}
+
+          <button
+            type="button"
+            onClick={() => onCancel(gameId)}
+            className="download-row-cancel"
+            disabled={cancelling}
+            title={cancelling ? t('downloads.cancelling') : t('downloads.cancel')}
+            aria-label={`${t('downloads.cancel')}: ${name}`}
+          >
+            {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+          </button>
         </div>
       </div>
     </div>

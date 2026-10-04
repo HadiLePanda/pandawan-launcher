@@ -111,8 +111,7 @@
     "ofSize": "{{done}} sur {{total}}",
     "preparing": "Préparation…",
     "title": "Téléchargements",
-    "cancelling": "Annulation…",
-    "viewAll": "Tout voir"
+    "cancelling": "Annulation…"
   },
   "errors": {
     "alreadyRunning": "Le jeu est déjà en cours d'exécution.",

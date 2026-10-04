@@ -170,77 +170,96 @@
 .downloads-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .download-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  flex-direction: column;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
   border-radius: 8px;
-}
-
-.download-row-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 6px;
   overflow: hidden;
-  background: var(--surface-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-muted);
 }
 
-.download-row-icon img {
+/* Banner header. Steam's download rows lead with art, not a 40px icon: it is
+   what makes a list of transfers scannable without reading a single word. */
+.download-row-head {
+  position: relative;
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface-light);
+  overflow: hidden;
+}
+
+.download-row-banner {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.download-row-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.download-row-banner-fallback {
+  background: linear-gradient(135deg, var(--surface-light), var(--surface-default));
 }
 
-/* Title, percentage and cancel share one line, with the cancel last. Centring it
-   down the row's right edge put it beside the byte counter instead of beside the
-   title it acts on, which read as an unrelated control. */
-.download-row-header {
+.download-row-banner-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.15));
+}
+
+.download-row-banner-content {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 10px 12px;
   min-width: 0;
 }
 
-.download-row-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-default);
-  flex: 1;
-  min-width: 0;
+.download-row-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-light);
+}
+
+.download-row-banner-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .download-row-percent {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--blue);
+  position: relative;
+  margin-left: auto;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
   flex-shrink: 0;
 }
 
+.download-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
 .download-row-bar {
-  height: 4px;
+  height: 6px;
   background: var(--surface-light);
   border-radius: 999px;
   overflow: hidden;
@@ -249,6 +268,7 @@
 .download-row-fill {
   height: 100%;
   background: var(--blue);
+  border-radius: 999px;
   transition: width 0.2s ease;
 }
 
@@ -256,7 +276,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-muted);
 }
 
@@ -273,13 +293,14 @@
 }
 
 .download-row-cancel {
-  width: 24px;
-  height: 24px;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--ink-muted);
   background: transparent;
   border: none;
@@ -297,155 +318,6 @@
 .download-row-cancel:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-/* ----- Header download panel (Steam-style) ----- */
-.download-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: 300px;
-  padding: 8px;
-  background: var(--surface-default);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
-  z-index: 60;
-}
-
-.download-panel-empty {
-  padding: 12px;
-  font-size: 0.8125rem;
-  color: var(--ink-muted);
-  text-align: center;
-}
-
-.download-panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.download-panel-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 6px;
-}
-
-.download-panel-row:hover {
-  background: var(--surface-hover);
-}
-
-.download-panel-icon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--surface-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-muted);
-}
-
-.download-panel-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.download-panel-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.download-panel-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.download-panel-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--ink-default);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.download-panel-percent {
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.download-panel-cancel {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--ink-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-.download-panel-cancel:hover:not(:disabled) {
-  background: var(--surface-light);
-  color: var(--ink-default);
-}
-
-.download-panel-cancel:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.download-panel-bar {
-  height: 3px;
-  background: var(--surface-light);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.download-panel-fill {
-  height: 100%;
-  background: var(--blue);
-  transition: width 0.2s ease;
-}
-
-.download-panel-viewall {
-  width: 100%;
-  margin-top: 4px;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--border-default);
-  cursor: pointer;
-}
-
-.download-panel-viewall:hover {
-  color: var(--ink-default);
-  background: var(--surface-hover);
 }
 
 .downloads-empty {

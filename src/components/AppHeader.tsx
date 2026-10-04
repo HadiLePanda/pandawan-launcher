@@ -15,10 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { WindowControls } from './WindowControls';
 import { UpdatePopover } from './UpdatePopover';
-import { DownloadPanel } from './DownloadPanel';
 import { restartToApplyUpdate } from '@/lib/updater-service';
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
-import type { GameInfo } from '@/types';
 
 interface TitleBarProps {
   catalogUnreachable: boolean;
@@ -33,12 +31,6 @@ interface MainNavProps {
   onNewsClick: () => void;
   onStoreClick: () => void;
   onDownloadsNavigate: () => void;
-  /** Cancel a running transfer from the header panel. */
-  onDownloadsCancel: (gameId: string) => void;
-  /** Display facts for the panel's rows: name and icon per game. */
-  games: GameInfo[];
-  /** A cancel is in flight; the panel's rows show it winding down. */
-  cancelling?: boolean;
   onNotificationsClick: () => void;
   onSettingsClick: () => void;
   onNavigatePrev: () => void;
@@ -98,14 +90,16 @@ function TopBarButton({
       title={label}
       data-testid={testId}
     >
-      <span className="relative">
-        {icon}
-        {badge != null && badge > 0 && (
-          <span className={cn('topbar-badge', variant === 'notifications' && 'topbar-badge-alert')}>
-            {badge}
-          </span>
-        )}
-      </span>
+      {icon}
+      {/* Directly a child of the button, with no positioning wrapper. The badge
+                was absolute inside a span around the icon, so it measured itself
+                against the icon's 16px box instead of the 44px button and landed
+                nearer the middle than the corner - and moved whenever the icon did. */}
+      {badge != null && badge > 0 && (
+        <span className={cn('topbar-badge', variant === 'notifications' && 'topbar-badge-alert')}>
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -167,9 +161,6 @@ export function MainNav({
   onNewsClick,
   onStoreClick,
   onDownloadsNavigate,
-  onDownloadsCancel,
-  games,
-  cancelling,
   onNotificationsClick,
   onSettingsClick,
   onNavigatePrev,
@@ -186,7 +177,6 @@ export function MainNav({
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isUpdatePopoverOpen, setIsUpdatePopoverOpen] = useState(false);
-  const [isDownloadPanelOpen, setIsDownloadPanelOpen] = useState(false);
   // Covers the gap between "Restart" being chosen and the process actually
   // relaunching, which previously showed nothing at all.
   const [isRestarting, setIsRestarting] = useState(false);
@@ -247,50 +237,6 @@ export function MainNav({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isUpdatePopoverOpen]);
-
-  // The download panel is the fourth overlay this bar owns, and it gets the same
-  // treatment as the update popover: capture-phase click-away, Escape, and a
-  // ref. Refusing to repeat the popover's mistake is the whole point - that
-  // overlay shipped with no keyboard path and was deleted for it.
-  const downloadsPanelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!isDownloadPanelOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const insidePanel = downloadsPanelRef.current?.contains(target) ?? false;
-      const onButton = (target as HTMLElement).closest('[data-testid="nav-downloads"]');
-      if (!insidePanel && !onButton) setIsDownloadPanelOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsDownloadPanelOpen(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside, true);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside, true);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isDownloadPanelOpen]);
-
-  // Clicking the button toggles the panel rather than navigating. It navigates
-  // only when nothing is downloading, so the button keeps its old one-click
-  // journey to the page while a transfer makes the panel the better answer.
-  const handleDownloadsClick = () => {
-    if (activeDownloads.size === 0) {
-      onDownloadsNavigate();
-      return;
-    }
-    setIsDownloadPanelOpen((open) => !open);
-  };
-
-  const handleViewAllDownloads = () => {
-    setIsDownloadPanelOpen(false);
-    onDownloadsNavigate();
-  };
 
   const downloadsBadge = activeDownloads.size;
 
@@ -485,27 +431,14 @@ export function MainNav({
         {/* Downloads goes to its own page rather than opening the dropdown. The
             dropdown duplicated the page and had no keyboard path; the icon form
             matches Settings and Notifications beside it. */}
-        <div className="relative" ref={downloadsPanelRef}>
+        <div className="relative">
           <TopBarButton
             icon={<Download className="w-4 h-4" />}
             label={t('topBar.downloads')}
             badge={downloadsBadge}
             active={activeView === 'downloads'}
-            onClick={handleDownloadsClick}
+            onClick={onDownloadsNavigate}
             testId="nav-downloads"
-          />
-          {/* Steam-style panel. The old downloads dropdown was removed because it
-                      duplicated the Downloads page and had no keyboard path; this one keeps
-                      the panel and adds the path - it is a dialog with focus restored on
-                      close, and Escape is handled by the key listener below. */}
-          <DownloadPanel
-            open={isDownloadPanelOpen}
-            downloads={activeDownloads}
-            games={games}
-            cancelling={cancelling ?? false}
-            onCancel={onDownloadsCancel}
-            onViewAll={handleViewAllDownloads}
-            onClose={() => setIsDownloadPanelOpen(false)}
           />
           {/* A background poll found catalog content this session has not loaded.
               It rides on Downloads because that is where transfers live; the

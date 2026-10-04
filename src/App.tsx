@@ -610,6 +610,11 @@ function App() {
             onSelectNewsArticle={(articleId) =>
               setNewsArticle({ articleId, gameId: selectedGame.info.id })
             }
+            onGoToDownloads={() => {
+              setNewsArticle(null);
+              setActiveView('downloads');
+              setSelectedGameId(lastSelectedGameId);
+            }}
             onCancel={cancelOperation}
           />
         ) : (
@@ -690,9 +695,6 @@ function App() {
           setIsSettingsOpen(true);
         }}
         activeDownloads={activeDownloads}
-        onDownloadsCancel={cancelOperation}
-        games={games.map((g) => g.info)}
-        cancelling={cancelling}
         notificationsBadge={unreadCount}
         avatarUrl={avatarUrl(avatarId)}
         onNavigatePrev={() => handleNavigate(-1)}
