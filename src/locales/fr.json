@@ -85,7 +85,10 @@
     "update": "Mettre à jour",
     "updating": "Mise à jour",
     "version": "Version",
-    "screenshots": "Captures d'écran"
+    "screenshots": "Captures d'écran",
+    "viewScreenshot": "Voir la capture",
+    "previousScreenshot": "Capture précédente",
+    "nextScreenshot": "Capture suivante"
   },
   "gamesHome": {
     "unknownGenre": "Genre inconnu",

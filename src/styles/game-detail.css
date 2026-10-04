@@ -1058,12 +1058,163 @@ input.pin-search {
   gap: 8px;
 }
 
+/* The button owns the shape and the image fills it. Putting the ratio on the
+   <img> and leaving the button unstyled left a focus ring drawn around a
+   zero-height inline box, which is no ring at all. */
+.game-detail-shot-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 .game-detail-shot {
+  display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 6px;
   background: var(--surface-light);
+  transition: filter 0.15s ease;
+}
+
+.game-detail-shot-btn:hover .game-detail-shot {
+  filter: brightness(1.12);
+}
+
+/* Screenshot viewer. The backdrop owns the click-to-close, the dialog stops
+   propagation so a click on the image does not dismiss it. */
+.shot-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.shot-lightbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--surface-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.shot-lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.shot-lightbox-count {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shot-lightbox-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.shot-lightbox-close:hover {
+  background: var(--surface-hover);
+  color: var(--ink-default);
+}
+
+.shot-lightbox-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 160px);
+  object-fit: contain;
+  background: #000;
+}
+
+/* Arrows sit on the image's own vertical centre, half over it, so they do not
+   claim a row of their own. */
+.shot-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--ink-default);
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  cursor: pointer;
+}
+
+.shot-lightbox-nav:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.shot-lightbox-prev {
+  left: 8px;
+}
+
+.shot-lightbox-next {
+  right: 8px;
+}
+
+.shot-lightbox-thumbs {
+  display: flex;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.shot-lightbox-thumb {
+  width: 64px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  /* The current shot is marked by the ring, not only by opacity: colour alone
+     would leave it indistinguishable to anyone not perceiving the tint. */
+  outline: 2px solid transparent;
+  background: none;
+}
+
+.shot-lightbox-thumb-active {
+  outline-color: var(--blue);
+}
+
+.shot-lightbox-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .game-detail-news {

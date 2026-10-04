@@ -85,7 +85,10 @@
     "update": "Update",
     "updating": "Updating",
     "version": "Version",
-    "screenshots": "Screenshots"
+    "screenshots": "Screenshots",
+    "viewScreenshot": "View screenshot",
+    "previousScreenshot": "Previous screenshot",
+    "nextScreenshot": "Next screenshot"
   },
   "gamesHome": {
     "unknownGenre": "Unknown Genre",

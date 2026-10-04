@@ -16,6 +16,7 @@ import { handleImageError, resolveNewsImage } from '@/lib/cdn';
 import { KNOWN_CHANNELS, type Channel } from '@/lib/channels';
 import { GameContextMenu, type MenuAnchor } from '@components/GameContextMenu';
 import { useModalDialog } from '@components/modalFocus';
+import { ScreenshotLightbox } from '@components/ScreenshotLightbox';
 import type { GameContextAction } from '@/lib/game-context';
 import type { Game, NewsItem } from '@/types';
 
@@ -216,6 +217,8 @@ export function GamePage({
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [activeModal, setActiveModal] = useState<'patchNotes' | 'news' | 'info' | null>(null);
+  // Which screenshot the lightbox shows, by index. null is closed.
+  const [shotIndex, setShotIndex] = useState<number | null>(null);
   const [isChannelOpen, setIsChannelOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const channelTriggerRef = useRef<HTMLButtonElement>(null);
@@ -508,20 +511,32 @@ export function GamePage({
           </div>
 
           {/* Screenshots fill the space the description and stats leave. A
-                            quiet label and one row: no lightbox, no carousel, because a
-                            gallery that needs its own interaction is a second feature. */}
+                              quiet label and one row: no lightbox, no carousel, because a
+                              gallery that needs its own interaction is a second feature. */}
           {game.info.screenshots.length > 0 && (
             <section className="game-detail-shots">
               <h2 className="game-detail-shots-title">{t('gamePage.screenshots')}</h2>
               <div className="game-detail-shots-row">
                 {game.info.screenshots.map((shot, i) => (
-                  <img
+                  /* A button, not an <img>: an image cannot be focused or
+                     activated, so a clickable gallery without one is unusable
+                     from a keyboard. The shape stays on the button so the focus
+                     ring has something to draw around. */
+                  <button
                     key={shot}
-                    src={shot}
-                    alt={`${game.info.name} ${i + 1}`}
-                    className="game-detail-shot"
-                    loading="lazy"
-                  />
+                    type="button"
+                    className="game-detail-shot-btn"
+                    onClick={() => setShotIndex(i)}
+                    title={t('gamePage.viewScreenshot')}
+                    aria-label={`${t('gamePage.viewScreenshot')}: ${game.info.name} ${i + 1}`}
+                  >
+                    <img
+                      src={shot}
+                      alt={`${game.info.name} ${i + 1}`}
+                      className="game-detail-shot"
+                      loading="lazy"
+                    />
+                  </button>
                 ))}
               </div>
             </section>
@@ -578,6 +593,26 @@ export function GamePage({
               </div>
             )}
           </aside>
+
+          {shotIndex !== null && (
+            <ScreenshotLightbox
+              shots={game.info.screenshots}
+              name={game.info.name}
+              index={shotIndex}
+              onIndex={setShotIndex}
+              onClose={() => setShotIndex(null)}
+            />
+          )}
+
+          {shotIndex !== null && (
+            <ScreenshotLightbox
+              shots={game.info.screenshots}
+              name={game.info.name}
+              index={shotIndex}
+              onIndex={setShotIndex}
+              onClose={() => setShotIndex(null)}
+            />
+          )}
 
           {activeModal && (
             <GameDetailsModal
