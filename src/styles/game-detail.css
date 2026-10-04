@@ -572,9 +572,11 @@ input.pin-search {
 .game-detail {
   display: grid;
   grid-template-columns: 1fr 420px;
-  /* One row, explicitly. Without this both columns are implicit rows, so the
-     aside landed on a second row underneath the main column - which is exactly
-     what happened when the footer work gave this element flex:1. */
+  /* One row, exactly the height of the page. The news rail is the only part
+     whose length is unbounded - the item count comes from the publisher - so the
+     rail is what scrolls, never the page. Letting an unbounded list set the page
+     height stretched the left column to match it and left a long void under the
+     screenshots. */
   grid-template-rows: 100%;
   gap: 32px;
   padding: 24px;
@@ -589,7 +591,16 @@ input.pin-search {
   gap: 0;
   min-width: 0;
   min-height: 0;
+  /* Scrolls only when the window is too short for the fixed banner plus the
+     screenshot row. The bar is suppressed because this column ends in the 32px
+     gutter between the columns, where any scrollbar reads as a bar down the
+     middle of the page. The wheel still scrolls it. */
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.game-detail-main::-webkit-scrollbar {
+  display: none;
 }
 
 /* Fixed height, not an aspect ratio. With `width: 100%` and `aspect-ratio: 16/9`
@@ -600,6 +611,10 @@ input.pin-search {
   position: relative;
   width: 100%;
   height: 360px;
+  /* Must not shrink. It is a flex item of the scrolling column, so without this
+     the browser squashed it whenever the column ran short - which is the same
+     window-dependent height this rule exists to remove. */
+  flex-shrink: 0;
   overflow: hidden;
   background: var(--surface-default);
 }
@@ -1245,6 +1260,8 @@ input.pin-search {
   display: block;
 }
 
+/* The one scroller on the page. Its bar lands at the window's edge, in the
+   page's own 24px padding, so it never appears between the two columns. */
 .game-detail-news {
   width: 420px;
   flex-shrink: 0;
@@ -1343,14 +1360,11 @@ input.pin-search {
 @media (max-width: 1024px) {
   .game-detail {
     grid-template-columns: 1fr;
-    /* Two stacked rows need auto, not the 100% the wide layout uses. */
+    /* Two stacked rows, so the row list is auto auto. Here the stacked page is
+       what scrolls: the wide layout's single-row scroller has no news rail to
+       scroll, and the container's own overflow is hidden. */
     grid-template-rows: auto auto;
     overflow-y: auto;
-  }
-
-  .game-detail-main,
-  .game-detail-news {
-    overflow-y: visible;
   }
 
   .game-detail-news {
