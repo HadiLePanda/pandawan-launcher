@@ -302,7 +302,10 @@
     "issueMany": "{{count}} fichiers à vérifier"
   },
   "tray": {
-    "quitWhileGameRunning": "Un jeu est en cours. Quitter l'arrêtera. Quitter quand même ?"
+    "quitWhileGameRunning": "Un jeu est en cours. Quitter l'arrêtera. Quitter quand même ?",
+    "updateFound": "Pandawan Launcher {{version}} est disponible",
+    "updateUpToDate": "Pandawan Launcher est à jour",
+    "updateFailed": "Impossible de rechercher des mises à jour"
   },
   "trayHint": {
     "notificationTitle": "Le launcher Pandawan tourne toujours",

@@ -20,6 +20,8 @@ import { UpdateBanner } from '@components/UpdateBanner';
 import { VerifyGameModal } from '@components/VerifyGameModal';
 import { StorePlaceholder } from '@components/StorePlaceholder';
 import { useLauncherStore } from '@/lib/store';
+import { commands } from '@/lib/commands';
+import { unwrapResult } from '@/lib/errors';
 import { avatarUrl } from '@/lib/avatars';
 import { isGamePinned } from '@/lib/pins';
 import * as gameService from '@/lib/game-service';
@@ -223,14 +225,17 @@ function App() {
     await loadCatalog();
   }, [loadCatalog]);
 
-  // Mark the hint delivered without reverting a settings change made in the
-  // meantime. `save_settings` replaces the whole object, so writing the object
-  // this render captured would put back every field the user has changed since.
-  // There is no field-level settings command to narrow this further.
+  // A field-level command rather than save_settings: that replaces the whole
+  // object, so recording this flag used to send a snapshot read earlier and put
+  // back every setting the user had changed in between.
   const markTrayHintShown = useCallback(async () => {
-    const { settings: current, setSettings: save } = useLauncherStore.getState();
+    const { settings: current } = useLauncherStore.getState();
     if (!current || current.trayHintShown) return;
-    await save({ ...current, trayHintShown: true });
+    unwrapResult(await commands.markTrayHintShown());
+    // Rust owns the flag now, so the store follows it rather than deciding it.
+    useLauncherStore.setState((state) =>
+      state.settings ? { settings: { ...state.settings, trayHintShown: true } } : {}
+    );
   }, []);
 
   // The one-time tray hint fires on the first real dock, not on first run: it
@@ -357,8 +362,29 @@ function App() {
         void quitLauncher();
       }
     });
-    const check = listen('tray-check-updates', () => {
-      void checkForUpdates({ manual: true });
+    // A tray-initiated check has no window to report into: the launcher is hidden
+    // in the tray by definition, and every outcome - found, already current, or
+    // failed - only ever reached the update banner and popover. So the check ran
+    // and the result was invisible, which is why this looked like it did nothing.
+    // A notification is the one surface that exists while the window does not.
+    const check = listen('tray-check-updates', async () => {
+      const result = await checkForUpdates({ manual: true });
+      const version = useUpdaterStore.getState().version;
+      const body =
+        result === 'available'
+          ? t('tray.updateFound', { version: version ?? '' })
+          : result === 'error'
+            ? t('tray.updateFailed')
+            : t('tray.updateUpToDate');
+      try {
+        // Permission was already asked for by the tray hint; a refusal here just
+        // means the result stays in the banner, which is where it will be next
+        // time the window opens.
+        if (!(await isPermissionGranted())) return;
+        sendNotification({ title: 'Pandawan Launcher', body });
+      } catch (err) {
+        logger.warn('Tray update notification failed', { error: String(err) });
+      }
     });
 
     return () => {

@@ -302,7 +302,10 @@
     "issueMany": "{{count}} files need attention"
   },
   "tray": {
-    "quitWhileGameRunning": "A game is running. Quitting will stop it. Quit anyway?"
+    "quitWhileGameRunning": "A game is running. Quitting will stop it. Quit anyway?",
+    "updateFound": "Pandawan Launcher {{version}} is available",
+    "updateUpToDate": "Pandawan Launcher is up to date",
+    "updateFailed": "Could not check for updates"
   },
   "trayHint": {
     "notificationTitle": "Pandawan Launcher is still running",
