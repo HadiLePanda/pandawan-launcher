@@ -55,6 +55,8 @@ export const commands = {
   saveSettings: (newSettings: LauncherSettings) =>
     typedError<void, LauncherError>(__TAURI_INVOKE('save_settings', { newSettings })),
 
+  markTrayHintShown: () => typedError<void, LauncherError>(__TAURI_INVOKE('mark_tray_hint_shown')),
+
   selectInstallFolder: (start?: string | null) =>
     typedError<string | null, LauncherError>(
       __TAURI_INVOKE('select_install_folder', { start: start ?? null })

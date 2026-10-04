@@ -583,6 +583,32 @@ async fn save_settings(
     Ok(())
 }
 
+/// Set the one-time tray hint flag without rewriting the rest of the settings.
+///
+/// save_settings replaces the whole object, so a caller that only wants to record
+/// "the hint was delivered" has to send a full settings object it read earlier.
+/// Anything the user changed between that read and this write comes back, which is
+/// how a background flag silently reverted a setting. Reading the live value under
+/// the same lock and writing back a single field cannot do that.
+#[tauri::command]
+#[specta::specta]
+async fn mark_tray_hint_shown(
+    app: AppHandle,
+    state: State<'_, LauncherState>,
+) -> Result<(), LauncherError> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
+
+    let mut settings = state.settings.lock().await;
+    settings.tray_hint_shown = true;
+    save_settings_to_disk(&app_data_dir, &settings)
+        .map_err(|e| LauncherError::Validation(e.to_string()))?;
+
+    Ok(())
+}
+
 /// The games folder that installs use when the setting is empty.
 ///
 /// The frontend needs this to display a real path rather than the word
@@ -744,6 +770,7 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             uninstall_game,
             get_settings,
             save_settings,
+            mark_tray_hint_shown,
             select_install_folder,
             get_default_install_folder,
             cancel_operation,
