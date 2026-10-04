@@ -44,7 +44,7 @@ interface GamePageProps {
   catalogChannel: string;
   onChannelChange: (channel: Channel) => void;
   onSelectNewsArticle?: (articleId: string) => void;
-  /** Take the download footer to the Downloads page. Steam's footer is a link. */
+  /** The download footer's whole bar links to the Downloads page. */
   onGoToDownloads?: () => void;
   onCancel?: () => void;
 }
@@ -312,10 +312,6 @@ export function GamePage({
   };
 
   return (
-    /* Two stacked flex children: the grid scrolls, the footer does not. Putting
-       the bar inside the grid made it a third row competing with the content,
-       which is what broke the hierarchy - it read as another panel of the page
-       rather than as chrome pinned to the bottom of it. */
     <div className="game-detail-layout">
       <div className="game-detail">
         <div className="game-detail-main">
@@ -329,9 +325,6 @@ export function GamePage({
             <div className="game-detail-banner-content">
               <h1 className="game-detail-title">{game.info.name}</h1>
             </div>
-            {/* Prerelease channels get a persistent mark in the banner's own
-              corner. The version string alone is too quiet to notice, and
-              mistaking a playtest for a release is the mistake worth preventing. */}
             {channel !== 'stable' && (
               <span className={cn('game-channel-badge', `game-channel-badge-${channel}`)}>
                 {channel === 'alpha'
@@ -341,15 +334,7 @@ export function GamePage({
                     : t('gamePage.channelMenu.stable')}
               </span>
             )}
-            {/* Anchored to the banner's padding box, not its border box: the scrim
-              covers the border box, so a 16px inset from there clipped the
-              rightmost button against the edge. */}
             <div className="game-detail-banner-tools">
-              {/* The options menu is not a peer of Play/Install: it is a different
-                kind of action, and sharing that pill made it read as a second half
-                of the primary action. Anchored to the banner's corner it is
-                clearly chrome. Channel settings sit beside it because both answer
-                "what else can I do with this game". */}
               <button
                 type="button"
                 ref={channelTriggerRef}
@@ -408,17 +393,11 @@ export function GamePage({
               <button
                 type="button"
                 onClick={handlePrimaryClick}
-                /* Not disabled while downloading: the button IS the cancel then, and
-                             a disabled button cannot be the thing you press to stop a
-                             transfer. Everything else keeps its guard. */
                 disabled={unavailable || (isDownloading && !onCancel)}
                 title={unavailableTitle()}
                 className={cn('game-detail-play-btn', primaryColorClass())}
               >
                 {isDownloading && onCancel ? (
-                  /* Steam turns the primary action into the cancel while a transfer
-                               runs. A disabled button showing only a percentage gave no way
-                               to stop the download from the page you started it on. */
                   <>
                     <X className="w-5 h-5" />
                     <span>{t('common.cancel')}</span>
@@ -460,14 +439,6 @@ export function GamePage({
               />
             </div>
 
-            {/* Icon-led metadata. "Version" and "Size" above each value told the
-              reader what they were already looking at, and the labels broke the
-              line into a list. The icon carries the meaning; the value stands
-              alone. Full value stays in the tooltip.
-
-              The version is pushed to the far right with margin-left:auto so it
-              reads as the build identity at the end of the line rather than
-              crowding the size next to it. */}
             <div className="game-detail-meta">
               <div className="game-detail-meta-facts">
                 {showSize && (
@@ -476,9 +447,6 @@ export function GamePage({
                     {formatBytes(game.info.sizeBytes)}
                   </span>
                 )}
-                {/* Labels above their values, Steam-style. A run of unlabelled values
-                  ("2h · 3 days ago · 421 MB") makes the reader work out which is
-                  which; stacked pairs can be taken one at a time. */}
                 {game.installation && game.status !== 'not_installed' && (
                   <>
                     <div className="game-detail-stat">
@@ -493,8 +461,6 @@ export function GamePage({
                         {t('gamePage.lastPlayedLabel')}
                       </span>
                       <span className="game-detail-stat-value">
-                        {/* "Never" on its own reads as missing data rather than as a
-                          fact; the label above it is what makes it legible. */}
                         {game.installation.last_played
                           ? getTimeAgo(game.installation.last_played)
                           : t('gamePage.neverPlayed')}
@@ -503,31 +469,22 @@ export function GamePage({
                   </>
                 )}
               </div>
-              {/* Pinned to the right by .game-detail-version's margin-left:auto. */}
               <span className="game-detail-chip game-detail-version">
                 {versionText(t, channel, game.info.version)}
               </span>
             </div>
           </div>
 
-          {/* Screenshots fill the space the description and stats leave. A
-                              quiet label and one row: no lightbox, no carousel, because a
-                              gallery that needs its own interaction is a second feature. */}
           {game.info.screenshots.length > 0 && (
             <section className="game-detail-shots">
               <h2 className="game-detail-shots-title">{t('gamePage.screenshots')}</h2>
               <div className="game-detail-shots-row">
                 {game.info.screenshots.map((shot, i) => (
-                  /* A button, not an <img>: an image cannot be focused or
-                     activated, so a clickable gallery without one is unusable
-                     from a keyboard. The shape stays on the button so the focus
-                     ring has something to draw around. */
                   <button
                     key={shot}
                     type="button"
                     className="game-detail-shot-btn"
                     onClick={() => setShotIndex(i)}
-                    title={t('gamePage.viewScreenshot')}
                     aria-label={`${t('gamePage.viewScreenshot')}: ${game.info.name} ${i + 1}`}
                   >
                     <img
@@ -540,68 +497,6 @@ export function GamePage({
                 ))}
               </div>
             </section>
-          )}
-
-          {/* No heading and no panel behind the news. The article titles are the
-          headings, and a card background in a column of other cards made the
-          aside read as a fourth surface competing with the banner. */}
-          <aside className="game-detail-news">
-            {gameNews.length > 0 ? (
-              <div className="game-detail-news-list">
-                {gameNews.map((item) => (
-                  <article
-                    key={item.id}
-                    className="game-detail-news-card"
-                    onClick={() => onSelectNewsArticle?.(item.id)}
-                    // The card is the only way into the article, so it has to behave as a
-                    // control: an article with onClick is not focusable and cannot be
-                    // opened from a keyboard at all.
-                    role="button"
-                    tabIndex={0}
-                    aria-label={item.title}
-                    title={item.title}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onSelectNewsArticle?.(item.id);
-                      }
-                    }}
-                  >
-                    {/* The game's own artwork stands in when an item has no image of its
-                    own, so this list never shows ragged thumbnails. */}
-                    <div className="game-detail-news-thumb">
-                      <img
-                        src={resolveNewsImage(item, game.info)}
-                        alt=""
-                        onError={handleImageError}
-                      />
-                    </div>
-                    <div className="game-detail-news-body">
-                      <h4 className="game-detail-news-card-title">{item.title}</h4>
-                      <p className="game-detail-news-card-excerpt">{item.excerpt}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              // An aside that collapses to nothing leaves a bare 420px column beside
-              // the game, which reads as a layout bug. A quiet icon and two words
-              // keep it contextual without pretending there is something to read.
-              <div className="game-detail-news-empty">
-                <Newspaper className="w-6 h-6" aria-hidden="true" />
-                <span>{t('gamePage.noNewsForGame')}</span>
-              </div>
-            )}
-          </aside>
-
-          {shotIndex !== null && (
-            <ScreenshotLightbox
-              shots={game.info.screenshots}
-              name={game.info.name}
-              index={shotIndex}
-              onIndex={setShotIndex}
-              onClose={() => setShotIndex(null)}
-            />
           )}
 
           {shotIndex !== null && (
@@ -625,12 +520,55 @@ export function GamePage({
         </div>
       </div>
 
-      {/* Steam's library footer: a bar pinned under the whole page, not a strip
-          inside the game column. Two stacked rows - facts above, bar below -
-          because a single line cannot carry a title, a speed and a percentage
-          without the title truncating. The whole bar is the link to Downloads;
-          Cancel is the one control inside it that does not navigate, so it stops
-          propagation rather than being a sibling of the button. */}
+        <aside className="game-detail-news">
+          {gameNews.length > 0 ? (
+            <div className="game-detail-news-list">
+              {gameNews.map((item) => (
+                <article
+                  key={item.id}
+                  className="game-detail-news-card"
+                  onClick={() => onSelectNewsArticle?.(item.id)}
+                  // The card is the only way into the article, so it has to behave as a
+                  // control: an article with onClick is not focusable and cannot be
+                  // opened from a keyboard at all.
+                  role="button"
+                  tabIndex={0}
+                  aria-label={item.title}
+                  title={item.title}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectNewsArticle?.(item.id);
+                    }
+                  }}
+                >
+                  {/* The game's own artwork stands in when an item has no image of its
+                  own, so this list never shows ragged thumbnails. */}
+                  <div className="game-detail-news-thumb">
+                    <img
+                      src={resolveNewsImage(item, game.info)}
+                      alt=""
+                      onError={handleImageError}
+                    />
+                  </div>
+                  <div className="game-detail-news-body">
+                    <h4 className="game-detail-news-card-title">{item.title}</h4>
+                    <p className="game-detail-news-card-excerpt">{item.excerpt}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            // An aside that collapses to nothing leaves a bare 420px column beside
+            // the game, which reads as a layout bug. A quiet icon and two words
+            // keep it contextual without pretending there is something to read.
+            <div className="game-detail-news-empty">
+              <Newspaper className="w-6 h-6" aria-hidden="true" />
+              <span>{t('gamePage.noNewsForGame')}</span>
+            </div>
+          )}
+        </aside>
+
       {isDownloading && (
         <div className="game-detail-download">
           <button
