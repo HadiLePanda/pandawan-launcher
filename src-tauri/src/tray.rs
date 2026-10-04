@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tauri::{
     image::Image,
     menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
-    tray::TrayIconBuilder,
+    tray::{TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, Wry,
 };
 
@@ -95,7 +95,9 @@ pub fn focus_main_window(app: &AppHandle<Wry>) {
 }
 
 pub fn init(app: &AppHandle<Wry>) -> tauri::Result<()> {
-    let mut builder = TrayIconBuilder::with_id(TRAY_ID).on_menu_event(on_menu_event);
+    let mut builder = TrayIconBuilder::with_id(TRAY_ID)
+        .on_menu_event(on_menu_event)
+        .on_tray_icon_event(on_tray_icon_event);
 
     // Prefer the icon the app already has; a dev build does not always resolve
     // one, so fall back to the bundled PNG rather than shipping a blank tray.
@@ -191,6 +193,26 @@ fn request_quit(app: &AppHandle<Wry>) {
         let _ = app.emit(EVENT_QUIT_REQUESTED, ());
     } else {
         app.exit(0);
+    }
+}
+
+/// Left click brings the window back; right click still opens the menu.
+///
+/// The icon is how someone gets a launcher they closed out of the way, so a left
+/// click that only raised a menu meant the fastest path back took two clicks and
+/// a hunt for "Open". Acting on the press rather than the release also matches
+/// Steam and Battle.net.
+///
+/// The menu stays reachable because Tauri shows it for a right click on its own,
+/// which is not routed through this handler.
+fn on_tray_icon_event(tray: &tauri::tray::TrayIcon<Wry>, event: TrayIconEvent) {
+    if let TrayIconEvent::Click {
+        button: tauri::tray::MouseButton::Left,
+        button_state: tauri::tray::MouseButtonState::Up,
+        ..
+    } = event
+    {
+        focus_main_window(tray.app_handle());
     }
 }
 
