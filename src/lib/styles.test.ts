@@ -46,7 +46,8 @@ function parseStylesheet(): postcss.Root {
     throw new Error(
       `The stylesheet does not parse, so every rule in it is inert or half-applied.\n` +
         `  ${reason}\n` +
-        '  Usually an unbalanced brace. Count { and } - they must match.'
+        '  Usually an unbalanced brace. Count { and } - they must match.',
+      { cause: error }
     );
   }
 }

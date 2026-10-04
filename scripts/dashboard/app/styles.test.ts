@@ -32,7 +32,8 @@ function parseCss(): postcss.Root {
     throw new Error(
       `src/styles.css does not parse, so every rule in it is inert or half-applied.\n` +
         `  ${reason}\n` +
-        '  Usually an unbalanced brace. Count { and } - they must match.'
+        '  Usually an unbalanced brace. Count { and } - they must match.',
+      { cause: error }
     );
   }
 }

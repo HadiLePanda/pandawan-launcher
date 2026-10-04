@@ -50,7 +50,7 @@ export function usePublisherStream(): StreamHandle {
     setLog('');
     setVerdict({ state: 'running' });
 
-    let code: number | null = null;
+    let code: number | null;
     try {
       code = await streamScript(path, body ?? {}, (chunk) => {
         setLog((previous) => previous + chunk);
