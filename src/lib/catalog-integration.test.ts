@@ -101,7 +101,8 @@ const FILES: Record<string, unknown> = {
 function serveCdn(): Promise<{ server: http.Server; origin: string }> {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
-      const route = (req.url ?? '').split('?')[0];
+      // An empty path has no first segment, and the 404 below covers it.
+      const route = (req.url ?? '').split('?')[0] ?? '';
       const body = FILES[route];
       res.setHeader('Access-Control-Allow-Origin', '*');
       if (body === undefined) {

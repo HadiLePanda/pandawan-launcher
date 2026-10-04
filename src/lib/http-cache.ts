@@ -30,7 +30,7 @@ const lastSource = new Map<string, ReadSource>();
 /** Version-stamped, so it cannot change: `/games/<id>/<channel>/<version>/...`. */
 export function isImmutable(url: string): boolean {
   const after = url.split('/games/')[1];
-  return Boolean(after) && after.split('/').length >= 4;
+  return after !== undefined && after.split('/').length >= 4;
 }
 
 /** Whether the most recent read of `url` came off the network or the cache. */

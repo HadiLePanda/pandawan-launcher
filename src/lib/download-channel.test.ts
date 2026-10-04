@@ -12,7 +12,8 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 function lastChannel() {
-  return mockChannelInstances[mockChannelInstances.length - 1];
+  // Every caller has just created a channel, so the array cannot be empty here.
+  return mockChannelInstances.at(-1)!;
 }
 
 /**
@@ -146,7 +147,7 @@ describe('createDownloadChannel', () => {
 
     createDownloadChannel('pandawan-td', { onProgress, onComplete: vi.fn() });
 
-    lastChannel().onmessage!(INSTALL_EVENTS[0]);
+    lastChannel().onmessage!(INSTALL_EVENTS[0]!);
 
     // App.tsx reads activeDownloads.get(selectedGame.info.id); the install was
     // started for that same catalog id, so the write key and the read key match.

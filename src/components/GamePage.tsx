@@ -150,7 +150,10 @@ function ChannelPicker({
         if (items.length === 0) return;
         const at = items.indexOf(document.activeElement as HTMLButtonElement);
         const step = e.key === 'ArrowDown' ? 1 : -1;
-        items[(at + step + items.length) % items.length].focus();
+        // The modulo lands inside the array; the length check above is what makes
+        // that true, and hoisting the element keeps the compiler able to see it.
+        const target = items[(at + step + items.length) % items.length];
+        target?.focus();
       }}
     >
       <p className="game-channel-menu-title">{t('gamePage.channelMenu.title')}</p>

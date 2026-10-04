@@ -70,9 +70,12 @@ export function useModalDialog<T extends HTMLElement>({
       if (event.key !== 'Tab' || !trap) return;
 
       const items = focusableWithin(node);
+      // A one-element list is both ends, and an empty one has nothing to wrap to,
+      // so the length check is what makes these defined rather than optional.
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];
+      if (!first || !last) return;
       const active = document.activeElement;
       const inside = active instanceof Node && node.contains(active);
 

@@ -47,7 +47,8 @@ function collectReferencedKeys(rootDir: string): Map<string, string[]> {
       ) {
         const source = readFileSync(fullPath, 'utf-8');
         for (const match of source.matchAll(tCall)) {
-          const key = match[2];
+          // tCall has three groups and this is the key one, so it is always set.
+          const key = match[2]!;
           const locations = referenced.get(key) ?? [];
           locations.push(fullPath);
           referenced.set(key, locations);
@@ -68,7 +69,7 @@ describe('i18n key coverage', () => {
     key.split('.').reduce<unknown>((node, part) => (node as LocaleMessages)[part], messages);
 
   const placeholders = (value: string): string[] =>
-    [...value.matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1].trim()).sort();
+    [...value.matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1]!.trim()).sort();
 
   it('finds t() calls in the component sources', () => {
     // Sanity guard: if the scan breaks silently this fails instead of

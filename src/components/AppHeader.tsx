@@ -342,7 +342,9 @@ export function MainNav({
             // right-hand cluster), so a strip left on it starts from Games.
             const at = Math.max(order.indexOf(activeView as 'games' | 'news' | 'store'), 0);
             const step = e.key === 'ArrowRight' ? 1 : -1;
-            const next = order[(at + step + order.length) % order.length];
+            // Hoisted: `at` came from order.indexOf, so the modulo stays inside it.
+            const next = order[(at + step + order.length) % order.length] as
+              'games' | 'news' | 'store';
             if (next === 'games') onGamesClick();
             else if (next === 'news') onNewsClick();
             else onStoreClick();

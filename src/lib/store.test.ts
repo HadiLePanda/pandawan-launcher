@@ -143,7 +143,7 @@ describe('store update-notification gating', () => {
     await updateGame('game-1', 'stable');
     expect(notifyUpdateComplete).toHaveBeenCalledTimes(1);
     expect(notifyUpdateComplete).toHaveBeenCalledWith('Quirheim Online', true);
-    expect(store.useLauncherStore.getState().games[0].hasUpdate).toBe(false);
+    expect(store.useLauncherStore.getState().games[0]!.hasUpdate).toBe(false);
 
     // ...so a later re-detection is a new transition and notifies again.
     await checkForUpdates('game-1', 'stable');
@@ -200,7 +200,7 @@ describe('store refreshInstallation', () => {
     await store.useLauncherStore.getState().refreshInstallation('game-1');
 
     expect(loadInstallation).toHaveBeenCalledWith('game-1');
-    expect(store.useLauncherStore.getState().games[0].installation).toEqual(refreshed);
+    expect(store.useLauncherStore.getState().games[0]!.installation).toEqual(refreshed);
   });
 
   it('keeps the cached record and does not throw when the fetch fails', async () => {
@@ -210,7 +210,7 @@ describe('store refreshInstallation', () => {
       store.useLauncherStore.getState().refreshInstallation('game-1')
     ).resolves.toBeUndefined();
 
-    expect(store.useLauncherStore.getState().games[0].installation).toEqual(makeInstallation());
+    expect(store.useLauncherStore.getState().games[0]!.installation).toEqual(makeInstallation());
   });
 
   it('keeps the cached record when the backend returns no installation', async () => {
@@ -218,7 +218,7 @@ describe('store refreshInstallation', () => {
 
     await store.useLauncherStore.getState().refreshInstallation('game-1');
 
-    expect(store.useLauncherStore.getState().games[0].installation).toEqual(makeInstallation());
+    expect(store.useLauncherStore.getState().games[0]!.installation).toEqual(makeInstallation());
   });
 });
 

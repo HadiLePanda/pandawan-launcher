@@ -147,7 +147,8 @@ let cycleIndex = -1;
 
 export function cycleUpdaterState(): void {
   cycleIndex = (cycleIndex + 1) % STATES.length;
-  forceUpdaterState(STATES[cycleIndex]);
+  // cycleIndex was just reduced modulo STATES.length, so this cannot be missing.
+  forceUpdaterState(STATES[cycleIndex] as UpdaterStatus);
 }
 
 function handleShortcut(event: KeyboardEvent): void {

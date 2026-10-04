@@ -104,7 +104,7 @@ describe('logger file sink', () => {
 
     expect(messages).toEqual(['queued line']);
     await vi.waitFor(() => expect(writeTextFile).toHaveBeenCalledTimes(1));
-    const line = (writeTextFile as Mock).mock.calls[0][1] as string;
+    const line = (writeTextFile as Mock).mock.calls[0]![1] as string;
     expect(JSON.parse(line)).toMatchObject({
       level: 'info',
       message: 'queued line',

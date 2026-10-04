@@ -153,7 +153,9 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
               else if (e.key === 'End') next = order.length - 1;
               if (next === null) return;
               e.preventDefault();
-              const id = order[(next + order.length) % order.length];
+              // Hoisted: `next` came from an index into this same array, so the
+              // modulo cannot fall outside it.
+              const id = order[(next + order.length) % order.length] as SettingsTab;
               setActiveTab(id);
               tabRefs.current[id]?.focus();
             }}

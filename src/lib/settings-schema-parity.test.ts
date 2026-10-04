@@ -25,7 +25,7 @@ function rustStructFields(structName: string): string[] {
   const end = body.indexOf('\n}');
   expect(end, `unterminated ${structName} body`).toBeGreaterThan(-1);
 
-  return [...body.slice(0, end).matchAll(/^\s*pub\s+([a-z0-9_]+)\s*:/gm)].map((m) => m[1]);
+  return [...body.slice(0, end).matchAll(/^\s*pub\s+([a-z0-9_]+)\s*:/gm)].map((m) => m[1]!);
 }
 
 /** LauncherSettings uses #[serde(rename_all = "camelCase")]. */
@@ -43,7 +43,7 @@ function tsInterfaceFields(interfaceName: string): string[] {
   const end = body.indexOf('\n}');
   expect(end, `unterminated ${interfaceName} body`).toBeGreaterThan(-1);
 
-  return [...body.slice(0, end).matchAll(/^\s{2}([A-Za-z0-9_]+)\??\s*:/gm)].map((m) => m[1]);
+  return [...body.slice(0, end).matchAll(/^\s{2}([A-Za-z0-9_]+)\??\s*:/gm)].map((m) => m[1]!);
 }
 
 describe('Rust/TypeScript settings schema parity', () => {

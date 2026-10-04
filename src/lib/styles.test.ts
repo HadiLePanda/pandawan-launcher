@@ -120,7 +120,7 @@ describe('launcher stylesheet', () => {
       // Skip :not(...) - a class that never matches inside :not() makes a selector
       // match MORE, so it is not evidence of a dead rule.
       const selector = rule.selector.replace(/:not\([^)]*\)/g, '');
-      for (const match of selector.matchAll(/\.(-?[_A-Za-z][\w-]*)/g)) classes.add(match[1]);
+      for (const match of selector.matchAll(/\.(-?[_A-Za-z][\w-]*)/g)) classes.add(match[1]!);
     });
 
     const orphans = [...classes].filter((name) => !haystack.includes(name));

@@ -16,7 +16,8 @@ interface VerifyGameModalProps {
 export function VerifyGameModal({ game, result, error, rows, onClose }: VerifyGameModalProps) {
   const { t } = useTranslation();
   const running = !result && !error;
-  const total = rows.length ? rows[rows.length - 1].total : 0;
+  // The running total is on the last row; an empty list has none to read.
+  const total = rows.at(-1)?.total ?? 0;
   const dialogRef = useModalDialog<HTMLDivElement>({ open: game !== null, onClose });
 
   if (!game) return null;

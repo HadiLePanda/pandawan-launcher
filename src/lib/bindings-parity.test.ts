@@ -21,7 +21,8 @@ const bindingsTs = readFileSync(resolve(__dirname, 'bindings.ts'), 'utf-8');
 function rustCommands(): string[] {
   const block = libRs.match(/collect_commands!\[([\s\S]*?)\]/);
   expect(block, 'collect_commands! not found in lib.rs').not.toBeNull();
-  return (block as RegExpMatchArray)[1]
+  // The regex has one capture group, so index 1 is always the body.
+  return (block as RegExpMatchArray)[1]!
     .split(',')
     .map((part) => part.trim())
     .filter((name) => /^[a-z_]+$/.test(name))
@@ -30,7 +31,7 @@ function rustCommands(): string[] {
 
 /** Command names the frontend actually invokes. */
 function invokedCommands(): string[] {
-  return [...bindingsTs.matchAll(/__TAURI_INVOKE\('([a-z_]+)'/g)].map((m) => m[1]).sort();
+  return [...bindingsTs.matchAll(/__TAURI_INVOKE\('([a-z_]+)'/g)].map((m) => m[1]!).sort();
 }
 
 describe('bindings.ts matches the Rust command list', () => {

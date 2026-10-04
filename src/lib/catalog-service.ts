@@ -264,8 +264,11 @@ export async function resolveCatalogGames(catalog: GameCatalog): Promise<GameInf
   resolved.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       games.push(result.value);
-    } else {
-      const entry = entries[index];
+      return;
+    }
+    // Promise.allSettled keeps the order, so index still lines up with entries.
+    const entry = entries[index];
+    if (entry) {
       logger.warn(`Failed to resolve game ${entry.id}`, { reason: String(result.reason) });
     }
   });

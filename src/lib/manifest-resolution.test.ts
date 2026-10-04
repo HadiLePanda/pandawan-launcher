@@ -80,7 +80,7 @@ describe('resolveManifestForPlatform', () => {
     if (result.status === 'unavailable') {
       expect(result.reason).toBe('no-build-for-platform');
       // The UI needs this to explain the greyed-out state instead of just showing it.
-      expect(result.availableVersions.windows.version).toBe('0.4.0');
+      expect(result.availableVersions.windows!.version).toBe('0.4.0');
     }
   });
 

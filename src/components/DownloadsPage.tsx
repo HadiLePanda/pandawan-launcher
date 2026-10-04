@@ -27,7 +27,7 @@ function formatEta(seconds: number): string {
 function fileNameOf(path: string | null): string | null {
   if (!path) return null;
   const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : null;
+  return parts.at(-1) ?? null;
 }
 
 export function DownloadsPage({ downloads, games, onCancel, cancelling }: DownloadsPageProps) {

@@ -495,12 +495,12 @@ function App() {
     const ids = pinnedGames.map((g) => g.id);
     if (ids.length === 0) return;
     if (!selectedGameId) {
-      setSelectedGameId(ids[0]);
+      setSelectedGameId(ids[0] ?? null);
       return;
     }
     const idx = ids.indexOf(selectedGameId);
     const base = idx === -1 ? 0 : idx;
-    setSelectedGameId(ids[(base + dir + ids.length) % ids.length]);
+    setSelectedGameId(ids[(base + dir + ids.length) % ids.length] ?? null);
   };
 
   const renderContent = () => {

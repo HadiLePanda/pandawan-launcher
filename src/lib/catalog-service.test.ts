@@ -190,7 +190,7 @@ describe('catalog-service', () => {
       const match = rust.match(/KNOWN_CHANNELS: \[&str; \d+\] = \[([^\]]+)\]/);
       expect(match, 'KNOWN_CHANNELS declaration not found in types.rs').not.toBeNull();
 
-      const parsed = (match as RegExpMatchArray)[1]
+      const parsed = (match as RegExpMatchArray)[1]!
         .split(',')
         .map((part) => part.trim().replace(/^"|"$/g, ''))
         .filter(Boolean);
@@ -254,7 +254,7 @@ describe('catalog-service', () => {
       const result = await service.loadCatalog();
 
       expect(result.source).toBe('local');
-      expect(result.catalog.games[0].id).toBe('override-game');
+      expect(result.catalog.games[0]!.id).toBe('override-game');
       expect(result.games).toHaveLength(1);
     });
 
