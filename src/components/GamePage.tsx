@@ -518,7 +518,6 @@ export function GamePage({
             />
           )}
         </div>
-      </div>
 
         <aside className="game-detail-news">
           {gameNews.length > 0 ? (
@@ -568,6 +567,7 @@ export function GamePage({
             </div>
           )}
         </aside>
+      </div>
 
       {isDownloading && (
         <div className="game-detail-download">
