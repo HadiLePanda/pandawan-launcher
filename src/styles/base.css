@@ -53,7 +53,7 @@
   --color-status-error: #ef4444;
 
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-fade-in: fadeIn 0.15s ease-out;
+  --animate-fade-in: fadeIn var(--ease-hover)-out;
   --animate-slide-up: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-scale-in: scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -176,6 +176,47 @@
      and is not part of the scale: it is a shape, not a rounded rectangle. */
   --radius-sm: 4px;
   --radius-md: 8px;
+
+  /* Spacing — one 2px-based scale, so a gap between two sections in the game page
+     is the same number as a gap between two rows in the downloads list. These were
+     8/10/12/14/16/24px literals repeated across seven files, which is how two
+     panels that were meant to be flush ended up 2px apart.
+     The scale is a doubling with an 8px step in the middle, because that is what
+     the values already in use were: 2/4/6/8 for the inside of a thing, 12 for
+     between things, 16 for a card's own padding, 24 between sections, and 32/48
+     for the page's own gutters. Values that appear once or twice are left as
+     literals on purpose: a token used once is indirection with no payoff. */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 48px;
+
+  /* Type sizes — the four that carry text, named by role. Most of the app's text
+     is one of these, and the previous spellings were 0.75/0.8125/0.875/0.9375rem
+     with no way to tell from a rule which was intended. A new label should pick a
+     name from this list rather than invent another rem value. */
+  --text-xs: 0.75rem; /* 12px: timestamps, counts, captions */
+  --text-sm: 0.875rem; /* 14px: secondary text, the app's default body size */
+  --text-md: 0.9375rem; /* 15px: row actions and buttons */
+  --text-lg: 1rem; /* 16px: card titles */
+  --text-title: 1.25rem; /* 20px: page and panel headings */
+
+  /* Weights, same reasoning: two are used constantly and the rest are rare. */
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Hover feedback — 55 declarations spelled out `var(--ease-hover)` on a property they
+     then had to name. A transition that names no property also animates things a
+     later edit did not mean to move, which is why these name theirs. */
+  --ease-hover: var(--ease-hover);
 
   /* Motion tokens — one press and enter timing shared by every interactive
      control, so press feedback is consistent and instant rather than a
@@ -337,7 +378,7 @@ body {
   background: var(--surface-elevated);
   color: var(--ink-muted);
   font-size: 9px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   line-height: 1;
   pointer-events: none;
   box-shadow: 0 0 0 1px var(--border-default);

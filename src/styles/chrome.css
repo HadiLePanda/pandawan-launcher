@@ -7,7 +7,7 @@
 .games-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   height: 62px;
   margin: 10px 14px 2px;
   padding: 0 12px;
@@ -54,9 +54,9 @@
   opacity: 0.55;
   filter: grayscale(60%);
   transition:
-    opacity 0.15s ease,
-    filter 0.15s ease,
-    background 0.15s ease;
+    opacity var(--ease-hover),
+    filter var(--ease-hover),
+    background var(--ease-hover);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -119,11 +119,11 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   color: var(--ink-default);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease 0s;
+  transition: opacity var(--ease-hover) 0s;
   z-index: 40;
 }
 
@@ -147,8 +147,8 @@
   border: none;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--ease-hover),
+    color var(--ease-hover);
   flex-shrink: 0;
 }
 
@@ -164,7 +164,7 @@
   background: var(--canvas-default);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-6);
   flex-shrink: 0;
   overflow-y: auto;
 }
@@ -183,7 +183,7 @@
 
 .filter-search-row {
   display: flex;
-  gap: 6px;
+  gap: var(--space-3);
   align-items: center;
 }
 
@@ -220,8 +220,8 @@
   opacity: 0.5;
   pointer-events: none;
   transition:
-    opacity 0.15s ease,
-    color 0.15s ease;
+    opacity var(--ease-hover),
+    color var(--ease-hover);
 }
 
 .filter-reset.active {
@@ -237,7 +237,7 @@
 .filter-options {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .filter-option {
@@ -251,8 +251,8 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    background 0.15s ease;
+    color var(--ease-hover),
+    background var(--ease-hover);
 }
 
 .filter-option:hover {
@@ -319,7 +319,7 @@ input:focus-visible {
 button,
 a,
 input {
-  transition: all 0.15s ease;
+  transition: all var(--ease-hover);
 }
 
 /* Custom range slider styling */
@@ -372,11 +372,11 @@ select {
   border: 1px solid var(--border-default);
   border-radius: 0.5rem;
   padding: 0.625rem 2.5rem 0.625rem 1rem;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   line-height: 1.25rem;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--ease-hover),
+    box-shadow var(--ease-hover);
 }
 
 select:focus {
@@ -412,11 +412,11 @@ input[type='search'] {
   border: 1px solid var(--border-default);
   border-radius: 0.5rem;
   padding: 0.625rem 1rem;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   line-height: 1.25rem;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--ease-hover),
+    box-shadow var(--ease-hover);
 }
 
 input[type='text']:focus,

@@ -125,7 +125,7 @@
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
   background: var(--surface-default);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -141,7 +141,7 @@
 
 .update-popover-percent {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--ink-default);
 }
 
@@ -153,6 +153,6 @@
 .update-popover-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
