@@ -329,9 +329,9 @@ export function GamePage({
             {channel !== 'stable' && (
               <span
                 className={cn(
-                  'game-channel-tag',
-                  channel === 'alpha' && 'game-channel-tag-alpha',
-                  channel === 'beta' && 'game-channel-tag-beta'
+                  'game-channel-ribbon',
+                  channel === 'alpha' && 'game-channel-ribbon-alpha',
+                  channel === 'beta' && 'game-channel-ribbon-beta'
                 )}
               >
                 {channel === 'alpha'
@@ -492,10 +492,7 @@ export function GamePage({
 
           {game.info.screenshots.length > 0 && (
             <section className="game-detail-shots">
-              {/* Announced, not shown. A row of images says what it is, and the
-                  label cost the height that pushed this column into a scrollbar
-                  at the default window size. */}
-              <h2 className="sr-only">{t('gamePage.screenshots')}</h2>
+              <h2 className="game-detail-shots-label">{t('gamePage.screenshots')}</h2>
               <div className="game-detail-shots-row">
                 {game.info.screenshots.map((shot, i) => (
                   <button

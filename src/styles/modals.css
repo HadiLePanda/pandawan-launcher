@@ -22,7 +22,7 @@
   height: 37.5rem;
   background: var(--canvas-default);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   overflow: hidden;
@@ -474,7 +474,7 @@
 .game-card-art {
   position: relative;
   aspect-ratio: 3 / 4;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-default);
   border: 1px solid var(--border-default);
   overflow: hidden;

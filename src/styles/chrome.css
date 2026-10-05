@@ -12,7 +12,7 @@
   margin: 10px 14px 2px;
   padding: 0 12px;
   background: var(--surface-default);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
   /*
    * No scrolling. The bar is a fixed-height strip of shortcuts, and a horizontal
@@ -47,7 +47,7 @@
   position: relative;
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--surface-light);
   border: 2px solid transparent;
@@ -69,7 +69,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 /* Rail icons are too small for a visible chain: a dead URL hides the image and
@@ -117,7 +117,7 @@
   padding: 4px 8px;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--ink-default);
   font-size: 0.75rem;
   white-space: nowrap;
@@ -138,7 +138,7 @@
   position: relative;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -194,7 +194,7 @@
   padding: 0 8px;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--ink-default);
   outline: none;
 }
@@ -213,7 +213,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--ink-dim);
@@ -248,7 +248,7 @@
   color: var(--ink-muted);
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
     color 0.15s ease,
@@ -333,7 +333,7 @@ input[type='range'] {
 input[type='range']::-webkit-slider-runnable-track {
   background: var(--silver-muted);
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 input[type='range']::-webkit-slider-thumb {

@@ -35,7 +35,7 @@ describe('i18n', () => {
   it('interpolates values into translated strings', () => {
     // downloads.ofSize, not the removed filesProgress: the download rows no
     // longer count files, and a test must not pin a key the UI stopped using.
-    expect(i18n.t('downloads.ofSize', { done: '1 MB', total: '3 MB' })).toBe('1 MB of 3 MB');
+    expect(i18n.t('downloads.ofSize', { done: '1 MB', total: '3 MB' })).toBe('1 MB / 3 MB');
   });
 
   it('falls back to English for keys missing in the active language', async () => {

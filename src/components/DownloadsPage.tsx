@@ -102,7 +102,8 @@ export function DownloadsPage({
 
 /**
  * A transfer that completed. Same row shape as an active one so the two sections
- * scan as the same thing in different states, with a full bar and no cancel.
+ * scan as the same thing in different states: a full bar, and the same action at
+ * the same end. There is no cancel - nothing is left to stop.
  */
 function FinishedRow({
   finished,
@@ -129,9 +130,12 @@ function FinishedRow({
       </div>
 
       <div className="download-row-body">
-        <div className="download-row-title">
+        <div className="download-row-head">
           <span className="download-row-name">{finished.name}</span>
-          <span className="download-row-status">{t('downloads.complete')}</span>
+          <span className="download-row-percent">100%</span>
+          {finished.totalBytes > 0 && (
+            <span className="download-row-bytes">{formatBytes(finished.totalBytes)}</span>
+          )}
         </div>
 
         <div
@@ -145,10 +149,8 @@ function FinishedRow({
           <div className="download-row-fill download-row-fill-done" style={{ width: '100%' }} />
         </div>
 
-        <div className="download-row-meta">
-          {finished.totalBytes > 0 && (
-            <span className="download-row-bytes">{formatBytes(finished.totalBytes)}</span>
-          )}
+        <div className="download-row-foot">
+          <span className="download-row-status">{t('downloads.complete')}</span>
           <button
             type="button"
             onClick={() => onDismiss(finished.gameId)}
@@ -157,6 +159,7 @@ function FinishedRow({
             aria-label={`${t('downloads.dismiss')}: ${finished.name}`}
           >
             <X className="w-4 h-4" />
+            <span>{t('downloads.dismiss')}</span>
           </button>
         </div>
       </div>
@@ -205,9 +208,58 @@ function DownloadRow({
       </div>
 
       <div className="download-row-body">
-        <div className="download-row-title">
+        {/* Head row: what it is, how far along, how big. The percentage sits
+            beside the name rather than inside the bar, so the number is legible at
+            a glance instead of having to be read against a moving fill. */}
+        <div className="download-row-head">
           <span className="download-row-name">{name}</span>
           <span className="download-row-percent">{whole}%</span>
+          <span className="download-row-bytes">
+            {progress.totalBytes > 0
+              ? t('downloads.ofSize', {
+                  done: formatBytes(progress.downloadedBytes),
+                  total: formatBytes(progress.totalBytes),
+                })
+              : t('downloads.preparing')}
+          </span>
+        </div>
+
+        <div
+          className="download-row-bar"
+          role="progressbar"
+          aria-valuenow={whole}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={name}
+        >
+          <div className="download-row-fill" style={{ width: `${percent}%` }} />
+        </div>
+
+        {/* Foot row: rate and time left at the two ends, the rate's history
+            between them. Rate and time are both projections of the same remaining
+            bytes, so they frame the graph that produced them; the action that ends
+            the transfer takes the right end. */}
+        <div className="download-row-foot">
+          {progress.speed && <span className="download-row-speed">{progress.speed}</span>}
+
+          {/* Throughput over time. Hidden until there are two samples, because a
+              graph with one point is a dot that reads as a rendering fault. */}
+          <svg
+            className="download-row-graph"
+            viewBox="0 0 240 44"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {graph.line && (
+              <>
+                <path d={graph.area} className="download-row-graph-area" />
+                <path d={graph.line} className="download-row-graph-line" />
+              </>
+            )}
+          </svg>
+
+          {eta && <span className="download-row-eta">{t('downloads.eta', { time: eta })}</span>}
+
           <button
             type="button"
             onClick={() => onCancel(gameId)}
@@ -217,46 +269,8 @@ function DownloadRow({
             aria-label={`${t('downloads.cancel')}: ${name}`}
           >
             {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+            <span>{cancelling ? t('downloads.cancelling') : t('downloads.cancel')}</span>
           </button>
-        </div>
-
-        <div className="download-row-bar">
-          <div className="download-row-fill" style={{ width: `${percent}%` }} />
-        </div>
-
-        <div className="download-row-meta">
-          {eta && <span className="download-row-eta">{t('downloads.eta', { time: eta })}</span>}
-
-          {/* Rate, size and the rate history are one fact read three ways, so they
-              sit together against the time left at the other end of the line. */}
-          <div className="download-row-stats">
-            {progress.speed && <span className="download-row-speed">{progress.speed}</span>}
-
-            <span className="download-row-bytes">
-              {progress.totalBytes > 0
-                ? t('downloads.ofSize', {
-                    done: formatBytes(progress.downloadedBytes),
-                    total: formatBytes(progress.totalBytes),
-                  })
-                : t('downloads.preparing')}
-            </span>
-
-            {/* Throughput over time. Hidden until there are two samples, because a
-                graph with one point is a dot that reads as a rendering fault. */}
-            <svg
-              className="download-row-graph"
-              viewBox="0 0 240 44"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              {graph.line && (
-                <>
-                  <path d={graph.area} className="download-row-graph-area" />
-                  <path d={graph.line} className="download-row-graph-line" />
-                </>
-              )}
-            </svg>
-          </div>
         </div>
       </div>
     </div>

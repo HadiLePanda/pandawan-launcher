@@ -74,7 +74,7 @@ Component Design System
   justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25rem;
@@ -161,7 +161,7 @@ Component Design System
   flex-direction: column;
   gap: 0.75rem;
   padding: 1.25rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-elevated);
   border: 1px solid var(--border-default);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -231,7 +231,7 @@ Component Design System
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--ember);
@@ -292,7 +292,7 @@ Component Design System
 .app-logo {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,7 +320,7 @@ Component Design System
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--ink-muted);
@@ -415,7 +415,7 @@ Component Design System
   height: 38px;
   min-width: 44px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--ink-muted);
@@ -638,7 +638,7 @@ Component Design System
   width: 180px;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 4px;
   z-index: 50;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -651,7 +651,7 @@ Component Design System
   align-items: center;
   gap: 0.5rem;
   padding: 0 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--ink-default);

@@ -579,14 +579,29 @@ input.pin-search {
 
 .game-detail {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  /* Both tracks are capped and the pair is centred as one block. Pinning the rail
+     to the window's right edge left a 700px void beside it on a wide screen, which
+     read as a broken layout rather than as breathing room; centring puts the same
+     space on both sides.
+     The caps are on the tracks, not on the boxes inside them, and that is the part
+     that matters: a track of `minmax(0, 1fr)` is still free to grow past the width
+     the block allows, which pushed the rail 400px past the picture's right edge.
+     The 1840 is not a magic number - it is 1240 for the picture, plus the 48 gap,
+     plus 520 for the rail, plus this box's own 32 of padding.
+     `width: 100%` is load-bearing, not tidiness: an auto inline margin cancels the
+     stretch a flex item gets by default, which left this grid sized to its content
+     and took 240px off the picture at every window size. */
+  grid-template-columns: minmax(0, 1240px) clamp(420px, 30%, 520px);
+  width: 100%;
+  max-width: 1840px;
+  margin-inline: auto;
   /* One row, exactly the height of the page. The news rail is the only part
      whose length is unbounded - the item count comes from the publisher - so the
      rail is what scrolls, never the page. Letting an unbounded list set the page
      height stretched the left column to match it and left a long void under the
      screenshots. */
   grid-template-rows: 100%;
-  gap: 32px;
+  gap: 48px;
   padding: 16px;
   flex: 1;
   min-height: 0;
@@ -599,24 +614,38 @@ input.pin-search {
   gap: 0;
   min-width: 0;
   min-height: 0;
-  /* Scrolls only when the window cannot hold the banner plus the screenshot row.
-     The bar is left visible on purpose: a suppressed bar hides the bottom of a
-     row with nothing on screen to say so. At any ordinary window size there is
-     nothing to scroll, so no bar is drawn. */
-  overflow-y: auto;
+  /* The column stops growing here, and everything under it is as wide as the
+     column, so one cap keeps the banner, the action row and the screenshot strip
+     the same width at every window size. Without it a 2560-wide window produced
+     an 1100px-tall banner and the column grew a scrollbar. The cap that stops this
+     column growing is on the grid, which is what centres the pair; this box fills
+     its track.
+     The bar is suppressed and the column is never scrollable: the picture and the
+     strip are the whole of its content, and the sizes above are chosen so they
+     fit a window at or above the 1280x720 minimum. A column that could scroll had
+     a bar sitting between two sections with nothing on screen to say there was
+     more below - and at the sizes it did scroll it was only ever hiding content
+     the reel already made reachable by scrolling sideways. */
+  overflow: hidden;
 }
 
-/* A fixed ratio, not a fixed height. A fixed height under a width that grows is
-   a box whose ratio changes, and object-fit re-crops the art for every ratio it
-   sees: the same banner showed 71% of the art's height at a 1280 window and 38%
-   at 1920, which is the zoom. Steam's hero is a wide, short band that scales
-   with the window and never re-crops, which is what this ratio buys: between
-   1280 and 1920 the banner loses 640px of width and 246px of height, so the
-   height moves a quarter as much as the width. */
+/* One fixed ratio, under the column's own cap, so the box has exactly one
+   shape. object-fit re-crops the art for every ratio it is handed, so a box
+   whose ratio moved with the window showed 71% of the art's height at a 1280
+   window and 38% at 1920 - that difference is the zoom. Beyond the cap the
+   window adds width to the page, not height to this picture. */
 .game-detail-banner {
   position: relative;
   width: 100%;
   aspect-ratio: 2.1 / 1;
+  /* The second stop. The width cap still lets the box reach 590 tall on a wide
+     window, and 590 plus the action row and the screenshot strip is more than a
+     1080-high window has, so the column would grow a scrollbar again. 50vh is
+     above this box's natural height at every window up to ~1000 high, where the
+     default window sits, so the picture is untouched until the window is taller
+     than most screens. Past that it keeps its width and gives up height, which
+     crops the art a few percent rather than the whole page scrolling. */
+  max-height: 50vh;
   /* Must not shrink. It is a flex item of the scrolling column, so without this
      the browser squashed it whenever the column ran short. */
   flex-shrink: 0;
@@ -695,7 +724,7 @@ input.pin-search {
      100%" grew the button and shoved the row sideways. 190px holds every label
      this button shows, so Play, Installing 42% and Cancel are all one size. */
   min-width: 190px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
@@ -759,33 +788,62 @@ input.pin-search {
   gap: 8px;
 }
 
-/* Prerelease channel mark: a tag in the artwork's top-left corner, reading left
-   to right along its top edge. Release renders nothing at all - a stable build
-   is the norm, so a mark for it is a label that says nothing.
-   A diagonal ribbon was tried here and read as decoration across the art; a
-   corner tag states the channel where the eye already starts. */
-.game-channel-tag {
+/* Prerelease channel mark: a band across the artwork's top-left corner, rising
+   from the left edge to the top edge. Release renders nothing at all - a stable
+   build is the norm, so a mark for it is a label that says nothing.
+
+   Geometry, for a band rotated -45 degrees (bottom-left to top-right; the
+   positive angle runs the other diagonal and reads as a strike through the art):
+
+   - Placed by its centre, on the corner's diagonal. At 45 degrees each axis gets
+     the diagonal distance times cos(45), which is where the 0.7071 comes from.
+   - A band whose centre sits exactly `half-diagonal` from the corner only just
+     touches each picture edge. So the centre is pulled BACK by `overrun`, which
+     pushes the band's two ends past the top and left edges. The sign matters and
+     it is the opposite way round at first glance: adding the overrun leaves the
+     band sitting entirely inside the picture with both ends visible in mid-air,
+     which is what the first version did.
+   - The banner clips its own overflow, so those two ends disappear and the band is
+     left as a corner of a strip. That cut is the whole effect: a promotion ribbon
+     is a strip larger than the page, and only the clip can draw the two straight
+     lines along the picture's borders.
+   - The label stays at the band's centre, which is still inside the picture. Since
+     the band is symmetric about its centre and the corner cuts it equally at both
+     ends, the visible length runs from -d/cos45 to +d/cos45, so the centre is the
+     middle of the visible part too, and the word is not off to one side. */
+.game-channel-ribbon {
+  --ribbon-length: 305px;
+  --ribbon-thickness: 40px;
+  /* How far each end runs past the picture's edge, per axis. Small on purpose:
+     it only has to be positive for the cut to happen. */
+  --ribbon-overrun: 30px;
   position: absolute;
-  top: 0;
-  left: 0;
+  top: calc(
+    (var(--ribbon-length) / 2 + var(--ribbon-thickness) / 2) * 0.7071 - var(--ribbon-overrun)
+  );
+  left: calc(
+    (var(--ribbon-length) / 2 + var(--ribbon-thickness) / 2) * 0.7071 - var(--ribbon-overrun)
+  );
   z-index: 3;
   display: flex;
   align-items: center;
-  height: 26px;
-  padding: 0 12px;
-  border-bottom-right-radius: 6px;
-  font-size: 10px;
+  justify-content: center;
+  width: var(--ribbon-length);
+  height: var(--ribbon-thickness);
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #ffffff;
 }
 
-.game-channel-tag-alpha {
+.game-channel-ribbon-alpha {
   background: var(--ember);
 }
 
-.game-channel-tag-beta {
+.game-channel-ribbon-beta {
   background: var(--blue);
 }
 
@@ -800,7 +858,7 @@ input.pin-search {
   z-index: 4;
   min-width: 190px;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface, #16191d);
   border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -823,7 +881,7 @@ input.pin-search {
   width: 100%;
   padding: 7px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink-default);
   font-size: 0.8125rem;
@@ -941,7 +999,7 @@ input.pin-search {
   width: 40px;
   height: 40px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--ink-muted);
   background: var(--surface-light);
   border: 1px solid var(--border-default);
@@ -1003,27 +1061,57 @@ input.pin-search {
    Tight above the row: the label that used to sit here is a screen-reader
    heading now, and the space it took is what pushed this column into a
    scrollbar at the default window size. */
+/* The screenshots sit in a panel of their own, as a reel: one strip of fixed
+   tiles that scrolls sideways. A grid grew another row taller with every extra
+   screenshot and pushed this column into a scrollbar; the strip is always one
+   row, whatever the count. */
 .game-detail-shots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 16px;
+  padding: 12px;
+  flex-shrink: 0;
+  /* The page canvas, not a card surface: the strip is a well the pictures sit
+     in, so it reads as one object with them rather than as another panel above
+     them. */
+  background: var(--canvas-default);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.game-detail-shots-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 
 .game-detail-shots-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: flex;
   gap: 8px;
+  overflow-x: auto;
+  /* Thin: the strip scrolls sideways, so it must not also reserve a full
+     scrollbar gutter inside a panel this short. */
+  scrollbar-width: thin;
 }
 
 /* The button owns the shape and the image fills it. Putting the ratio on the
    <img> and leaving the button unstyled left a focus ring drawn around a
    zero-height inline box, which is no ring at all. */
 .game-detail-shot-btn {
+  /* A fixed tile, so the strip is a reel that scrolls rather than a grid that
+     fills a row. 260 wide keeps the whole panel inside the column's height at
+     the default window. */
+  flex: 0 0 auto;
+  width: 260px;
   display: block;
-  width: 100%;
   padding: 0;
   border: none;
   background: none;
   cursor: zoom-in;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -1032,7 +1120,7 @@ input.pin-search {
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-light);
   transition: filter 0.15s ease;
 }
@@ -1063,7 +1151,7 @@ input.pin-search {
   max-width: 100%;
   max-height: 100%;
   background: var(--surface-default);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -1088,7 +1176,7 @@ input.pin-search {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   background: transparent;
   border: none;
@@ -1177,7 +1265,7 @@ input.pin-search {
   flex-shrink: 0;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   cursor: pointer;
   /* The current shot is marked by the ring, not only by opacity: colour alone
@@ -1200,7 +1288,7 @@ input.pin-search {
 /* The one scroller on the page. Its bar lands at the window's edge, in the
    page's own 24px padding, so it never appears between the two columns. */
 .game-detail-news {
-  width: 420px;
+  /* Sized by its own grid track, so the rail and the layout agree. */
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1259,7 +1347,7 @@ input.pin-search {
 .game-detail-news-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--surface-light);
 }
@@ -1294,9 +1382,41 @@ input.pin-search {
   color: var(--ink-muted);
 }
 
+/* The 1280x720 minimum is the one window with no height to spare: the picture and
+   a full-size strip together need 677px of a 582px column. The column no longer
+   scrolls, so the only way to fit is to spend less height, and there are two
+   things to spend it on. The strip gets smaller - a reel of 180px tiles is still a
+   reel - and the picture gives up height against the same 50vh cap the wide
+   window uses, which is what keeps its width and crops a little art rather than
+   pushing a section off the page.
+
+   Keyed on height, because the shortfall is vertical: a narrow window is short,
+   not tall, and a window-keyed query would shrink the picture for the wrong
+   reason. */
+@media (max-height: 800px) {
+  .game-detail-banner {
+    max-height: 42vh;
+  }
+
+  .game-detail-shots {
+    margin-top: 12px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .game-detail-shot-btn {
+    width: 180px;
+  }
+}
+
 @media (max-width: 1024px) {
   .game-detail {
     grid-template-columns: 1fr;
+    /* One column, so there is no pair to centre and the block cap does not
+       apply. `auto` margins are the centring; a stacked page is full width. */
+    max-width: none;
+    margin-inline: 0;
+    width: 100%;
     /* Two stacked rows, so the row list is auto auto. Here the stacked page is
        what scrolls: the wide layout's single-row scroller has no news rail to
        scroll, and the container's own overflow is hidden. */

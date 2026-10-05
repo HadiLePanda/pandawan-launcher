@@ -8,7 +8,7 @@
   min-width: 180px;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -20,7 +20,7 @@
   align-items: center;
   gap: 10px;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 0.8125rem;
   color: var(--ink-default);
   background: transparent;
@@ -59,7 +59,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   background: transparent;
   border: 1px solid var(--border-default);
@@ -86,7 +86,7 @@
   /* The aspect ratio sets the height; the cap still applies, so a very wide
      window does not produce a banner taller than the viewport. */
   max-height: 280px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 24px;
   background: var(--surface-default);
@@ -115,7 +115,7 @@
 .news-article-game-icon {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 
@@ -188,11 +188,11 @@
 
 .download-row {
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 18px;
+  padding: 18px;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   transition: border-color 0.15s ease;
 }
 
@@ -202,13 +202,19 @@
 
 /* Art on the left at a fixed box, so every row is the same height and the
    progress lines up down the page. A full-width banner per row did the
-   opposite: uniform tall rows that pushed the numbers below the fold. */
+   opposite: uniform tall rows that pushed the numbers below the fold.
+   Landscape, not square: the source banners are 3:2, and a square box clipped
+   both sides off the picture to show the middle third. */
 .download-row-art {
   position: relative;
-  width: 200px;
+  /* A hero block, not a thumbnail: at 360x225 the picture is big enough to
+     recognise the game from across the room, which is the whole job of putting
+     artwork on a transfer row at all. Still landscape - the source banners are
+     3:2 and a square box cropped both sides off. */
+  width: 360px;
   aspect-ratio: 1.6;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--surface-light);
 }
@@ -223,13 +229,15 @@
   background: linear-gradient(135deg, var(--surface-light), var(--surface-default));
 }
 
+/* A hairline ring, so a square icon reads as an overlay on a picture instead
+   of a pasted rectangle. */
 .download-row-icon {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  left: 12px;
+  bottom: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--surface-default);
 }
@@ -243,17 +251,17 @@
   gap: 10px;
 }
 
-.download-row-title {
+.download-row-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 12px;
   min-width: 0;
 }
 
 .download-row-name {
   flex: 1;
   min-width: 0;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   color: var(--ink-default);
   white-space: nowrap;
@@ -261,29 +269,41 @@
   text-overflow: ellipsis;
 }
 
-.download-row-status {
-  font-size: 0.75rem;
-  color: var(--action);
-  flex-shrink: 0;
-}
-
-.download-row-percent {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--blue);
+/* "412 MB / 948 MB". Both figures belong on one line, and the short form stops
+   them reading as a sentence about the transfer. */
+.download-row-bytes,
+.download-row-speed,
+.download-row-eta {
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
+/* Right end of the head row, and the only muted thing in it: the name and the
+   percentage are what you read, the size is what you check. */
+.download-row-bytes {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  min-width: 0;
+}
+
+/* The bar is the shape; the number above it is the figure. A percentage painted
+   inside the track has to fight the fill for contrast and disappears into it at
+   low values, so it sits in the head row instead, where it is the same size as
+   the rest of the row's text. */
 .download-row-bar {
-  height: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 12px;
   background: var(--surface-light);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .download-row-fill {
-  height: 100%;
+  position: absolute;
+  inset: 0 auto 0 0;
   background: var(--blue);
   border-radius: 999px;
   transition: width 0.2s ease;
@@ -293,28 +313,24 @@
   background: var(--action);
 }
 
-/* Time left at the left end of the line, the numbers it is derived from at the
-   other end. They were interleaved before, so the one figure a person watches
-   sat between two that only explain it. */
-.download-row-meta {
+.download-row-percent {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink-default);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Rate, its history and the time left are one fact read three ways, so they are
+   one group at the left. The cancel is the row's only action and takes the
+   right end to itself. */
+.download-row-foot {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
   font-size: 0.875rem;
   color: var(--ink-muted);
-}
-
-.download-row-stats {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.download-row-bytes,
-.download-row-speed,
-.download-row-eta {
-  font-variant-numeric: tabular-nums;
 }
 
 .download-row-speed,
@@ -322,13 +338,20 @@
   color: var(--ink-default);
 }
 
-/* The end of the group it belongs to, next to the rate and the size it draws.
-   preserveAspectRatio="none" on the svg stretches it to whatever box the CSS
-   gives it, so the shape fills the space without redrawing the path. */
+.download-row-status {
+  color: var(--action);
+}
+
+/* The end of the group it belongs to, next to the rate it draws.
+   preserveAspectRatio="none" on the svg lets the CSS box stretch it, so the
+   shape fills whatever width the row has without redrawing the path. */
 .download-row-graph {
-  width: 240px;
-  height: 44px;
-  flex-shrink: 0;
+  /* Centred in the gap between the rate and the time left, and never wider than
+     that gap: it is context for those two figures, not the row's main object. */
+  flex: 0 1 220px;
+  min-width: 40px;
+  height: 34px;
+  margin-inline: auto;
   overflow: visible;
 }
 
@@ -345,28 +368,39 @@
   stroke: none;
 }
 
+/* The size the play button sets: fixed width, so the label can change without
+   the row moving, and enough height to read as this row's action rather than a
+   glyph beside its text. */
 .download-row-cancel,
 .download-row-dismiss {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  display: flex;
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  color: var(--ink-muted);
-  background: transparent;
-  border: none;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  min-width: 132px;
+  flex-shrink: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink-default);
+  background: var(--surface-light);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background 0.15s ease,
+    border-color 0.15s ease,
     color 0.15s ease;
 }
 
-.download-row-cancel:hover:not(:disabled),
-.download-row-dismiss:hover {
-  background: var(--surface-hover);
-  color: var(--ink-default);
+/* Cancelling throws work away, so it says so before the click. */
+.download-row-cancel:hover:not(:disabled) {
+  background: var(--ember-muted);
+  border-color: var(--ember);
+  color: var(--ember);
 }
 
 .download-row-cancel:disabled {
@@ -374,8 +408,11 @@
   opacity: 0.6;
 }
 
-.download-row-dismiss {
-  margin-left: auto;
+/* Dismissing a finished row is housekeeping, not destruction. */
+.download-row-dismiss:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--ink-default);
 }
 
 .downloads-empty {
@@ -396,7 +433,7 @@
   flex-direction: column;
   background: var(--surface-default);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 60;
   overflow: hidden;
@@ -428,7 +465,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   background: transparent;
   border: none;
@@ -485,7 +522,7 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px 10px 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--surface-light);
   transition: background 0.15s ease;
 }
@@ -546,7 +583,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   background: var(--surface-default);
   border: none;

@@ -112,7 +112,7 @@
     "cancel": "Annuler",
     "empty": "Aucun téléchargement actif",
     "eta": "encore {{time}}",
-    "ofSize": "{{done}} sur {{total}}",
+    "ofSize": "{{done}} / {{total}}",
     "preparing": "Préparation…",
     "title": "Téléchargements",
     "cancelling": "Annulation…",
