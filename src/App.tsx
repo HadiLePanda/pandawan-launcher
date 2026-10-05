@@ -641,7 +641,6 @@ function App() {
               void refreshUpdateStatus();
             }}
             onSelectNewsArticle={(articleId) => handleOpenArticle(selectedGame.info.id, articleId)}
-            onGoToDownloads={() => goToView('downloads')}
             onCancel={cancelOperation}
           />
         ) : (
@@ -726,6 +725,17 @@ function App() {
         }
         onLauncherUpdateClick={handleLauncherUpdateClick}
         gameRunning={isGameRunning}
+        notificationsPanel={
+          isNotificationsOpen && (
+            <NotificationsPanel
+              notifications={notifications}
+              onMarkAllRead={markAllNotificationsRead}
+              onDismiss={dismissNotification}
+              onClearAll={clearNotifications}
+              onClose={() => setIsNotificationsOpen(false)}
+            />
+          )
+        }
       />
 
       {/* Shown in every view, not just the games grid. News and the store are
@@ -744,16 +754,6 @@ function App() {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {isNotificationsOpen && (
-          <NotificationsPanel
-            notifications={notifications}
-            onMarkAllRead={markAllNotificationsRead}
-            onDismiss={dismissNotification}
-            onClearAll={clearNotifications}
-            onClose={() => setIsNotificationsOpen(false)}
-          />
-        )}
-
         <UpdateBanner />
 
         <div className="app-body flex flex-row flex-1 overflow-hidden">

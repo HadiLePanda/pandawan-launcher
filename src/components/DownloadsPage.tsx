@@ -188,7 +188,7 @@ function DownloadRow({
   const eta = etaSeconds !== null ? formatEta(etaSeconds) : '';
   // Fixed viewBox, no axis labels: the shape of the rate is the information.
   // Numbers on it would be a second thing to read that the bar already states.
-  const graph = speedGraphPath(samples, 240, 32);
+  const graph = speedGraphPath(samples, 240, 44);
 
   return (
     <div className="download-row">
@@ -225,36 +225,38 @@ function DownloadRow({
         </div>
 
         <div className="download-row-meta">
-          {progress.totalBytes > 0 ? (
-            <span className="download-row-bytes">
-              {t('downloads.ofSize', {
-                done: formatBytes(progress.downloadedBytes),
-                total: formatBytes(progress.totalBytes),
-              })}
-            </span>
-          ) : (
-            <span>{t('downloads.preparing')}</span>
-          )}
-
-          {progress.speed && <span className="download-row-speed">{progress.speed}</span>}
-
           {eta && <span className="download-row-eta">{t('downloads.eta', { time: eta })}</span>}
 
-          {/* Throughput over time. Hidden until there are two samples, because a
-              graph with one point is a dot that reads as a rendering fault. */}
-          <svg
-            className="download-row-graph"
-            viewBox="0 0 240 32"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            {graph.line && (
-              <>
-                <path d={graph.area} className="download-row-graph-area" />
-                <path d={graph.line} className="download-row-graph-line" />
-              </>
-            )}
-          </svg>
+          {/* Rate, size and the rate history are one fact read three ways, so they
+              sit together against the time left at the other end of the line. */}
+          <div className="download-row-stats">
+            {progress.speed && <span className="download-row-speed">{progress.speed}</span>}
+
+            <span className="download-row-bytes">
+              {progress.totalBytes > 0
+                ? t('downloads.ofSize', {
+                    done: formatBytes(progress.downloadedBytes),
+                    total: formatBytes(progress.totalBytes),
+                  })
+                : t('downloads.preparing')}
+            </span>
+
+            {/* Throughput over time. Hidden until there are two samples, because a
+                graph with one point is a dot that reads as a rendering fault. */}
+            <svg
+              className="download-row-graph"
+              viewBox="0 0 240 44"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              {graph.line && (
+                <>
+                  <path d={graph.area} className="download-row-graph-area" />
+                  <path d={graph.line} className="download-row-graph-line" />
+                </>
+              )}
+            </svg>
+          </div>
         </div>
       </div>
     </div>

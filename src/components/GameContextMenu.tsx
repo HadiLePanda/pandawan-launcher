@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { deriveMenuItems, type GameContextAction } from '@/lib/game-context';
@@ -89,33 +89,47 @@ export function GameContextMenu({
     };
   }, [anchor, onClose, triggerRef]);
 
-  if (!anchor) return null;
-
-  let left = anchor.x;
-  let top = anchor.y;
-
-  // Clamp to the viewport so the menu never opens off-screen. Both placements
-  // position the menu by its own left edge, so it always reads as belonging to
-  // the thing that opened it.
   const menuWidth = 180;
   const menuHeight = items.length * 32 + 8;
+  const [placement, setPlacement] = useState<{ left: number; top: number } | null>(null);
 
-  if (typeof window !== 'undefined') {
-    if (left + menuWidth > window.innerWidth - 8) {
-      left = window.innerWidth - menuWidth - 8;
-    }
-    if (top + menuHeight > window.innerHeight - 8) {
-      top = window.innerHeight - menuHeight - 8;
-    }
+  // Measured in a layout effect, never during render: a ref must not be read
+  // while rendering, and a layout effect still runs before the browser paints,
+  // so the menu is never shown at the wrong spot for a frame.
+  //
+  // A menu opened by a button is placed from that button's own box, above it and
+  // right-aligned, the way a menu on a right-hand control is expected to sit. The
+  // click point is the fallback for the games bar's right-click, which has no
+  // trigger element of its own.
+  useLayoutEffect(() => {
+    if (!anchor) return;
+
+    const trigger = triggerRef?.current?.getBoundingClientRect();
+    let left = trigger ? trigger.right - menuWidth : anchor.x;
+    let top = trigger ? trigger.top - menuHeight - 6 : anchor.y;
+
+    // Clamp to the viewport so the menu never opens off-screen. A menu with a
+    // trigger opens upward, so only the top edge can push it back down; one
+    // without opens from the click point and is pushed up off the bottom edge.
+    if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
     if (left < 8) left = 8;
-    if (top < 8) top = 8;
-  }
+    if (trigger) {
+      if (top < 8) top = 8;
+    } else {
+      if (top + menuHeight > window.innerHeight - 8) top = window.innerHeight - menuHeight - 8;
+      if (top < 8) top = 8;
+    }
+
+    setPlacement({ left, top });
+  }, [anchor, triggerRef, menuWidth, menuHeight]);
+
+  if (!anchor || !placement) return null;
 
   return (
     <div
       ref={menuRef}
       className="game-context-menu"
-      style={{ position: 'fixed', top, left, zIndex: 100 }}
+      style={{ position: 'fixed', top: placement.top, left: placement.left, zIndex: 100 }}
       role="menu"
     >
       {items.map((item) => {

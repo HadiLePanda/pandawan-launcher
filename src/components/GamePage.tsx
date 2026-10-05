@@ -44,8 +44,6 @@ interface GamePageProps {
   catalogChannel: string;
   onChannelChange: (channel: Channel) => void;
   onSelectNewsArticle?: (articleId: string) => void;
-  /** The download footer's whole bar links to the Downloads page. */
-  onGoToDownloads?: () => void;
   onCancel?: () => void;
 }
 
@@ -211,7 +209,6 @@ export function GamePage({
   catalogChannel,
   onChannelChange,
   onSelectNewsArticle,
-  onGoToDownloads,
   onCancel,
 }: GamePageProps) {
   const { t } = useTranslation();
@@ -274,8 +271,9 @@ export function GamePage({
 
   const handlePrimaryClick = () => {
     if (unavailable) return;
-    // While a transfer runs the button reads Cancel, so the click cancels. This
-    // is what makes the label true; the button is enabled for exactly this case.
+    // While a transfer runs the button shows the progress, and its hover label is
+    // the cancel this click performs. The label is the promise, so the click
+    // cancels; the queue's details live on the Downloads page.
     if (isDownloading) return onCancel?.();
     if (isRunning) {
       if (!onClose) return; // No stop handler: do not fall through to play.
@@ -324,88 +322,56 @@ export function GamePage({
             <div className="game-detail-banner-scrim" />
             <div className="game-detail-banner-content">
               <h1 className="game-detail-title">{game.info.name}</h1>
+              <span className="game-detail-version">
+                {versionText(t, channel, game.info.version)}
+              </span>
             </div>
             {channel !== 'stable' && (
-              <span className={cn('game-channel-badge', `game-channel-badge-${channel}`)}>
+              <span
+                className={cn(
+                  'game-channel-tag',
+                  channel === 'alpha' && 'game-channel-tag-alpha',
+                  channel === 'beta' && 'game-channel-tag-beta'
+                )}
+              >
                 {channel === 'alpha'
                   ? t('gamePage.channelMenu.alpha')
-                  : channel === 'beta'
-                    ? t('gamePage.channelMenu.beta')
-                    : t('gamePage.channelMenu.stable')}
+                  : t('gamePage.channelMenu.beta')}
               </span>
             )}
-            <div className="game-detail-banner-tools">
-              <button
-                type="button"
-                ref={channelTriggerRef}
-                onClick={() => setIsChannelOpen((open) => !open)}
-                className="game-detail-menu-btn"
-                title={t('gamePage.channelMenu.title')}
-                aria-label={t('gamePage.channelMenu.title')}
-                aria-haspopup="menu"
-                aria-expanded={isChannelOpen}
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-              {isChannelOpen && (
-                <ChannelPicker
-                  gameId={game.info.id}
-                  currentChannel={channel}
-                  catalogChannel={catalogChannel}
-                  availableChannels={availableChannelsFor(
-                    catalogChannel,
-                    game.info.availableChannels
-                  )}
-                  triggerRef={channelTriggerRef}
-                  onChoose={onChannelChange}
-                  onClose={() => setIsChannelOpen(false)}
-                />
-              )}
-              <button
-                type="button"
-                ref={menuTriggerRef}
-                onClick={() => {
-                  const rect = menuTriggerRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    // The menu positions its own left edge, so passing rect.left keeps
-                    // it flush beneath the icon instead of drifting toward the
-                    // centre of the window.
-                    const next = { x: rect.left, y: rect.bottom + 6 };
-                    // Toggle: clicking the button that opened the menu closes it
-                    // again. Re-measuring first means the same click closes rather
-                    // than re-anchoring the menu where it already is.
-                    setMenuAnchor((current) => (current ? null : next));
-                  }
-                }}
-                className="game-detail-menu-btn"
-                title={t('gamePage.moreOptions')}
-                aria-label={t('gamePage.moreOptions')}
-                aria-haspopup="menu"
-                aria-expanded={menuAnchor !== null}
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
           </div>
 
           <div className="game-detail-action-panel">
             <div className="game-detail-actions-left">
+              {/* The fill is the button's own background, sized to the transfer,
+                  so the progress needs no row of its own and the left column
+                  gains no height while a download runs. Both labels sit in the
+                  button and CSS shows one of them, so the width it takes is the
+                  wider label's and hovering cannot move the row. */}
               <button
                 type="button"
                 onClick={handlePrimaryClick}
                 disabled={unavailable || (isDownloading && !onCancel)}
                 title={unavailableTitle()}
-                className={cn('game-detail-play-btn', primaryColorClass())}
+                className={cn(
+                  'game-detail-play-btn',
+                  primaryColorClass(),
+                  isDownloading && 'transferring'
+                )}
+                style={isDownloading ? { backgroundSize: `${downloadPct}% 100%` } : undefined}
               >
-                {isDownloading && onCancel ? (
+                {isDownloading ? (
                   <>
-                    <X className="w-5 h-5" />
-                    <span>{t('common.cancel')}</span>
-                  </>
-                ) : isDownloading ? (
-                  <>
-                    <Download className="w-5 h-5" />
-                    <span>{downloadPct}%</span>
+                    <span className="game-detail-play-state">
+                      <Download className="w-5 h-5" />
+                      <span>
+                        {primaryLabel()} {downloadPct}%
+                      </span>
+                    </span>
+                    <span className="game-detail-play-cancel">
+                      <X className="w-5 h-5" />
+                      <span>{t('downloads.cancel')}</span>
+                    </span>
                   </>
                 ) : isRunning ? (
                   <>
@@ -469,15 +435,67 @@ export function GamePage({
                   </>
                 )}
               </div>
-              <span className="game-detail-chip game-detail-version">
-                {versionText(t, channel, game.info.version)}
-              </span>
+            </div>
+            <div className="game-detail-panel-tools">
+              <button
+                type="button"
+                ref={channelTriggerRef}
+                onClick={() => setIsChannelOpen((open) => !open)}
+                className="game-detail-menu-btn"
+                title={t('gamePage.channelMenu.title')}
+                aria-label={t('gamePage.channelMenu.title')}
+                aria-haspopup="menu"
+                aria-expanded={isChannelOpen}
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
+              {isChannelOpen && (
+                <ChannelPicker
+                  gameId={game.info.id}
+                  currentChannel={channel}
+                  catalogChannel={catalogChannel}
+                  availableChannels={availableChannelsFor(
+                    catalogChannel,
+                    game.info.availableChannels
+                  )}
+                  triggerRef={channelTriggerRef}
+                  onChoose={onChannelChange}
+                  onClose={() => setIsChannelOpen(false)}
+                />
+              )}
+              <button
+                type="button"
+                ref={menuTriggerRef}
+                onClick={() => {
+                  const rect = menuTriggerRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    // The menu positions its own left edge, so passing rect.left keeps
+                    // it flush beneath the icon instead of drifting toward the
+                    // centre of the window.
+                    const next = { x: rect.left, y: rect.bottom + 6 };
+                    // Toggle: clicking the button that opened the menu closes it
+                    // again. Re-measuring first means the same click closes rather
+                    // than re-anchoring the menu where it already is.
+                    setMenuAnchor((current) => (current ? null : next));
+                  }
+                }}
+                className="game-detail-menu-btn"
+                title={t('gamePage.moreOptions')}
+                aria-label={t('gamePage.moreOptions')}
+                aria-haspopup="menu"
+                aria-expanded={menuAnchor !== null}
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
           {game.info.screenshots.length > 0 && (
             <section className="game-detail-shots">
-              <h2 className="game-detail-shots-title">{t('gamePage.screenshots')}</h2>
+              {/* Announced, not shown. A row of images says what it is, and the
+                  label cost the height that pushed this column into a scrollbar
+                  at the default window size. */}
+              <h2 className="sr-only">{t('gamePage.screenshots')}</h2>
               <div className="game-detail-shots-row">
                 {game.info.screenshots.map((shot, i) => (
                   <button
@@ -568,48 +586,6 @@ export function GamePage({
           )}
         </aside>
       </div>
-
-      {isDownloading && (
-        <div className="game-detail-download">
-          <button
-            type="button"
-            className="game-detail-download-open"
-            onClick={onGoToDownloads}
-            disabled={!onGoToDownloads}
-            title={t('downloads.title')}
-          >
-            <span className="game-detail-download-top">
-              <span className="game-detail-download-name">{game.info.name}</span>
-              {downloadProgress?.speed && (
-                <span className="game-detail-download-speed">{downloadProgress.speed}</span>
-              )}
-            </span>
-            <span className="game-detail-download-bar">
-              <span
-                className="game-detail-download-fill"
-                style={{ width: `${downloadPct}%` }}
-                role="progressbar"
-                aria-valuenow={downloadPct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={game.info.name}
-              />
-            </span>
-          </button>
-          <span className="game-detail-download-pct">{downloadPct}%</span>
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="game-detail-download-cancel"
-              title={t('common.cancel')}
-              aria-label={t('common.cancel')}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

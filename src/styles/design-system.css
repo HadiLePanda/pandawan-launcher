@@ -573,6 +573,15 @@ Component Design System
   color: #ffffff;
 }
 
+/* A transfer running tints the button rather than filling it: this button's
+   badge is the same blue, so a solid fill would swallow the count it carries.
+   The tint says something is happening; the badge still says how many. */
+.topbar-btn-downloading,
+.topbar-btn-downloading:hover {
+  background: color-mix(in oklab, var(--blue) 22%, transparent);
+  color: var(--blue);
+}
+
 .topbar-badge {
   position: absolute;
   top: 2px;
@@ -624,7 +633,7 @@ Component Design System
 
 .profile-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 6px);
   right: 0;
   width: 180px;
   background: var(--surface-default);

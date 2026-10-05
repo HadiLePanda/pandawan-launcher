@@ -53,6 +53,12 @@ interface MainNavProps {
   /** True when a background catalog poll found new content to load. */
   catalogStale?: boolean;
   onCatalogRefresh: () => void;
+  /**
+   * The notifications panel, rendered inside the bell's own wrapper so it is
+   * anchored to the button that opens it. Passed as a node rather than a set of
+   * props: this bar does not need to know what a notification is.
+   */
+  notificationsPanel?: React.ReactNode;
 }
 
 function TopBarButton({
@@ -60,6 +66,7 @@ function TopBarButton({
   label,
   badge,
   active,
+  downloading,
   trigger,
   wide,
   variant,
@@ -70,6 +77,8 @@ function TopBarButton({
   label: string;
   badge?: number | null;
   active?: boolean;
+  /** A transfer is running: the button carries a tint, not just a count. */
+  downloading?: boolean;
   trigger?: string;
   wide?: boolean;
   variant?: 'notifications';
@@ -84,6 +93,7 @@ function TopBarButton({
         'topbar-btn',
         variant === 'notifications' && 'topbar-btn-notif',
         variant === 'notifications' && active && 'topbar-btn-notif-active',
+        downloading && 'topbar-btn-downloading',
         active && variant !== 'notifications' && 'topbar-btn-active',
         wide && 'topbar-btn-wide'
       )}
@@ -177,6 +187,7 @@ export function MainNav({
   catalogStale,
   onCatalogRefresh,
   gameRunning,
+  notificationsPanel,
 }: MainNavProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -441,6 +452,7 @@ export function MainNav({
             label={t('topBar.downloads')}
             badge={downloadsBadge}
             active={activeView === 'downloads'}
+            downloading={downloadsBadge > 0}
             onClick={onDownloadsNavigate}
             testId="nav-downloads"
           />
@@ -459,23 +471,25 @@ export function MainNav({
             </button>
           )}
         </div>
-        <TopBarButton
-          icon={<Bell className="w-4 h-4" />}
-          label={t('topBar.notifications')}
-          badge={notificationsBadge}
-          active={(notificationsBadge ?? 0) > 0}
-          trigger="notifications"
-          variant="notifications"
-          wide
-          onClick={onNotificationsClick}
-        />
+        <div className="relative">
+          <TopBarButton
+            icon={<Bell className="w-4 h-4" />}
+            label={t('topBar.notifications')}
+            badge={notificationsBadge}
+            active={(notificationsBadge ?? 0) > 0}
+            trigger="notifications"
+            variant="notifications"
+            wide
+            onClick={onNotificationsClick}
+          />
+          {notificationsPanel}
+        </div>
         <div className="relative" ref={profileMenuRef}>
           <button
             type="button"
             className="topbar-btn topbar-btn-avatar"
             data-panel-trigger="profile"
             aria-label={t('topBar.playerProfile')}
-            title={t('topBar.playerProfile')}
             onClick={() => setIsProfileMenuOpen((open) => !open)}
           >
             <span className="topbar-avatar">

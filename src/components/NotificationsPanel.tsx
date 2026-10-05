@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Mail, X } from 'lucide-react';
+import { Bell, Mail, Trash2 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import type { LauncherNotification } from '@/lib/store';
 
@@ -61,28 +61,32 @@ export function NotificationsPanel({
         <span id="notifications-panel-title" className="notifications-panel-title">
           {t('notificationsPanel.title')}
         </span>
-        <div className="notifications-panel-actions">
-          {/* Mark all read while there is anything to mark. Once everything is
+        {notifications.length > 0 && (
+          <div className="notifications-panel-actions">
+            {/* Mark all read while there is anything to mark. Once everything is
                         read the same control clears the list, and its icon becomes an
-                        X so the button never shows one that disagrees with what
+                        bin so the button never shows one that disagrees with what
                         pressing it does. */}
-          <button
-            type="button"
-            onClick={unread > 0 ? onMarkAllRead : onClearAll}
-            className="notifications-panel-action notifications-panel-action-adaptive"
-            title={unread > 0 ? t('notificationsPanel.markAllRead') : t('notificationsPanel.clear')}
-            aria-label={
-              unread > 0 ? t('notificationsPanel.markAllRead') : t('notificationsPanel.clear')
-            }
-            data-state={unread > 0 ? 'unread' : 'read'}
-          >
-            {unread > 0 ? (
-              <Mail className="w-4 h-4 notifications-panel-action-read-icon" />
-            ) : (
-              <X className="w-4 h-4 notifications-panel-action-clear-icon" />
-            )}
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={unread > 0 ? onMarkAllRead : onClearAll}
+              className="notifications-panel-action notifications-panel-action-adaptive"
+              title={
+                unread > 0 ? t('notificationsPanel.markAllRead') : t('notificationsPanel.clear')
+              }
+              aria-label={
+                unread > 0 ? t('notificationsPanel.markAllRead') : t('notificationsPanel.clear')
+              }
+              data-state={unread > 0 ? 'unread' : 'read'}
+            >
+              {unread > 0 ? (
+                <Mail className="w-4 h-4 notifications-panel-action-read-icon" />
+              ) : (
+                <Trash2 className="w-4 h-4 notifications-panel-action-clear-icon" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="notifications-panel-list">
@@ -110,7 +114,8 @@ export function NotificationsPanel({
               </div>
               {/* Revealed on hover so a list stays quiet, but not
                   display:none: a keyboard user still has to reach it, and
-                  opacity keeps it in the tab order and hit-testable. */}
+                  opacity keeps it in the tab order and hit-testable. A bin, not
+                  an X: an X reads as "close this item", a different promise. */}
               <button
                 type="button"
                 onClick={() => onDismiss(n.id)}
@@ -118,7 +123,7 @@ export function NotificationsPanel({
                 title={t('notificationsPanel.dismiss')}
                 aria-label={`${t('notificationsPanel.dismiss')}: ${n.title}`}
               >
-                <X className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           ))
