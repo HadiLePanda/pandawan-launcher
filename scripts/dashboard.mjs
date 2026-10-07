@@ -89,6 +89,9 @@ import {
   siteMissingMessage,
   summariseDownloads,
 } from './lib/website-status.mjs';
+// Reading a CI run and its jobs is pure, so the words the Releases panel shows
+// are checked without a logged-in gh or a network.
+import { runForTag, summariseRun } from './lib/ci-status.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetDir = path.join(here, 'dashboard');
@@ -902,8 +905,86 @@ async function launcherStatus() {
     major: bumpVersion(packageVersion, 'major'),
   };
 
-  return { published, publishedError, releases, packageVersion, nextVersions, cdnOrigin };
+  // The tag a release of this repo version would carry, and CI's run for it. The
+  // version in package.json, NOT the newest GitHub release: after a bump the tag
+  // is pushed before any release exists, so the release list still names the
+  // previous version and would report the wrong run.
+  const targetTag = packageVersion ? `v${packageVersion}` : null;
+  const run = runForTag(releaseWorkflowRuns(), targetTag);
+  // Job conclusions only exist once a run has a conclusion of its own, but gh
+  // answers job statuses mid-run too, so they are read whenever a run exists.
+  const jobs = run ? runJobs(run.databaseId) : [];
+  const ci = summariseRun(run, jobs);
+
+  return {
+    published,
+    publishedError,
+    releases,
+    packageVersion,
+    nextVersions,
+    cdnOrigin,
+    targetTag,
+    ci,
+  };
 }
+
+/**
+ * The release-workflow runs, newest first, or an empty list.
+ *
+ * A missing gh, a logged-out gh, or a JSON shape this does not expect all answer
+ * an empty list: the panel then says "no run" rather than failing, and no caller
+ * may read the absence as a pass.
+ */
+function releaseWorkflowRuns() {
+  try {
+    const out = spawnSync(
+      'gh',
+      [
+        'run',
+        'list',
+        '--workflow',
+        'release.yml',
+        '--json',
+        'databaseId,status,conclusion,headBranch,event,url,createdAt',
+        '--limit',
+        '20',
+      ],
+      { cwd: repoRoot, encoding: 'utf-8', shell: false }
+    );
+    if (out.status === 0 && out.stdout) return JSON.parse(out.stdout);
+  } catch {
+    // Fall through to the empty list.
+  }
+  return [];
+}
+
+/** The jobs of one run, or an empty list. Same "absence is not a pass" rule. */
+function runJobs(runId) {
+  try {
+    const out = spawnSync('gh', ['run', 'view', String(runId), '--json', 'jobs'], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (out.status === 0 && out.stdout) return JSON.parse(out.stdout).jobs ?? [];
+  } catch {
+    // Fall through to the empty list.
+  }
+  return [];
+}
+
+/**
+ * The tag CI should have a run for, from the repo's own version. Shared by the
+ * status read and the rerun verb so the run the panel names and the run the
+ * button reruns can never be two different runs.
+ */
+async function targetReleaseTag() {
+  const packageVersion = JSON.parse(
+    await readFile(path.join(repoRoot, 'package.json'), 'utf-8')
+  ).version;
+  return packageVersion ? `v${packageVersion}` : null;
+}
+
 
 /**
  * The live news feed, or an empty one when absent. A missing feed is normal on a
@@ -1210,6 +1291,39 @@ async function readJson(req, res, { maxBytes = 1024 * 1024 } = {}) {
  * unchanged, so a caller that passes nothing behaves exactly as before.
  */
 function runScript(name, args, res, { onExit } = {}) {
+  streamChild(
+    res,
+    { id: name, onExit },
+    () =>
+      spawn(process.execPath, [path.join(here, name), ...args], {
+        cwd: path.resolve(here, '..'),
+        env: process.env,
+      })
+  );
+}
+
+/**
+ * Run an external command (gh, git) and stream it exactly as runScript streams a
+ * node script. Used for the CI verbs, which are `gh` calls rather than one of the
+ * publishing scripts - the two must share the SSE frame format, the close-kill
+ * and the reap manifest, or a cancelled rerun would strand a process.
+ */
+function runCommand(command, args, res, { onExit } = {}) {
+  streamChild(
+    res,
+    { id: command, onExit },
+    () => spawn(command, args, { cwd: repoRoot, env: process.env, shell: false })
+  );
+}
+
+/**
+ * The shared body of runScript and runCommand: open the SSE response, spawn the
+ * child, forward its output, then its exit code.
+ *
+ * `spawnChild` is a thunk rather than a ready child so the response head is
+ * written before the spawn, matching the order the streaming pump always used.
+ */
+function streamChild(res, { id, onExit }, spawnChild) {
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
@@ -1218,14 +1332,11 @@ function runScript(name, args, res, { onExit } = {}) {
 
   const send = (event, data) => res.write(`event: ${event}\ndata: ${data}\n\n`);
 
-  const child = spawn(process.execPath, [path.join(here, name), ...args], {
-    cwd: path.resolve(here, '..'),
-    env: process.env,
-  });
+  const child = spawnChild();
 
   // Recorded so a dashboard that dies mid-publish does not leave the upload
   // running behind it, with no window on screen to stop it.
-  const script = { pid: child.pid, startedAt: processStartedAt(child.pid), id: name };
+  const script = { pid: child.pid, startedAt: processStartedAt(child.pid), id };
   runningScripts.add(script);
   persist();
 
@@ -2572,6 +2683,32 @@ const server = http.createServer(async (req, res) => {
     invalidateCache('/api/inventory');
 
     runScript('release.mjs', argv, res);
+    return;
+  }
+
+  // Re-run CI for the current version's tag. This clears the one class of
+  // failure a rerun can fix - a runner that never picked the job up, a cancelled
+  // matrix leg - without rebuilding from a local machine. A failure that is a
+  // code bug is shown in the panel with the failing job names, not re-run blindly.
+  if (url.pathname === '/api/launcher/build' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (payload === JSON_REFUSED) return;
+    const tag = await targetReleaseTag();
+    if (!tag) {
+      res.writeHead(400).end('the repo version could not be read, so there is no tag to build');
+      return;
+    }
+    const run = runForTag(releaseWorkflowRuns(), tag);
+    if (!run) {
+      res.writeHead(409).end(`No release run found for ${tag}. Push the tag, then refresh.`);
+      return;
+    }
+    if (run.status !== 'completed') {
+      res.writeHead(409).end(`${tag} is already ${run.status}. Wait for it, then refresh.`);
+      return;
+    }
+    // Read live by /api/launcher/status (uncached), so nothing is invalidated.
+    runCommand('gh', ['run', 'rerun', String(run.databaseId)], res);
     return;
   }
 

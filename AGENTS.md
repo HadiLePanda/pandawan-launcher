@@ -178,6 +178,20 @@ The few things worth knowing without looking:
   reachable in one list and unreachable in the other. Metadata is first (the editor people live in) and Prune
   last (the only tab that deletes builds). The open tab persists through the session store and a stale
   persisted id is re-validated against the ids rather than trusted.
+- **Launcher → Releases is a three-stage release pipeline, in the order the work happens: Bump, Build,
+  Publish.** Bump & tag (`release.mjs`) writes the version files, commits, tags and pushes, and the push is
+  what triggers `release.yml`. Build is therefore CI's run, not a local action: `release.yml` builds and
+  signs the three platforms, drafts the GitHub release, and uploads `latest.json` + bundles to R2 itself.
+  `GET /api/launcher/status` carries `targetTag` and a `ci` summary (status, conclusion, run URL, failed
+  job names) so a red run is visible in the panel rather than only in Actions; `POST /api/launcher/build`
+  is `gh run rerun` on that tag's run, the one failure a rerun can clear (a runner that never picked the
+  job up, a cancelled leg) — a code failure is named, not re-run blindly. Publish
+  (`publish-launcher.mjs`) is the manual repair for a build that succeeded but whose R2 upload leg failed,
+  and stays gated on a release newer than live existing, so it is disabled while CI is red. The run the
+  panel names and the run the button reruns both derive from `v${packageVersion}`, never from the GitHub
+  release list, which still names the previous version after a bump. `scripts/lib/ci-status.mjs` holds the
+  pure run-reading rules (`runForTag`, `summariseRun`) so the words the panel shows are tested without a
+  logged-in `gh`.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
   is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
   `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen

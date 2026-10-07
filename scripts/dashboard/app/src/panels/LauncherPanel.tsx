@@ -26,10 +26,12 @@ import {
   ArrowDown,
   ArrowUp,
   CheckCircle2,
+  ExternalLink,
   KeyRound,
   Loader2,
   RefreshCw,
   Rocket,
+  RotateCcw,
   Tag,
 } from 'lucide-react';
 
@@ -53,6 +55,17 @@ interface LauncherStatus {
   packageVersion?: string;
   /** What each bump level produces, computed with release.mjs's own rule. */
   nextVersions?: Record<'patch' | 'minor' | 'major', string>;
+  /** The tag a release of the repo version carries, e.g. `v0.3.0`. */
+  targetTag?: string | null;
+  /** CI's release-workflow run for `targetTag`, or null when none exists. */
+  ci?: {
+    runId: number | null;
+    status: string | null;
+    conclusion: string | null;
+    url: string | null;
+    failedJobs: string[];
+    jobCount: number;
+  } | null;
   cdnOrigin?: string;
   error?: string;
 }
@@ -101,6 +114,7 @@ export default function LauncherPanel() {
 
   const publish = usePublisherStream();
   const release = usePublisherStream();
+  const build = usePublisherStream();
   const keys = usePublisherStream();
 
   // The request, with no setState in it. A loader that reaches into component
@@ -149,6 +163,9 @@ export default function LauncherPanel() {
   // What a bump would produce, from the server's copy of release.mjs's rule.
   const proposedVersion = repoVersion ? (data?.nextVersions?.[releaseLevel] ?? null) : null;
   const proposedTag = proposedVersion ? `v${proposedVersion}` : null;
+  // A rerun only applies to a finished run; the server refuses a run that is
+  // still going, so the button matches rather than offering a call that fails.
+  const canRerun = !!data?.ci?.runId && data?.ci?.status === 'completed';
 
   async function doPublish() {
     if (!nextTag) return;
@@ -182,10 +199,15 @@ export default function LauncherPanel() {
     await refresh();
   }
 
-  // The panel owns three streams, so no two of them may run at once: two
+  async function doBuild() {
+    await build.start('/api/launcher/build', {});
+    await refresh();
+  }
+
+  // The panel owns four streams, so no two of them may run at once: two
   // publishers writing to the same bucket with interleaved logs is worse than a
   // disabled button.
-  const busy = publish.busy || release.busy || keys.busy;
+  const busy = publish.busy || release.busy || build.busy || keys.busy;
 
   return (
     <div className="flex flex-col">
@@ -271,56 +293,11 @@ export default function LauncherPanel() {
         ) : null}
 
         <div className="mt-4 rounded-lg border border-edge bg-surface">
-          {/* Row 1: publish. The newest waiting tag is one click, with the tag it
-              will send printed on the button. A real upload confirms by tag name. */}
+          {/* Stage 1: bump. The level proposes the next version; the tag is
+              derived from it and named on the button. Preview only starts ticked
+              and is never unticked by the panel. */}
           <div className="flex flex-wrap items-center gap-3 px-6 py-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => void doPublish()}
-              disabled={busy || !nextTag}
-              busy={publish.busy}
-              title={
-                nextTag ? `Publish ${nextTag}` : 'No built release is newer than the live version.'
-              }
-            >
-              {!publish.busy ? <Rocket aria-hidden size={14} /> : null}
-              Publish
-              {nextTag ? <span className="font-mono text-[12px]">{nextTag}</span> : null}
-            </Button>
-
-            {!nextTag && !busy ? (
-              // Said plainly rather than silently falling back to a disabled
-              // button: with nothing waiting, the reason is not the button.
-              <span className="text-[12.5px] text-ink-subtle">nothing waiting</span>
-            ) : null}
-
-            <label className="flex items-center gap-2 text-[12.5px] text-ink">
-              <input
-                type="checkbox"
-                checked={confirmPublish}
-                disabled={busy}
-                onChange={(event) => setConfirmPublish(event.target.checked)}
-                className="size-3.5 accent-[var(--color-accent)]"
-              />
-              Upload for real
-            </label>
-          </div>
-
-          {/* The one line on this page that stops a mistake: a real upload has no
-              other warning except a checkbox and a native confirm. */}
-          {confirmPublish ? (
-            <p className="m-0 border-t border-edge px-6 py-2 text-[12px] text-warn">
-              Writes to the bucket &mdash; players on an older version get this immediately.
-            </p>
-          ) : null}
-          <Stream stream={publish} label="Launcher publish output" />
-
-          {/* Row 2: bump. The level proposes the next version; the tag is derived
-              from it and named on the button. Preview only starts ticked and is
-              never unticked by the panel. */}
-          <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
-            <span className="text-[12px] text-ink-muted">Bump</span>
+            <StageLabel n={1} title="Bump & tag" />
             {LEVELS.map((level) => (
               <Button
                 key={level}
@@ -369,6 +346,77 @@ export default function LauncherPanel() {
           </div>
           <Stream stream={release} label="Release output" />
 
+          {/* Stage 2: the build CI runs off the pushed tag. Re-running is the
+              repair for a runner-side failure; a code failure is named here so
+              the reason is on screen, not re-run blindly. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
+            <StageLabel n={2} title="Build (CI)" />
+            <CiStatus ci={data?.ci} tag={data?.targetTag} />
+            <Button
+              className="ml-auto"
+              onClick={() => void doBuild()}
+              disabled={busy || !canRerun}
+              busy={build.busy}
+              title={
+                canRerun
+                  ? `Re-run CI for ${data?.targetTag}`
+                  : data?.ci
+                    ? `${data?.targetTag} is not finished yet`
+                    : 'CI has no run for this version yet.'
+              }
+            >
+              {!build.busy ? <RotateCcw aria-hidden size={14} /> : null}
+              Re-run CI
+            </Button>
+          </div>
+          <Stream stream={build} label="Build rerun output" />
+
+          {/* Stage 3: publish the built release to R2. Only a tag CI has built and
+              released is waiting, so with nothing built the button names why. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
+            <StageLabel n={3} title="Publish" />
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => void doPublish()}
+              disabled={busy || !nextTag}
+              busy={publish.busy}
+              title={
+                nextTag ? `Publish ${nextTag}` : 'No built release is newer than the live version.'
+              }
+            >
+              {!publish.busy ? <Rocket aria-hidden size={14} /> : null}
+              Publish
+              {nextTag ? <span className="font-mono text-[12px]">{nextTag}</span> : null}
+            </Button>
+
+            {!nextTag && !busy ? (
+              // Said plainly rather than silently falling back to a disabled
+              // button: with nothing waiting, the reason is not the button.
+              <span className="text-[12.5px] text-ink-subtle">nothing waiting</span>
+            ) : null}
+
+            <label className="flex items-center gap-2 text-[12.5px] text-ink">
+              <input
+                type="checkbox"
+                checked={confirmPublish}
+                disabled={busy}
+                onChange={(event) => setConfirmPublish(event.target.checked)}
+                className="size-3.5 accent-[var(--color-accent)]"
+              />
+              Upload for real
+            </label>
+          </div>
+
+          {/* The one line on this page that stops a mistake: a real upload has no
+              other warning except a checkbox and a native confirm. */}
+          {confirmPublish ? (
+            <p className="m-0 border-t border-edge px-6 py-2 text-[12px] text-warn">
+              Writes to the bucket &mdash; players on an older version get this immediately.
+            </p>
+          ) : null}
+          <Stream stream={publish} label="Launcher publish output" />
+
           {/* Row 3: the signing key. Always safe: it signs a throwaway file. */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge px-6 py-4">
             <span className="text-[12.5px] text-ink">Signing key</span>
@@ -386,6 +434,99 @@ export default function LauncherPanel() {
       </div>
     </div>
   );
+}
+
+/** A stage's number and name, so the three verbs read as one ordered flow. */
+function StageLabel({ n, title }: { n: number; title: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className="flex size-5 items-center justify-center rounded-full border border-edge font-mono text-[11px] text-ink-subtle">
+        {n}
+      </span>
+      <span className="text-[12px] text-ink-muted">{title}</span>
+    </span>
+  );
+}
+
+/**
+ * CI's verdict for the current version's tag: a word, the run link, and the jobs
+ * that did not pass.
+ *
+ * A version with no run yet says so rather than reading as a pass, and a failed
+ * run names its jobs so the reason is on screen instead of implied by a disabled
+ * Publish button.
+ */
+function CiStatus({ ci, tag }: { ci: LauncherStatus['ci']; tag: string | null | undefined }) {
+  if (!tag) {
+    return <span className="text-[12.5px] text-ink-subtle">repo version unknown</span>;
+  }
+  if (!ci) {
+    return (
+      <span className="text-[12.5px] text-ink-subtle">
+        no run yet for <span className="font-mono">{tag}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
+      <span className="flex items-center gap-1.5">
+        <CiGlyph ci={ci} />
+        <span className={cx('font-medium', ciTone(ci))}>{ciWord(ci)}</span>
+      </span>
+      <span className="font-mono text-ink-subtle">{tag}</span>
+      {ci.url ? (
+        <a
+          href={ci.url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 text-ink-muted hover:text-ink"
+        >
+          Actions <ExternalLink aria-hidden size={12} />
+        </a>
+      ) : null}
+      {ci.failedJobs.length ? (
+        <span className="text-status-error">{ci.failedJobs.join(', ')}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function CiGlyph({ ci }: { ci: NonNullable<LauncherStatus['ci']> }) {
+  if (ci.status && ci.status !== 'completed') {
+    return <Loader2 aria-hidden size={13} className="animate-spin text-warn" />;
+  }
+  if (ci.conclusion === 'success') {
+    return <CheckCircle2 aria-hidden size={13} className="text-accent" />;
+  }
+  return <AlertTriangle aria-hidden size={13} className="text-status-error" />;
+}
+
+/**
+ * The run's word. `status` is read before `conclusion` because a run reports a
+ * status for its whole life and a conclusion only once it is complete, so a run
+ * that has not concluded never falls through to "passed".
+ */
+function ciWord(ci: NonNullable<LauncherStatus['ci']>): string {
+  if (ci.status && ci.status !== 'completed') {
+    return ci.status === 'in_progress' ? 'building' : ci.status;
+  }
+  switch (ci.conclusion) {
+    case 'success':
+      return 'passed';
+    case 'failure':
+      return 'failed';
+    case 'cancelled':
+      return 'cancelled';
+    case 'timed_out':
+      return 'timed out';
+    default:
+      return ci.conclusion ?? 'unknown';
+  }
+}
+
+function ciTone(ci: NonNullable<LauncherStatus['ci']>): string {
+  if (ci.status && ci.status !== 'completed') return 'text-warn';
+  return ci.conclusion === 'success' ? 'text-accent' : 'text-status-error';
 }
 
 /**
