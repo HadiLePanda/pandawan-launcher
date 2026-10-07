@@ -1,6 +1,7 @@
 {
   "name": "pandawan-launcher",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.3.0",
   "type": "module",
   "scripts": {
