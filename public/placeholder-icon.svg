@@ -8,7 +8,7 @@
   <rect width="256" height="256" rx="32" fill="url(#bg)"/>
   <circle cx="200" cy="50" r="70" fill="#e85d3f" opacity="0.12"/>
   <!-- A neutral glyph, not a game's initials. The old placeholder was hardcoded to
-       "Pandawan Rising" and would have mislabelled every game that lacked art. -->
+       "Example Game" and would have mislabelled every game that lacked art. -->
   <g fill="none" stroke="#5c5c63" stroke-width="12" stroke-linejoin="round"
      stroke-linecap="round" opacity="0.85">
     <rect x="70" y="82" width="116" height="92" rx="10"/>

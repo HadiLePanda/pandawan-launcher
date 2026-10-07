@@ -130,7 +130,7 @@ the list into the rail is the crowding this decision exists to avoid.
 
 The relationship between a section and the thing it acts on is carried by the page
 header instead of by a shared column: the header names the selection ("Games ›
-Misspell · alpha"), so a full-page section never has to explain why it is not
+Example Game · alpha"), so a full-page section never has to explain why it is not
 showing a game.
 
 ### Show, don't tell — stated as a budget
@@ -184,7 +184,7 @@ sentence set in mono is not.
 An icon button next to the word "Edit" says the same thing twice. Inside a table
 row that repeats once per game, the redundancy is multiplied into noise, so
 destructive and edit controls are **icon-only with an accessible name** —
-`aria-label` naming the specific row ("Delete Misspell from the catalog"), never
+`aria-label` naming the specific row ("Delete Example Game from the catalog"), never
 a bare icon.
 
 The non-negotiable part: **colour is never the only signal.** Every state pairs

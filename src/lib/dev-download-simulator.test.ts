@@ -35,9 +35,9 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 }));
 
 const info: GameInfo = {
-  id: 'misspell',
+  id: 'example-game',
   channel: 'alpha',
-  name: 'Misspell',
+  name: 'Example Game',
   description: '',
   developer: 'Pandawan Corp',
   genre: [],
@@ -69,13 +69,13 @@ afterEach(() => {
 
 describe('dev download simulator', () => {
   it('drives the progress bar the real flow writes, from empty to complete', () => {
-    playFakeDownload('misspell');
+    playFakeDownload('example-game');
 
     // The card must read as downloading, or the row shows a moving bar on a
     // game the launcher still calls not installed.
     expect(useLauncherStore.getState().games[0]?.status).toBe('downloading');
 
-    const first = useLauncherStore.getState().activeDownloads.get('misspell');
+    const first = useLauncherStore.getState().activeDownloads.get('example-game');
     expect(first).toBeDefined();
     expect(first?.totalBytes).toBe(442_012_495);
     expect(first?.totalFiles).toBe(267);
@@ -86,7 +86,7 @@ describe('dev download simulator', () => {
     expect(first?.speed).toBe('');
 
     vi.advanceTimersByTime(80);
-    const second = useLauncherStore.getState().activeDownloads.get('misspell');
+    const second = useLauncherStore.getState().activeDownloads.get('example-game');
     expect(second?.downloadedBytes).toBeGreaterThan(0);
     expect(second?.overallProgress).toBeGreaterThan(0);
     expect(second?.speed).toMatch(/MB\/s/);
@@ -96,27 +96,27 @@ describe('dev download simulator', () => {
   });
 
   it('lands the same end state a real install does', () => {
-    playFakeDownload('misspell');
+    playFakeDownload('example-game');
     vi.advanceTimersByTime(80 * 200);
 
     const state = useLauncherStore.getState();
     // A real install removes the row and marks the game installed.
-    expect(state.activeDownloads.has('misspell')).toBe(false);
+    expect(state.activeDownloads.has('example-game')).toBe(false);
     expect(state.games[0]?.status).toBe('installed');
   });
 
   it('stalls on request and can be cleared, leaving no card stuck downloading', () => {
-    stallFakeDownload('misspell', 40);
+    stallFakeDownload('example-game', 40);
     vi.advanceTimersByTime(80 * 200);
 
-    const stalled = useLauncherStore.getState().activeDownloads.get('misspell');
+    const stalled = useLauncherStore.getState().activeDownloads.get('example-game');
     expect(stalled?.overallProgress).toBeCloseTo(40, 0);
     expect(useLauncherStore.getState().games[0]?.status).toBe('downloading');
 
     stopFakeDownload();
 
     const state = useLauncherStore.getState();
-    expect(state.activeDownloads.has('misspell')).toBe(false);
+    expect(state.activeDownloads.has('example-game')).toBe(false);
     // Left on 'downloading' the card would be a lie until restart.
     expect(state.games[0]?.status).toBe('not_installed');
   });
@@ -169,12 +169,12 @@ describe('dev download shortcut', () => {
     installDevDownloadSimulator();
 
     w.press({ key: 'd', ctrlKey: true, shiftKey: true });
-    expect(useLauncherStore.getState().activeDownloads.has('misspell')).toBe(true);
+    expect(useLauncherStore.getState().activeDownloads.has('example-game')).toBe(true);
 
     stopFakeDownload();
 
     w.press({ key: 'd', ctrlKey: true });
     w.press({ key: 'd', metaKey: true, shiftKey: true, altKey: true });
-    expect(useLauncherStore.getState().activeDownloads.has('misspell')).toBe(false);
+    expect(useLauncherStore.getState().activeDownloads.has('example-game')).toBe(false);
   });
 });

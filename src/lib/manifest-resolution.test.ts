@@ -26,7 +26,7 @@ function respond(routes: Record<string, string>): void {
 
 const manifestFor = (version: string, platforms: string[]) =>
   JSON.stringify({
-    game_id: 'misspell',
+    game_id: 'example-game',
     version,
     build_number: 1,
     channel: 'stable',
@@ -45,7 +45,7 @@ describe('resolveManifestForPlatform', () => {
     // already-published game breaks on upgrade.
     respond({ '/stable/manifest.json': manifestFor('0.4.0', ['windows']) });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'windows');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'windows');
 
     expect(result.status).toBe('ok');
     if (result.status === 'ok') expect(result.manifest.version).toBe('0.4.0');
@@ -60,7 +60,7 @@ describe('resolveManifestForPlatform', () => {
       '/0.3.9/manifest.json': manifestFor('0.3.9', ['macos']),
     });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'macos');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'macos');
 
     expect(result.status).toBe('ok');
     if (result.status === 'ok') {
@@ -74,7 +74,7 @@ describe('resolveManifestForPlatform', () => {
       '/stable/latest.json': JSON.stringify({ windows: { version: '0.4.0', build: 3 } }),
     });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'macos');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'macos');
 
     expect(result.status).toBe('unavailable');
     if (result.status === 'unavailable') {
@@ -89,7 +89,7 @@ describe('resolveManifestForPlatform', () => {
       '/stable/latest.json': JSON.stringify({ windows: { version: '0.4.0', build: 3 } }),
     });
 
-    await resolveManifestForPlatform('misspell', 'stable', 'linux');
+    await resolveManifestForPlatform('example-game', 'stable', 'linux');
 
     expect(fetchRemoteText).toHaveBeenCalledTimes(1);
     expect(fetchRemoteText).toHaveBeenCalledWith(expect.stringContaining('/latest.json'));
@@ -101,7 +101,7 @@ describe('resolveManifestForPlatform', () => {
       '/stable/manifest.json': manifestFor('0.4.0', ['windows']),
     });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'windows');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'windows');
 
     expect(result.status).toBe('ok');
   });
@@ -109,8 +109,8 @@ describe('resolveManifestForPlatform', () => {
 
 describe('resolveUnavailableGameInfo', () => {
   const entry = {
-    id: 'misspell',
-    name: 'Misspell',
+    id: 'example-game',
+    name: 'Example Game',
     channel: 'stable',
     description: 'A co-op game',
   } as CatalogGameEntry;
@@ -123,7 +123,7 @@ describe('resolveUnavailableGameInfo', () => {
       }),
     });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'linux');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'linux');
     expect(result.status).toBe('unavailable');
     if (result.status !== 'unavailable') return;
 
@@ -141,13 +141,13 @@ describe('resolveUnavailableGameInfo', () => {
   it('prefers the catalog entry over nothing when there are no versions', async () => {
     respond({ '/stable/latest.json': '{}' });
 
-    const result = await resolveManifestForPlatform('misspell', 'stable', 'macos');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'macos');
     expect(result.status).toBe('unavailable');
     if (result.status !== 'unavailable') return;
 
     const info = resolveUnavailableGameInfo(entry, result.availableVersions);
 
-    expect(info.name).toBe('Misspell');
+    expect(info.name).toBe('Example Game');
     expect(info.version).toBe('');
     expect(info.availableVersions).toEqual({});
   });

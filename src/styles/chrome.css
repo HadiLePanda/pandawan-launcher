@@ -170,7 +170,7 @@
 }
 
 /* No build for this OS. Dimmed and desaturated so the row is still legible and
-   still present - a Mac player should be able to see that Misspell exists and
+   still present - a Mac player should be able to see that Example Game exists and
    read why they cannot install it, not find it silently missing. */
 .game-card-unavailable {
   opacity: 0.42;

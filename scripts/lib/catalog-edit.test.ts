@@ -17,25 +17,25 @@ import { FIELDS } from './metadata-fields.mjs';
 // public/catalog.json still carries what it shipped with. That is the exact
 // disagreement the Catalog tab has to show, and the one a plain overwrite would
 // silently revert.
-const CDN_MISSPELL = {
-  id: 'misspell',
+const CDN_EXAMPLE_GAME = {
+  id: 'example-game',
   channel: 'alpha',
   availableChannels: ['alpha'],
-  name: 'Misspell',
+  name: 'Example Game',
   description: 'A local multiplayer word game.',
   developer: 'Pandawan Corp',
   genre: ['Multiplayer', 'Party'],
-  iconUrl: 'https://cdn.test/games/misspell/alpha/icon-a1b2c3d4.png',
-  bannerUrl: 'https://cdn.test/games/misspell/alpha/banner-e5f6a7b8.png',
-  screenshots: ['https://cdn.test/games/misspell/alpha/shot-1.png'],
+  iconUrl: 'https://cdn.test/games/example-game/alpha/icon-a1b2c3d4.png',
+  bannerUrl: 'https://cdn.test/games/example-game/alpha/banner-e5f6a7b8.png',
+  screenshots: ['https://cdn.test/games/example-game/alpha/shot-1.png'],
   supportedPlatforms: ['windows', 'macos'],
 };
 
-const LOCAL_MISSPELL = {
-  id: 'misspell',
+const LOCAL_EXAMPLE_GAME = {
+  id: 'example-game',
   channel: 'alpha',
   availableChannels: ['alpha'],
-  name: 'misspell',
+  name: 'example-game',
   description: 'A local multiplayer word game. Alpha playtest build.',
   developer: 'Pandawan Corp',
   genre: ['Multiplayer', 'Party'],
@@ -59,34 +59,34 @@ const NOW = Date.parse('2026-10-02T12:00:00Z');
 
 describe('catalogDiff', () => {
   it('reports nothing for two identical documents', () => {
-    const diff = catalogDiff(remoteDoc([CDN_MISSPELL]), localDoc([{ ...CDN_MISSPELL }]));
+    const diff = catalogDiff(remoteDoc([CDN_EXAMPLE_GAME]), localDoc([{ ...CDN_EXAMPLE_GAME }]));
 
     expect(diff).toEqual({ onlyLive: [], onlyLocal: [], changed: [] });
     expect(catalogDiffIsEmpty(diff)).toBe(true);
   });
 
   it('lists a game the published catalog has and the repo does not', () => {
-    const diff = catalogDiff(remoteDoc([CDN_MISSPELL]), localDoc([]));
+    const diff = catalogDiff(remoteDoc([CDN_EXAMPLE_GAME]), localDoc([]));
 
-    expect(diff.onlyLive).toEqual([{ id: 'misspell', channel: 'alpha', name: 'Misspell' }]);
+    expect(diff.onlyLive).toEqual([{ id: 'example-game', channel: 'alpha', name: 'Example Game' }]);
     expect(diff.onlyLocal).toEqual([]);
     expect(catalogDiffIsEmpty(diff)).toBe(false);
   });
 
   it('lists a game the repo has that is not published - what a publish would add', () => {
-    const diff = catalogDiff(remoteDoc([]), localDoc([LOCAL_MISSPELL]));
+    const diff = catalogDiff(remoteDoc([]), localDoc([LOCAL_EXAMPLE_GAME]));
 
-    expect(diff.onlyLocal).toEqual([{ id: 'misspell', channel: 'alpha', name: 'misspell' }]);
+    expect(diff.onlyLocal).toEqual([{ id: 'example-game', channel: 'alpha', name: 'example-game' }]);
     expect(diff.onlyLive).toEqual([]);
   });
 
   it('names the differing fields of a game both copies carry', () => {
-    const diff = catalogDiff(remoteDoc([CDN_MISSPELL]), localDoc([LOCAL_MISSPELL]));
+    const diff = catalogDiff(remoteDoc([CDN_EXAMPLE_GAME]), localDoc([LOCAL_EXAMPLE_GAME]));
 
     expect(diff.onlyLive).toEqual([]);
     expect(diff.onlyLocal).toEqual([]);
     expect(diff.changed).toHaveLength(1);
-    expect(diff.changed[0].id).toBe('misspell');
+    expect(diff.changed[0].id).toBe('example-game');
     expect(diff.changed[0].fields.sort()).toEqual([
       'bannerUrl',
       'description',
@@ -100,7 +100,7 @@ describe('catalogDiff', () => {
   it('reports field names, never values', () => {
     // The table renders both columns already, so shipping the values would double
     // the payload and invite the client to render a second, disagreeing view.
-    const diff = catalogDiff(remoteDoc([CDN_MISSPELL]), localDoc([LOCAL_MISSPELL]));
+    const diff = catalogDiff(remoteDoc([CDN_EXAMPLE_GAME]), localDoc([LOCAL_EXAMPLE_GAME]));
 
     for (const game of diff.changed) {
       // Nothing on a changed row may hold a nested object: `fields` is the one
@@ -115,15 +115,15 @@ describe('catalogDiff', () => {
     }
 
     // And the names themselves must be the field names, not the values they hold.
-    expect(diff.changed[0].fields).not.toContain('Misspell');
+    expect(diff.changed[0].fields).not.toContain('Example Game');
     expect(diff.changed[0].fields).not.toContain('/placeholder-icon.svg');
   });
 
   it('notices a game that moved channel', () => {
     // channel is compared on purpose: a game promoted alpha -> stable is a real
     // change, and it is the field a stale local copy most often disagrees about.
-    const promoted = { ...CDN_MISSPELL, channel: 'stable' };
-    const diff = catalogDiff(remoteDoc([promoted]), localDoc([{ ...CDN_MISSPELL }]));
+    const promoted = { ...CDN_EXAMPLE_GAME, channel: 'stable' };
+    const diff = catalogDiff(remoteDoc([promoted]), localDoc([{ ...CDN_EXAMPLE_GAME }]));
 
     expect(diff.changed).toHaveLength(1);
     expect(diff.changed[0].fields).toEqual(['channel']);
@@ -131,8 +131,8 @@ describe('catalogDiff', () => {
 
   it('notices a changed availableChannels list', () => {
     const diff = catalogDiff(
-      remoteDoc([{ ...CDN_MISSPELL, availableChannels: ['alpha', 'beta'] }]),
-      localDoc([{ ...CDN_MISSPELL, availableChannels: ['alpha'] }])
+      remoteDoc([{ ...CDN_EXAMPLE_GAME, availableChannels: ['alpha', 'beta'] }]),
+      localDoc([{ ...CDN_EXAMPLE_GAME, availableChannels: ['alpha'] }])
     );
 
     expect(diff.changed[0].fields).toEqual(['availableChannels']);
@@ -142,7 +142,7 @@ describe('catalogDiff', () => {
     // JSON comparison, not set comparison: the launcher reads these lists as
     // lists, and reporting a reorder as drift would make the tab cry wolf on
     // every publish that regenerates a list.
-    const a = { ...LOCAL_MISSPELL, genre: ['Party', 'Multiplayer'] };
+    const a = { ...LOCAL_EXAMPLE_GAME, genre: ['Party', 'Multiplayer'] };
     const diff = catalogDiff(remoteDoc([a]), localDoc([{ ...a }]));
 
     expect(diff.changed).toEqual([]);
@@ -152,24 +152,24 @@ describe('catalogDiff', () => {
     // Absent and explicitly null both mean "not set" to the launcher, and the
     // merge's own sameValue compares them that way. The diff has to agree with it,
     // or every game with a sparse published entry would look changed.
-    const sparse = { id: 'misspell', channel: 'alpha' };
+    const sparse = { id: 'example-game', channel: 'alpha' };
     const diff = catalogDiff(remoteDoc([sparse]), localDoc([{ ...sparse, name: null }]));
 
     expect(diff.changed).toEqual([]);
   });
 
   it('compares a missing side as knowing nothing', () => {
-    const absentLocal = catalogDiff(remoteDoc([CDN_MISSPELL]), null);
-    expect(absentLocal.onlyLive.map((g) => g.id)).toEqual(['misspell']);
+    const absentLocal = catalogDiff(remoteDoc([CDN_EXAMPLE_GAME]), null);
+    expect(absentLocal.onlyLive.map((g) => g.id)).toEqual(['example-game']);
 
-    const absentLive = catalogDiff(null, localDoc([LOCAL_MISSPELL]));
-    expect(absentLive.onlyLocal.map((g) => g.id)).toEqual(['misspell']);
+    const absentLive = catalogDiff(null, localDoc([LOCAL_EXAMPLE_GAME]));
+    expect(absentLive.onlyLocal.map((g) => g.id)).toEqual(['example-game']);
   });
 
   it('never lets an unusable entry become a key', () => {
     const diff = catalogDiff(
-      remoteDoc([{ id: 'misspell' }, null, { channel: 'alpha' }]),
-      localDoc([{ id: 'misspell' }, { id: 'ghost' }])
+      remoteDoc([{ id: 'example-game' }, null, { channel: 'alpha' }]),
+      localDoc([{ id: 'example-game' }, { id: 'ghost' }])
     );
 
     expect(diff.onlyLocal.map((g) => g.id)).toEqual(['ghost']);
@@ -182,18 +182,18 @@ describe('catalogDiff', () => {
     // "changed" with an empty meaning.
     const diff = catalogDiff(
       remoteDoc([
-        { id: 'misspell', name: 'A' },
-        { id: 'misspell', name: 'B' },
+        { id: 'example-game', name: 'A' },
+        { id: 'example-game', name: 'B' },
       ]),
-      localDoc([{ id: 'misspell', name: 'A' }])
+      localDoc([{ id: 'example-game', name: 'A' }])
     );
 
     expect(diff.changed).toEqual([]);
   });
 
   it('never mutates either input', () => {
-    const live = remoteDoc([{ ...CDN_MISSPELL }]);
-    const local = localDoc([{ ...LOCAL_MISSPELL }]);
+    const live = remoteDoc([{ ...CDN_EXAMPLE_GAME }]);
+    const local = localDoc([{ ...LOCAL_EXAMPLE_GAME }]);
     const before = JSON.stringify([live, local]);
 
     catalogDiff(live, local);
@@ -223,10 +223,10 @@ describe('the diff field list stays in step with the metadata contract', () => {
 
 describe('catalogGameId', () => {
   it('accepts the ids the repo actually uses', () => {
-    expect(catalogGameId('misspell')).toEqual({ ok: true, id: 'misspell' });
-    expect(catalogGameId('pandawan-test-game')).toEqual({
+    expect(catalogGameId('example-game')).toEqual({ ok: true, id: 'example-game' });
+    expect(catalogGameId('example-test-game')).toEqual({
       ok: true,
-      id: 'pandawan-test-game',
+      id: 'example-test-game',
     });
     expect(catalogGameId('  space-trimmed  ')).toEqual({ ok: true, id: 'space-trimmed' });
   });
@@ -311,7 +311,7 @@ describe('catalogEntryFrom', () => {
       channel: 'stable',
       name: 'Brand New',
       isAdmin: true,
-      verifiedBadge: 'pandawan-pick',
+      verifiedBadge: 'example-pick',
     });
 
     expect(result.entry.isAdmin).toBeUndefined();
@@ -374,19 +374,19 @@ describe('catalogEntryFrom', () => {
 });
 
 describe('removeCatalogEntry', () => {
-  const twoGames = remoteDoc([CDN_MISSPELL, { id: 'pandawan-test-game', channel: 'stable' }]);
+  const twoGames = remoteDoc([CDN_EXAMPLE_GAME, { id: 'example-test-game', channel: 'stable' }]);
 
   it('removes the entry and leaves everything else byte-identical', () => {
-    const result = removeCatalogEntry(twoGames, 'pandawan-test-game', { now: NOW });
+    const result = removeCatalogEntry(twoGames, 'example-test-game', { now: NOW });
 
     expect(result.ok).toBe(true);
-    expect(result.removed).toBe('pandawan-test-game');
+    expect(result.removed).toBe('example-test-game');
     expect(result.remaining).toBe(1);
-    expect(result.catalog.games).toEqual([CDN_MISSPELL]);
+    expect(result.catalog.games).toEqual([CDN_EXAMPLE_GAME]);
   });
 
   it('stamps lastUpdated, because an index that moved should say so', () => {
-    const result = removeCatalogEntry(twoGames, 'pandawan-test-game', { now: NOW });
+    const result = removeCatalogEntry(twoGames, 'example-test-game', { now: NOW });
 
     expect(result.catalog.lastUpdated).toBe('2026-10-02T12:00:00.000Z');
   });
@@ -394,7 +394,7 @@ describe('removeCatalogEntry', () => {
   it('refuses to remove the last game', () => {
     // validateCatalog rejects an empty games array and every launcher reads this
     // document, so an accidental double-click must not be able to produce one.
-    const result = removeCatalogEntry(remoteDoc([CDN_MISSPELL]), 'misspell', { now: NOW });
+    const result = removeCatalogEntry(remoteDoc([CDN_EXAMPLE_GAME]), 'example-game', { now: NOW });
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain('last game');
@@ -416,8 +416,8 @@ describe('removeCatalogEntry', () => {
   it('refuses a document whose remaining entries would not validate', () => {
     // The publisher's own check, reused rather than restated: this function must
     // not be able to produce a document publish-catalog.mjs would refuse.
-    const broken = remoteDoc([CDN_MISSPELL, { id: 'no-channel', name: 'No Channel' }]);
-    const result = removeCatalogEntry(broken, 'misspell', { now: NOW });
+    const broken = remoteDoc([CDN_EXAMPLE_GAME, { id: 'no-channel', name: 'No Channel' }]);
+    const result = removeCatalogEntry(broken, 'example-game', { now: NOW });
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain('has no channel');
@@ -425,7 +425,7 @@ describe('removeCatalogEntry', () => {
 
   it('does not mutate the document it was given', () => {
     const before = JSON.stringify(twoGames);
-    removeCatalogEntry(twoGames, 'pandawan-test-game', { now: NOW });
+    removeCatalogEntry(twoGames, 'example-test-game', { now: NOW });
 
     expect(JSON.stringify(twoGames)).toBe(before);
   });
@@ -434,14 +434,14 @@ describe('removeCatalogEntry', () => {
     // A duplicated id is a broken document; leaving the second copy would mean
     // the game is still listed after a "successful" delete.
     const dupes = remoteDoc([
-      { id: 'misspell', channel: 'alpha' },
-      { ...CDN_MISSPELL },
+      { id: 'example-game', channel: 'alpha' },
+      { ...CDN_EXAMPLE_GAME },
       {
         id: 'other',
         channel: 'stable',
       },
     ]);
-    const result = removeCatalogEntry(dupes, 'misspell', { now: NOW });
+    const result = removeCatalogEntry(dupes, 'example-game', { now: NOW });
 
     expect(result.ok).toBe(true);
     expect(catalogGames(result.catalog).map((g) => g.id)).toEqual(['other']);

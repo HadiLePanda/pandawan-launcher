@@ -11,29 +11,29 @@ const file = (name: string, size: number): FileEntry => ({
 });
 
 const baseManifest: GameManifest = {
-  game_id: 'misspell',
-  name: 'Misspell',
+  game_id: 'example-game',
+  name: 'Example Game',
   version: '0.4.0',
   build_number: 3,
   channel: 'alpha',
-  executable: 'misspell.exe',
-  base_url: 'https://cdn.test/games/misspell/alpha/0.4.0/',
-  files: [file('misspell.exe', 100)],
+  executable: 'example-game.exe',
+  base_url: 'https://cdn.test/games/example-game/alpha/0.4.0/',
+  files: [file('example-game.exe', 100)],
 };
 
 function multiPlatform(): GameManifest {
   const platforms: Record<string, PlatformBuild> = {
     windows: {
-      executable: 'misspell.exe',
-      base_url: 'https://cdn.test/games/misspell/alpha/0.4.0/windows/',
+      executable: 'example-game.exe',
+      base_url: 'https://cdn.test/games/example-game/alpha/0.4.0/windows/',
       size_bytes: 200,
-      files: [file('misspell.exe', 200)],
+      files: [file('example-game.exe', 200)],
     },
     macos: {
-      executable: 'Misspell.app/Contents/MacOS/misspell',
-      base_url: 'https://cdn.test/games/misspell/alpha/0.4.0/macos/',
+      executable: 'Example Game.app/Contents/MacOS/example-game',
+      base_url: 'https://cdn.test/games/example-game/alpha/0.4.0/macos/',
       size_bytes: 300,
-      files: [file('Misspell.app/Contents/MacOS/misspell', 300)],
+      files: [file('Example Game.app/Contents/MacOS/example-game', 300)],
     },
   };
   return { ...baseManifest, platforms };
@@ -76,14 +76,14 @@ describe('detectPlatform', () => {
 describe('selectPlatformBuild', () => {
   it('picks the windows slice on windows', () => {
     const build = selectPlatformBuild(multiPlatform(), 'windows', ['windows', 'macos']);
-    expect(build?.executable).toBe('misspell.exe');
+    expect(build?.executable).toBe('example-game.exe');
     expect(build?.sizeBytes).toBe(200);
     expect(build?.baseUrl).toContain('/windows/');
   });
 
   it('picks the macos slice on macos, and the .app binary', () => {
     const build = selectPlatformBuild(multiPlatform(), 'macos', ['windows', 'macos']);
-    expect(build?.executable).toBe('Misspell.app/Contents/MacOS/misspell');
+    expect(build?.executable).toBe('Example Game.app/Contents/MacOS/example-game');
     expect(build?.sizeBytes).toBe(300);
   });
 
@@ -100,7 +100,7 @@ describe('selectPlatformBuild', () => {
 
   it('falls back to the flat manifest when the declared platform matches', () => {
     const build = selectPlatformBuild(baseManifest, 'windows', ['windows']);
-    expect(build?.executable).toBe('misspell.exe');
+    expect(build?.executable).toBe('example-game.exe');
     expect(build?.files).toHaveLength(1);
   });
 
@@ -147,17 +147,17 @@ describe('install base URL for flat manifests', () => {
     // formatted it into "/" and failed with "relative URL without a base".
     // Every pre-layout manifest has this shape, so it is the common case.
     const manifest = {
-      game_id: 'pandawan-test-game',
+      game_id: 'example-test-game',
       channel: 'stable',
-      executable: 'pandawan-test-game.exe',
-      files: [{ path: 'pandawan-test-game.exe', size: 4608, hash: 'x' }],
+      executable: 'example-test-game.exe',
+      files: [{ path: 'example-test-game.exe', size: 4608, hash: 'x' }],
     } as GameManifest;
 
     const build = selectPlatformBuild(manifest, 'windows', ['windows']);
     expect(build?.baseUrl).toBe('');
 
     const baseUrl = build?.baseUrl || resolveBaseUrl(manifest);
-    expect(baseUrl).toBe(`${CDN_ORIGIN}/games/pandawan-test-game/stable/`);
+    expect(baseUrl).toBe(`${CDN_ORIGIN}/games/example-test-game/stable/`);
     expect(reqwestUrlParses(baseUrl)).toBe(true);
   });
 });

@@ -30,10 +30,10 @@ describe('notifications', () => {
 
   describe('notifyInstallComplete', () => {
     it('sends a notification when enabled and permission is granted', async () => {
-      await notifyInstallComplete('Quirheim Online', true);
+      await notifyInstallComplete('Example Game', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
-        title: 'Quirheim Online',
+        title: 'Example Game',
         body: 'Installation complete',
       });
       // Already granted: no permission request needed
@@ -41,7 +41,7 @@ describe('notifications', () => {
     });
 
     it('does nothing when disabled', async () => {
-      await notifyInstallComplete('Quirheim Online', false);
+      await notifyInstallComplete('Example Game', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
       expect(isPermissionGranted).not.toHaveBeenCalled();
@@ -50,16 +50,16 @@ describe('notifications', () => {
 
   describe('notifyUpdateComplete', () => {
     it('sends an update-complete notification', async () => {
-      await notifyUpdateComplete('Quirheim Online', true);
+      await notifyUpdateComplete('Example Game', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
-        title: 'Quirheim Online',
+        title: 'Example Game',
         body: 'Update complete',
       });
     });
 
     it('does nothing when disabled', async () => {
-      await notifyUpdateComplete('Quirheim Online', false);
+      await notifyUpdateComplete('Example Game', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -67,16 +67,16 @@ describe('notifications', () => {
 
   describe('notifyUpdateAvailable', () => {
     it('sends an update-available notification', async () => {
-      await notifyUpdateAvailable('Quirheim Online', true);
+      await notifyUpdateAvailable('Example Game', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
-        title: 'Quirheim Online',
+        title: 'Example Game',
         body: 'Update available',
       });
     });
 
     it('does nothing when disabled', async () => {
-      await notifyUpdateAvailable('Quirheim Online', false);
+      await notifyUpdateAvailable('Example Game', false);
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -86,10 +86,10 @@ describe('notifications', () => {
     it('resolves the body in the active language', async () => {
       await i18n.changeLanguage('fr');
 
-      await notifyInstallComplete('Quirheim Online', true);
+      await notifyInstallComplete('Example Game', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
-        title: 'Quirheim Online',
+        title: 'Example Game',
         body: 'Installation terminée',
       });
     });
@@ -97,10 +97,10 @@ describe('notifications', () => {
     it('keeps the game name as the title regardless of language', async () => {
       await i18n.changeLanguage('fr');
 
-      await notifyUpdateAvailable('Quirheim Online', true);
+      await notifyUpdateAvailable('Example Game', true);
 
       expect(sendNotification).toHaveBeenCalledWith({
-        title: 'Quirheim Online',
+        title: 'Example Game',
         body: 'Mise à jour disponible',
       });
     });
@@ -111,7 +111,7 @@ describe('notifications', () => {
       (isPermissionGranted as Mock).mockResolvedValue(false);
       (requestPermission as Mock).mockResolvedValue('granted');
 
-      await notifyInstallComplete('Quirheim Online', true);
+      await notifyInstallComplete('Example Game', true);
 
       expect(requestPermission).toHaveBeenCalledTimes(1);
       expect(sendNotification).toHaveBeenCalledTimes(1);
@@ -121,7 +121,7 @@ describe('notifications', () => {
       (isPermissionGranted as Mock).mockResolvedValue(false);
       (requestPermission as Mock).mockResolvedValue('denied');
 
-      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
+      await expect(notifyInstallComplete('Example Game', true)).resolves.toBeUndefined();
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -131,7 +131,7 @@ describe('notifications', () => {
     it('swallows plugin errors', async () => {
       (isPermissionGranted as Mock).mockRejectedValue(new Error('plugin unavailable'));
 
-      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
+      await expect(notifyInstallComplete('Example Game', true)).resolves.toBeUndefined();
 
       expect(sendNotification).not.toHaveBeenCalled();
     });
@@ -141,7 +141,7 @@ describe('notifications', () => {
         throw new Error('delivery failed');
       });
 
-      await expect(notifyInstallComplete('Quirheim Online', true)).resolves.toBeUndefined();
+      await expect(notifyInstallComplete('Example Game', true)).resolves.toBeUndefined();
     });
   });
 });

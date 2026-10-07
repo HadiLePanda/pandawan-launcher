@@ -15,7 +15,7 @@ vi.mock('./platform', async () => {
   return { ...actual, detectPlatform: () => 'windows' };
 });
 
-vi.mock('./cdn', () => ({ resolveBaseUrl: () => 'https://cdn.test/games/misspell/stable/' }));
+vi.mock('./cdn', () => ({ resolveBaseUrl: () => 'https://cdn.test/games/example-game/stable/' }));
 
 vi.mock('./logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
@@ -26,8 +26,8 @@ const resolveManifest = resolveManifestForPlatform as unknown as Mock;
 // leaves the top-level files/executable empty, exactly as publish-game writes it.
 const multiPlatformManifest = (): GameManifest =>
   ({
-    game_id: 'misspell',
-    name: 'Misspell',
+    game_id: 'example-game',
+    name: 'Example Game',
     version: '0.4.0',
     build_number: 150,
     channel: 'stable',
@@ -36,15 +36,15 @@ const multiPlatformManifest = (): GameManifest =>
     banner_url: null,
     executable: '',
     files: null,
-    base_url: 'https://cdn.test/games/misspell/stable/0.4.0/',
+    base_url: 'https://cdn.test/games/example-game/stable/0.4.0/',
     platforms: {
       windows: {
-        executable: 'Misspell.exe',
+        executable: 'Example Game.exe',
         files: [
-          { path: 'Misspell.exe', size: 1024, hash: 'aaa' },
-          { path: 'Misspell_Data/globalgamemanagers', size: 2048, hash: 'bbb' },
+          { path: 'Example Game.exe', size: 1024, hash: 'aaa' },
+          { path: 'Example Game_Data/globalgamemanagers', size: 2048, hash: 'bbb' },
         ],
-        base_url: 'https://cdn.test/games/misspell/stable/0.4.0/windows/',
+        base_url: 'https://cdn.test/games/example-game/stable/0.4.0/windows/',
         size_bytes: 3072,
       },
     },
@@ -67,16 +67,16 @@ describe('checkForUpdates', () => {
     // command types `manifest` as `Vec<FileEntry>`, so the raw manifest is
     // rejected with "invalid type: null, expected a sequence" and the check
     // never reaches the update comparison.
-    const result = await checkForUpdates('misspell', 'stable');
+    const result = await checkForUpdates('example-game', 'stable');
 
     expect(result).toBe(true);
     expect(checkGameUpdate).toHaveBeenCalledTimes(1);
 
     const [gameId, sent] = checkGameUpdate.mock.calls[0] as [string, GameManifest];
-    expect(gameId).toBe('misspell');
+    expect(gameId).toBe('example-game');
     expect(Array.isArray(sent.files)).toBe(true);
     expect(sent.files).toHaveLength(2);
-    expect(sent.executable).toBe('Misspell.exe');
+    expect(sent.executable).toBe('Example Game.exe');
     expect(sent.platforms).toBeUndefined();
     expect(sent.build_number).toBe(150);
   });
@@ -89,12 +89,12 @@ describe('checkForUpdates', () => {
       status: 'ok',
       manifest: {
         ...multiPlatformManifest(),
-        platforms: { 'macos-aarch64': { executable: 'Misspell', files: [] } },
+        platforms: { 'macos-aarch64': { executable: 'Example Game', files: [] } },
       } as unknown as GameManifest,
     });
 
-    await expect(checkForUpdates('misspell', 'stable')).rejects.toThrow(
-      /No build of "misspell" is available for this platform/
+    await expect(checkForUpdates('example-game', 'stable')).rejects.toThrow(
+      /No build of "example-game" is available for this platform/
     );
     expect(checkGameUpdate).not.toHaveBeenCalled();
   });
@@ -102,8 +102,8 @@ describe('checkForUpdates', () => {
   it('reports unavailable as an error and never calls the backend', async () => {
     resolveManifest.mockResolvedValue({ status: 'unavailable', reason: 'no-build-for-platform' });
 
-    await expect(checkForUpdates('misspell', 'stable')).rejects.toThrow(
-      /No build of misspell is available for this platform/
+    await expect(checkForUpdates('example-game', 'stable')).rejects.toThrow(
+      /No build of example-game is available for this platform/
     );
     expect(checkGameUpdate).not.toHaveBeenCalled();
   });

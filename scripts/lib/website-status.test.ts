@@ -15,7 +15,7 @@ import {
   summariseDownloads,
 } from './website-status.mjs';
 
-const CDN = 'https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher';
+const CDN = 'https://pub-example.r2.dev/launcher';
 
 // The document publish-launcher.mjs actually wrote for 0.1.0, trimmed to what
 // the panel reads. This is the shape the site renders, so a summary that

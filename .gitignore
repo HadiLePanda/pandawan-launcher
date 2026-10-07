@@ -117,3 +117,5 @@ docs/superpowers/
 .github/agents/
 .github/hooks/
 .github/skills/
+# A local scratch notes file, never part of the project.
+IDEA.md

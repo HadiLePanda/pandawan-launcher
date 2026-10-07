@@ -10,7 +10,7 @@ Four independent things identify a build. Never pack them into one string.
 
 | Axis         | Where it lives                       | Example          |
 | ------------ | ------------------------------------ | ---------------- |
-| Game slug    | catalog `id`, manifest `game_id`     | `misspell`       |
+| Game slug    | catalog `id`, manifest `game_id`     | `example-game`       |
 | Version      | manifest `version`                   | `0.4.0-alpha.3`  |
 | Channel      | manifest `channel`                   | `alpha`          |
 | Build number | manifest `build_number`              | `102`            |
@@ -58,12 +58,12 @@ into separate directory levels:
 
 ```
 builds/
-└── misspell/
+└── example-game/
     └── 0.4.0-alpha.3/
         ├── windows-x86_64/                      <- published to the launcher
-        │   ├── misspell.exe
-        │   └── misspell_Data/
-        ├── misspell-0.4.0-alpha.3-windows-x86_64.zip   <- archive / manual sharing
+        │   ├── example-game.exe
+        │   └── example-game_Data/
+        ├── example-game-0.4.0-alpha.3-windows-x86_64.zip   <- archive / manual sharing
         └── build-report.json
 ```
 
@@ -103,12 +103,12 @@ not have to guess parameters:
 
 ```json
 {
-  "gameId": "misspell",
+  "gameId": "example-game",
   "version": "0.4.0-alpha.3",
   "channel": "alpha",
   "buildNumber": 102,
   "platform": "windows-x86_64",
-  "executable": "misspell.exe",
+  "executable": "example-game.exe",
   "unityVersion": "6000.0.23f1",
   "gitCommit": "a1b2c3d",
   "builtAt": "2026-10-01T00:00:00Z",
@@ -124,7 +124,7 @@ values cannot drift between the build and the manifest.
 Tag the game repository so a build is traceable:
 
 ```
-misspell-v0.4.0-alpha.3
+example-game-v0.4.0-alpha.3
 ```
 
 Pattern: `<game-slug>-v<version>`. Never reuse a tag. Pushing is opt-in — leave
@@ -136,10 +136,10 @@ From the launcher repository:
 
 ```bash
 npm run publish:game -- \
-  --game-id misspell --name "Misspell" \
+  --game-id example-game --name "Example Game" \
   --channel alpha --version 0.4.0-alpha.3 --build-number 102 \
-  --executable "misspell.exe" \
-  --input-dir "C:\...\misspell\builds\misspell\0.4.0-alpha.3\windows-x86_64"
+  --executable "example-game.exe" \
+  --input-dir "C:\...\example-game\builds\example-game\0.4.0-alpha.3\windows-x86_64"
 
 npm run publish:catalog
 ```

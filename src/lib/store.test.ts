@@ -38,7 +38,7 @@ function makeGameInfo(overrides?: Partial<GameInfo>): GameInfo {
   return {
     id: 'game-1',
     channel: 'stable',
-    name: 'Quirheim Online',
+    name: 'Example Game',
     description: '',
     developer: 'Pandawan Corp',
     genre: [],
@@ -120,7 +120,7 @@ describe('store update-notification gating', () => {
     expect(await checkForUpdates('game-1', 'stable')).toBe(true);
 
     expect(notifyUpdateAvailable).toHaveBeenCalledTimes(1);
-    expect(notifyUpdateAvailable).toHaveBeenCalledWith('Quirheim Online', true);
+    expect(notifyUpdateAvailable).toHaveBeenCalledWith('Example Game', true);
   });
 
   it('does not notify when no update is found', async () => {
@@ -142,7 +142,7 @@ describe('store update-notification gating', () => {
     // Applying the update resets hasUpdate to false...
     await updateGame('game-1', 'stable');
     expect(notifyUpdateComplete).toHaveBeenCalledTimes(1);
-    expect(notifyUpdateComplete).toHaveBeenCalledWith('Quirheim Online', true);
+    expect(notifyUpdateComplete).toHaveBeenCalledWith('Example Game', true);
     expect(store.useLauncherStore.getState().games[0]!.hasUpdate).toBe(false);
 
     // ...so a later re-detection is a new transition and notifies again.
@@ -157,7 +157,7 @@ describe('store update-notification gating', () => {
 
     await checkForUpdates('game-1', 'stable');
 
-    expect(notifyUpdateAvailable).toHaveBeenCalledWith('Quirheim Online', false);
+    expect(notifyUpdateAvailable).toHaveBeenCalledWith('Example Game', false);
   });
 
   it('passes the notifyDownloadComplete toggle through on install completion', async () => {
@@ -170,7 +170,7 @@ describe('store update-notification gating', () => {
     await installGame('game-1', 'stable');
 
     expect(notifyInstallComplete).toHaveBeenCalledTimes(1);
-    expect(notifyInstallComplete).toHaveBeenCalledWith('Quirheim Online', false);
+    expect(notifyInstallComplete).toHaveBeenCalledWith('Example Game', false);
   });
 });
 

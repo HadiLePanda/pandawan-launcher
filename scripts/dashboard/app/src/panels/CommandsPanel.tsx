@@ -61,7 +61,7 @@ const COMMANDS: CommandGroup[] = [
     group: 'Game builds',
     items: [
       {
-        cmd: 'npm run publish:game -- --game-id pandawan-rising --channel alpha --version 1.2.0 --build-number 102 --executable "Game.exe" --name "Pandawan Rising" --input-dir ./Builds',
+        cmd: 'npm run publish:game -- --game-id example-game --channel alpha --version 1.2.0 --build-number 102 --executable "Game.exe" --name "Example Game" --input-dir ./Builds',
         about: 'Upload a game build and make it visible to the launcher.',
       },
       {
@@ -69,7 +69,7 @@ const COMMANDS: CommandGroup[] = [
         about: 'Upload catalog.json. New games stay invisible until this runs.',
       },
       {
-        cmd: 'npm run prune:builds -- --game-id pandawan-rising --keep 3',
+        cmd: 'npm run prune:builds -- --game-id example-game --keep 3',
         about: 'Delete all but the 3 newest builds. Dry run unless --yes.',
         hint: 'Pinned versions are never deleted.',
       },

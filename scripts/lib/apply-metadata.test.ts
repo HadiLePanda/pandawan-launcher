@@ -17,10 +17,10 @@ describe('applying metadata changes', () => {
     const entry = { name: 'wrong' };
     const manifest = { name: 'wrong' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Misspell' }]);
+    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
 
-    expect(entry.name).toBe('Misspell');
-    expect(manifest.name).toBe('Misspell');
+    expect(entry.name).toBe('Example Game');
+    expect(manifest.name).toBe('Example Game');
     expect(applied).toHaveLength(1);
   });
 
@@ -28,24 +28,24 @@ describe('applying metadata changes', () => {
     // The real bug this guards: the catalog was fixed by hand, the manifest was
     // not, and a catalog-only comparison reported "no change". Every client
     // resolving a build without the catalog kept rendering the stale name.
-    const entry = { name: 'Misspell' };
-    const manifest = { name: 'misspell' };
+    const entry = { name: 'Example Game' };
+    const manifest = { name: 'example-game' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Misspell' }]);
+    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
 
-    expect(manifest.name).toBe('Misspell');
+    expect(manifest.name).toBe('Example Game');
     expect(applied).toHaveLength(1);
     // The log has to name the document that actually moved, or the operator
     // cannot tell which copy was repaired.
     expect(applied[0].label).toBe('Display name (manifest)');
-    expect(applied[0].before).toBe('misspell');
+    expect(applied[0].before).toBe('example-game');
   });
 
   it('reports nothing when both documents already hold the value', () => {
-    const entry = { name: 'Misspell' };
-    const manifest = { name: 'Misspell' };
+    const entry = { name: 'Example Game' };
+    const manifest = { name: 'Example Game' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Misspell' }]);
+    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
 
     // Re-publishing an unchanged field must stay a no-op, so a dashboard that
     // sends everything on save does not churn the bucket for nothing.
@@ -53,12 +53,12 @@ describe('applying metadata changes', () => {
   });
 
   it('treats a missing manifest value as empty rather than skipping it', () => {
-    const entry = { name: 'Misspell' };
+    const entry = { name: 'Example Game' };
     const manifest = {};
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Misspell' }]);
+    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
 
-    expect(manifest.name).toBe('Misspell');
+    expect(manifest.name).toBe('Example Game');
     expect(applied).toHaveLength(1);
   });
 
@@ -116,7 +116,7 @@ describe('image fields in the metadata contract', () => {
     // Pin the failure mode itself: this is what the publisher used to hand to
     // applyMetadataChanges, and it wrote entry["undefined"]. Documenting it here
     // means the shape is caught even if the lookup regresses elsewhere.
-    const entry: Record<string, unknown> = { id: 'misspell' };
+    const entry: Record<string, unknown> = { id: 'example-game' };
     const manifest: Record<string, unknown> = {};
     const field = FIELDS.find((f) => f.flag === 'icon-url');
 

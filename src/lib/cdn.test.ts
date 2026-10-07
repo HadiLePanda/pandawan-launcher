@@ -299,28 +299,28 @@ describe('resolveBaseUrl', () => {
   it('uses the manifest base_url, adding a trailing slash', () => {
     expect(
       resolveBaseUrl({
-        game_id: 'misspell',
+        game_id: 'example-game',
         channel: 'alpha',
-        base_url: 'https://cdn.example.com/games/misspell/alpha/0.4.0-alpha.1',
+        base_url: 'https://cdn.example.com/games/example-game/alpha/0.4.0-alpha.1',
       } as GameManifest)
-    ).toBe('https://cdn.example.com/games/misspell/alpha/0.4.0-alpha.1/');
+    ).toBe('https://cdn.example.com/games/example-game/alpha/0.4.0-alpha.1/');
   });
 
   it('keeps an already-slashed base_url unchanged', () => {
     expect(
       resolveBaseUrl({
-        game_id: 'misspell',
+        game_id: 'example-game',
         channel: 'alpha',
-        base_url: 'https://cdn.example.com/games/misspell/alpha/0.4.0/',
+        base_url: 'https://cdn.example.com/games/example-game/alpha/0.4.0/',
       } as GameManifest)
-    ).toBe('https://cdn.example.com/games/misspell/alpha/0.4.0/');
+    ).toBe('https://cdn.example.com/games/example-game/alpha/0.4.0/');
   });
 
   it('falls back to the flat channel dir for pre-layout manifests', () => {
     // Manifests published before version-stamping carry no base_url. They must
     // still resolve, or every already-published game breaks on upgrade.
-    expect(resolveBaseUrl({ game_id: 'misspell', channel: 'alpha' } as GameManifest)).toBe(
-      `${CDN_ORIGIN}/games/misspell/alpha/`
+    expect(resolveBaseUrl({ game_id: 'example-game', channel: 'alpha' } as GameManifest)).toBe(
+      `${CDN_ORIGIN}/games/example-game/alpha/`
     );
   });
 

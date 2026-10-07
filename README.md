@@ -59,14 +59,14 @@ without a file.
 
 ```bash
 npm run publish:game -- \
-  --game-id misspell --channel alpha \
+  --game-id example-game --channel alpha \
   --version 1.2.0-alpha.3 --build-number 102 \
-  --executable "Misspell.exe" --name "Misspell" \
+  --executable "Example Game.exe" --name "Example Game" \
   --input-dir ./Builds/Windows
 
 npm run publish:catalog   # make new/changed games visible
 npm run publish:meta      # edit a game's name, genres and artwork
-npm run prune:builds -- --game-id misspell --keep 3
+npm run prune:builds -- --game-id example-game --keep 3
 ```
 
 `npm run dashboard` opens a local control panel for all of these. It binds to

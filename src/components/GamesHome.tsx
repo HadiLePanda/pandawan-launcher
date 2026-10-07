@@ -59,7 +59,7 @@ function GameCard({
   const isInstalled = game.status === 'installed';
   const genres = game.info.genre.join(', ');
   // A game with no build for this OS is still listed, greyed. Hiding it would
-  // leave a Mac player wondering where Misspell went; showing it as normal would
+  // leave a Mac player wondering where Example Game went; showing it as normal would
   // offer an install that cannot possibly run.
   const unavailable = !game.info.isAvailableOnThisPlatform;
 

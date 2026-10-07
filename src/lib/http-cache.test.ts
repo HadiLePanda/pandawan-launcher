@@ -16,8 +16,8 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 
 import { clearCache, fetchCachedText, isImmutable, lastReadSource } from './http-cache';
 
-const MUTABLE = 'https://cdn.test/games/misspell/alpha/manifest.json';
-const VERSIONED = 'https://cdn.test/games/misspell/alpha/0.4.0-alpha.1/manifest.json';
+const MUTABLE = 'https://cdn.test/games/example-game/alpha/manifest.json';
+const VERSIONED = 'https://cdn.test/games/example-game/alpha/0.4.0-alpha.1/manifest.json';
 const CATALOG = 'https://cdn.test/launcher/catalog.json';
 
 describe('http cache', () => {

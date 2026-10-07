@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { planPrune, readActiveVersion, readPinnedVersions } from '../../scripts/lib/prune-plan.mjs';
 
-const PREFIX = 'games/misspell/alpha';
+const PREFIX = 'games/example-game/alpha';
 const key = (rest) => `${PREFIX}/${rest}`;
 
 const BUILDS = [
   key('0.4.0/UnityPlayer.dll'),
-  key('0.4.0/misspell.exe'),
-  key('0.3.0/misspell.exe'),
-  key('0.2.0/misspell.exe'),
-  key('0.1.0/misspell.exe'),
+  key('0.4.0/example-game.exe'),
+  key('0.3.0/example-game.exe'),
+  key('0.2.0/example-game.exe'),
+  key('0.1.0/example-game.exe'),
 ];
 
 describe('planPrune', () => {
@@ -35,13 +35,13 @@ describe('planPrune', () => {
   });
 
   it('never treats a Unity folder as a build', () => {
-    // D3D12 contains a 3 and a 1; MonoBleedingEdge and misspell_Data are not
+    // D3D12 contains a 3 and a 1; MonoBleedingEdge and example-game_Data are not
     // versions. Reading either as deletable would wipe live files.
     const withEngineDirs = [
       ...BUILDS,
       key('D3D12/D3D12Core.dll'),
       key('MonoBleedingEdge/etc/'),
-      key('misspell_Data/globalgamemanagers'),
+      key('example-game_Data/globalgamemanagers'),
       key('latest.json'),
       key('manifest.json'),
     ];
@@ -60,7 +60,7 @@ describe('planPrune', () => {
       key('manifest.json'),
       key('latest.json'),
       key('D3D12/D3D12Core.dll'),
-      key('0.4.0/misspell.exe'),
+      key('0.4.0/example-game.exe'),
     ];
 
     const plan = planPrune(flat, PREFIX, 1, '0.4.0');
@@ -99,11 +99,11 @@ describe('readActiveVersion', () => {
 
 describe('planPrune on a per-platform channel', () => {
   const PINNED = [
-    key('0.4.0/misspell.exe'),
+    key('0.4.0/example-game.exe'),
     key('0.4.0/UnityPlayer.dll'),
-    key('0.3.9/misspell.exe'),
-    key('0.3.8/misspell.exe'),
-    key('0.3.7/misspell.exe'),
+    key('0.3.9/example-game.exe'),
+    key('0.3.8/example-game.exe'),
+    key('0.3.7/example-game.exe'),
   ];
 
   it('protects every platform pin, not only the newest', () => {

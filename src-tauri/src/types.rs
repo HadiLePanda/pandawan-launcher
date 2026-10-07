@@ -63,7 +63,7 @@ pub enum FileCheck {
 /// One file's verification result, emitted as it is computed.
 ///
 /// Verification hashes every file in the build, which takes seconds on anything
-/// the size of Misspell. Returning only a final aggregate left the dialog blank
+/// the size of Example Game. Returning only a final aggregate left the dialog blank
 /// for that whole time with no way to tell it apart from a hang.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct VerifyProgress {

@@ -3,12 +3,12 @@
 
 Usage:
     python scripts/generate-manifest.py \\
-        --game-id pandawan-rising \\
-        --name "Pandawan Rising" \\
+        --game-id example-game \\
+        --name "Example Game" \\
         --version 1.0.0 \\
         --build-number 1 \\
-        --executable "PandawanRising.exe" \\
-        --cdn-origin "https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev" \\
+        --executable "Game.exe" \\
+        --cdn-origin "https://pub-example.r2.dev" \\
         --channel "stable" \\
         --input-dir "./Builds/StandaloneWindows64-v1.0.0" \\
         --output "manifest.json"
@@ -321,7 +321,7 @@ def main():
     parser.add_argument("--version", required=True, help="Game version (e.g. 1.0.0)")
     parser.add_argument("--build-number", type=int, required=True, help="Build number")
     parser.add_argument("--executable", required=True, help="Main executable filename")
-    parser.add_argument("--cdn-origin", required=True, help="CDN origin, e.g. https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev")
+    parser.add_argument("--cdn-origin", required=True, help="CDN origin, e.g. https://pub-example.r2.dev")
     parser.add_argument(
         "--channel",
         default=None,

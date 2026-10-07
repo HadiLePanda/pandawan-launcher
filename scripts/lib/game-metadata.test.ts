@@ -8,9 +8,9 @@ const CDN = 'https://cdn.test';
 const CATALOG = {
   games: [
     {
-      id: 'misspell',
+      id: 'example-game',
       channel: 'alpha',
-      name: 'Misspell',
+      name: 'Example Game',
       description: 'From catalog',
       genre: ['Multiplayer', 'Party'],
       iconUrl: '/placeholder-icon.svg',
@@ -20,18 +20,18 @@ const CATALOG = {
 };
 
 const MANIFEST = {
-  game_id: 'misspell',
+  game_id: 'example-game',
   // Lowercase on purpose: this is the value that reached the launcher, and it is
   // the bug this whole panel exists to prevent recurring.
-  name: 'misspell',
+  name: 'example-game',
   description: null,
-  icon_url: 'https://cdn.test/games/misspell/alpha/icon.png',
+  icon_url: 'https://cdn.test/games/example-game/alpha/icon.png',
 };
 
 const ROUTES: Record<string, unknown> = {
   '/launcher/catalog.json': CATALOG,
-  '/games/misspell/alpha/manifest.json': MANIFEST,
-  '/games/misspell/alpha/latest.json': { windows: { version: '0.4.0', build: 3 } },
+  '/games/example-game/alpha/manifest.json': MANIFEST,
+  '/games/example-game/alpha/latest.json': { windows: { version: '0.4.0', build: 3 } },
   // Published on stable, so asking for alpha must be reported as a mismatch.
   '/games/on-stable/alpha/manifest.json': { game_id: 'on-stable', name: 'On Stable' },
 };
@@ -57,19 +57,19 @@ const load = (gameId: string, channel: string) =>
 describe('game metadata for the publish panel', () => {
   it('prefers the catalog over the manifest, as the launcher does', async () => {
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
-    // The catalog says "Misspell", the manifest says "misspell". The launcher
+    // The catalog says "Example Game", the manifest says "example-game". The launcher
     // renders the catalog value, so the form must show it too - otherwise the
     // operator would be editing a value players never see.
-    expect(data.fields['name'].value).toBe('Misspell');
+    expect(data.fields['name'].value).toBe('Example Game');
     expect(data.fields['name'].source).toBe('catalog');
     expect(data.fields['name'].inherited).toBe(false);
   });
 
   it('falls back to the manifest and marks the value as inherited', async () => {
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
     // description is null in the manifest and set in the catalog.
     expect(data.fields['description'].value).toBe('From catalog');
@@ -82,7 +82,7 @@ describe('game metadata for the publish panel', () => {
 
   it('joins list fields so they can be shown and re-sent unchanged', async () => {
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
     expect(data.fields['genre'].value).toBe('Multiplayer, Party');
     expect(data.fields['genre'].list).toBe(true);
@@ -100,7 +100,7 @@ describe('game metadata for the publish panel', () => {
 
   it('does not flag a mismatch when the channel is the published one', async () => {
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
     expect(data.channelMismatch).toBe(false);
     expect(data.versions).toEqual({ windows: { version: '0.4.0', build: 3 } });
@@ -134,22 +134,22 @@ describe('game metadata for the publish panel', () => {
 
   it('offers every field the publisher accepts', async () => {
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
     // A field the form omits can never be edited, so the two lists must match.
     expect(Object.keys(data.fields).sort()).toEqual(FIELDS.map((f) => f.flag).sort());
   });
 
   it('surfaces a value that differs between the catalog and the manifest', async () => {
-    // The failure this guards against: the catalog says "Misspell" and the
-    // manifest says "misspell". The form shows the catalog value, so an operator
+    // The failure this guards against: the catalog says "Example Game" and the
+    // manifest says "example-game". The form shows the catalog value, so an operator
     // who never touches the name would never learn the manifest is still wrong,
     // and every client resolving a build without the catalog would render it.
     stubCdn();
-    const data = await load('misspell', 'alpha');
+    const data = await load('example-game', 'alpha');
 
-    expect(data.fields['name'].value).toBe('Misspell');
-    expect(MANIFEST.name).toBe('misspell');
+    expect(data.fields['name'].value).toBe('Example Game');
+    expect(MANIFEST.name).toBe('example-game');
     // `inherited` is the only signal the form has, and it is false here, so the
     // publisher has to check the manifest itself rather than trust the catalog.
     expect(data.fields['name'].inherited).toBe(false);

@@ -118,7 +118,7 @@ export function CreateGameDialog({
             id="create-id"
             className="font-mono"
             value={gameId}
-            placeholder="pandawan-rising"
+            placeholder="example-game"
             aria-invalid={idError ? true : undefined}
             onChange={(event) => setGameId(event.target.value)}
           />
@@ -144,7 +144,7 @@ export function CreateGameDialog({
           <TextInput
             id="create-name"
             value={name}
-            placeholder={gameId.trim() || 'Pandawan Rising'}
+            placeholder={gameId.trim() || 'Example Game'}
             onChange={(event) => setName(event.target.value)}
           />
         </Field>

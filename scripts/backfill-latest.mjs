@@ -7,7 +7,7 @@
  * the one object that states a channel's current version, and it exists for every
  * channel whether old or new.
  *
- *   node scripts/backfill-latest.mjs --game-id misspell --channel alpha
+ *   node scripts/backfill-latest.mjs --game-id example-game --channel alpha
  *
  * Dry run unless --confirm is passed, like every other publish verb: this writes
  * to the bucket.

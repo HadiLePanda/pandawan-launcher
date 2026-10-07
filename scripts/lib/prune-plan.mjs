@@ -9,14 +9,14 @@
  * A version directory begins with a digit (0.4.0, 1.2, 2026.1).
  *
  * Requiring that rules out the pre-layout directories — D3D12,
- * MonoBleedingEdge, misspell_Data — which must never be read as a build to
+ * MonoBleedingEdge, example-game_Data — which must never be read as a build to
  * delete. "Contains a digit" is not enough: D3D12 has both a 3 and a 1.
  */
 const isVersionSegment = (segment) => /^\d/.test(segment);
 
 /**
  * @param keys      every key under the channel prefix
- * @param prefix    e.g. "games/misspell/alpha"
+ * @param prefix    e.g. "games/example-game/alpha"
  * @param keep      how many newest builds to keep
  * @param activeVersion version the live manifest points at, if known. May be a
  *   single string or, on a per-platform channel, one version per platform — every

@@ -768,7 +768,7 @@ function RegisterGame({
             ref={firstField}
             value={id}
             onChange={(event) => setId(event.target.value)}
-            placeholder="pandawan-rising"
+            placeholder="example-game"
             className="font-mono"
           />
         </Field>

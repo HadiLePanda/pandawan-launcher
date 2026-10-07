@@ -45,8 +45,8 @@ describe('loadChannelOverrides', () => {
   });
 
   it('reads back what was saved', () => {
-    saveChannelOverrides({ misspell: 'alpha' });
-    expect(loadChannelOverrides()).toEqual({ misspell: 'alpha' });
+    saveChannelOverrides({ 'example-game': 'alpha' });
+    expect(loadChannelOverrides()).toEqual({ 'example-game': 'alpha' });
   });
 
   it('drops entries that are not known channels', () => {
@@ -69,31 +69,31 @@ describe('loadChannelOverrides', () => {
 
 describe('resolveChannel', () => {
   it('prefers the player override over the catalog', () => {
-    expect(resolveChannel('misspell', 'alpha', {})).toBe('alpha');
-    expect(resolveChannel('misspell', 'alpha', { misspell: 'beta' })).toBe('beta');
+    expect(resolveChannel('example-game', 'alpha', {})).toBe('alpha');
+    expect(resolveChannel('example-game', 'alpha', { 'example-game': 'beta' })).toBe('beta');
   });
 
   it('does not leak one game override onto another', () => {
-    expect(resolveChannel('other', 'stable', { misspell: 'alpha' })).toBe('stable');
+    expect(resolveChannel('other', 'stable', { 'example-game': 'alpha' })).toBe('stable');
   });
 });
 
 describe('setChannelOverride', () => {
   it('stores a channel that differs from the catalog', () => {
-    const next = setChannelOverride({}, 'misspell', 'beta', 'alpha');
-    expect(next).toEqual({ misspell: 'beta' });
+    const next = setChannelOverride({}, 'example-game', 'beta', 'alpha');
+    expect(next).toEqual({ 'example-game': 'beta' });
   });
 
   it('clears the entry when the catalog channel is chosen', () => {
     // Storing the default would be redundant, and would keep overriding a later
     // publisher change to that channel.
-    const next = setChannelOverride({ misspell: 'beta' }, 'misspell', 'alpha', 'alpha');
+    const next = setChannelOverride({ 'example-game': 'beta' }, 'example-game', 'alpha', 'alpha');
     expect(next).toEqual({});
   });
 
   it('does not mutate the input', () => {
-    const before: Record<string, 'stable' | 'beta' | 'alpha'> = { misspell: 'beta' };
-    setChannelOverride(before, 'misspell', 'alpha', 'stable');
-    expect(before).toEqual({ misspell: 'beta' });
+    const before: Record<string, 'stable' | 'beta' | 'alpha'> = { 'example-game': 'beta' };
+    setChannelOverride(before, 'example-game', 'alpha', 'stable');
+    expect(before).toEqual({ 'example-game': 'beta' });
   });
 });

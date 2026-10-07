@@ -7,7 +7,7 @@
  * means storage grows by a full build every release. This keeps the newest N and
  * offers to delete the rest.
  *
- *   npm run prune:builds -- --game-id misspell --channel alpha --keep 3
+ *   npm run prune:builds -- --game-id example-game --channel alpha --keep 3
  *
  * Never deletes anything without an interactive confirmation, and never touches
  * the manifest or the builds the manifest currently points at. `--yes` skips the
@@ -40,7 +40,7 @@ const cleanFlat = Boolean(args['clean-flat']);
 const olderThanDays = args['older-than'] ? Number.parseInt(args['older-than'], 10) : null;
 
 if (!gameId) {
-  fail(`--game-id is required.\n  Example: --game-id misspell --channel alpha --keep 3`);
+  fail(`--game-id is required.\n  Example: --game-id example-game --channel alpha --keep 3`);
 }
 
 // This is the one script that deletes recursively, so the id and channel are

@@ -36,22 +36,22 @@ export interface LauncherDownloadSimulator {
   stop: () => void;
 }
 
-/** Mirrors the real misspell alpha build's shape: 267 files, ~442 MB. */
+/** Mirrors the real example-game alpha build's shape: 267 files, ~442 MB. */
 const PREVIEW_TOTAL_BYTES = 442_012_495;
 const PREVIEW_TOTAL_FILES = 267;
-const PREVIEW_GAME_ID = 'misspell';
+const PREVIEW_GAME_ID = 'example-game';
 
 // Real names from the published manifest, so the row looks like the real thing
 // rather than "file1.bin". A Unity build is mostly data files, which is exactly
 // the boring-looking case worth checking.
 const PREVIEW_FILES = [
-  'Misspell.exe',
+  'Example Game.exe',
   'UnityPlayer.dll',
   'D3D12/D3D12Core.dll',
-  'Misspell_Data/globalgamemanagers',
-  'Misspell_Data/level0',
-  'Misspell_Data/boot.config',
-  'Misspell_Data/il2cpp_data/Metadata/global-metadata.dat',
+  'Example Game_Data/globalgamemanagers',
+  'Example Game_Data/level0',
+  'Example Game_Data/boot.config',
+  'Example Game_Data/il2cpp_data/Metadata/global-metadata.dat',
   'MonoBleedingEdge/bin/mono-sgen.exe',
   'resources.assets',
 ] as const;
@@ -78,7 +78,7 @@ function clearTimer(): void {
 }
 
 function fileAt(step: number): string {
-  return PREVIEW_FILES[Math.floor((step / PREVIEW_STEPS) * PREVIEW_FILES.length)] ?? 'misspell.exe';
+  return PREVIEW_FILES[Math.floor((step / PREVIEW_STEPS) * PREVIEW_FILES.length)] ?? 'example-game.exe';
 }
 
 function snapshotAt(step: number, totalBytes: number): DownloadProgressSnapshot {
@@ -186,7 +186,7 @@ function handleShortcut(event: KeyboardEvent): void {
   if (event.key.toLowerCase() !== 'd') return;
 
   event.preventDefault();
-  // No game chosen by hand: previewing the misspell build is the case worth
+  // No game chosen by hand: previewing the example-game build is the case worth
   // looking at, and the row falls back to the id if the catalog is empty.
   playFakeDownload(PREVIEW_GAME_ID);
 }

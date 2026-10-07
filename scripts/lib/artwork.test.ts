@@ -12,7 +12,7 @@ import {
 } from './artwork.mjs';
 
 const CDN = 'https://cdn.test';
-const PREFIX = 'games/misspell/alpha';
+const PREFIX = 'games/example-game/alpha';
 
 const listed = (key: string, extra: Record<string, unknown> = {}) => ({ key, ...extra });
 
@@ -125,7 +125,7 @@ describe('listing what is published', () => {
 
   it('gives each object a URL players can actually load', () => {
     const icon = objects.find((o) => o.name.startsWith('icon'));
-    expect(icon?.url).toBe(`${CDN}/games/misspell/alpha/icon-11111111.png`);
+    expect(icon?.url).toBe(`${CDN}/games/example-game/alpha/icon-11111111.png`);
   });
 
   it('reports a readable size rather than raw bytes', () => {
@@ -162,11 +162,11 @@ describe('saying which field each image belongs to', () => {
     // Without this the operator cannot tell which of several hash-named files
     // players are seeing, because the bucket records nothing about the mapping.
     const described = describeArtwork(objects, {
-      'icon-url': `${CDN}/games/misspell/alpha/icon-11111111.png`,
+      'icon-url': `${CDN}/games/example-game/alpha/icon-11111111.png`,
       'banner-url': `/${PREFIX}/banner-22222222.png`,
       // Screenshots are stored as one comma-joined string; without splitting it
       // the joined value matches nothing and every screenshot reads as unused.
-      screenshots: `/${PREFIX}/shot-33333333.png, ${CDN}/games/misspell/alpha/icon-11111111.png`,
+      screenshots: `/${PREFIX}/shot-33333333.png, ${CDN}/games/example-game/alpha/icon-11111111.png`,
     });
 
     const byName = Object.fromEntries(described.map((o) => [o.name, o]));

@@ -38,7 +38,7 @@ export function DiffReview({
 }: {
   rows: DiffRow[];
   summary: string;
-  /** "misspell / alpha", shown so a review always names what it is about. */
+  /** "example-game / alpha", shown so a review always names what it is about. */
   target: string;
 }) {
   if (!rows.length) return null;

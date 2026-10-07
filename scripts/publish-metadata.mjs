@@ -11,8 +11,8 @@
  * writes the documents back - the file list, hashes, sizes and version are
  * copied through because they describe bytes that are not changing.
  *
- *   npm run publish:meta -- --game-id misspell --channel alpha \
- *     --name "Misspell" --genre "Multiplayer,Party" --icon-file ./art/icon.png
+ *   npm run publish:meta -- --game-id example-game --channel alpha \
+ *     --name "Example Game" --genre "Multiplayer,Party" --icon-file ./art/icon.png
  *
  * Fields left unset keep their published value, so a partial edit never blanks a
  * field nobody touched. The icon and banner can be a local file to upload
@@ -139,7 +139,7 @@ export async function publishMetadata(argv) {
   }
 
   if (changes.length === 0) {
-    fail('Nothing to change. Pass at least one field, e.g. --name "Misspell".');
+    fail('Nothing to change. Pass at least one field, e.g. --name "Example Game".');
   }
 
   // --- Read what is published today ----------------------------------------

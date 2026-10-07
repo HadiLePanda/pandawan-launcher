@@ -69,7 +69,7 @@ formats are not interchangeable. Use `npm run keys:generate` (which wraps
 
 8. **Nothing further is needed from you.** The workflow's `publish-updater` job
    already uploads `latest.json` to
-   `https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/latest.json` (the
+   `https://pub-example.r2.dev/launcher/latest.json` (the
    path `tauri.conf.json` polls), and the GitHub Release stays a draft on purpose:
    its asset URLs point at R2, so nothing needs the GitHub copy public.
 
