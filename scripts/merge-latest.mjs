@@ -66,7 +66,9 @@ const kept = Object.keys(merged.platforms).filter((target) => !incomingTargets.i
 writeFileSync(incomingPath, `${JSON.stringify(merged, null, 2)}\n`);
 
 if (!existing) {
-  console.log(`No published manifest at ${existingUrl}; wrote ${incomingTargets.length} platform(s).`);
+  console.log(
+    `No published manifest at ${existingUrl}; wrote ${incomingTargets.length} platform(s).`
+  );
 } else if (existing.version !== incoming.version) {
   console.log(
     `Published manifest is ${existing.version}, this build is ${incoming.version}: ` +

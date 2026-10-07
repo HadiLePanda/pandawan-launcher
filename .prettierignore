@@ -7,6 +7,9 @@ package-lock.json
 # belongs to the publisher - prettier re-collapsing its short arrays would make
 # every publish produce a spurious diff.
 public/catalog.json
+# Written by publish-news.mjs the same way, so it has the same trap: prettier
+# re-collapsing `{ "items": [] }` would make every news publish show a diff.
+public/news.json
 .agents
 .claude
 .github/skills

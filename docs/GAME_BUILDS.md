@@ -10,7 +10,7 @@ Four independent things identify a build. Never pack them into one string.
 
 | Axis         | Where it lives                       | Example          |
 | ------------ | ------------------------------------ | ---------------- |
-| Game slug    | catalog `id`, manifest `game_id`     | `example-game`       |
+| Game slug    | catalog `id`, manifest `game_id`     | `example-game`   |
 | Version      | manifest `version`                   | `0.4.0-alpha.3`  |
 | Channel      | manifest `channel`                   | `alpha`          |
 | Build number | manifest `build_number`              | `102`            |

@@ -1,61 +1,62 @@
 # Pandawan Launcher
 
-A game launcher for distributing and updating games, built with Tauri, React, and Rust.
+A game launcher that distributes and updates games. It is built with Tauri, React, and
+Rust.
 
-Games are resolved at runtime from a CDN, so the launcher ships with no game list of
-its own. Publishers upload builds to R2 and the launcher picks them up.
+The launcher resolves games at runtime from a CDN. It ships with no game list of its
+own. Publishers upload builds to R2. The launcher finds them there.
 
 ## Features
 
-- Hash-based patching: only changed files are downloaded
-- Resume-capable and parallel downloads
-- Release channels (`stable`, `beta`, `alpha`) per game
-- Signed launcher self-updates
-- Playtime tracking and OS notifications
-- English and French
+- Hash-based patching. The launcher downloads only changed files.
+- Resume-capable, parallel downloads.
+- Release channels per game: `stable`, `beta`, `alpha`.
+- Signed launcher self-updates.
+- Playtime tracking and OS notifications.
+- English and French.
 
 ## Stack
 
-React 19, TypeScript, Tailwind CSS, Zustand, Tauri 2, Rust, reqwest.
+React 19, TypeScript, Tailwind CSS, Zustand, Tauri 2, Rust, and reqwest.
 
-## Getting started
+## Get started
 
-Requires Node 18+, Rust, and the [Tauri prerequisites](https://tauri.app/start/prerequisites/)
-for your platform.
+You need Node 18 or later, Rust, and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
 
 ```bash
 npm install
 npm run tauri:dev
 ```
 
-On Windows, `run-launcher.bat` does the same thing after checking that cargo and
-the updater keys are present. Double-clicking it opens the output in a console
-window that stays open on exit, so a failed run can be read.
+On Windows, `run-launcher.bat` does the same work. It first checks that cargo and the
+updater keys exist. A double-click opens the output in a console window that stays
+open on exit, so you can read a failed run.
 
 ```bash
 npm test          # Vitest
 npm run lint      # ESLint
-npm run build     # Typecheck + production frontend build
+npm run build     # Typecheck and production frontend build
 ```
 
-Rust tests need a Tauri-capable environment and run in CI:
+Rust tests need a Tauri-capable environment. They run in CI.
 
 ```bash
 cd src-tauri && cargo test
 ```
 
 `src/lib/bindings.ts` is generated from the Rust command and event definitions.
-Regenerate and reconcile it with:
+Regenerate and reconcile it:
 
 ```bash
 npm run bindings:export
 ```
 
-## Publishing
+## Publish
 
-Publishing targets Cloudflare R2. Copy the block from `.env.example` into a gitignored
-`.env`; a value already set in the real environment wins, so CI can inject secrets
-without a file.
+Publishing writes to Cloudflare R2. Copy the block from `.env.example` into a
+gitignored `.env`. A value that is already set in the environment wins, so CI can
+inject secrets without a file.
 
 ```bash
 npm run publish:game -- \
@@ -64,16 +65,15 @@ npm run publish:game -- \
   --executable "Example Game.exe" --name "Example Game" \
   --input-dir ./Builds/Windows
 
-npm run publish:catalog   # make new/changed games visible
+npm run publish:catalog   # make new and changed games visible
 npm run publish:meta      # edit a game's name, genres and artwork
 npm run prune:builds -- --game-id example-game --keep 3
 ```
 
-`npm run dashboard` opens a local control panel for all of these. It binds to
-127.0.0.1, holds your R2 credentials, and must never be deployed. Its Services tab
-opens the launcher and website by running `run-launcher.bat` / `run-website.bat`,
-so each gets a real console window to print into instead of a truncated log
-panel.
+`npm run dashboard` opens a local control panel for these commands. It binds to
+127.0.0.1 and holds your R2 credentials. Never deploy it. Its Services tab opens the
+launcher and the website. It runs `run-launcher.bat` or `run-website.bat`, so each
+process gets its own console window instead of a truncated log panel.
 
 ### CDN layout
 
@@ -81,28 +81,31 @@ panel.
 {origin}/launcher/catalog.json                  # which games exist
 {origin}/launcher/news.json
 {origin}/games/{id}/{channel}/manifest.json
-{origin}/games/{id}/{channel}/latest.json       # per-platform current version
+{origin}/games/{id}/{channel}/latest.json       # current version per platform
 {origin}/games/{id}/{channel}/{version}/{platform}/...
 ```
 
-Build files live under a version-stamped path so a one-year immutable cache header is
-truthful. The manifest and catalog are mutable and never cached.
+Build files live under a version-stamped path. A one-year immutable cache header is
+then correct. The manifest and catalog are mutable, so they are never cached.
 
-`latest.json` exists because platforms ship independently: a flat `manifest.json`
-cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0".
+`latest.json` exists because platforms ship independently. A flat `manifest.json`
+cannot say "Windows is on 1.2.0, but macOS is on 1.1.0".
 
 ### Metadata
 
-Name, description, genres, icon and banner live in **two** places that drift apart:
-`catalog.json` (the publisher's display fields, which the launcher prefers) and
-`manifest.json` (whatever the build shipped with). `publish:meta` writes both without
-re-uploading any game files, and only touches the fields you name — everything else
-keeps its published value.
+Name, description, genres, icon and banner live in two places. The two places drift
+apart:
+
+- `catalog.json` holds the publisher's display fields. The launcher prefers them.
+- `manifest.json` holds what the build shipped with.
+
+`publish:meta` writes both. It does not re-upload game files. It changes only the
+fields that you name. Every other field keeps its published value.
 
 ### Versioning
 
-`build-number` must increase on every build across all channels; it is the only value
-the launcher compares. `version` is display text and is never compared.
+`build-number` must increase on every build, across all channels. The launcher
+compares only this value. `version` is display text. The launcher never compares it.
 
 ### Credentials
 
@@ -114,26 +117,27 @@ R2_ACCESS_KEY_ID=<R2 -> Manage R2 tokens>
 R2_SECRET_ACCESS_KEY=<shown once>
 ```
 
-`R2_ACCOUNT_ID` is not the value inside the `r2.dev` URL — that subdomain encodes the
-bucket. Both are in the R2 dashboard.
+`R2_ACCOUNT_ID` is not the value inside the `r2.dev` URL. That subdomain encodes the
+bucket. Both values are in the R2 dashboard.
 
-Publishing needs Python and the [AWS CLI](https://aws.amazon.com/cli/) (`aws s3` talks
-to R2 over the S3-compatible API; no AWS account required).
+Publishing needs Python and the [AWS CLI](https://aws.amazon.com/cli/). `aws s3`
+talks to R2 over the S3-compatible API. No AWS account is necessary.
 
 ## Self-updates
 
-Releases are cut by tagging; CI builds, signs and publishes them.
+Tag a release to cut it. CI builds, signs and publishes it.
 
-- `src-tauri/updater.pub` is the source of truth for the public key. `npm run
-sync:updater-key` copies it into `tauri.conf.json` and runs before every build.
-- The secret key lives in `src-tauri/.secrets/updater.key` (gitignored). Supply it to CI
-  verbatim as `TAURI_SIGNING_PRIVATE_KEY` — do not re-encode it.
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` only if the key has a password; otherwise CI
-  prompts and hangs.
+- `src-tauri/updater.pub` is the source of truth for the public key.
+  `npm run sync:updater-key` copies it into `tauri.conf.json`. It runs before every
+  build.
+- The secret key lives in `src-tauri/.secrets/updater.key`, which is gitignored. Give
+  it to CI verbatim as `TAURI_SIGNING_PRIVATE_KEY`. Do not re-encode it.
+- Set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` only if the key has a password. Without it,
+  CI prompts and hangs.
 
 Never hand-edit `plugins.updater.pubkey`. It must be the base64 of the whole
-PublicKeyBox, which the updater decodes before parsing. `npm run keys:check` proves the
-keypair works, and a Rust test fails CI on a malformed value.
+PublicKeyBox. The updater decodes it before it parses. `npm run keys:check` proves the
+keypair works. A Rust test fails CI on a malformed value.
 
 ## Configuration
 
@@ -145,7 +149,7 @@ Settings are stored in the platform app-data directory:
 
 ## Unity integration
 
-Games are launched with `-launcher`. To detect it:
+The launcher starts each game with `-launcher`. To detect it:
 
 ```csharp
 var args = System.Environment.GetCommandLineArgs();
@@ -158,4 +162,4 @@ for (int i = 0; i < args.Length; i++)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Proprietary. All rights reserved. See [LICENSE](LICENSE).

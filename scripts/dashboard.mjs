@@ -1047,7 +1047,6 @@ async function targetReleaseTag() {
   return packageVersion ? `v${packageVersion}` : null;
 }
 
-
 /**
  * The live news feed, or an empty one when absent. A missing feed is normal on a
  * fresh bucket; an unparseable one is reported, because writing over it would
@@ -1353,14 +1352,11 @@ async function readJson(req, res, { maxBytes = 1024 * 1024 } = {}) {
  * unchanged, so a caller that passes nothing behaves exactly as before.
  */
 function runScript(name, args, res, { onExit } = {}) {
-  streamChild(
-    res,
-    { id: name, onExit },
-    () =>
-      spawn(process.execPath, [path.join(here, name), ...args], {
-        cwd: path.resolve(here, '..'),
-        env: process.env,
-      })
+  streamChild(res, { id: name, onExit }, () =>
+    spawn(process.execPath, [path.join(here, name), ...args], {
+      cwd: path.resolve(here, '..'),
+      env: process.env,
+    })
   );
 }
 
@@ -1371,10 +1367,8 @@ function runScript(name, args, res, { onExit } = {}) {
  * and the reap manifest, or a cancelled rerun would strand a process.
  */
 function runCommand(command, args, res, { onExit } = {}) {
-  streamChild(
-    res,
-    { id: command, onExit },
-    () => spawn(command, args, { cwd: repoRoot, env: process.env, shell: false })
+  streamChild(res, { id: command, onExit }, () =>
+    spawn(command, args, { cwd: repoRoot, env: process.env, shell: false })
   );
 }
 

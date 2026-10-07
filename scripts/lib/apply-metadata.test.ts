@@ -17,7 +17,9 @@ describe('applying metadata changes', () => {
     const entry = { name: 'wrong' };
     const manifest = { name: 'wrong' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
+    const applied = applyMetadataChanges(entry, manifest, [
+      { ...nameField, value: 'Example Game' },
+    ]);
 
     expect(entry.name).toBe('Example Game');
     expect(manifest.name).toBe('Example Game');
@@ -31,7 +33,9 @@ describe('applying metadata changes', () => {
     const entry = { name: 'Example Game' };
     const manifest = { name: 'example-game' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
+    const applied = applyMetadataChanges(entry, manifest, [
+      { ...nameField, value: 'Example Game' },
+    ]);
 
     expect(manifest.name).toBe('Example Game');
     expect(applied).toHaveLength(1);
@@ -45,7 +49,9 @@ describe('applying metadata changes', () => {
     const entry = { name: 'Example Game' };
     const manifest = { name: 'Example Game' };
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
+    const applied = applyMetadataChanges(entry, manifest, [
+      { ...nameField, value: 'Example Game' },
+    ]);
 
     // Re-publishing an unchanged field must stay a no-op, so a dashboard that
     // sends everything on save does not churn the bucket for nothing.
@@ -56,7 +62,9 @@ describe('applying metadata changes', () => {
     const entry = { name: 'Example Game' };
     const manifest = {};
 
-    const applied = applyMetadataChanges(entry, manifest, [{ ...nameField, value: 'Example Game' }]);
+    const applied = applyMetadataChanges(entry, manifest, [
+      { ...nameField, value: 'Example Game' },
+    ]);
 
     expect(manifest.name).toBe('Example Game');
     expect(applied).toHaveLength(1);

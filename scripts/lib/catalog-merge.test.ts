@@ -137,7 +137,11 @@ describe('merging a catalog into the published one', () => {
     // Not a removal request: a stale local copy is not a request to remove a
     // live game from every launcher.
     const other = { id: 'example-test-game', channel: 'stable', name: 'Example Test Game' };
-    const result = mergeCatalog(remote([CDN_EXAMPLE_GAME, other]), local([LOCAL_EXAMPLE_GAME]), opts);
+    const result = mergeCatalog(
+      remote([CDN_EXAMPLE_GAME, other]),
+      local([LOCAL_EXAMPLE_GAME]),
+      opts
+    );
 
     expect(entryFor(result.catalog, 'example-test-game')).toEqual(other);
     expect(result.preserved).toEqual([{ id: 'example-test-game', channel: 'stable' }]);
@@ -146,7 +150,11 @@ describe('merging a catalog into the published one', () => {
 
   it('adds and keeps in the same run, reporting each separately', () => {
     const brandNew = { id: 'brand-new', channel: 'beta', name: 'Brand New' };
-    const result = mergeCatalog(remote([CDN_EXAMPLE_GAME]), local([LOCAL_EXAMPLE_GAME, brandNew]), opts);
+    const result = mergeCatalog(
+      remote([CDN_EXAMPLE_GAME]),
+      local([LOCAL_EXAMPLE_GAME, brandNew]),
+      opts
+    );
 
     expect(result.added).toEqual([{ id: 'brand-new', channel: 'beta' }]);
     expect(result.skipped).toHaveLength(1);

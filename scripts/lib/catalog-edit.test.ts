@@ -76,7 +76,9 @@ describe('catalogDiff', () => {
   it('lists a game the repo has that is not published - what a publish would add', () => {
     const diff = catalogDiff(remoteDoc([]), localDoc([LOCAL_EXAMPLE_GAME]));
 
-    expect(diff.onlyLocal).toEqual([{ id: 'example-game', channel: 'alpha', name: 'example-game' }]);
+    expect(diff.onlyLocal).toEqual([
+      { id: 'example-game', channel: 'alpha', name: 'example-game' },
+    ]);
     expect(diff.onlyLive).toEqual([]);
   });
 

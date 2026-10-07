@@ -204,7 +204,7 @@ The few things worth knowing without looking:
   version (`scripts/lib/latest-merge.mjs`) so a partial build never drops the platforms it did not build.
   Windows is built locally (`npm run tauri:build` then `npm run release:local`, both on the Releases page):
   it uploads the signed NSIS bundle and folds it into latest.json with the same merge, so the macOS/Linux
-  entries CI wrote survive. The two producers never write a *whole* manifest - each adds its own platforms.
+  entries CI wrote survive. The two producers never write a _whole_ manifest - each adds its own platforms.
 - **The repository is made public only so CI can run, and must carry nothing company-specific.** `LICENSE`
   is proprietary ("All Rights Reserved"): MIT granted the right to fork and resell, which this has to
   prevent, and the notice states that public visibility is not a grant. The game lineup is not tracked -
@@ -225,10 +225,10 @@ The few things worth knowing without looking:
 
 ### Writing voice
 
-Aim for **80% of ASD-STE100**. Applies to comments, commit messages, docs,
-prose and every response to the user. The style forbids contraction-free
-legalese, needless words, parentheticals, and inflated claims, so write the
-shortest true sentence instead.
+Aim for **80% of ASD-STE100**. This rule governs everything an agent writes:
+comments, commit messages, docs, prose, and **every chat reply to the user**. A
+reply that is long and hedged is harder to act on, so write the shortest true
+sentence instead.
 
 - One idea per sentence. Split rather than join with "and", "also", "but".
 - Say what a thing does, not that it "helps" or "allows you to". "Narrow the

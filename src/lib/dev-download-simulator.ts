@@ -78,7 +78,9 @@ function clearTimer(): void {
 }
 
 function fileAt(step: number): string {
-  return PREVIEW_FILES[Math.floor((step / PREVIEW_STEPS) * PREVIEW_FILES.length)] ?? 'example-game.exe';
+  return (
+    PREVIEW_FILES[Math.floor((step / PREVIEW_STEPS) * PREVIEW_FILES.length)] ?? 'example-game.exe'
+  );
 }
 
 function snapshotAt(step: number, totalBytes: number): DownloadProgressSnapshot {
