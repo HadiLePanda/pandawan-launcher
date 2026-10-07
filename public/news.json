@@ -1,20 +1,4 @@
 {
-  "items": [
-    {
-      "id": "misspell-alpha-0-4-0",
-      "title": "Misspell 0.4.0 - Alpha Playtest",
-      "excerpt": "The first alpha playtest build for friends. Expect rough edges and breaking changes.",
-      "date": "2026-09-30T00:00:00Z",
-      "category": "Release",
-      "gameId": "misspell",
-      "imageUrl": "/placeholder-banner.svg"
-    },
-    {
-      "id": "launcher-welcome",
-      "title": "Welcome to the Pandawan Launcher",
-      "excerpt": "Your gateway to Pandawan Corp games is here. Stay tuned for more titles and updates.",
-      "date": "2026-09-30T00:00:00Z",
-      "category": "Launcher"
-    }
-  ]
+  "items": []
 }
+

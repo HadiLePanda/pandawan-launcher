@@ -104,3 +104,13 @@ COMMIT_MSG.txt
 
 # tsc -b / composite project output
 *.tsbuildinfo
+
+# Internal-only material, kept on the developer's machine and NEVER published.
+# The repo is made public only so CI can run against it, so nothing
+# company-specific may stay tracked: agent tooling, skills and internal plans
+# are untracked here and live in the working tree only.
+.agents/
+.claude/
+.codex/
+skills-lock.json
+docs/superpowers/
