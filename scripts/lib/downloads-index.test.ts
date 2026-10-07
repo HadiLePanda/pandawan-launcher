@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildDownloadsIndex,
+  mergeDownloadsIndex,
   classifyAsset,
   assetLabel,
   PLATFORM_ORDER,
@@ -125,5 +126,32 @@ describe('downloads index', () => {
 
   it('tolerates a missing file list', () => {
     expect(build(undefined).platforms).toEqual({ windows: [], macos: [], linux: [] });
+  });
+});
+
+describe('merging a built index into the live one', () => {
+  const live = {
+    version: '0.2.1',
+    platforms: {
+      windows: [{ label: 'EXE installer', url: 'https://cdn/w0.2.1.exe' }],
+      macos: [{ label: 'Disk image', url: 'https://cdn/m0.2.1.dmg' }],
+      linux: [{ label: 'Debian / Ubuntu', url: 'https://cdn/l0.2.1.deb' }],
+    },
+  };
+
+  it('replaces only the platform the new index built, keeping the others', () => {
+    // The load-bearing case: a local Windows publish must not erase the macOS
+    // and Linux downloads another producer put in the bucket.
+    const merged = mergeDownloadsIndex(live, build(['App_0.3.0_x64-setup.exe'], '0.3.0'));
+
+    expect(merged.version).toBe('0.3.0');
+    expect(merged.platforms.windows[0].url).toBe(`${BASE}/App_0.3.0_x64-setup.exe`);
+    expect(merged.platforms.macos).toEqual(live.platforms.macos);
+    expect(merged.platforms.linux).toEqual(live.platforms.linux);
+  });
+
+  it('lists only the platforms that have a download, live or new', () => {
+    const merged = mergeDownloadsIndex(null, build(['App_0.3.0_x64-setup.exe'], '0.3.0'));
+    expect(Object.keys(merged.platforms)).toEqual(['windows']);
   });
 });

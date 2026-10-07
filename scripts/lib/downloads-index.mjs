@@ -86,3 +86,21 @@ export function buildDownloadsIndex({ version, files, base }) {
 
   return { version, platforms: groups };
 }
+
+/**
+ * Fold a freshly built index into the one the bucket already serves.
+ *
+ * A producer that builds one platform must not drop the others: uploading the
+ * new document whole would erase the downloads another producer published. Each
+ * platform the new index has files for is replaced; a platform it built nothing
+ * for keeps what is live. A local Windows publish therefore leaves the macOS and
+ * Linux entries untouched, and the page stays whole.
+ */
+export function mergeDownloadsIndex(live, incoming) {
+  const platforms = {};
+  for (const [id, items] of Object.entries(incoming.platforms)) {
+    const next = items.length ? items : (live?.platforms?.[id] ?? []);
+    if (next.length) platforms[id] = next;
+  }
+  return { version: incoming.version, platforms };
+}

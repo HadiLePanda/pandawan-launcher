@@ -17,6 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { buildDownloadsIndex, mergeDownloadsIndex } from './lib/downloads-index.mjs';
 import { mergeLatest } from './lib/latest-merge.mjs';
 import { IMMUTABLE, NO_CACHE, S3, fail, repoRoot, r2Config, upload } from './lib/r2.mjs';
 
@@ -64,9 +65,10 @@ function baseFromConfig() {
 
 // The published filename, so a bucket URL never carries a space and matches the
 // names the CI-built website index already links from.
+const base = baseFromConfig();
 const publishedExe = `Pandawan.Launcher_${version}_x64-setup.exe`;
 const signature = readFileSync(path.join(bundleDir, sigName), 'utf-8');
-const url = `${baseFromConfig()}/${encodeURIComponent(publishedExe)}`;
+const url = `${base}/${encodeURIComponent(publishedExe)}`;
 
 // One NSIS build feeds both Windows updater targets, exactly as a CI manifest does.
 const entry = { signature, url };
@@ -124,6 +126,33 @@ upload(out, S3.s3Uri(bucket, 'launcher/latest.json'), {
   contentType: 'application/json',
 });
 
+// Keep the public download page current. The page reads downloads.json, which
+// is otherwise only rebuilt by a full release; without this a locally built
+// Windows version would leave the page offering the previous one. Only the
+// Windows group is replaced, so the macOS and Linux entries the CI build
+// published survive.
+let liveIndex = null;
+try {
+  const res = await fetch(`${base}/downloads.json`, { cache: 'no-store' });
+  if (res.ok) liveIndex = await res.json();
+  else if (res.status !== 404) fail(`Could not read the download index (HTTP ${res.status}).`);
+} catch (err) {
+  fail(`Could not read the download index: ${err?.message ?? err}`);
+}
+
+const mergedIndex = mergeDownloadsIndex(
+  liveIndex,
+  buildDownloadsIndex({ version, files: [publishedExe], base })
+);
+const indexOut = path.join(stagingDir, 'launcher-downloads.json');
+writeFileSync(indexOut, `${JSON.stringify(mergedIndex, null, 2)}\n`);
+upload(indexOut, S3.s3Uri(bucket, 'launcher/downloads.json'), {
+  endpoint,
+  cacheControl: NO_CACHE,
+  contentType: 'application/json',
+});
+
 console.log(
   `\nPublished Windows ${version}. latest.json now lists: ${Object.keys(merged.platforms).join(', ')}`
 );
+console.log(`downloads.json platforms: ${Object.keys(mergedIndex.platforms).join(', ')}`);
