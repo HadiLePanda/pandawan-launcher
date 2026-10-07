@@ -20,7 +20,7 @@
  * Global, not game-scoped: the launcher is the app itself, and nothing here acts
  * on the selection in the rail.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDown,
@@ -66,6 +66,8 @@ interface LauncherStatus {
     url: string | null;
     failedJobs: string[];
     jobCount: number;
+    /** Why a failed run failed, when GitHub recorded a reason. */
+    reason?: string | null;
   } | null;
   cdnOrigin?: string;
   error?: string;
@@ -73,6 +75,14 @@ interface LauncherStatus {
 
 const LEVELS = ['patch', 'minor', 'major'] as const;
 type Level = (typeof LEVELS)[number];
+
+// How often the panel re-reads while a build is in flight. There is no standing
+// poll: this interval exists only while a CI run has not concluded, or for a
+// short window after a verb was run, and it stops the moment the run settles.
+const POLL_MS = 15_000;
+// The window after a verb in which a run may not exist yet, so a poll still has
+// something to wait for. A tag push to a run appearing is under a minute.
+const SETTLE_MS = 90_000;
 
 /**
  * `v` stripped, so a tag compares as numbers.
@@ -112,6 +122,12 @@ export default function LauncherPanel() {
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [releaseLevel, setReleaseLevel] = useState<Level>('patch');
   const [releaseDryRun, setReleaseDryRun] = useState(true);
+  // When a verb last ran. Drives the short post-action poll window so a run that
+  // has not been created yet is still picked up.
+  const [lastActionAt, setLastActionAt] = useState(0);
+  // Guards against two reads at once - a poll tick landing on a manual Refresh -
+  // so a slow `gh` call cannot stack a second.
+  const inFlight = useRef(false);
 
   const publish = usePublisherStream();
   const release = usePublisherStream();
@@ -133,6 +149,8 @@ export default function LauncherPanel() {
   }, []);
 
   const refresh = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     // Keep whatever is already on the ladder and mark it refreshing rather than
     // blanking it to a spinner: a refresh is not a reason to lose the values
     // being read. Only the first load has nothing to keep.
@@ -144,6 +162,7 @@ export default function LauncherPanel() {
     } catch (err) {
       setLoad({ state: 'error', message: messageOf(err) });
     } finally {
+      inFlight.current = false;
       setRefreshing(false);
     }
   }, [request]);
@@ -184,6 +203,7 @@ export default function LauncherPanel() {
       return;
     }
     await publish.start('/api/launcher/publish', { tag: nextTag, confirm: confirmPublish });
+    setLastActionAt(Date.now());
     // Never left armed: a real publish is a one-off, and a box that stays ticked
     // would make the next click upload a different tag without asking.
     setConfirmPublish(false);
@@ -204,11 +224,15 @@ export default function LauncherPanel() {
       level: releaseLevel,
       confirm: !releaseDryRun,
     });
+    // Only a real release pushes a tag for CI to build, so only it opens the poll
+    // window; a preview changes nothing to wait for.
+    if (!releaseDryRun) setLastActionAt(Date.now());
     await refresh();
   }
 
   async function doBuild() {
     await build.start('/api/launcher/build', {});
+    setLastActionAt(Date.now());
     await refresh();
   }
 
@@ -224,6 +248,7 @@ export default function LauncherPanel() {
     }
     // `confirm` is what makes it real; without it the script only previews.
     await retag.start('/api/launcher/retag', { confirm: true });
+    setLastActionAt(Date.now());
     await refresh();
   }
 
@@ -231,6 +256,32 @@ export default function LauncherPanel() {
   // publishers writing to the same bucket with interleaved logs is worse than a
   // disabled button.
   const busy = publish.busy || release.busy || build.busy || retag.busy || keys.busy;
+
+  // Re-read only while there is something to watch: a CI run that has not
+  // concluded, or a verb run within the settle window (its run may not exist
+  // yet). Idle, no interval is created at all, and a hidden tab stops the reads -
+  // so the cost is bounded by the length of a build, never a standing poll.
+  const ciActive = !!data?.ci && data.ci.status !== 'completed';
+  const settling = Date.now() - lastActionAt < SETTLE_MS;
+  const shouldPoll = ciActive || settling;
+
+  useEffect(() => {
+    if (!shouldPoll) return;
+    const tick = () => {
+      if (!document.hidden) void refresh();
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    // Coming back to the tab reads at once rather than waiting up to POLL_MS for
+    // the next tick, so the panel is current the moment it is looked at again.
+    const onVisible = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [shouldPoll, refresh]);
 
   return (
     <div className="flex flex-col">
@@ -507,25 +558,31 @@ function CiStatus({ ci, tag }: { ci: LauncherStatus['ci']; tag: string | null | 
     );
   }
   return (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
-      <span className="flex items-center gap-1.5">
-        <CiGlyph ci={ci} />
-        <span className={cx('font-medium', ciTone(ci))}>{ciWord(ci)}</span>
+    <span className="flex min-w-0 max-w-2xl flex-col gap-0.5 text-[12.5px]">
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="flex items-center gap-1.5">
+          <CiGlyph ci={ci} />
+          <span className={cx('font-medium', ciTone(ci))}>{ciWord(ci)}</span>
+        </span>
+        <span className="font-mono text-ink-subtle">{tag}</span>
+        {ci.url ? (
+          <a
+            href={ci.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-ink-muted hover:text-ink"
+          >
+            Actions <ExternalLink aria-hidden size={12} />
+          </a>
+        ) : null}
+        {ci.failedJobs.length ? (
+          <span className="text-status-error">{ci.failedJobs.join(', ')}</span>
+        ) : null}
       </span>
-      <span className="font-mono text-ink-subtle">{tag}</span>
-      {ci.url ? (
-        <a
-          href={ci.url}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 text-ink-muted hover:text-ink"
-        >
-          Actions <ExternalLink aria-hidden size={12} />
-        </a>
-      ) : null}
-      {ci.failedJobs.length ? (
-        <span className="text-status-error">{ci.failedJobs.join(', ')}</span>
-      ) : null}
+      {/* The reason a run is red, when GitHub recorded one: a runner billing
+          block, a missing secret. Without it "failed" is the whole story and the
+          operator has nothing to act on. */}
+      {ci.reason ? <span className="text-ink-muted">{ci.reason}</span> : null}
     </span>
   );
 }

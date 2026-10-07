@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { runForTag, summariseRun } from './ci-status.mjs';
+import { runDidFail, runForTag, summariseRun } from './ci-status.mjs';
 
 describe('runForTag', () => {
   const runs = [
@@ -61,5 +61,21 @@ describe('summariseRun', () => {
     );
     expect(summary.failedJobs).toEqual([]);
     expect(summary.conclusion).toBe('success');
+  });
+});
+
+describe('runDidFail', () => {
+  it('is true for a failed or cancelled conclusion', () => {
+    expect(runDidFail({ conclusion: 'failure' })).toBe(true);
+    expect(runDidFail({ conclusion: 'cancelled' })).toBe(true);
+    expect(runDidFail({ conclusion: 'timed_out' })).toBe(true);
+  });
+
+  it('is false for a pass, a skip, and a run still going', () => {
+    expect(runDidFail({ conclusion: 'success' })).toBe(false);
+    expect(runDidFail({ conclusion: 'skipped' })).toBe(false);
+    // A run in progress has no conclusion; it must not read as a failure.
+    expect(runDidFail({ conclusion: null })).toBe(false);
+    expect(runDidFail(null)).toBe(false);
   });
 });

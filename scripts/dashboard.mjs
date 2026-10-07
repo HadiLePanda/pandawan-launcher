@@ -91,7 +91,7 @@ import {
 } from './lib/website-status.mjs';
 // Reading a CI run and its jobs is pure, so the words the Releases panel shows
 // are checked without a logged-in gh or a network.
-import { runForTag, summariseRun } from './lib/ci-status.mjs';
+import { runDidFail, runForTag, summariseRun } from './lib/ci-status.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetDir = path.join(here, 'dashboard');
@@ -100,6 +100,10 @@ const repoRoot = path.resolve(here, '..');
 
 // The public download page is a separate repository next to this one.
 const siteRoot = path.resolve(repoRoot, '..', 'pandawan-launcher-site');
+
+// The GitHub repo the release workflow runs in. Named rather than inferred from
+// the cwd so a `gh api` call cannot resolve against the wrong repo.
+const GITHUB_REPO = 'HadiLePanda/pandawan-launcher';
 
 loadDotEnv();
 const { cdnOrigin, endpoint, bucket } = r2Config();
@@ -911,10 +915,16 @@ async function launcherStatus() {
   // previous version and would report the wrong run.
   const targetTag = packageVersion ? `v${packageVersion}` : null;
   const run = runForTag(releaseWorkflowRuns(), targetTag);
-  // Job conclusions only exist once a run has a conclusion of its own, but gh
-  // answers job statuses mid-run too, so they are read whenever a run exists.
-  const jobs = run ? runJobs(run.databaseId) : [];
-  const ci = summariseRun(run, jobs);
+  // Job conclusions exist only once the run is `completed`; reading jobs mid-run
+  // costs a call for a status the headline word already gives, so they wait.
+  const jobs = run && run.status === 'completed' ? runJobs(run.databaseId) : [];
+  const summary = summariseRun(run, jobs);
+  // The reason a red run is red - a runner billing block, a missing secret, a
+  // failed command - lives in an annotation, not in the job name. Fetched only
+  // for a failed run, because that is the only time it exists.
+  const ci = summary
+    ? { ...summary, reason: runDidFail(summary) ? failureReason(run.databaseId) : null }
+    : null;
 
   return {
     published,
@@ -971,6 +981,45 @@ function runJobs(runId) {
     // Fall through to the empty list.
   }
   return [];
+}
+
+/**
+ * The first failure annotation on a run's first failed job, or null.
+ *
+ * GitHub puts the reason a job did not run where the job list does not reach: a
+ * runner block ("recent account payments have failed"), a missing secret, a
+ * rejected step. Without it the panel can only say "failed", which for a
+ * runner-side block is exactly the fact the operator cannot act on. Two API
+ * calls, made only for a run that already failed.
+ */
+function failureReason(runId) {
+  try {
+    const jobsOut = spawnSync('gh', ['api', `repos/${GITHUB_REPO}/actions/runs/${runId}/jobs`], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (jobsOut.status !== 0 || !jobsOut.stdout) return null;
+    const failed = (JSON.parse(jobsOut.stdout).jobs ?? []).find(
+      (job) => job?.conclusion === 'failure'
+    );
+    if (!failed?.id) return null;
+
+    const annOut = spawnSync(
+      'gh',
+      ['api', `repos/${GITHUB_REPO}/check-runs/${failed.id}/annotations`],
+      { cwd: repoRoot, encoding: 'utf-8', shell: false }
+    );
+    if (annOut.status !== 0 || !annOut.stdout) return null;
+    const annotations = JSON.parse(annOut.stdout);
+    const failure =
+      (Array.isArray(annotations)
+        ? annotations.find((a) => a?.annotation_level === 'failure')
+        : null) ?? (Array.isArray(annotations) ? annotations[0] : null);
+    return failure?.message ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**

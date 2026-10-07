@@ -59,3 +59,12 @@ export function summariseRun(run, jobs) {
       .map((job) => job.name),
   };
 }
+
+/**
+ * Whether a run ended without the build. Distinct from "in progress": a run
+ * whose status is not `completed` has no conclusion and did not fail yet, so it
+ * must not be reported as one.
+ */
+export function runDidFail(summary) {
+  return !!summary && FAILED_CONCLUSIONS.has(summary.conclusion);
+}

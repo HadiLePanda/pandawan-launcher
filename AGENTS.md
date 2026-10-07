@@ -183,7 +183,8 @@ The few things worth knowing without looking:
   what triggers `release.yml`. Build is therefore CI's run, not a local action: `release.yml` builds and
   signs the three platforms, drafts the GitHub release, and uploads `latest.json` + bundles to R2 itself.
   `GET /api/launcher/status` carries `targetTag` and a `ci` summary (status, conclusion, run URL, failed
-  job names) so a red run is visible in the panel rather than only in Actions; `POST /api/launcher/build`
+  job names, and the failure's own annotation - a runner billing block, a missing secret) so a red run is
+  visible in the panel with its reason rather than only in Actions; `POST /api/launcher/build`
   is `gh run rerun` on that tag's run, the one failure a rerun can clear (a runner that never picked the
   job up, a cancelled leg) — a code failure is named, not re-run blindly. Publish
   (`publish-launcher.mjs`) is the manual repair for a build that succeeded but whose R2 upload leg failed,
@@ -195,7 +196,9 @@ The few things worth knowing without looking:
   version's tag onto the current commit and re-pushes it, rebuilding the same version from the fix instead
   of bumping; it refuses a dirty tree and a tag already at HEAD (a push of an unchanged ref fires no run),
   and it force-deletes then recreates the remote tag so the push is a create that always triggers
-  `release.yml`. `scripts/lib/retag-plan.mjs` holds those rules, unit-tested.
+  `release.yml`. `scripts/lib/retag-plan.mjs` holds those rules, unit-tested. The panel refreshes on its own
+  ONLY while a CI run has not concluded, or for a short window after a verb - never a standing poll - and a
+  hidden tab stops the reads, so the cost is bounded by the length of a build.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
   is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
   `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen
