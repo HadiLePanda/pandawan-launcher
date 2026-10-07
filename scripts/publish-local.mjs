@@ -30,14 +30,18 @@ const bundleDir = fromDir
   ? path.resolve(repoRoot, fromDir)
   : path.join(repoRoot, 'src-tauri', 'target', 'release', 'bundle', 'nsis');
 
-// The one NSIS installer and its signature. Tauri names it with the product
-// name's spaces, so it is found by suffix rather than by a fixed name.
+// The installer for THIS version. A build directory can hold installers from
+// earlier versions, and taking the first match would publish the wrong bytes
+// under this version's name - a file the updater accepts, because it carries the
+// other version's signature.
 const exe = existsSync(bundleDir)
-  ? readdirSync(bundleDir).find((name) => name.endsWith('-setup.exe'))
+  ? readdirSync(bundleDir).find(
+      (name) => name.endsWith('-setup.exe') && name.includes(`_${version}_`)
+    )
   : null;
 if (!exe) {
   fail(
-    `No *-setup.exe in ${bundleDir}\n` +
+    `No _${version}_*-setup.exe in ${bundleDir}\n` +
       '  Build it first: npm run tauri:build   (needs src-tauri/.secrets/updater.key)'
   );
 }
