@@ -2,6 +2,10 @@ use crate::types::{DownloadEvent, DownloadStats, LauncherError};
 use futures_util::StreamExt;
 use reqwest::Client;
 use std::io::ErrorKind;
+// Grants `mode()`/`set_mode()` on std::fs::Permissions below. It is compiled only
+// on a unix target, so a Windows build never needs it and never sees it missing.
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
