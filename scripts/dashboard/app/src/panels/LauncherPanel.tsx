@@ -28,11 +28,11 @@ import {
   CheckCircle2,
   ExternalLink,
   GitBranch,
+  Hammer,
   KeyRound,
   Loader2,
   RefreshCw,
   Rocket,
-  RotateCcw,
   Tag,
 } from 'lucide-react';
 
@@ -84,6 +84,11 @@ const POLL_MS = 15_000;
 // something to wait for. A tag push to a run appearing is under a minute.
 const SETTLE_MS = 90_000;
 
+// The platforms a CI build can target, in the order they are shown. Windows is
+// built locally by default, so it is the one a dispatch turns on by choice.
+const PLATFORMS = ['macos', 'linux', 'windows'] as const;
+type Platform = (typeof PLATFORMS)[number];
+
 /**
  * `v` stripped, so a tag compares as numbers.
  *
@@ -128,6 +133,13 @@ export default function LauncherPanel() {
   // Guards against two reads at once - a poll tick landing on a manual Refresh -
   // so a slow `gh` call cannot stack a second.
   const inFlight = useRef(false);
+  // Which platforms a dispatched CI build covers. macOS and Linux default on;
+  // Windows defaults off because it is built locally, which is faster.
+  const [platforms, setPlatforms] = useState<Record<Platform, boolean>>({
+    macos: true,
+    linux: true,
+    windows: false,
+  });
 
   const publish = usePublisherStream();
   const release = usePublisherStream();
@@ -184,9 +196,8 @@ export default function LauncherPanel() {
   // What a bump would produce, from the server's copy of release.mjs's rule.
   const proposedVersion = repoVersion ? (data?.nextVersions?.[releaseLevel] ?? null) : null;
   const proposedTag = proposedVersion ? `v${proposedVersion}` : null;
-  // A rerun only applies to a finished run; the server refuses a run that is
-  // still going, so the button matches rather than offering a call that fails.
-  const canRerun = !!data?.ci?.runId && data?.ci?.status === 'completed';
+  // The comma list a build dispatch sends, in a stable order.
+  const selectedPlatforms = PLATFORMS.filter((name) => platforms[name]).join(',');
   // The tag can be moved whenever the build it points at did not pass, or has not
   // run yet. A green or in-progress run has nothing a move could fix, and a move
   // is the one action that changes what the tag means.
@@ -231,7 +242,8 @@ export default function LauncherPanel() {
   }
 
   async function doBuild() {
-    await build.start('/api/launcher/build', {});
+    if (!selectedPlatforms) return;
+    await build.start('/api/launcher/build', { platforms: selectedPlatforms });
     setLastActionAt(Date.now());
     await refresh();
   }
@@ -426,7 +438,47 @@ export default function LauncherPanel() {
           <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
             <StageLabel n={2} title="Build (CI)" />
             <CiStatus ci={data?.ci} tag={data?.targetTag} />
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              {/* Which platforms a dispatch should build. macOS and Linux by
+                  default; Windows is normally built locally, so it is off until
+                  asked for. */}
+              <span
+                role="group"
+                aria-label="Platforms to build"
+                className="flex items-center gap-2.5"
+              >
+                {PLATFORMS.map((name) => (
+                  <label
+                    key={name}
+                    className="flex items-center gap-1 text-[12.5px] text-ink capitalize"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={platforms[name]}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setPlatforms((current) => ({ ...current, [name]: event.target.checked }))
+                      }
+                      className="size-3.5 accent-[var(--color-accent)]"
+                    />
+                    {name}
+                  </label>
+                ))}
+              </span>
+              <Button
+                variant="primary"
+                onClick={() => void doBuild()}
+                disabled={busy || !selectedPlatforms || !data?.targetTag}
+                busy={build.busy}
+                title={
+                  data?.targetTag
+                    ? `Dispatch a ${data.targetTag} build for ${selectedPlatforms || 'no platforms'}`
+                    : 'The repo version could not be read.'
+                }
+              >
+                {!build.busy ? <Hammer aria-hidden size={14} /> : null}
+                Build
+              </Button>
               {/* Move the version's tag onto the current commit and rebuild it
                   without a bump: the recovery when the tag's own commit is what
                   failed. Hidden once the build passes, where a move fixes nothing. */}
@@ -441,21 +493,6 @@ export default function LauncherPanel() {
                   Re-tag at HEAD
                 </Button>
               ) : null}
-              <Button
-                onClick={() => void doBuild()}
-                disabled={busy || !canRerun}
-                busy={build.busy}
-                title={
-                  canRerun
-                    ? `Re-run CI for ${data?.targetTag}`
-                    : data?.ci
-                      ? `${data?.targetTag} is not finished yet`
-                      : 'CI has no run for this version yet.'
-                }
-              >
-                {!build.busy ? <RotateCcw aria-hidden size={14} /> : null}
-                Re-run CI
-              </Button>
             </div>
           </div>
           <Stream stream={build} label="Build rerun output" />

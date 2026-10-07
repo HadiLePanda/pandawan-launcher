@@ -968,6 +968,23 @@ function releaseWorkflowRuns() {
   return [];
 }
 
+/**
+ * Whether a tag exists on the remote. Dispatching a workflow needs a pushed ref,
+ * so a local-only tag would fail deep inside `gh` with a message about the ref.
+ */
+function remoteTagExists(tag) {
+  try {
+    const out = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    return out.status === 0 && out.stdout.trim() !== '';
+  } catch {
+    return false;
+  }
+}
+
 /** The jobs of one run, or an empty list. Same "absence is not a pass" rule. */
 function runJobs(runId) {
   try {
@@ -2735,29 +2752,42 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Re-run CI for the current version's tag. This clears the one class of
-  // failure a rerun can fix - a runner that never picked the job up, a cancelled
-  // matrix leg - without rebuilding from a local machine. A failure that is a
-  // code bug is shown in the panel with the failing job names, not re-run blindly.
+  // Dispatch a release build for the current version's tag, for the selected
+  // platforms. A tag push already builds the default set (macOS + Linux); this
+  // is for choosing the set by hand - including Windows, which is normally built
+  // locally. The workflow file comes from the dispatched ref, so the tag must be
+  // pushed and must already carry the `platforms` input.
   if (url.pathname === '/api/launcher/build' && req.method === 'POST') {
     const payload = await readJson(req, res);
     if (payload === JSON_REFUSED) return;
+    const ALLOWED = ['windows', 'macos', 'linux'];
+    const requested = String(payload.platforms ?? 'macos,linux')
+      .split(',')
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean);
+    if (!requested.length) {
+      res.writeHead(400).end('select at least one platform');
+      return;
+    }
+    const unknown = requested.filter((name) => !ALLOWED.includes(name));
+    if (unknown.length) {
+      res.writeHead(400).end(`unknown platform(s): ${unknown.join(', ')}`);
+      return;
+    }
     const tag = await targetReleaseTag();
     if (!tag) {
       res.writeHead(400).end('the repo version could not be read, so there is no tag to build');
       return;
     }
-    const run = runForTag(releaseWorkflowRuns(), tag);
-    if (!run) {
-      res.writeHead(409).end(`No release run found for ${tag}. Push the tag, then refresh.`);
+    if (!remoteTagExists(tag)) {
+      res.writeHead(409).end(`tag ${tag} is not on the remote. Push it, then build.`);
       return;
     }
-    if (run.status !== 'completed') {
-      res.writeHead(409).end(`${tag} is already ${run.status}. Wait for it, then refresh.`);
-      return;
-    }
-    // Read live by /api/launcher/status (uncached), so nothing is invalidated.
-    runCommand('gh', ['run', 'rerun', String(run.databaseId)], res);
+    runCommand(
+      'gh',
+      ['workflow', 'run', 'release.yml', '--ref', tag, '-f', `platforms=${requested.join(',')}`],
+      res
+    );
     return;
   }
 

@@ -198,7 +198,17 @@ The few things worth knowing without looking:
   and it force-deletes then recreates the remote tag so the push is a create that always triggers
   `release.yml`. `scripts/lib/retag-plan.mjs` holds those rules, unit-tested. The panel refreshes on its own
   ONLY while a CI run has not concluded, or for a short window after a verb - never a standing poll - and a
-  hidden tab stops the reads, so the cost is bounded by the length of a build.
+  hidden tab stops the reads, so the cost is bounded by the length of a build. A CI run builds only the
+  selected platforms (`platforms` input on `release.yml`, default macOS + Linux; Windows is built locally
+  and stays off by default), and the publish job MERGES its latest.json into the bucket's at the same
+  version (`scripts/lib/latest-merge.mjs`) so a partial build never drops the platforms it did not build.
+- **The repository is made public only so CI can run, and must carry nothing company-specific.** `LICENSE`
+  is proprietary ("All Rights Reserved"): MIT granted the right to fork and resell, which this has to
+  prevent, and the notice states that public visibility is not a grant. The game lineup is not tracked -
+  `public/catalog.json` / `public/news.json` are hollow fallbacks and the live data lives on R2 - and agent
+  tooling (`.agents/`, `.claude/`, `.codex/`, `skills-lock.json`) and internal plans (`docs/superpowers/`)
+  are gitignored. Before widening visibility, re-check with `git grep` for the R2 account id and token
+  shapes, and confirm no `.env` or `*.key` is tracked.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
   is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
   `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen
