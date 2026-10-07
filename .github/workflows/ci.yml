@@ -84,6 +84,23 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # bundle_contents_tests.rs refuses to pass on CI when dist/ is absent, since
+      # it would then inspect nothing. The rust-windows job builds the frontend
+      # for that reason; this job must too. working-directory is the repo root,
+      # not this job's src-tauri default.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}
+
+      - name: Build the frontend
+        run: npm run build
+        working-directory: ${{ github.workspace }}
+
       - name: Test
         run: cargo test --all-targets
 
