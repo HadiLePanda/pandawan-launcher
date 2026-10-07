@@ -58,7 +58,10 @@ import {
   upload,
 } from './lib/r2.mjs';
 
-const REPO = 'HadiLePanda/pandawan-launcher';
+// `{owner}/{repo}` is a `gh api` placeholder resolved from the checkout's own
+// remote, so no repository is named here and a copy of this script cannot act on
+// the wrong one.
+const REPO = '{owner}/{repo}';
 const PREFIX = 'launcher';
 
 const argv = process.argv.slice(2);

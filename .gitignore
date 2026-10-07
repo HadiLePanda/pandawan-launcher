@@ -114,3 +114,6 @@ COMMIT_MSG.txt
 .codex/
 skills-lock.json
 docs/superpowers/
+.github/agents/
+.github/hooks/
+.github/skills/

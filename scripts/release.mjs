@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { releaseChecks } from './lib/release-checks.mjs';
+import { parseGithubRepo } from './lib/repo.mjs';
 import { bumpVersion, repoRoot, VERSION_FILES, writeVersion } from './lib/version.mjs';
 
 function fail(message) {
@@ -117,4 +118,7 @@ git(['tag', tag]);
 git(['push', 'origin', tag]);
 
 console.log(`\nPushed tag ${tag}. The release workflow will build and publish it to R2.`);
-console.log('Watch it at: https://github.com/HadiLePanda/pandawan-launcher/actions');
+// The owner is read from the remote, never named here: the URL must point at
+// whatever repository this was pushed to, not at one baked into the script.
+const repo = parseGithubRepo(git(['remote', 'get-url', 'origin'], { capture: true }));
+if (repo) console.log(`Watch it at: https://github.com/${repo}/actions`);

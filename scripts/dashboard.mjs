@@ -101,10 +101,6 @@ const repoRoot = path.resolve(here, '..');
 // The public download page is a separate repository next to this one.
 const siteRoot = path.resolve(repoRoot, '..', 'pandawan-launcher-site');
 
-// The GitHub repo the release workflow runs in. Named rather than inferred from
-// the cwd so a `gh api` call cannot resolve against the wrong repo.
-const GITHUB_REPO = 'HadiLePanda/pandawan-launcher';
-
 loadDotEnv();
 const { cdnOrigin, endpoint, bucket } = r2Config();
 
@@ -1011,7 +1007,7 @@ function runJobs(runId) {
  */
 function failureReason(runId) {
   try {
-    const jobsOut = spawnSync('gh', ['api', `repos/${GITHUB_REPO}/actions/runs/${runId}/jobs`], {
+    const jobsOut = spawnSync('gh', ['api', `repos/{owner}/{repo}/actions/runs/${runId}/jobs`], {
       cwd: repoRoot,
       encoding: 'utf-8',
       shell: false,
@@ -1024,7 +1020,7 @@ function failureReason(runId) {
 
     const annOut = spawnSync(
       'gh',
-      ['api', `repos/${GITHUB_REPO}/check-runs/${failed.id}/annotations`],
+      ['api', `repos/{owner}/{repo}/check-runs/${failed.id}/annotations`],
       { cwd: repoRoot, encoding: 'utf-8', shell: false }
     );
     if (annOut.status !== 0 || !annOut.stdout) return null;

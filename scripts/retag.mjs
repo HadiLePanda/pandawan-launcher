@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { retagPlan } from './lib/retag-plan.mjs';
+import { parseGithubRepo } from './lib/repo.mjs';
 import { repoRoot } from './lib/version.mjs';
 
 function fail(message) {
@@ -104,4 +105,7 @@ git(['push']);
 console.log(
   `\nMoved ${tag} to ${headSha.slice(0, 7)} and pushed. The release workflow will rebuild it.`
 );
-console.log('Watch it at: https://github.com/HadiLePanda/pandawan-launcher/actions');
+// The owner is read from the remote, never named here: the URL must point at
+// whatever repository the tag was pushed to, not at one baked into the script.
+const repo = parseGithubRepo(git(['remote', 'get-url', 'origin'], { capture: true }));
+if (repo) console.log(`Watch it at: https://github.com/${repo}/actions`);

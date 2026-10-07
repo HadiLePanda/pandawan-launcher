@@ -227,8 +227,8 @@ describe('parseAheadCount', () => {
 
 describe('parseGitRemote', () => {
   it('prefers the first remote, as git prints them', () => {
-    expect(parseGitRemote('origin\thttps://github.com/HadiLePanda/site.git (fetch)\n')).toBe(
-      'https://github.com/HadiLePanda/site.git'
+    expect(parseGitRemote('origin\thttps://github.com/example-org/site.git (fetch)\n')).toBe(
+      'https://github.com/example-org/site.git'
     );
   });
 
@@ -245,7 +245,7 @@ describe('siteGitSummary', () => {
       commit: '5fae695',
       subject: 'docs: correct the README',
       ahead: 0,
-      remote: 'https://github.com/HadiLePanda/site.git',
+      remote: 'https://github.com/example-org/site.git',
     });
     expect(summary).toEqual({
       branch: 'main',
@@ -254,7 +254,7 @@ describe('siteGitSummary', () => {
       dirty: false,
       changedFiles: 0,
       ahead: 0,
-      remote: 'https://github.com/HadiLePanda/site.git',
+      remote: 'https://github.com/example-org/site.git',
     });
   });
 
