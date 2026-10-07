@@ -31,6 +31,11 @@ const COMMANDS: CommandGroup[] = [
         hint: 'Also: -- minor | major | 0.2.0-beta.1 | --dry-run',
       },
       {
+        cmd: 'npm run retag',
+        about: 'Move the current tag onto HEAD and re-trigger CI, without a bump.',
+        hint: 'Use when the tagged commit failed CI. Dry run without --confirm.',
+      },
+      {
         cmd: 'npm run release:publish -- --tag v0.1.0 --confirm',
         about: 'Upload the built, signed launcher to R2. Dry run without --confirm.',
       },

@@ -2712,6 +2712,22 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Move the current version's tag onto HEAD and re-trigger CI. The recovery for
+  // a tag whose commit is what failed: it keeps the version and rebuilds from the
+  // fixed commit, safe while nothing was published for that version. retag.mjs
+  // refuses a dirty tree and a tag already at HEAD. Dry run unless confirmed.
+  if (url.pathname === '/api/launcher/retag' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (payload === JSON_REFUSED) return;
+    const argv = [];
+    if (payload.confirm) argv.push('--confirm');
+    // A moved tag changes what a later publish ships, so the launcher's picture
+    // of what is built moves with it.
+    invalidateCache('/api/inventory');
+    runScript('retag.mjs', argv, res);
+    return;
+  }
+
   // --- Website -------------------------------------------------------------
   //
   // The public download page is a SEPARATE repository, reported on rather than

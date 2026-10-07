@@ -191,7 +191,11 @@ The few things worth knowing without looking:
   panel names and the run the button reruns both derive from `v${packageVersion}`, never from the GitHub
   release list, which still names the previous version after a bump. `scripts/lib/ci-status.mjs` holds the
   pure run-reading rules (`runForTag`, `summariseRun`) so the words the panel shows are tested without a
-  logged-in `gh`.
+  logged-in `gh`. When the tag's own commit is what failed, **Re-tag at HEAD** (`retag.mjs`) moves the
+  version's tag onto the current commit and re-pushes it, rebuilding the same version from the fix instead
+  of bumping; it refuses a dirty tree and a tag already at HEAD (a push of an unchanged ref fires no run),
+  and it force-deletes then recreates the remote tag so the push is a create that always triggers
+  `release.yml`. `scripts/lib/retag-plan.mjs` holds those rules, unit-tested.
 - Metadata and news edits keep a local draft under `pandawan.draft.<panel>.<target>`, so a reload mid-edit
   is recoverable, and a `beforeunload` guard warns before losing one. Draft keys are declared once in
   `app/src/lib/storage.ts` (`DRAFT_KEYS`). Dry run stays the **default** for every publish verb, and the diff review screen

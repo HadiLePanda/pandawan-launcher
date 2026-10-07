@@ -27,6 +27,7 @@ import {
   ArrowUp,
   CheckCircle2,
   ExternalLink,
+  GitBranch,
   KeyRound,
   Loader2,
   RefreshCw,
@@ -115,6 +116,7 @@ export default function LauncherPanel() {
   const publish = usePublisherStream();
   const release = usePublisherStream();
   const build = usePublisherStream();
+  const retag = usePublisherStream();
   const keys = usePublisherStream();
 
   // The request, with no setState in it. A loader that reaches into component
@@ -166,6 +168,12 @@ export default function LauncherPanel() {
   // A rerun only applies to a finished run; the server refuses a run that is
   // still going, so the button matches rather than offering a call that fails.
   const canRerun = !!data?.ci?.runId && data?.ci?.status === 'completed';
+  // The tag can be moved whenever the build it points at did not pass, or has not
+  // run yet. A green or in-progress run has nothing a move could fix, and a move
+  // is the one action that changes what the tag means.
+  const ciSettled = data?.ci?.status === 'completed';
+  const ciPassed = ciSettled && data?.ci?.conclusion === 'success';
+  const canRetag = !!data?.targetTag && (!data?.ci || (ciSettled && !ciPassed));
 
   async function doPublish() {
     if (!nextTag) return;
@@ -204,10 +212,25 @@ export default function LauncherPanel() {
     await refresh();
   }
 
-  // The panel owns four streams, so no two of them may run at once: two
+  async function doRetag() {
+    const tag = data?.targetTag;
+    if (!tag) return;
+    if (
+      !window.confirm(
+        `Move ${tag} onto the current commit and re-run CI? This force-pushes the tag.`
+      )
+    ) {
+      return;
+    }
+    // `confirm` is what makes it real; without it the script only previews.
+    await retag.start('/api/launcher/retag', { confirm: true });
+    await refresh();
+  }
+
+  // The panel owns five streams, so no two of them may run at once: two
   // publishers writing to the same bucket with interleaved logs is worse than a
   // disabled button.
-  const busy = publish.busy || release.busy || build.busy || keys.busy;
+  const busy = publish.busy || release.busy || build.busy || retag.busy || keys.busy;
 
   return (
     <div className="flex flex-col">
@@ -352,24 +375,40 @@ export default function LauncherPanel() {
           <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
             <StageLabel n={2} title="Build (CI)" />
             <CiStatus ci={data?.ci} tag={data?.targetTag} />
-            <Button
-              className="ml-auto"
-              onClick={() => void doBuild()}
-              disabled={busy || !canRerun}
-              busy={build.busy}
-              title={
-                canRerun
-                  ? `Re-run CI for ${data?.targetTag}`
-                  : data?.ci
-                    ? `${data?.targetTag} is not finished yet`
-                    : 'CI has no run for this version yet.'
-              }
-            >
-              {!build.busy ? <RotateCcw aria-hidden size={14} /> : null}
-              Re-run CI
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              {/* Move the version's tag onto the current commit and rebuild it
+                  without a bump: the recovery when the tag's own commit is what
+                  failed. Hidden once the build passes, where a move fixes nothing. */}
+              {canRetag ? (
+                <Button
+                  onClick={() => void doRetag()}
+                  disabled={busy}
+                  busy={retag.busy}
+                  title={`Move ${data?.targetTag} onto the current commit and rebuild it, keeping the version`}
+                >
+                  {!retag.busy ? <GitBranch aria-hidden size={14} /> : null}
+                  Re-tag at HEAD
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => void doBuild()}
+                disabled={busy || !canRerun}
+                busy={build.busy}
+                title={
+                  canRerun
+                    ? `Re-run CI for ${data?.targetTag}`
+                    : data?.ci
+                      ? `${data?.targetTag} is not finished yet`
+                      : 'CI has no run for this version yet.'
+                }
+              >
+                {!build.busy ? <RotateCcw aria-hidden size={14} /> : null}
+                Re-run CI
+              </Button>
+            </div>
           </div>
           <Stream stream={build} label="Build rerun output" />
+          <Stream stream={retag} label="Re-tag output" />
 
           {/* Stage 3: publish the built release to R2. Only a tag CI has built and
               released is waiting, so with nothing built the button names why. */}
