@@ -46,7 +46,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { buildDownloadsIndex } from './lib/downloads-index.mjs';
+import { buildDownloadsIndex, mergeDownloadsIndex } from './lib/downloads-index.mjs';
 import {
   fail,
   IMMUTABLE,
@@ -262,7 +262,7 @@ function r2Target() {
  * published, so the index can never describe a release other than the one on
  * offer.
  */
-function publishIndexOnly() {
+async function publishIndexOnly() {
   if (!fromDir) fail('--index-only needs --from <dir>, like --from bundles');
 
   const manifestPath = path.join(fromDir, 'latest.json');
@@ -270,13 +270,27 @@ function publishIndexOnly() {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   if (!manifest.version) fail(`${manifestPath} has no "version".`);
 
-  const downloads = buildDownloadsIndex({
+  const base = publicBase();
+  const incoming = buildDownloadsIndex({
     version: manifest.version,
     // Every file present is a candidate; the builder drops the signatures,
     // latest.json and the CI-only asset map, none of which is a download.
     files: readdirSync(fromDir),
-    base: publicBase(),
+    base,
   });
+
+  // Fold into the live index rather than replacing it. A CI run builds only the
+  // platforms it was asked for - macOS and Linux by default - so writing the
+  // document whole would drop the Windows group a local publish put there.
+  let live = null;
+  try {
+    const res = await fetch(`${base}/downloads.json`, { cache: 'no-store' });
+    if (res.ok) live = await res.json();
+    else if (res.status !== 404) fail(`Could not read the live index (HTTP ${res.status}).`);
+  } catch (err) {
+    fail(`Could not read the live index: ${err?.message ?? err}`);
+  }
+  const downloads = mergeDownloadsIndex(live, incoming);
 
   if (dryRun) {
     console.log(`\nIndex-only dry run from ${fromDir} (version ${manifest.version}).`);
@@ -299,7 +313,7 @@ function publishIndexOnly() {
 }
 
 if (indexOnly) {
-  publishIndexOnly();
+  await publishIndexOnly();
   process.exit(0);
 }
 
