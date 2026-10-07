@@ -10,6 +10,13 @@ import { processStartedAt, reapManifest } from './service-reaper.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const watchdog = path.join(here, '..', 'dashboard-watchdog.mjs');
 
+// The reaper is Windows-only: it reads a process start time through PowerShell's
+// Get-Process and kills a tree with taskkill, neither of which exists on the
+// Linux CI runner. A run there can only fail - and its waits can stall the file
+// so it never reports at all. The launcher's real coverage is the rust-windows
+// job's platform, and this skips off Windows the same way.
+const onWindows = process.platform === 'win32';
+
 /** A stand-in for a dev service: alive until something kills it. */
 const spawnDummy = () =>
   spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
@@ -49,7 +56,7 @@ afterEach(() => {
   for (const child of running.splice(0)) child.kill('SIGKILL');
 });
 
-describe('reaping what a previous run recorded', () => {
+describe.skipIf(!onWindows)('reaping what a previous run recorded', () => {
   it('kills a recorded tree and empties the manifest', async () => {
     const child = dummy();
     const manifest = manifestPath();
@@ -89,7 +96,7 @@ describe('reaping what a previous run recorded', () => {
   });
 });
 
-describe('the watchdog', () => {
+describe.skipIf(!onWindows)('the watchdog', () => {
   it('kills the recorded tree when the parent it outlives goes away', async () => {
     // The parent here is this test process, holding the write end of the
     // watchdog's stdin: nothing is ever written to it, so the pipe closing IS the
