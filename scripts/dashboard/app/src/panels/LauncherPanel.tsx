@@ -129,9 +129,11 @@ export default function LauncherPanel() {
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [releaseLevel, setReleaseLevel] = useState<Level>('patch');
   const [releaseDryRun, setReleaseDryRun] = useState(true);
-  // When a verb last ran. Drives the short post-action poll window so a run that
-  // has not been created yet is still picked up.
-  const [lastActionAt, setLastActionAt] = useState(0);
+  // Whether a verb ran recently enough that its CI run may not exist yet. A verb
+  // turns this on; the effect below turns it off after SETTLE_MS. State rather
+  // than `Date.now() - lastActionAt < SETTLE_MS`, because reading the clock
+  // during render is impure (react-hooks/purity).
+  const [settling, setSettling] = useState(false);
   // Guards against two reads at once - a poll tick landing on a manual Refresh -
   // so a slow `gh` call cannot stack a second.
   const inFlight = useRef(false);
@@ -218,7 +220,7 @@ export default function LauncherPanel() {
       return;
     }
     await publish.start('/api/launcher/publish', { tag: nextTag, confirm: confirmPublish });
-    setLastActionAt(Date.now());
+    setSettling(true);
     // Never left armed: a real publish is a one-off, and a box that stays ticked
     // would make the next click upload a different tag without asking.
     setConfirmPublish(false);
@@ -241,14 +243,14 @@ export default function LauncherPanel() {
     });
     // Only a real release pushes a tag for CI to build, so only it opens the poll
     // window; a preview changes nothing to wait for.
-    if (!releaseDryRun) setLastActionAt(Date.now());
+    if (!releaseDryRun) setSettling(true);
     await refresh();
   }
 
   async function doBuild() {
     if (!selectedPlatforms) return;
     await build.start('/api/launcher/build', { platforms: selectedPlatforms });
-    setLastActionAt(Date.now());
+    setSettling(true);
     await refresh();
   }
 
@@ -264,7 +266,7 @@ export default function LauncherPanel() {
     }
     // `confirm` is what makes it real; without it the script only previews.
     await retag.start('/api/launcher/retag', { confirm: true });
-    setLastActionAt(Date.now());
+    setSettling(true);
     await refresh();
   }
 
@@ -280,7 +282,7 @@ export default function LauncherPanel() {
       return;
     }
     await publishLocal.start('/api/launcher/publish-local', { confirm: true });
-    setLastActionAt(Date.now());
+    setSettling(true);
     await refresh();
   }
 
@@ -301,8 +303,17 @@ export default function LauncherPanel() {
   // yet). Idle, no interval is created at all, and a hidden tab stops the reads -
   // so the cost is bounded by the length of a build, never a standing poll.
   const ciActive = !!data?.ci && data.ci.status !== 'completed';
-  const settling = Date.now() - lastActionAt < SETTLE_MS;
   const shouldPoll = ciActive || settling;
+
+  // Close the settle window a verb opened. The timer is the external system this
+  // effect synchronises with, so setState belongs inside its callback - never
+  // synchronously in the effect body, which react-hooks/set-state-in-effect
+  // rejects.
+  useEffect(() => {
+    if (!settling) return;
+    const id = window.setTimeout(() => setSettling(false), SETTLE_MS);
+    return () => window.clearTimeout(id);
+  }, [settling]);
 
   useEffect(() => {
     if (!shouldPoll) return;
