@@ -202,6 +202,9 @@ The few things worth knowing without looking:
   selected platforms (`platforms` input on `release.yml`, default macOS + Linux; Windows is built locally
   and stays off by default), and the publish job MERGES its latest.json into the bucket's at the same
   version (`scripts/lib/latest-merge.mjs`) so a partial build never drops the platforms it did not build.
+  Windows is built locally (`npm run tauri:build` then `npm run release:local`, both on the Releases page):
+  it uploads the signed NSIS bundle and folds it into latest.json with the same merge, so the macOS/Linux
+  entries CI wrote survive. The two producers never write a *whole* manifest - each adds its own platforms.
 - **The repository is made public only so CI can run, and must carry nothing company-specific.** `LICENSE`
   is proprietary ("All Rights Reserved"): MIT granted the right to fork and resell, which this has to
   prevent, and the notice states that public visibility is not a grant. The game lineup is not tracked -

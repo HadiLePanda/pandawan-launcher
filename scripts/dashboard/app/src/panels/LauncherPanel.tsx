@@ -31,9 +31,11 @@ import {
   Hammer,
   KeyRound,
   Loader2,
+  MonitorDown,
   RefreshCw,
   Rocket,
   Tag,
+  Upload,
 } from 'lucide-react';
 
 import { apiGet, messageOf } from '@/lib/api';
@@ -145,6 +147,8 @@ export default function LauncherPanel() {
   const release = usePublisherStream();
   const build = usePublisherStream();
   const retag = usePublisherStream();
+  const buildLocal = usePublisherStream();
+  const publishLocal = usePublisherStream();
   const keys = usePublisherStream();
 
   // The request, with no setState in it. A loader that reaches into component
@@ -264,10 +268,33 @@ export default function LauncherPanel() {
     await refresh();
   }
 
-  // The panel owns five streams, so no two of them may run at once: two
+  async function doBuildLocal() {
+    await buildLocal.start('/api/launcher/build-local', {});
+    await refresh();
+  }
+
+  async function doPublishLocal() {
+    if (
+      !window.confirm('Upload the local Windows build to R2? Windows players get it immediately.')
+    ) {
+      return;
+    }
+    await publishLocal.start('/api/launcher/publish-local', { confirm: true });
+    setLastActionAt(Date.now());
+    await refresh();
+  }
+
+  // The panel owns seven streams, so no two of them may run at once: two
   // publishers writing to the same bucket with interleaved logs is worse than a
   // disabled button.
-  const busy = publish.busy || release.busy || build.busy || retag.busy || keys.busy;
+  const busy =
+    publish.busy ||
+    release.busy ||
+    build.busy ||
+    retag.busy ||
+    buildLocal.busy ||
+    publishLocal.busy ||
+    keys.busy;
 
   // Re-read only while there is something to watch: a CI run that has not
   // concluded, or a verb run within the settle window (its run may not exist
@@ -497,6 +524,34 @@ export default function LauncherPanel() {
           </div>
           <Stream stream={build} label="Build rerun output" />
           <Stream stream={retag} label="Re-tag output" />
+
+          {/* The same stage-2 build, done here for Windows: faster, needs the
+              signing key on this machine, and produces only the Windows
+              installer. Its publish merges into the CI manifest rather than
+              replacing it. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
+            <span className="text-[12px] text-ink-subtle">…or build Windows on this machine</span>
+            <Button
+              onClick={() => void doBuildLocal()}
+              disabled={busy}
+              busy={buildLocal.busy}
+              title="Run npm run tauri:build: a signed Windows installer, built here. Takes minutes."
+            >
+              {!buildLocal.busy ? <MonitorDown aria-hidden size={14} /> : null}
+              Build
+            </Button>
+            <Button
+              onClick={() => void doPublishLocal()}
+              disabled={busy}
+              busy={publishLocal.busy}
+              title="Upload the local Windows build to R2 and merge it into latest.json"
+            >
+              {!publishLocal.busy ? <Upload aria-hidden size={14} /> : null}
+              Publish to R2
+            </Button>
+          </div>
+          <Stream stream={buildLocal} label="Local build output" />
+          <Stream stream={publishLocal} label="Local publish output" />
 
           {/* Stage 3: publish the built release to R2. Only a tag CI has built and
               released is waiting, so with nothing built the button names why. */}

@@ -36,6 +36,11 @@ const COMMANDS: CommandGroup[] = [
         hint: 'Use when the tagged commit failed CI. Dry run without --confirm.',
       },
       {
+        cmd: 'npm run release:local -- --confirm',
+        about: 'Upload the locally built Windows bundle to R2 and merge latest.json.',
+        hint: 'Build first with npm run tauri:build. Dry run without --confirm.',
+      },
+      {
         cmd: 'npm run release:publish -- --tag v0.1.0 --confirm',
         about: 'Upload the built, signed launcher to R2. Dry run without --confirm.',
       },

@@ -2807,6 +2807,28 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Build the Windows installer on this machine. Faster than CI, needs no public
+  // repo (it uses the local signing key), and streams the whole build - which is
+  // why this is a real window's worth of output rather than one line.
+  if (url.pathname === '/api/launcher/build-local' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (payload === JSON_REFUSED) return;
+    runScript('build-signed.cjs', [], res);
+    return;
+  }
+
+  // Publish the local Windows build to R2 and merge it into latest.json. The
+  // merge keeps the macOS/Linux entries the CI build wrote.
+  if (url.pathname === '/api/launcher/publish-local' && req.method === 'POST') {
+    const payload = await readJson(req, res);
+    if (payload === JSON_REFUSED) return;
+    const argv = payload.confirm ? ['--confirm'] : [];
+    invalidateCache('/api/inventory');
+    invalidateCache('/api/website');
+    runScript('publish-local.mjs', argv, res);
+    return;
+  }
+
   // --- Website -------------------------------------------------------------
   //
   // The public download page is a SEPARATE repository, reported on rather than
