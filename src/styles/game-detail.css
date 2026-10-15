@@ -44,7 +44,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  scrollbar-width: thin;
 }
 
 .game-news-list::-webkit-scrollbar {
@@ -56,6 +55,9 @@
 }
 
 .game-news-list::-webkit-scrollbar-thumb {
+  /* No border: the global thumb insets itself with one, which on a 6px bar leaves
+     a 2px sliver. */
+  border: 0;
   background: var(--border-strong);
   border-radius: 9999px;
 }
@@ -584,7 +586,7 @@ input.pin-search {
   /* Row gap only: a `gap` shorthand would reset the column axis and put the 48 back
      on the picture's side. */
   row-gap: var(--space-11);
-  padding: var(--space-8);
+  padding: var(--space-5) var(--space-8);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -598,9 +600,42 @@ input.pin-search {
   min-height: 0;
   /* Scrolls when the banner, the action row and the strip do not fit the window.
      Clipping instead left the screenshots unreachable, because the page itself
-     cannot scroll here: the news rail is what scrolls. */
+     cannot scroll here: the news rail is what scrolls.
+     The right padding is the scrollbar's own lane, so the bar never sits against
+     the banner or the strip's border. */
   overflow-y: auto;
-  scrollbar-width: thin;
+  padding-right: var(--space-6);
+}
+
+/* The page's scrollers, slimmer and quieter than the global bar: an 8px mid-grey
+   thumb reads as a control on a page whose whole surface is this dark. */
+.game-detail-main::-webkit-scrollbar,
+.game-detail-news::-webkit-scrollbar,
+.game-detail-shots-row::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.game-detail-main::-webkit-scrollbar-track,
+.game-detail-news::-webkit-scrollbar-track,
+.game-detail-shots-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.game-detail-main::-webkit-scrollbar-thumb,
+.game-detail-news::-webkit-scrollbar-thumb,
+.game-detail-shots-row::-webkit-scrollbar-thumb {
+  /* No border: the global thumb insets itself with one, which on a 6px bar leaves
+     a 2px sliver. */
+  border: 0;
+  border-radius: 9999px;
+  background: var(--border-strong);
+}
+
+.game-detail-main::-webkit-scrollbar-thumb:hover,
+.game-detail-news::-webkit-scrollbar-thumb:hover,
+.game-detail-shots-row::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-dim);
 }
 
 /* One fixed ratio, under the column's own cap, so the box has exactly one
@@ -614,12 +649,12 @@ input.pin-search {
   aspect-ratio: 2.1 / 1;
   /* The second stop. The width cap still lets the box reach 590 tall on a wide
      window, and 590 plus the action row and the screenshot strip is more than a
-     1080-high window has, so the column would grow a scrollbar again. 50vh is
-     above this box's natural height at every window up to ~1000 high, where the
+     1080-high window has, so the column would grow a scrollbar again. 46vh is
+     above this box's natural height at every window up to ~900 high, where the
      default window sits, so the picture is untouched until the window is taller
      than most screens. Past that it keeps its width and gives up height, which
      crops the art a few percent rather than the whole page scrolling. */
-  max-height: 50vh;
+  max-height: 46vh;
   /* Must not shrink. It is a flex item of the scrolling column, so without this
      the browser squashed it whenever the column ran short. */
   flex-shrink: 0;
@@ -666,7 +701,7 @@ input.pin-search {
   display: flex;
   align-items: center;
   gap: var(--space-9);
-  padding: var(--space-8);
+  padding: var(--space-6);
   background: var(--surface-default);
 }
 
@@ -1042,9 +1077,9 @@ input.pin-search {
 .game-detail-shots {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  margin-top: var(--space-8);
-  padding: var(--space-6);
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding: var(--space-5);
   flex-shrink: 0;
   /* The page canvas, not a card surface: the strip is a well the pictures sit
      in, so it reads as one object with them rather than as another panel above
@@ -1072,9 +1107,6 @@ input.pin-search {
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
-  /* Thin: the strip scrolls sideways, so it must not also reserve a full
-     scrollbar gutter inside a panel this short. */
-  scrollbar-width: thin;
 }
 
 /* The button owns the shape and the image fills it. Putting the ratio on the
@@ -1384,7 +1416,7 @@ input.pin-search {
   }
 
   .game-detail-shots {
-    margin-top: var(--space-6);
+    margin-top: var(--space-4);
     padding: var(--space-4);
     gap: var(--space-4);
   }
