@@ -174,6 +174,23 @@ try {
   );
 }
 
+// A version that already has a manifest has been published, and its bytes are served
+// under an immutable cache header - so a client that has it keeps the manifest it first
+// saw. Overwriting that with different files leaves the client checking the new bytes
+// against the hashes in the old copy, which fails their install rather than updating it.
+//
+// A publish that died halfway is not this case: the manifest is uploaded last, so a
+// version with no manifest is free to redo, and --force covers everything else.
+if (publishedManifest && !args.force) {
+  fail(
+    `${versionPrefix}/manifest.json already exists.\n` +
+      `  A published version is immutable: a client that already has ${args.version} keeps\n` +
+      '  the manifest it first saw, and different bytes would be checked against the hashes\n' +
+      '  in that old copy, so their install fails instead of updating.\n' +
+      '  Publish a new version, or pass --force if the files are byte-for-byte identical.'
+  );
+}
+
 // Files first, manifest last: the manifest is what tells a client a build
 // exists, so publishing it first would let someone resolve a manifest whose
 // files are not there yet.
