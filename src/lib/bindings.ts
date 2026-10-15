@@ -69,6 +69,10 @@ export const commands = {
 
   openGamesFolder: () => typedError<void, LauncherError>(__TAURI_INVOKE('open_games_folder')),
 
+  openLogsFolder: () => typedError<void, LauncherError>(__TAURI_INVOKE('open_logs_folder')),
+
+  openStorePage: () => typedError<void, LauncherError>(__TAURI_INVOKE('open_store_page')),
+
   cancelOperation: () => typedError<void, LauncherError>(__TAURI_INVOKE('cancel_operation')),
 
   getAppDataDir: () => typedError<string, LauncherError>(__TAURI_INVOKE('get_app_data_dir')),

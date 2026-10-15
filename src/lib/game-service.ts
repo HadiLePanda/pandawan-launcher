@@ -186,6 +186,25 @@ export async function openGamesFolder(): Promise<void> {
   unwrapResult(await commands.openGamesFolder());
 }
 
+/**
+ * Open the folder the launcher writes its log to.
+ *
+ * The backend resolves it from the app's own paths, so nothing here names a folder.
+ */
+export async function openLogsFolder(): Promise<void> {
+  unwrapResult(await commands.openLogsFolder());
+}
+
+/**
+ * Open the store page in the browser.
+ *
+ * The address is a constant in the backend, so this takes no URL: the app opens
+ * exactly one page, and nothing in the frontend can point it elsewhere.
+ */
+export async function openStorePage(): Promise<void> {
+  unwrapResult(await commands.openStorePage());
+}
+
 export async function cancelOperation(): Promise<void> {
   unwrapResult(await commands.cancelOperation());
 }

@@ -53,6 +53,26 @@ jobs:
       - name: Audit (production)
         run: npm audit --omit=dev --audit-level=high
 
+  # The other half of the tree, and the half that ends up in the installer: Rust
+  # dependencies are compiled into the binary a player runs, so an advisory in one of
+  # them reaches every machine that installs the launcher. Vulnerabilities fail the
+  # job; the informational advisories cargo-audit prints (an unmaintained crate,
+  # typically several crates deep in the tauri tree) are reported and left, because a
+  # transitive unmaintained dependency is not something a release can act on and a
+  # permanently red job is a job nobody reads.
+  audit-rust:
+    name: Audit (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # The prebuilt cargo-audit binary: `cargo install` would spend minutes compiling
+      # it on every run.
+      - uses: taiki-e/install-action@cargo-audit
+
+      - name: Audit
+        run: cargo audit --file src-tauri/Cargo.lock
+
   rust:
     name: Rust
     runs-on: ubuntu-latest

@@ -30,7 +30,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none';",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev data:; connect-src 'self' https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none';",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http://localhost:* http://127.0.0.1:* data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none';",
       "capabilities": ["default"],
       "assetProtocol": {
         "enable": true,
@@ -50,9 +51,6 @@
     }
   },
   "plugins": {
-    "shell": {
-      "open": "((mailto:\\w+)|(tel:\\w+)|(https?://\\w+)).+$|^.*[/\\\\]com\\.pandawancorp\\.launcher[/\\\\]logs[/\\\\]?[^/\\\\]*$"
-    },
     "updater": {
       "active": true,
       "endpoints": ["https://pub-789d1bb0f3da4a99ae1024d53ea305d3.r2.dev/launcher/latest.json"],

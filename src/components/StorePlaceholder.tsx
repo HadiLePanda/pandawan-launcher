@@ -1,9 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Coins, Gamepad2, Package } from 'lucide-react';
-import { open } from '@tauri-apps/plugin-shell';
+import * as gameService from '@/lib/game-service';
 import { logger } from '@/lib/logger';
-
-const STORE_URL = 'https://pandawancorp.com/store';
 
 interface StoreCardProps {
   icon: React.ReactNode;
@@ -15,9 +13,11 @@ interface StoreCardProps {
 function StoreCard({ icon, name, description, visitLabel }: StoreCardProps) {
   const handleClick = async () => {
     try {
-      await open(STORE_URL);
+      // The address lives in the backend, so this takes no URL: the app opens exactly
+      // one page and nothing here can point it somewhere else.
+      await gameService.openStorePage();
     } catch (err) {
-      logger.error('Failed to open store URL', { url: STORE_URL, error: String(err) });
+      logger.error('Failed to open the store page', { error: String(err) });
     }
   };
 

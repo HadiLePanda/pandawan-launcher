@@ -14,8 +14,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
-import { appLogDir } from '@tauri-apps/api/path';
-import { open } from '@tauri-apps/plugin-shell';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useLauncherStore } from '@/lib/store';
@@ -563,8 +561,10 @@ function AboutSettings() {
     setLogsError(null);
     setOpeningLogs(true);
     try {
-      const dir = await appLogDir();
-      await open(dir);
+      // The backend resolves the log folder and opens it. The shell plugin used to do
+      // this, against an allowlist regex in tauri.conf.json that had to name this one
+      // folder; nothing is passed from here now, so there is nothing to redirect.
+      await gameService.openLogsFolder();
     } catch (err) {
       setLogsError(t('settings.about.logs.openError', { error: String(err) }));
     } finally {

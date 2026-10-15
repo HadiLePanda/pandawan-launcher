@@ -651,8 +651,54 @@ async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), Launch
     // missing path as a failure rather than opening an empty window.
     std::fs::create_dir_all(&root)?;
 
-    open::that_detached(&root)
-        .map_err(|err| LauncherError::Other(format!("Could not open {}: {err}", root.display())))
+    open_target(&root)
+}
+
+/// The company store page.
+///
+/// A constant here rather than in the frontend, because the command that opens it
+/// takes no URL at all: this is the only address the app opens in a browser, so
+/// there is nothing for a caller to point elsewhere.
+const STORE_URL: &str = "https://pandawancorp.com/store";
+
+/// Open the store page in the system browser.
+#[tauri::command]
+#[specta::specta]
+fn open_store_page() -> Result<(), LauncherError> {
+    open_target(STORE_URL)
+}
+
+/// Open the folder the launcher writes its log to, in the system file manager.
+///
+/// Rust-side for the same reason as the games folder, and the reason the shell plugin
+/// is gone: that plugin checked a path against an allowlist regex in
+/// `tauri.conf.json`, and this folder was the one entry in it. Nothing is passed in,
+/// so there is nothing for a caller to redirect, and there is no regex to keep in step
+/// with where the logs actually are.
+#[tauri::command]
+#[specta::specta]
+async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
+    let dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| LauncherError::Io(e.to_string()))?;
+
+    // Before the first log is written the folder is not there, and opening a path
+    // that does not exist fails rather than showing an empty window.
+    std::fs::create_dir_all(&dir)?;
+    open_target(&dir)
+}
+
+/// Open a path or URL with the system handler.
+///
+/// One place, because every caller is the same call: the `open` crate, whose Windows
+/// backend is ShellExecuteW here rather than `cmd /c start` (the
+/// `shellexecute-on-windows` feature), so nothing re-parses what it is handed.
+fn open_target(target: impl AsRef<std::ffi::OsStr>) -> Result<(), LauncherError> {
+    // Captured first, because the target is moved into the call below.
+    let shown = target.as_ref().to_string_lossy().to_string();
+    open::that_detached(target)
+        .map_err(|err| LauncherError::Other(format!("Could not open {shown}: {err}")))
 }
 
 /// Select folder using dialog.
@@ -808,6 +854,8 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             select_install_folder,
             get_default_install_folder,
             open_games_folder,
+            open_logs_folder,
+            open_store_page,
             cancel_operation,
             get_app_data_dir,
             set_launcher_update_available,
@@ -846,7 +894,6 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             builder.mount_events(app);
