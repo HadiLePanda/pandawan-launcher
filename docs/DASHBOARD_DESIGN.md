@@ -12,7 +12,7 @@ The dashboard is **not** a games app. Games is one section of it.
 Games | Launcher | Website | Services | Commands     ← top level
 
 Games    → [game list column] + Metadata · Artwork · Builds · News · Prune
-Launcher → launcher releases + catalog CRUD
+Launcher → Releases (bump · build · publish) · Catalog (register, read-only facts)
 Website  → what the site renders, git state, verify, deploy
 Services → local dev servers
 Commands → copyable command reference
@@ -159,9 +159,9 @@ comparing two versions. Real state beats an explanation of what state would mean
 
 Every page follows one skeleton, in this order: **header (title + facts +
 refresh) → tabs → content**. A page that invents its own arrangement is a bug even
-if it looks fine alone, because it costs a re-orientation on every switch. Games is
-the reference: a dense value-first header with no redundant nesting, and every
-other section is measured against it.
+if it looks fine alone, because it costs a re-orientation on every switch. Launcher
+→ Catalog is the reference: a dense value-first header with no redundant nesting,
+and every other section is measured against it.
 
 The failure that prompted this: the Launcher page wrapped its content in a
 `GlobalPanel`, added a page heading, then a scope paragraph, then a sub-tab strip,

@@ -24,8 +24,10 @@ Four independent things identify a build. Never pack them into one string.
 0.4.0-alpha.3         -> alpha
 ```
 
-Deriving it removes a parameter that could contradict the version string. The
-launcher's `generate-manifest.py --channel` must receive the derived value.
+Deriving it removes a parameter that could contradict the version string.
+`generate-manifest.py` derives the channel the same way and refuses an
+`--channel` that disagrees with the version; omitting `--channel` uses the
+derived value.
 
 ### Platform keys match Tauri
 

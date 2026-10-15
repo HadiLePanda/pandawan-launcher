@@ -125,11 +125,16 @@ talks to R2 over the S3-compatible API. No AWS account is necessary.
 
 ## Self-updates
 
-Tag a release to cut it. CI builds, signs and publishes it.
+`npm run release -- minor` bumps the version, tags and pushes; the tag cuts the
+release. CI then builds, signs and publishes macOS and Linux. Windows is built
+and published from this machine: `npm run tauri:build`, then
+`npm run release:local -- --confirm`. [docs/RELEASE.md](docs/RELEASE.md) is the
+full checklist.
 
 - `src-tauri/updater.pub` is the source of truth for the public key.
-  `npm run sync:updater-key` copies it into `tauri.conf.json`. It runs before every
-  build.
+  `npm run sync:updater-key` copies it into `tauri.conf.json`. It runs before
+  `npm run tauri:dev` and `npm run tauri:build`. CI builds from the committed
+  copy, so commit `tauri.conf.json` whenever the key changes.
 - The secret key lives in `src-tauri/.secrets/updater.key`, which is gitignored. Give
   it to CI verbatim as `TAURI_SIGNING_PRIVATE_KEY`. Do not re-encode it.
 - Set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` only if the key has a password. Without it,

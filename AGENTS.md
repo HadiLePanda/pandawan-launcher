@@ -181,15 +181,17 @@ The few things worth knowing without looking:
 - **Launcher → Releases is a three-stage release pipeline, in the order the work happens: Bump, Build,
   Publish.** Bump & tag (`release.mjs`) writes the version files, commits, tags and pushes, and the push is
   what triggers `release.yml`. Build is therefore CI's run, not a local action: `release.yml` builds and
-  signs the three platforms, drafts the GitHub release, and uploads `latest.json` + bundles to R2 itself.
+  signs the selected platforms (macOS and Linux by default), drafts the GitHub release, and uploads
+  `latest.json` + bundles to R2 itself.
   `GET /api/launcher/status` carries `targetTag` and a `ci` summary (status, conclusion, run URL, failed
   job names, and the failure's own annotation - a runner billing block, a missing secret) so a red run is
   visible in the panel with its reason rather than only in Actions; `POST /api/launcher/build`
-  is `gh run rerun` on that tag's run, the one failure a rerun can clear (a runner that never picked the
-  job up, a cancelled leg) — a code failure is named, not re-run blindly. Publish
+  dispatches `release.yml` for that tag with the ticked platforms
+  (`gh workflow run release.yml --ref <tag> -f platforms=...`), which is how Windows gets a CI build
+  when wanted — a code failure is named for what it is, not re-run blindly. Publish
   (`publish-launcher.mjs`) is the manual repair for a build that succeeded but whose R2 upload leg failed,
   and stays gated on a release newer than live existing, so it is disabled while CI is red. The run the
-  panel names and the run the button reruns both derive from `v${packageVersion}`, never from the GitHub
+  panel names and the tag the button builds both derive from `v${packageVersion}`, never from the GitHub
   release list, which still names the previous version after a bump. `scripts/lib/ci-status.mjs` holds the
   pure run-reading rules (`runForTag`, `summariseRun`) so the words the panel shows are tested without a
   logged-in `gh`. When the tag's own commit is what failed, **Re-tag at HEAD** (`retag.mjs`) moves the
@@ -303,7 +305,8 @@ it, and never narrate the change that produced it.
 
 ### Stylesheet layout
 
-- `src/index.css` is the Tailwind entry and nothing else: the import plus six `@import` lines.
+- `src/index.css` is the Tailwind entry and nothing else: the Tailwind import plus one `@import`
+  per file under `src/styles/`. A count written here goes stale the moment a block is split.
   The stylesheet itself is `src/styles/*.css`, and the imports are in the order the blocks were
   written because the cascade depends on it - move a block between files and you change what wins.
 - `src/lib/styles.test.ts` guards it: it fails on a rule nested inside another rule, on a class no
@@ -418,5 +421,5 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   - CI secrets: `TAURI_SIGNING_PRIVATE_KEY` (verbatim contents of `updater.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (only if the key has a password; otherwise the CLI prompts and the build hangs).
   - The release workflow is triggered by semver tags like `v0.1.0`.
   - The launcher's own version lives in four files. `package.json` is the source of truth and `npm run version:set -- <x.y.z>` writes the rest from it, preserving everything around the field; `npm run version:check` runs in CI so they cannot drift. A mismatch ships an app whose About panel and updater document both disagree with the binary, which is how an updater ends up re-offering an update forever.
-  - `npm run release -- minor` bumps, commits, tags and pushes; the tag is what starts the signed three-platform build. A dry run is the default and the tree must be clean — **untracked files do not count**, because `git commit` cannot include one, and counting them refused every real release while a dry run passed.
+  - `npm run release -- minor` bumps, commits, tags and pushes; the tag is what starts the signed CI build (macOS and Linux by default, Windows built locally). A dry run is the default and the tree must be clean — **untracked files do not count**, because `git commit` cannot include one, and counting them refused every real release while a dry run passed.
   - One installer per platform, and the **updater** decides which one. Windows ships **NSIS only**: the Tauri updater installs through the NSIS setup, so the `.msi` is a second WiX pass over the same app that nothing here uses — the MSI looks like the "native" choice and is the wrong one to keep. Linux ships `.deb` only. macOS keeps `app` plus `dmg`: the updater's macOS artifact is the `.app.tar.gz`, and a tar.gz is not something a person downloads by hand. Dropping to one bundle type per platform takes a WiX pass off the slowest job, which is where most of the ~15 minutes goes.
