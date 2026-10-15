@@ -78,15 +78,21 @@ fn test_frontend_dist_contains_no_developer_files() {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             let full = path.to_string_lossy().replace('\\', "/");
 
-            // The frontend build must not carry the dashboard, any .env, or a
-            // signing key, whatever the source layout does.
+            // The frontend build must not carry the dashboard, any .env, a signing
+            // key, or a source map, whatever the source layout does.
             let looks_like_dashboard = name == "dashboard.mjs"
                 || name == "app.js" && full.contains("dashboard")
                 || full.contains("/scripts/");
-            let looks_secret = name == ".env" || name.ends_with(".key");
+            // Any `.env*` rather than exactly `.env`: `.env.development` was tracked
+            // for months, and Vite inlines whatever it finds in one.
+            let looks_secret =
+                name.starts_with(".env") || name.ends_with(".key") || name.ends_with(".pem");
             let looks_like_key = full.contains(".secrets");
+            // A source map carries the original TypeScript, so a build that turns
+            // them on ships the source rather than only the bundle.
+            let looks_like_source_map = name.ends_with(".map");
 
-            if looks_like_dashboard || looks_secret || looks_like_key {
+            if looks_like_dashboard || looks_secret || looks_like_key || looks_like_source_map {
                 offenders.push(full);
             }
         }
