@@ -29,7 +29,9 @@ import {
 import { apiGet, messageOf } from '@/lib/api';
 import {
   KNOWN_CHANNELS as CHANNELS,
+  type CatalogChangedEntry,
   type CatalogDiff,
+  type CatalogDiffEntry,
   type CatalogEntry as CatalogGame,
   type CatalogPlan,
   type CatalogResponse,
@@ -460,13 +462,13 @@ function DiffReport({
             title="Only on the CDN"
             tone="info"
             help="A publish never removes a game."
-            ids={diff.onlyLive}
+            entries={diff.onlyLive}
           />
           <DiffColumn
             title="Only in the local file"
             tone="good"
             help="What publishing adds."
-            ids={diff.onlyLocal}
+            entries={diff.onlyLocal}
           />
           <DiffColumn
             title="Present in both, differing"
@@ -485,18 +487,18 @@ function DiffColumn({
   title,
   tone,
   help,
-  ids,
+  entries: named,
   changed,
   fields,
 }: {
   title: string;
   tone: 'good' | 'warn' | 'info';
   help: string;
-  ids?: string[];
-  changed?: CatalogDiff['changed'];
+  entries?: CatalogDiffEntry[];
+  changed?: CatalogChangedEntry[];
   fields?: MetaFieldSpec[];
 }) {
-  const entries = ids ?? [];
+  const entries = named ?? [];
   const entriesChanged = changed ?? [];
   const empty = !entries.length && !entriesChanged.length;
 
@@ -512,10 +514,13 @@ function DiffColumn({
         <p className="mt-2 text-xs text-ink-subtle">Nothing in this category.</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-2">
-          {entries.map((id) => (
-            <li key={id} className="flex items-center gap-1.5 text-xs">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-1.5 text-xs">
               <Plus aria-hidden size={12} className="shrink-0 text-action" />
-              <code className="font-mono text-ink-muted">{id}</code>
+              <span className="text-ink-muted">{entry.name || entry.id}</span>
+              {entry.name ? (
+                <code className="font-mono text-ink-subtle">{entry.id}</code>
+              ) : null}
             </li>
           ))}
           {entriesChanged.map((entry) => (

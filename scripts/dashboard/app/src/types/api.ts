@@ -95,15 +95,21 @@ export interface CatalogDoc {
   [key: string]: unknown;
 }
 
-/** One game present on both sides with at least one display field differing. */
-export interface CatalogChangedEntry {
+/** One game named by the diff, as the server summarises it: id, channel and name. */
+export interface CatalogDiffEntry {
   id: string;
+  channel: string | null;
+  name: string | null;
+}
+
+/** One game present on both sides with at least one display field differing. */
+export interface CatalogChangedEntry extends CatalogDiffEntry {
   fields: string[];
 }
 
 export interface CatalogDiff {
-  onlyLive: string[];
-  onlyLocal: string[];
+  onlyLive: CatalogDiffEntry[];
+  onlyLocal: CatalogDiffEntry[];
   changed: CatalogChangedEntry[];
 }
 
