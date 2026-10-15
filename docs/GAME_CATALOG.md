@@ -27,24 +27,19 @@ the client never has to guess which shape it got.
 
 ### Signatures
 
-Every manifest and every `latest.json` is published with a `.sig` beside it, and the
-launcher refuses a document whose signature is missing or wrong. That is what makes
-the bucket untrusted: the manifest names each file's SHA256, so whoever can write to
-the bucket could otherwise publish a build whose hashes match the files they planted,
-and the launcher would install and run it.
+Every manifest and `latest.json` is published with a `.sig` beside it, and the launcher
+refuses a document whose signature is missing or wrong. The manifest names each file's
+SHA256, so without this anyone who can write to the bucket can publish a build whose
+hashes match the files they planted.
 
-The signature is a minisign signature over the exact bytes of the document, written
-by `publish-game.mjs` and `publish-metadata.mjs` with the same release key that signs
-the launcher's own updates, and checked in the launcher against the public key pinned
-in `src-tauri/updater.pub`. Three things follow:
+The signature is minisign, over the exact bytes, written by `publish-game.mjs` and
+`publish-metadata.mjs` with the key that also signs launcher updates, and checked
+against the public key pinned in `src-tauri/updater.pub`. Three consequences:
 
-- The secret key must be present to publish. A publish without it stops before it
-  generates or uploads anything, rather than shipping a build nobody can install.
-- The signature is uploaded before the document it signs, at each path, so a client
-  that can read a manifest can always read what makes it usable.
-- A manifest written by anything other than those two scripts, or by a checkout
-  older than the signatures, carries no signature and no client will accept it.
-  Republish the game instead.
+- The secret key must be present to publish, or the run stops before uploading.
+- The `.sig` is uploaded before the document it signs, at each path.
+- A manifest written by anything else, or by an older checkout, has no signature and no
+  client accepts it. Republish the game instead.
 
 `latest.json` exists because platforms ship independently: one `manifest.json`
 cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0". It maps each platform

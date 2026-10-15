@@ -99,31 +99,21 @@ The few things worth knowing without looking:
   - Anything that touches the site repo must fail cleanly when it is absent: it is a
     sibling checkout that a developer may simply not have. Report that as "site
     repo not found at <path>" and disable the action, never as a failure.
-- **Every `/api/` request must carry the request token, and the served page is
-  given it.** A cross-origin page can send a simple GET to loopback with no
-  preflight, and its Host header still reads `127.0.0.1`, so the bind address and
-  the Host and Origin checks do not stop it. Those reads are not free:
-  `/api/launcher/status` runs synchronous `gh` calls and `?refresh=1` re-arms a
-  bucket listing, so such a page could hold the panel down and spend the GitHub
-  and Cloudflare quotas while CORS hides the answers from it.
-  - The gate is a custom header (`x-dashboard-token`, rules in
-    `scripts/lib/dashboard-access.mjs`), because a page cannot attach one without a
-    preflight this server never answers. The server injects the value into the app
-    shell it serves, so the gate also covers a build that predates it, and the
-    token is stable across restarts (`%TEMP%/pandawan-dashboard-token`, override
-    `DASHBOARD_TOKEN`) so a restart does not refuse the tabs already open.
-  - Only `/api/...` is gated. The browser loads `<script>` and `<link>` itself and
-    cannot attach a header, so gating the shell would serve a blank page - and the
-    shell is what carries the token.
-- **A dashboard request cannot smuggle a flag into a publisher.** Anything that
-  builds an argument list from operator input refuses a value that starts with
-  `--` (`isFlagLike` in `scripts/lib/args.mjs`) or passes it as `--flag=value`,
-  because `parseArgs` reads the next token as a value only when it does not start
-  with `--`. No route forwards a client-built argv array: the build publish sends
-  named fields and the server assembles the flags (`scripts/lib/publish-argv.mjs`),
-  for the same reason prune, metadata and news assemble theirs. `runSiteScript`
-  builds its `cmd.exe` line from a fixed script list for the same reason: `/c`
-  re-parses it.
+- **Every `/api/` request must carry the request token.** A cross-origin GET reaches
+  loopback with no preflight and a `127.0.0.1` Host, so the bind address and the Host
+  and Origin checks do not stop it - and `/api/launcher/status` is uncached and runs
+  several `gh` calls, so one such page can hold the panel down and spend the quota.
+  - The gate is `x-dashboard-token` (`scripts/lib/dashboard-access.mjs`), a custom
+    header a page cannot attach without a preflight this server never answers. The
+    server injects the value into the shell it serves, and the token is stable across
+    restarts (`%TEMP%/pandawan-dashboard-token`, override `DASHBOARD_TOKEN`).
+  - Only `/api/...`: `<script>` and `<link>` cannot carry a header, and the shell is
+    what carries the token.
+- **A dashboard request cannot smuggle a flag into a publisher.** Every route
+  assembles its argv from named fields and refuses a value that starts with `--`
+  (`isFlagLike` in `scripts/lib/args.mjs`) or passes it as `--flag=value`, because
+  `parseArgs` reads the next token as a value only when it does not start with `--`.
+  `runSiteScript` builds its `cmd.exe` line from a fixed script list: `/c` re-parses it.
 - Reads are cached server-side with **two** TTLs, chosen by what is being read.
   Anything that is a round trip to somebody else's infrastructure — a recursive
   bucket listing, a CDN document, a `git`/`wrangler` subprocess, a GitHub release
@@ -234,14 +224,12 @@ The few things worth knowing without looking:
   website's `downloads.json` by replacing only the Windows group (`mergeDownloadsIndex` in
   `scripts/lib/downloads-index.mjs`), so the macOS/Linux entries CI wrote survive there too. The two
   producers never write a _whole_ manifest or index - each adds its own platforms.
-- **The installers carry no code signature, and that is the last thing between this
-  and a normal download.** The updater signature is separate and does exist (minisign,
-  `npm run keys:check` proves it). The code signature needs a certificate, so it is a
-  purchase rather than a step: Windows shows "Unknown publisher" on SmartScreen, and
-  macOS Gatekeeper refuses the app until it is signed and notarised. `npm run
-tauri:build` prints the Windows installer's state at the end of every local build,
-  and docs/RELEASE.md has the steps for both platforms. Do not write signing config
-  that cannot be tested against a real certificate.
+- **The installers carry no code signature.** The updater signature is separate and
+  does exist (minisign, `npm run keys:check` proves it); this one needs a certificate,
+  so it is a purchase rather than a step. Without it Windows shows "Unknown publisher"
+  on SmartScreen and macOS Gatekeeper refuses the app. `npm run tauri:build` prints the
+  Windows installer's state after every local build, and docs/RELEASE.md has the steps
+  for both platforms. Do not write signing config that no real certificate has tested.
 - **The repository is made public only so CI can run, and must carry nothing company-specific.** `LICENSE`
   is proprietary ("All Rights Reserved"): MIT granted the right to fork and resell, which this has to
   prevent, and the notice states that public visibility is not a grant. The game lineup is not tracked -
@@ -429,7 +417,14 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   aligned while the window is dragged.
 - The store is intentionally last priority; it is a grid of promotions that links out to the Pandawan Corp store website and is not wired to real purchases or accounts yet.
 - `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else.
-- **Uploading must not re-send what is already published.** `publish-game` reads the _published_ manifest for the version it is writing (one GET) and uploads only the paths whose hash differs, with `uploadFiles` (one `s3 cp` each). A 404 means nothing is published yet, so everything goes up and a first publish is unchanged; the read is safe to trust because the manifest is uploaded **last**, so a version it describes is a version whose files are all there. The same read is what refuses a version that is **already published**: its bytes are served under an immutable cache header, so a client that has the version keeps the manifest it first saw, and different files would be checked against that old copy's hashes and fail the install instead of updating it. `--force` overrides it, for a redo that is byte-for-byte identical. The flat path has no per-platform list to diff, so `uploadDir` (`cp --recursive`) sends the tree whole. Neither `aws s3 sync` — which diffs the destination — nor re-uploading a 948 MB build is worth it: a republish that changes three files should send three files.
+- **Uploading must not re-send what is already published.** `publish-game` reads the
+  published manifest for the version it is writing (one GET) and uploads only the paths
+  whose hash differs. A 404 means nothing is published, so a first publish sends
+  everything; the read is safe because the manifest is uploaded **last**. That read also
+  refuses a version that is **already published**: its bytes are immutable, so a client
+  keeps the manifest it first saw and different files would fail its install. `--force`
+  overrides it. The flat path has no per-platform list to diff, so `uploadDir` sends the
+  tree whole - cheaper than `aws s3 sync`, and far cheaper than re-sending a 948 MB build.
 - **An `aws` probe against R2 must pass `--endpoint-url`.** The endpoint is derived from `R2_ACCOUNT_ID` (`https://<account>.r2.cloudflarestorage.com`) and is not in `.env`. Without it the CLI talks to real AWS S3, which answers `AccessDenied` for a bucket these credentials can in fact list — a wrong endpoint and a missing permission are indistinguishable from the output.
 - Game _metadata_ (name, description, genres, icon, banner) lives in two places that drift independently: `catalog.json` holds the publisher's display fields and the launcher prefers them, while `manifest.json` holds what the build shipped with. `npm run publish:meta` (`scripts/publish-metadata.mjs`) edits both without re-uploading a single game file, and only touches fields it is given — an unset flag keeps the published value. The dashboard's Games tab drives the same script.
   - The shared field contract is `scripts/lib/metadata-fields.mjs` (`FIELDS`, `CHANNELS`, `IMAGE_FIELDS`); the form, the publisher and the tests all import it so they cannot drift apart. `scripts/lib/apply-metadata.mjs` holds the write decision and `scripts/lib/game-metadata.mjs` the read/merge, both extracted so they are testable without R2 credentials.
@@ -444,27 +439,19 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   - The dashboard client cannot import the server's `.mjs` contract modules (they hold R2 credentials and use `node:` imports), so the news field list travels in the `/api/news` response and the form renders from that; do not add a hand-typed copy under `scripts/dashboard/app/`. New-item ids are derived server-side by `uniqueNewsId` for the same reason — the client cannot call the slugger, and a client-chosen id could collide with a published item and merge two announcements.
   - News and game selection now live beside the form they edit (master–detail, `.split`), not behind an id box: typing an id that does not exist fails deep inside a publishing script, which is the failure mode the visual editor exists to remove.
 - **A published manifest is signed, and the launcher refuses one that is not.** The
-  manifest lists every file's SHA256, so it is what decides what gets installed: a
-  bucket somebody else can write to would otherwise let them publish a build whose
-  hashes match the files they planted. `publish-game.mjs` and
-  `publish-metadata.mjs` sign with the release key (`tauri signer sign`, the same
-  keypair the launcher's own updates use) and upload `manifest.json.sig` before
-  `manifest.json`, and `latest.json.sig` before `latest.json`. The client fetches
-  the pair and checks the bytes in Rust (`src-tauri/src/manifest_signature.rs`, key
-  pinned from `src-tauri/updater.pub`), because a signature covers exact bytes and
-  the key must not live in the frontend.
-  - Two consequences to respect. A publish without the secret key fails before it
-    generates or uploads anything, and every game has to be republished once after
-    this landed: a manifest published before it carries no signature, and the client
-    refuses those by design rather than accepting "unsigned but present".
-  - `prune-builds.mjs` must never sweep a `.sig` at the channel root. They are in
-    `CHANNEL_FILES` in `scripts/lib/prune-plan.mjs`, next to `manifest.json` and
-    `latest.json`, because deleting one leaves a live manifest no client will accept
-    - which takes the game away from every player rather than only its history.
-  - A metadata edit rewrites the manifest, so it re-signs. Anything else that writes
-    a manifest has to do the same, or the game stops resolving.
-- The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB (single previous generation). File writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button; its fs permissions are scoped to `$APPLOG` and the shell `open` regex in `tauri.conf.json` only allows URLs and the app log dir. That regex is why the **install** folder is opened by the backend instead: a regex cannot describe a folder the user chose, so `open_games_folder` resolves the root itself and takes no path, and `open` is called from Rust where the plugin does not apply the allowlist.
-- `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (a `.env.development` was tracked once and Vite inlines what it finds), a `*.key` or `*.pem`, a `.secrets` path, and a `*.map` in `dist/`, since a source map ships the original TypeScript.
+  manifest lists every file's SHA256, so it decides what gets installed: a bucket
+  somebody else can write to could otherwise publish a build whose hashes match the
+  files they planted. `publish-game.mjs` and `publish-metadata.mjs` sign with the
+  release key (`tauri signer sign`, the same keypair the updater uses) and upload the
+  `.sig` before the document. The client checks the bytes in Rust
+  (`src-tauri/src/manifest_signature.rs`, key pinned from `updater.pub`).
+  - A publish without the secret key fails before it uploads anything, and every game
+    published before this carries no signature, so each one needs republishing once.
+  - `prune-builds.mjs` must never sweep a channel-root `.sig` (`CHANNEL_FILES` in
+    `scripts/lib/prune-plan.mjs`): that leaves a live manifest no client accepts.
+  - A metadata edit rewrites the manifest, so it re-signs.
+- The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: the shell plugin's allowlist could not describe a folder the user chose.
+- `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (one was tracked once, and Vite inlines what it finds), a `*.key`, a `*.pem`, a `.secrets` path, and a `*.map` in `dist/`.
 - Tauri auto-updater:
   - Keys are generated by `npm run keys:generate`, which wraps **`tauri signer generate`**. Do not use the `minisign` CLI: it writes an empty-password key format that the Rust `minisign` crate Tauri uses rejects, and the two formats are not interchangeable.
   - The updater secret key belongs at `src-tauri/.secrets/updater.key` (gitignored, must never be committed). `tauri signer generate` writes it **base64-encoded**, and the Tauri CLI base64-decodes it before parsing — so pass the file contents verbatim and never re-encode or substitute raw minisign text.
@@ -473,6 +460,6 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   - `src-tauri/tests/updater_signing_tests.rs` reproduces the updater's own parse of `plugins.updater.pubkey` (base64-decode, then `minisign_verify::PublicKey::decode`), so a malformed key fails in CI instead of breaking every user's update check. `npm run keys:check` separately proves the secret key can actually sign.
   - CI secrets: `TAURI_SIGNING_PRIVATE_KEY` (verbatim contents of `updater.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (only if the key has a password; otherwise the CLI prompts and the build hangs).
   - The release workflow is triggered by semver tags like `v0.1.0`.
-  - The launcher's own version lives in five files. `package.json` is the source of truth and `npm run version:set -- <x.y.z>` writes the rest from it, preserving everything around the field; `npm run version:check` runs in CI so they cannot drift. A mismatch ships an app whose About panel and updater document both disagree with the binary, which is how an updater ends up re-offering an update forever. `package-lock.json` is the fifth because npm maintains a version of its own there and `npm ci` never rewrites it: the committed lock said 0.2.1 while package.json said 0.3.0 for a whole release.
+  - The launcher's own version lives in five files. `package.json` is the source of truth and `npm run version:set -- <x.y.z>` writes the rest; `npm run version:check` runs in CI so they cannot drift. A mismatch ships an app whose About panel and updater document disagree with the binary, which is how an updater re-offers an update forever. `package-lock.json` is the fifth because npm keeps a version there and `npm ci` never rewrites it.
   - `npm run release -- minor` bumps, commits, tags and pushes; the tag is what starts the signed CI build (macOS and Linux by default, Windows built locally). A dry run is the default and the tree must be clean — **untracked files do not count**, because `git commit` cannot include one, and counting them refused every real release while a dry run passed.
   - One installer per platform, and the **updater** decides which one. Windows ships **NSIS only**: the Tauri updater installs through the NSIS setup, so the `.msi` is a second WiX pass over the same app that nothing here uses — the MSI looks like the "native" choice and is the wrong one to keep. Linux ships `.deb` only. macOS keeps `app` plus `dmg`: the updater's macOS artifact is the `.app.tar.gz`, and a tar.gz is not something a person downloads by hand. Dropping to one bundle type per platform takes a WiX pass off the slowest job, which is where most of the ~15 minutes goes.

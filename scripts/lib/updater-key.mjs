@@ -1,11 +1,9 @@
 /**
  * Reading the release keypair, in the two forms the tooling needs it.
  *
- * Used by the publishers, which have to sign. `scripts/check-updater-keys.cjs` holds
- * its own copy of the two `*KeyBody` readers because it is CommonJS and cannot
- * import this file; both paths call the same `tauri signer sign`, so a key one
- * accepts and the other refuses fails loudly at the CLI rather than silently
- * producing an unsigned release.
+ * `scripts/check-updater-keys.cjs` holds its own copy of the two `*KeyBody` readers: it
+ * is CommonJS and cannot import this file. Both call the same `tauri signer sign`, so a
+ * key one accepts and the other refuses fails at the CLI, not silently.
  */
 
 import fs from 'node:fs';
@@ -13,22 +11,17 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 /**
- * The Tauri CLI's JS entry point, from node_modules so nothing needs a global install.
+ * The Tauri CLI's JS entry point.
  *
- * Run through the current node rather than the `tauri` shim in node_modules/.bin:
- * that shim is a `.cmd` on Windows, which cannot be executed without a shell, and
- * cmd re-parses whatever command line it is handed. The JS entry takes the same
- * arguments and needs no shell and no quoting.
+ * Run through the current node rather than the `tauri` shim in node_modules/.bin: that
+ * shim is a `.cmd` on Windows, which needs a shell, and cmd re-parses what it is handed.
  */
 export const tauriCliPath = (repoRoot) =>
   path.join(repoRoot, 'node_modules', '@tauri-apps', 'cli', 'tauri.js');
 
 /**
- * Run the Tauri CLI.
- *
- * It is the only thing that can sign: `tauri signer sign` is the same command
- * `tauri build` runs for updater artifacts, and the Rust minisign crate behind it
- * rejects the empty-password key format the `minisign` CLI writes.
+ * Run the Tauri CLI. It is the only thing that can sign: `tauri signer sign` is the
+ * command `tauri build` runs for updater artifacts.
  */
 export function runTauriCli(repoRoot, args, options = {}) {
   return spawnSync(process.execPath, [tauriCliPath(repoRoot), ...args], {
@@ -45,29 +38,20 @@ export const secretKeyPath = (repoRoot) =>
 export const publicKeyPath = (repoRoot) => path.join(repoRoot, 'src-tauri', 'updater.pub');
 
 /**
- * The public key in the form `plugins.updater.pubkey` expects.
- *
- * `verify_signature()` in tauri-plugin-updater base64-decodes that value and parses
- * the result with `minisign_verify::PublicKey::decode`, so the config holds the
- * **base64 of a whole PublicKeyBox** - the `untrusted comment:` line plus the key
- * line. `tauri signer generate` writes `updater.pub` in exactly that form already,
- * so it is used verbatim; a `minisign`-CLI key file is plain text and is encoded
- * first. Must stay in step with `publicKeyForConfig` in sync-updater-key.cjs.
+ * The public key in the form `plugins.updater.pubkey` expects: the base64 of a whole
+ * PublicKeyBox, because `verify_signature()` in tauri-plugin-updater base64-decodes it
+ * before parsing. `tauri signer generate` already writes that form. Must stay in step
+ * with `publicKeyForConfig` in sync-updater-key.cjs.
  */
 export function publicKeyBody(file) {
   return encodedBox(file);
 }
 
 /**
- * The secret key in the base64 form the Tauri CLI decodes.
- *
- * A key from `tauri signer generate` is already a single base64 blob. A minisign-CLI
- * key is plain text starting with an `untrusted comment:` header and must be encoded
- * first, or the CLI fails with
- * "failed to decode base64 secret key: Invalid symbol 32, offset 9" (offset 9 is the
- * space in that header).
- *
- * Never log the returned value.
+ * The secret key in the base64 form the Tauri CLI decodes. A `tauri signer generate` key
+ * is already one base64 blob; a `minisign`-CLI key is plain text and has to be encoded
+ * first, or the CLI fails with "Invalid symbol 32, offset 9" (offset 9 is the space in
+ * its `untrusted comment:` header). Never log the returned value.
  */
 export function secretKeyBody(file) {
   return encodedBox(file);

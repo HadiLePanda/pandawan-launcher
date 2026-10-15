@@ -3,11 +3,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * The CSP is the one place the app's own configuration has to name the CDN host, and
- * a wrong host there breaks every image with nothing in the log to explain it - the
- * failure looks like the bucket being empty. So the host is checked against the other
- * two places that know it, and the policy is checked for the two directives that are
- * the whole reason it is narrower than `https:`.
+ * The CSP is the one place the app's own configuration has to name the CDN host, and a
+ * wrong host there breaks every image with nothing in the log to explain it. So the host
+ * is checked against the other two places that know it, and the policy is checked for the
+ * two directives that make it narrower than `https:`.
  */
 
 const config = JSON.parse(

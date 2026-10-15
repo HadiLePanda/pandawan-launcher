@@ -81,13 +81,12 @@ const TOKEN_HEADER = 'x-dashboard-token';
 /**
  * The headers for one request, with the token this page was served.
  *
- * Read from the document rather than cached in a module variable: the value
- * belongs to the page load, so re-reading it cannot go stale. A page served
- * before the gate existed has no tag, and the request then goes out without the
- * header and the server answers with the rebuild command to run.
+ * Read from the document rather than cached: the value belongs to the page load. A page
+ * served before the gate existed has no tag, and the request goes out without the header
+ * - the server then answers with the rebuild command to run.
  *
- * Exported because the Services panel posts its own request: one helper means a
- * new call site cannot forget the token, and the contract test counts them.
+ * Exported because the Services panel posts its own request: one helper means a new call
+ * site cannot forget the token.
  */
 export function requestHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token =

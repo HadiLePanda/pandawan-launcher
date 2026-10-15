@@ -64,13 +64,12 @@ export function planPrune(
   // be swept with a recursive delete: the objects beside them are live.
   //
   // manifest.json and latest.json are both excluded because both are mutable
-  // channel files. latest.json is the per-platform pointer, and deleting it
-  // leaves every client unable to resolve which version is current.
+  // channel files: deleting latest.json leaves every client unable to resolve which
+  // version is current.
   //
   // Their signatures are excluded for a sharper reason: the launcher refuses a
-  // document whose signature is missing or wrong, so sweeping one of these leaves a
-  // live manifest that no client will accept - every player's copy of the game
-  // disappears. A prune must never be able to do that.
+  // document whose signature is missing, so sweeping one leaves a live manifest no
+  // client accepts - every player's copy of the game disappears.
   const CHANNEL_FILES = new Set([
     'manifest.json',
     'manifest.json.sig',

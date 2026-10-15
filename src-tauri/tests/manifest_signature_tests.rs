@@ -1,15 +1,14 @@
 //! End-to-end proof that a manifest signed by the release tooling verifies.
 //!
-//! A hardcoded signature would not prove this: what matters is that the bytes the
-//! publisher signs are the bytes the launcher checks, through the same command. So
-//! this generates a throwaway keypair with the Tauri CLI, signs a document with it,
-//! and verifies that document through the launcher's own code path.
+//! A hardcoded signature would not prove it: what matters is that the bytes the
+//! publisher signs are the bytes the launcher checks. So this generates a throwaway
+//! keypair with the Tauri CLI, signs a document with it, and verifies that document
+//! through the launcher's own code path.
 //!
-//! A keypair of its own rather than the release key, because the release key is
-//! gitignored and absent in CI, and a test that skips everywhere proves nothing.
-//! The pinned key is covered from two sides: `src/manifest_signature.rs` asserts
-//! that `updater.pub` parses with this code, and `updater_signing_tests.rs` asserts
-//! that the same file is the key the updater plugin accepts.
+//! A keypair of its own, because the release key is gitignored and absent in CI, and a
+//! test that skips everywhere proves nothing. The pinned key is covered from two sides:
+//! `src/manifest_signature.rs` asserts `updater.pub` parses with this code, and
+//! `updater_signing_tests.rs` asserts the same file is the key the updater accepts.
 
 use pandawan_launcher_lib::manifest_signature;
 use pandawan_launcher_lib::types::LauncherError;

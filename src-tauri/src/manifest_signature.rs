@@ -1,41 +1,25 @@
 //! Verification of the signature a published manifest carries.
 //!
-//! The launcher trusts the CDN for nothing else. A manifest lists each file's
-//! SHA256, so an attacker who can write to the bucket - or who is served by a
-//! mis-issued certificate - can publish a build whose hashes match the files it
-//! ships, and the launcher would install and run it. The signature is what makes
-//! the bucket's contents checkable rather than merely fetched: only the holder of
-//! the release key can produce one, and the public half ships inside this binary.
-//!
-//! The key is the one `src-tauri/updater.pub` pins, which is also what the
-//! launcher's own updates use. One keypair rather than two because that is the one
-//! secret the release pipeline already holds and protects, and a second key would
-//! be a second thing to lose. See docs/GAME_CATALOG.md for what is signed.
+//! The manifest lists each file's SHA256, so it decides what gets installed: unsigned,
+//! anyone who can write to the bucket can publish a build whose hashes match the files
+//! they planted. The key is the one `updater.pub` pins, which the updater already uses.
 
 use crate::types::LauncherError;
 use base64::Engine;
 use minisign_verify::{PublicKey, Signature};
 
-/// The public key this build trusts, as committed in `src-tauri/updater.pub`.
-///
-/// That file holds the base64 of a whole minisign PublicKeyBox, which is the form
-/// the Tauri CLI writes and `verify_signature()` in tauri-plugin-updater decodes.
-/// `npm run keys:check` keeps it in step with the secret key.
+/// The public key this build trusts, from `src-tauri/updater.pub`: the base64 of a whole
+/// minisign PublicKeyBox, the form the Tauri CLI writes. `npm run keys:check` keeps it in
+/// step with the secret key.
 const PUBLIC_KEY_BOX: &str = include_str!("../updater.pub");
 
 /// Verify `body` against the signature box published beside it.
-///
-/// `signature_box` is the content of the `.sig` file: the base64 of a minisign
-/// SignatureBox, which is what `tauri signer sign` writes.
 pub fn verify(body: &[u8], signature_box: &str) -> Result<(), LauncherError> {
     let public_key = pinned_public_key()?;
     verify_with(&public_key, body, signature_box)
 }
 
-/// Verify against a caller-supplied key.
-///
-/// Split out from `verify` so the rule can be exercised with a keypair a test
-/// generates, rather than only with the release key that CI does not have.
+/// Verify against a caller-supplied key, so a test can use a keypair it generated.
 pub fn verify_with(
     public_key: &PublicKey,
     body: &[u8],
@@ -46,8 +30,7 @@ pub fn verify_with(
         LauncherError::ManifestUnsigned(format!("the signature does not decode: {e}"))
     })?;
 
-    // `allow_legacy` matches how the updater plugin verifies its own artifacts, so
-    // either form the Tauri CLI can produce is accepted.
+    // `allow_legacy` matches how the updater plugin verifies its own artifacts.
     public_key
         .verify(body, &signature, true)
         .map_err(|e| LauncherError::ManifestUnsigned(format!("the signature does not match: {e}")))
@@ -61,9 +44,8 @@ pub fn pinned_public_key() -> Result<PublicKey, LauncherError> {
     })
 }
 
-/// A key or signature file holds the base64 of a minisign box, so the text has to
-/// be decoded before the box can be parsed. Reporting which of the two steps failed
-/// is what makes a wrong file obvious instead of a bare "verification failed".
+/// A key or signature file holds the base64 of a minisign box, so decode first. Naming
+/// which step failed is what makes a wrong file obvious.
 fn decode_box(text: &str, what: &str) -> Result<String, LauncherError> {
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(text.trim())

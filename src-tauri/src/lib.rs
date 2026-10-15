@@ -218,13 +218,11 @@ async fn fetch_remote_text(url: String) -> Result<String, LauncherError> {
 /// Verify the signature a published manifest or version index carries.
 ///
 /// The frontend fetches the document and its `.sig` through `fetch_remote_text`,
-/// which keeps the read cache and the offline fallback on that side, and asks here
-/// whether those bytes are the ones the publisher signed. It has to be bytes and
-/// not a parsed object: a signature covers the exact document, so re-serializing a
-/// parsed manifest would not match it.
+/// Verify a document the frontend fetched, against the signature published beside it.
 ///
-/// A document that fails this is refused rather than reported. The manifest names
-/// every file and its hash, so accepting an unverified one means installing
+/// Bytes rather than a parsed object: a signature covers the exact document, so
+/// re-serializing a parsed manifest would not match it. A document that fails is
+/// refused rather than reported - accepting an unverified manifest means installing
 /// whatever it names, from wherever its base_url points.
 #[tauri::command]
 #[specta::specta]
@@ -633,12 +631,9 @@ fn get_default_install_folder() -> PathBuf {
 
 /// Open the games folder in the system file manager.
 ///
-/// Rust-side rather than the frontend's shell plugin, on purpose. That plugin
-/// validates the path against the allowlist regex in `tauri.conf.json`, and a regex
-/// can only describe the app's own log folder, so opening the install folder was
-/// refused and the button did nothing the user could see. The path is not passed in
-/// either: it is the root the backend already resolves for install, launch and
-/// uninstall, so there is nothing for a caller to point somewhere else.
+/// Rust-side because the shell plugin's allowlist regex could only describe the app's
+/// log folder, so this folder was refused and the button did nothing visible. No path
+/// is passed in: it is the root the backend already resolves for install and launch.
 #[tauri::command]
 #[specta::specta]
 async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), LauncherError> {
@@ -647,18 +642,13 @@ async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), Launch
         games_root(&settings)
     };
 
-    // Before the first install there is nothing there, and the shell reports a
-    // missing path as a failure rather than opening an empty window.
+    // Nothing is there before the first install, and opening a missing path fails.
     std::fs::create_dir_all(&root)?;
 
     open_target(&root)
 }
 
-/// The company store page.
-///
-/// A constant here rather than in the frontend, because the command that opens it
-/// takes no URL at all: this is the only address the app opens in a browser, so
-/// there is nothing for a caller to point elsewhere.
+/// The company store page: a constant here, so the command that opens it takes no URL.
 const STORE_URL: &str = "https://pandawancorp.com/store";
 
 /// Open the store page in the system browser.
@@ -670,11 +660,8 @@ fn open_store_page() -> Result<(), LauncherError> {
 
 /// Open the folder the launcher writes its log to, in the system file manager.
 ///
-/// Rust-side for the same reason as the games folder, and the reason the shell plugin
-/// is gone: that plugin checked a path against an allowlist regex in
-/// `tauri.conf.json`, and this folder was the one entry in it. Nothing is passed in,
-/// so there is nothing for a caller to redirect, and there is no regex to keep in step
-/// with where the logs actually are.
+/// Rust-side for the same reason as the games folder: nothing is passed in, so there is
+/// nothing for a caller to redirect.
 #[tauri::command]
 #[specta::specta]
 async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
@@ -683,8 +670,6 @@ async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
         .app_log_dir()
         .map_err(|e| LauncherError::Io(e.to_string()))?;
 
-    // Before the first log is written the folder is not there, and opening a path
-    // that does not exist fails rather than showing an empty window.
     std::fs::create_dir_all(&dir)?;
     open_target(&dir)
 }
@@ -692,8 +677,7 @@ async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
 /// Open a path or URL with the system handler.
 ///
 /// One place, because every caller is the same call: the `open` crate, whose Windows
-/// backend is ShellExecuteW here rather than `cmd /c start` (the
-/// `shellexecute-on-windows` feature), so nothing re-parses what it is handed.
+/// backend is ShellExecuteW (`shellexecute-on-windows`), so nothing re-parses the path.
 fn open_target(target: impl AsRef<std::ffi::OsStr>) -> Result<(), LauncherError> {
     // Captured first, because the target is moved into the call below.
     let shown = target.as_ref().to_string_lossy().to_string();

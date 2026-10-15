@@ -130,15 +130,9 @@ sync.on('close', (code) => {
 /**
  * Say whether the installer carries a code-signing signature.
  *
- * A different signature from the updater one above, and deliberately not fatal: this
- * one needs a certificate from a certificate authority, so it is a purchase rather
- * than a step in a script. Without it Windows shows an unknown publisher on the
- * SmartScreen prompt, and a download that looks like a virus is a download nobody
- * completes - which is why the state is named at the end of every local build, where
- * the Windows installer is made, instead of being discovered by a player.
- *
- * Only Windows is checked here. macOS and Linux are built in CI, where the same
- * question is answered by the signing secrets described in docs/RELEASE.md.
+ * Not fatal on purpose: this signature needs a certificate, so it is a purchase rather
+ * than a step. Without it Windows shows an unknown publisher on the SmartScreen prompt.
+ * Printed at the end of every local build, which is where the Windows installer is made.
  */
 function reportCodeSigning() {
   if (process.platform !== 'win32') return;

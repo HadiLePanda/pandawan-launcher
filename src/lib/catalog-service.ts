@@ -56,20 +56,18 @@ export async function fetchRemoteText(url: string): Promise<string> {
 }
 
 /**
- * Fetch a document the publisher signed, and refuse it unless the signature is one
- * this build trusts.
+ * Fetch a document the publisher signed, and refuse it unless the signature is one this
+ * build trusts.
  *
- * The manifest names every file and its SHA256, so it is what decides what gets
- * installed: a bucket somebody else can write to would otherwise let them publish a
- * build whose hashes match the files they planted. A signature covers the exact
- * bytes, so the check happens on them before they are parsed, and it lives in the
- * backend because that is where the pinned key is.
+ * The manifest names every file and its SHA256, so it decides what gets installed: a
+ * bucket somebody else can write to could otherwise publish a build whose hashes match
+ * the files they planted. The check runs on the exact bytes, before they are parsed,
+ * and lives in the backend because that is where the pinned key is.
  *
- * The pair is cached as ONE entry, under a key derived from the document's URL. Two
- * entries would be written one fetch apart and so would expire at different instants,
- * and the read that refreshed the document while serving the signature from cache
- * would check new bytes against an old signature and refuse a game that is perfectly
- * fine. Cached together, the pair is always consistent: both old, or both new.
+ * The pair is cached as ONE entry. Two entries are written one fetch apart, so they
+ * expire at different instants and the read that refreshed the document would check new
+ * bytes against an old signature. Cached together, the pair is always both old or both
+ * new.
  */
 async function fetchSigned(remoteUrl: string): Promise<string> {
   const cached = await fetchCachedText(`${remoteUrl}#signed`, () => fetchSignedPair(remoteUrl));

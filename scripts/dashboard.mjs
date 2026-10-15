@@ -137,18 +137,15 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 /**
  * The token every /api/ request must carry, and the file it lives in.
  *
- * The bind address and the Host check stop a remote host, but not a page the
- * operator visits: a simple cross-origin GET is sent with no preflight and no
- * Origin this server is entitled to trust, and its Host header still reads
- * 127.0.0.1. Such a request is not free - /api/launcher/status runs synchronous
- * gh calls, and ?refresh=1 re-arms a bucket listing or a wrangler check - so the
- * page could hold the panel down and spend the GitHub and Cloudflare quotas. A
- * custom header cannot be attached without a preflight, and this server answers
- * no preflight, so the header is the gate.
+ * The bind address and the Host check stop a remote host, but not a page the operator
+ * visits: a cross-origin GET needs no preflight, carries no Origin worth trusting, and
+ * its Host still reads 127.0.0.1. Those requests are not free - /api/launcher/status is
+ * uncached and runs several gh calls - so such a page could hold the panel down and
+ * spend the quota. A custom header cannot be attached without a preflight this server
+ * never answers, so the header is the gate.
  *
- * Stable across restarts rather than minted per run: a token that changed would
- * refuse every open tab the moment the server was restarted. Override with
- * DASHBOARD_TOKEN to rotate it, or to script a request against the panel.
+ * Stable across restarts: a token that changed would refuse every open tab on a
+ * restart. Override with DASHBOARD_TOKEN to rotate it or to script a request.
  */
 const tokenPath = path.join(os.tmpdir(), 'pandawan-dashboard-token');
 const TOKEN = dashboardToken();
@@ -824,24 +821,20 @@ function siteAbsentResponse(res) {
 /**
  * The npm scripts the Website panel may run, by the name its route passes.
  *
- * A set rather than a pass-through string: cmd.exe /c re-parses its command line,
- * so a name that came from anywhere but this list could append its own command
- * with `&`. There is deliberately no argument list either - neither script takes
- * one, and a parameter nothing passes is a parameter that would be joined into
- * that command line the day something does.
+ * A set rather than a pass-through string: cmd.exe /c re-parses its command line, so a
+ * name from anywhere but this list could append its own command with `&`. No argument
+ * list either: neither script takes one.
  */
 const SITE_SCRIPTS = new Set(['verify', 'deploy']);
 
 /**
- * Run an npm script in the site repo, streaming the same SSE contract as
- * runScript: output, error, done({code}). runScript is not reused because it
- * spawns `node <script>` in THIS repo, and the site is a separate repository with
- * its own package.json and node_modules.
+ * Run an npm script in the site repo, streaming the same SSE contract as runScript.
+ * runScript is not reused: it spawns `node <script>` in THIS repo, and the site is a
+ * separate repository with its own node_modules.
  *
- * cmd.exe rather than a direct npm spawn: spawning a `.cmd` with shell:false
- * raises EINVAL on current Node (the fix for the CVE-2024-27998
- * argument-injection class), and the shell resolves npm through PATHEXT. The
- * command line is built from SITE_SCRIPTS, so nothing in it can be injected.
+ * cmd.exe rather than a direct npm spawn: spawning a `.cmd` with shell:false raises
+ * EINVAL on current Node, and the shell resolves npm through PATHEXT. The command line
+ * is built from SITE_SCRIPTS, so nothing in it can be injected.
  */
 function runSiteScript(script, res) {
   if (!SITE_SCRIPTS.has(script)) {
@@ -928,15 +921,10 @@ function rejectCrossOrigin(req, res) {
 /**
  * Refuse a request that does not carry this run's token.
  *
- * The Host check above stops a remote host and the Origin check stops a
- * cross-origin write, but neither stops a cross-origin READ: a page the operator
- * visits can send a simple GET to loopback with no preflight, and that request's
- * Origin and Host are ones this server is not entitled to trust. A read is not
- * free here - /api/launcher/status runs synchronous gh calls, and ?refresh=1
- * re-arms a bucket listing or a wrangler check - so the page could hold the panel
- * down and spend the GitHub and Cloudflare quotas while CORS quietly hides the
- * answers from it. Only a header such a page cannot attach tells the panel apart
- * from it, and the panel is served the value.
+ * The Host check stops a remote host and the Origin check stops a cross-origin write,
+ * but neither stops a cross-origin READ: a page the operator visits can send a simple
+ * GET to loopback with no preflight, and a read here is not free. Only a header such a
+ * page cannot attach tells the panel apart from it, and the panel is served the value.
  */
 function rejectWithoutToken(req, res, pathname) {
   if (!requiresToken(pathname)) return false;
@@ -1036,12 +1024,10 @@ async function launcherStatus() {
 /**
  * Run `gh` and parse its JSON, or answer null.
  *
- * Async, and that is the point: a synchronous child blocks the event loop for its
- * whole duration, and these reads are what `/api/launcher/status` is made of. A
- * missing `gh`, a logged-out `gh`, a non-zero exit and a JSON shape this does not
- * expect all answer null, so no caller can read "no answer" as a fact about the
- * repository - which is why every caller turns null into an empty list rather than
- * into a pass.
+ * Async, because a synchronous child blocks the event loop for its whole duration and
+ * these reads are what `/api/launcher/status` is made of. A missing `gh`, a logged-out
+ * `gh`, a non-zero exit and an unexpected shape all answer null, so no caller can read
+ * "no answer" as a fact about the repository.
  */
 async function ghJson(args) {
   try {
