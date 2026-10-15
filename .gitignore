@@ -26,6 +26,11 @@ dist-ssr
 # Agent workspace directories
 .superpowers/
 
+# Local git worktrees. `git worktree add .worktrees/<branch>` keeps a branch in its
+# own directory; without this the whole tree shows up as untracked here and can be
+# committed by accident.
+.worktrees/
+
 # Tauri
 src-tauri/target
 src-tauri/gen
