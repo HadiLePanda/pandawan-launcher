@@ -76,6 +76,46 @@ describe('the server/client endpoint contract', () => {
   });
 });
 
+describe('the server/client catalog-diff contract', () => {
+  /**
+   * The diff is rendered from the served shape, and a mismatch is not a wrong
+   * number - it is a blank page: the client declared onlyLive/onlyLocal as
+   * string[] while catalogDiff sent summarised entries, and rendering one of those
+   * objects as a React child unmounted the whole app.
+   */
+  const catalog = readFileSync(path.join(here, '..', '..', 'lib', 'catalog-edit.mjs'), 'utf8');
+
+  /** The keys of the object a named function returns, as written. */
+  function returnedKeys(source: string, fn: string): string[] {
+    const body = new RegExp(`function ${fn}\\([^)]*\\)\\s*{[\\s\\S]*?return {([\\s\\S]*?)};`).exec(
+      source
+    );
+    return [...(body?.[1] ?? '').matchAll(/(\w+):/g)].map((m) => m[1]).sort();
+  }
+
+  /** The keys of a TypeScript interface, as written. */
+  function interfaceKeys(source: string, name: string): string[] {
+    const body = new RegExp(`interface ${name}(?:\\s+extends[^{]*)?\\s*{([\\s\\S]*?)}`).exec(
+      source
+    );
+    return [...(body?.[1] ?? '').matchAll(/(\w+)\??:/g)].map((m) => m[1]).sort();
+  }
+
+  it('declares the entry the server summarises', () => {
+    const served = returnedKeys(catalog, 'summarise');
+    expect(served.length).toBeGreaterThan(0);
+    expect(interfaceKeys(client, 'CatalogDiffEntry')).toEqual(served);
+  });
+
+  it('names each diff list as a list of those entries, never of strings', () => {
+    expect(interfaceKeys(client, 'CatalogDiff')).toEqual(['changed', 'onlyLive', 'onlyLocal']);
+    expect(client).toMatch(/onlyLive:\s*CatalogDiffEntry\[\]/);
+    expect(client).toMatch(/onlyLocal:\s*CatalogDiffEntry\[\]/);
+    expect(client).toMatch(/changed:\s*CatalogChangedEntry\[\]/);
+    expect(client).toMatch(/interface CatalogChangedEntry\s+extends\s+CatalogDiffEntry\s*{/);
+  });
+});
+
 describe('the server/client request-token contract', () => {
   it('sends the token on every fetch the client makes', () => {
     const fetches = [...client.matchAll(/\bfetch\(/g)].length;

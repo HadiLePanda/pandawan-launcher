@@ -518,9 +518,7 @@ function DiffColumn({
             <li key={entry.id} className="flex items-center gap-1.5 text-xs">
               <Plus aria-hidden size={12} className="shrink-0 text-action" />
               <span className="text-ink-muted">{entry.name || entry.id}</span>
-              {entry.name ? (
-                <code className="font-mono text-ink-subtle">{entry.id}</code>
-              ) : null}
+              {entry.name ? <code className="font-mono text-ink-subtle">{entry.id}</code> : null}
             </li>
           ))}
           {entriesChanged.map((entry) => (
