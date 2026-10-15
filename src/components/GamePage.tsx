@@ -230,6 +230,7 @@ export function GamePage({
   const unavailable = !game.info.isAvailableOnThisPlatform;
 
   const gameNews = news.filter((item) => item.gameId === game.info.id);
+  const hasGameNews = gameNews.length > 0;
 
   /**
    * Why this game cannot be installed, as one sentence naming the platforms that
@@ -535,7 +536,12 @@ export function GamePage({
         </div>
 
         <aside className="game-detail-news">
-          {gameNews.length > 0 ? (
+          {hasGameNews && (
+            // Labels the rail. The column is otherwise a stack of pictures beside
+            // the game, and nothing says the stack is news.
+            <h2 className="game-detail-news-label">{t('gamePage.news')}</h2>
+          )}
+          {hasGameNews ? (
             <div className="game-detail-news-list">
               {gameNews.map((item) => (
                 <article
@@ -566,7 +572,7 @@ export function GamePage({
                     />
                   </div>
                   <div className="game-detail-news-body">
-                    <h4 className="game-detail-news-card-title">{item.title}</h4>
+                    <h3 className="game-detail-news-card-title">{item.title}</h3>
                     <p className="game-detail-news-card-excerpt">{item.excerpt}</p>
                   </div>
                 </article>

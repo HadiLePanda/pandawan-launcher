@@ -1035,16 +1035,10 @@ input.pin-search {
   min-width: 0;
 }
 
-/* Screenshots. One row of equal-height crops at the bottom of the left column,
-   which is where the empty space was. Fixed 16/9 crops keep the row aligned
-   whatever the source aspect ratios are, so a mixed set does not stagger.
-   Tight above the row: the label that used to sit here is a screen-reader
-   heading now, and the space it took is what pushed this column into a
-   scrollbar at the default window size. */
-/* The screenshots sit in a panel of their own, as a reel: one strip of fixed
-   tiles that scrolls sideways. A grid grew another row taller with every extra
-   screenshot and pushed this column into a scrollbar; the strip is always one
-   row, whatever the count. */
+/* Screenshots, as a reel: one strip of fixed tiles that scrolls sideways. A grid
+   grew another row taller with every extra screenshot and pushed this column into
+   a scrollbar; the strip is always one row, whatever the count. Fixed 16/9 crops
+   keep the row aligned whatever the source aspect ratios are. */
 .game-detail-shots {
   display: flex;
   flex-direction: column;
@@ -1065,7 +1059,9 @@ input.pin-search {
   border-radius: 0;
 }
 
-.game-detail-shots-label {
+/* One look for both section labels on the page. */
+.game-detail-shots-label,
+.game-detail-news-label {
   font-size: 0.6875rem;
   font-weight: var(--weight-semibold);
   letter-spacing: 0.12em;
@@ -1287,6 +1283,18 @@ input.pin-search {
   flex-direction: column;
   gap: var(--space-8);
   overflow-y: auto;
+}
+
+/* Pinned, because the rail is the page's scroller and two cards already overflow
+   it: a label that scrolled away would be gone exactly when the section is
+   longest. The canvas background is the page's own, so the cards pass under it
+   rather than through it. */
+.game-detail-news-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: var(--space-4);
+  background: var(--canvas-default);
 }
 
 /* Top-aligned, not centred. The column runs the full height of the page, so
