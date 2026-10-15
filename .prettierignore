@@ -15,3 +15,8 @@ public/news.json
 .github/skills
 .github/agents
 *.bat
+# Local scratch files that are never committed (e.g. security-findings.local.md,
+# kept out of git by .git/info/exclude). Prettier does not read that file, so
+# without this entry `npm run format:check` fails on a developer's machine while
+# CI, which never sees the file, stays green.
+*.local.md
