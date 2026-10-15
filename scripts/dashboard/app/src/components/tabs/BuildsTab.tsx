@@ -126,31 +126,29 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     setError(null);
     setLog('');
 
-    // Args cross as an array and go to spawn without a shell, so nothing typed
-    // into this form can become a command.
-    const args = [
-      '--game-id',
-      gameId,
-      '--channel',
-      channel,
-      '--version',
-      version.trim(),
-      '--build-number',
-      buildNumber.trim(),
-      '--executable',
-      executable.trim(),
-      '--input-dir',
-      inputDir.trim(),
-    ];
+    // Fields, not an argument list: the server assembles the flags, so a value
+    // that begins with `--` cannot arrive as one. Nothing typed into this form can
+    // become a command either, because the args reach spawn without a shell.
+    const platforms: Record<string, string> = {};
     for (const platform of PLATFORMS) {
       const dir = platformDirs[platform]?.trim();
-      if (dir) args.push('--platform', `${platform}=${dir}`);
+      if (dir) platforms[platform] = dir;
     }
-    // The server's publisher reads --dry-run and writes nothing without it.
-    if (dryRun) args.push('--dry-run');
 
-    const code = await streamScript('/api/publish', { args }, (chunk) =>
-      setLog((prev) => prev + chunk)
+    const code = await streamScript(
+      '/api/publish',
+      {
+        gameId,
+        channel,
+        version: version.trim(),
+        buildNumber: buildNumber.trim(),
+        executable: executable.trim(),
+        inputDir: inputDir.trim(),
+        platforms,
+        // The server's publisher reads --dry-run and writes nothing without it.
+        dryRun,
+      },
+      (chunk) => setLog((prev) => prev + chunk)
     );
     setRunning(false);
     if (code !== 0) {

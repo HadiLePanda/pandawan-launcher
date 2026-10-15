@@ -50,6 +50,9 @@ import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './lib/da
 // The flag prefix rule is the parser's own, so a value that would be read as a
 // flag is refused by the same definition parseArgs uses.
 import { isFlagLike } from './lib/args.mjs';
+// The build publish's argument list is assembled from the form's fields rather
+// than forwarded, so the form cannot pass through a flag the UI never offers.
+import { buildPublishArgv } from './lib/publish-argv.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
 // Killing a tree and reading the manifest are shared with the watchdog, so what
 // the dashboard records and what cleans up after it cannot drift apart.
@@ -1960,17 +1963,25 @@ const server = http.createServer(async (req, res) => {
     const payload = await readJson(req, res);
     if (payload === JSON_REFUSED) return;
 
+    // The list is assembled from named fields rather than forwarded, for the same
+    // reason prune does it: the form must not pass through a flag the UI never
+    // offers. A forwarded array cannot tell a value from an option, so a version
+    // typed as `--dry-run` used to arrive as one.
+    const plan = buildPublishArgv(payload);
+    if (plan.error) {
+      res.writeHead(400).end(plan.error);
+      return;
+    }
+
     // A build publish changes the inventory, rewrites manifest.json and
     // latest.json (which readGameMetadata fetches), and can ship artwork - so
     // inventory + meta + art all go stale on acceptance, not on child exit.
+    // Dropped after the request is accepted: a refused one changes nothing.
     invalidateCache('/api/inventory');
     invalidateCache('/api/meta');
     invalidateCache('/api/art');
 
-    // Args cross as an array and go to spawn without a shell, so nothing typed
-    // into the form can become a command.
-    const argv = Array.isArray(payload.args) ? payload.args.map(String) : [];
-    runScript('publish-game.mjs', argv, res);
+    runScript('publish-game.mjs', plan.argv, res);
     return;
   }
 
