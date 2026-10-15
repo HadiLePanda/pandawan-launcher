@@ -99,6 +99,28 @@ The few things worth knowing without looking:
   - Anything that touches the site repo must fail cleanly when it is absent: it is a
     sibling checkout that a developer may simply not have. Report that as "site
     repo not found at <path>" and disable the action, never as a failure.
+- **Every `/api/` request must carry the request token, and the served page is
+  given it.** A cross-origin page can send a simple GET to loopback with no
+  preflight, and its Host header still reads `127.0.0.1`, so the bind address and
+  the Host and Origin checks do not stop it. Those reads are not free:
+  `/api/launcher/status` runs synchronous `gh` calls and `?refresh=1` re-arms a
+  bucket listing, so such a page could hold the panel down and spend the GitHub
+  and Cloudflare quotas while CORS hides the answers from it.
+  - The gate is a custom header (`x-dashboard-token`, rules in
+    `scripts/lib/dashboard-access.mjs`), because a page cannot attach one without a
+    preflight this server never answers. The server injects the value into the app
+    shell it serves, so the gate also covers a build that predates it, and the
+    token is stable across restarts (`%TEMP%/pandawan-dashboard-token`, override
+    `DASHBOARD_TOKEN`) so a restart does not refuse the tabs already open.
+  - Only `/api/...` is gated. The browser loads `<script>` and `<link>` itself and
+    cannot attach a header, so gating the shell would serve a blank page - and the
+    shell is what carries the token.
+- **A dashboard request cannot smuggle a flag into a publisher.** Anything that
+  builds an argument list from operator input refuses a value that starts with
+  `--` (`isFlagLike` in `scripts/lib/args.mjs`) or passes it as `--flag=value`,
+  because `parseArgs` reads the next token as a value only when it does not start
+  with `--`. `runSiteScript` builds its `cmd.exe` line from a fixed script list for
+  the same reason: `/c` re-parses it.
 - Reads are cached server-side with **two** TTLs, chosen by what is being read.
   Anything that is a round trip to somebody else's infrastructure — a recursive
   bucket listing, a CDN document, a `git`/`wrangler` subprocess, a GitHub release

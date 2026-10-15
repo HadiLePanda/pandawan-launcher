@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { parseArgs, first, listValue } from './args.mjs';
+import { parseArgs, first, isFlagLike, listValue } from './args.mjs';
 
 // `--dry-run=1` used to be stored under the literal key "dry-run=1", so every
 // publisher's `args['dry-run']` read false and a mistyped dry run ran live.
@@ -34,6 +34,23 @@ describe('parseArgs', () => {
 
   it('ignores positional arguments', () => {
     expect(parseArgs(['publish', '--force'])).toEqual({ force: 'true' });
+  });
+});
+
+describe('isFlagLike', () => {
+  it('recognises a value parseArgs would read as a flag', () => {
+    expect(isFlagLike('--force')).toBe(true);
+    expect(isFlagLike('--dry-run')).toBe(true);
+    // Trimmed, because every call site trims its input first.
+    expect(isFlagLike('  --force  ')).toBe(true);
+  });
+
+  it('leaves an ordinary name alone', () => {
+    expect(isFlagLike('example-game')).toBe(false);
+    expect(isFlagLike('stable')).toBe(false);
+    expect(isFlagLike('-single')).toBe(false);
+    expect(isFlagLike('')).toBe(false);
+    expect(isFlagLike(undefined)).toBe(false);
   });
 });
 

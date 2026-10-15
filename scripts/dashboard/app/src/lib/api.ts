@@ -11,6 +11,12 @@
  * and honours `?refresh=1` to force a re-read. Neither header exists on the
  * POST verbs (which run a script) and neither may exist on a server that has
  * not been updated yet, so every field here is optional and absence is normal.
+ *
+ * Every request also carries the token the server served this page with, and the
+ * server refuses a /api/ request without it. That is what stops a page on another
+ * origin from driving the expensive reads behind this panel: such a page cannot
+ * attach a custom header without a preflight the server never answers, and it
+ * cannot read the served page to learn the value.
  */
 
 /** Which of the three states the server reported. Null when it said nothing. */
@@ -69,6 +75,28 @@ function parseAge(header: string | null): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+/** The header the server requires. It is also the name of the meta tag it is in. */
+const TOKEN_HEADER = 'x-dashboard-token';
+
+/**
+ * The headers for one request, with the token this page was served.
+ *
+ * Read from the document rather than cached in a module variable: the value
+ * belongs to the page load, so re-reading it cannot go stale. A page served
+ * before the gate existed has no tag, and the request then goes out without the
+ * header and the server answers with the rebuild command to run.
+ *
+ * Exported because the Services panel posts its own request: one helper means a
+ * new call site cannot forget the token, and the contract test counts them.
+ */
+export function requestHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const token =
+    typeof document === 'undefined'
+      ? null
+      : document.querySelector<HTMLMetaElement>(`meta[name="${TOKEN_HEADER}"]`)?.content;
+  return token ? { [TOKEN_HEADER]: token, ...extra } : extra;
+}
+
 /**
  * GET a JSON endpoint and report what the cache said about it.
  *
@@ -87,7 +115,7 @@ export async function apiGet<T>(
     ? `${pathWithQuery}${pathWithQuery.includes('?') ? '&' : '?'}refresh=1`
     : pathWithQuery;
 
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  const res = await fetch(url, { headers: requestHeaders({ accept: 'application/json' }) });
 
   const cache = parseCacheState(res.headers.get('x-cache'));
   const ageMs = parseAge(res.headers.get('x-cache-age-ms'));
@@ -124,7 +152,7 @@ export async function apiGet<T>(
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: requestHeaders({ 'content-type': 'application/json' }),
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -166,7 +194,7 @@ export async function streamScript(
   try {
     res = await fetch(path, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: requestHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(body),
     });
   } catch (err) {

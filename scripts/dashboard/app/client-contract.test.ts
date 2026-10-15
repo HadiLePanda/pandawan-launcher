@@ -38,6 +38,9 @@ function clientSource(): string {
 
 const client = clientSource();
 
+/** The request-gate rules, so the header the two sides share can be compared. */
+const access = readFileSync(path.join(here, '..', '..', 'lib', 'dashboard-access.mjs'), 'utf8');
+
 describe('the server/client SSE contract', () => {
   it('emits an event for every server event the client understands', () => {
     const emitted = [...new Set([...server.matchAll(/\bsend\('([a-z]+)'/g)].map((m) => m[1]))];
@@ -70,5 +73,40 @@ describe('the server/client endpoint contract', () => {
         `${missing.join('\n  ')}\n\n` +
         `Either the endpoint was renamed, or the caller was never updated.`
     ).toEqual([]);
+  });
+});
+
+describe('the server/client request-token contract', () => {
+  it('sends the token on every fetch the client makes', () => {
+    const fetches = [...client.matchAll(/\bfetch\(/g)].length;
+    // Uses, not call sites: the declaration is the one occurrence that is not a
+    // request, and a call with no extra headers is still a request that needs it.
+    const declared = [...client.matchAll(/function requestHeaders\(/g)].length;
+    const uses = [...client.matchAll(/requestHeaders\(/g)].length - declared;
+    expect(fetches).toBeGreaterThan(0);
+    expect(declared).toBe(1);
+
+    expect(
+      uses,
+      `dashboard.mjs refuses a /api/ request that carries no token, so a fetch ` +
+        `built without requestHeaders() fails with a 403 that reads like a broken ` +
+        `route. ${fetches} fetch call(s), ${uses} carrying the token.`
+    ).toBe(fetches);
+  });
+
+  it('agrees with the server on the header name', () => {
+    const serverHeader = /export const TOKEN_HEADER = '([^']+)'/.exec(access)?.[1];
+    const clientHeader = /const TOKEN_HEADER = '([^']+)'/.exec(client)?.[1];
+    expect(serverHeader).toBeTruthy();
+    expect(clientHeader).toBe(serverHeader);
+  });
+
+  it('reads the token from the tag the server injects', () => {
+    expect(access).toContain('meta name="${TOKEN_HEADER}"');
+    expect(client).toContain('meta[name="${TOKEN_HEADER}"]');
+  });
+
+  it('keeps the gate wired into the request handler', () => {
+    expect(server).toContain('rejectWithoutToken(req, res, url.pathname)');
   });
 });

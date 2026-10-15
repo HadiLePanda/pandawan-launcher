@@ -9,15 +9,18 @@
  * loopback. It is safe today because (1) scripts/ is not in the shipped bundle
  * and bundle_contents_tests.rs enforces that, (2) it binds 127.0.0.1 and rejects
  * any request whose Host header is not loopback, which also blocks DNS
- * rebinding, and (3) credentials come from a gitignored .env. Do not loosen the
- * bind address or the host check, and do not add a deploy mode: remote access
- * would need real authentication and a TLS terminator first.
+ * rebinding, (3) credentials come from a gitignored .env, and (4) every /api/
+ * request must carry the token the served page was given, which is what stops a
+ * page on another origin from driving reads whose answers it cannot read. Do not
+ * loosen the bind address, the host check or the token gate, and do not add a
+ * deploy mode: remote access would need real authentication and a TLS terminator
+ * first.
  */
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -41,6 +44,12 @@ import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-field
 // The one semver bump rule, shared with release.mjs so the version the panel
 // proposes cannot drift from the version a release writes.
 import { bumpVersion } from './lib/version.mjs';
+// The request gate is pure and unit-tested: this file holds the credentials and
+// boots a server, so what a request is *allowed* to be cannot be checked here.
+import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './lib/dashboard-access.mjs';
+// The flag prefix rule is the parser's own, so a value that would be read as a
+// flag is refused by the same definition parseArgs uses.
+import { isFlagLike } from './lib/args.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
 // Killing a tree and reading the manifest are shared with the watchdog, so what
 // the dashboard records and what cleans up after it cannot drift apart.
@@ -109,6 +118,47 @@ const PORT = portArg > -1 ? Number(process.argv[portArg + 1]) : 4400;
 
 const PLATFORMS = ['windows', 'macos', 'linux'];
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
+
+/**
+ * The token every /api/ request must carry, and the file it lives in.
+ *
+ * The bind address and the Host check stop a remote host, but not a page the
+ * operator visits: a simple cross-origin GET is sent with no preflight and no
+ * Origin this server is entitled to trust, and its Host header still reads
+ * 127.0.0.1. Such a request is not free - /api/launcher/status runs synchronous
+ * gh calls, and ?refresh=1 re-arms a bucket listing or a wrangler check - so the
+ * page could hold the panel down and spend the GitHub and Cloudflare quotas. A
+ * custom header cannot be attached without a preflight, and this server answers
+ * no preflight, so the header is the gate.
+ *
+ * Stable across restarts rather than minted per run: a token that changed would
+ * refuse every open tab the moment the server was restarted. Override with
+ * DASHBOARD_TOKEN to rotate it, or to script a request against the panel.
+ */
+const tokenPath = path.join(os.tmpdir(), 'pandawan-dashboard-token');
+const TOKEN = dashboardToken();
+
+function dashboardToken() {
+  const fromEnv = String(process.env.DASHBOARD_TOKEN ?? '').trim();
+  if (fromEnv) return fromEnv;
+
+  try {
+    const existing = readFileSync(tokenPath, 'utf8').trim();
+    if (existing) return existing;
+  } catch {
+    // No file yet, or it was cleaned away. Mint one below.
+  }
+
+  const minted = randomBytes(32).toString('hex');
+  try {
+    writeFileSync(tokenPath, `${minted}\n`, { mode: 0o600 });
+  } catch (err) {
+    // The token still gates this run. The next start mints another one, which
+    // costs an open tab a reload and nothing else.
+    console.warn(`Could not write ${tokenPath}: ${String(err?.message ?? err)}`);
+  }
+  return minted;
+}
 
 // Staged artwork lives under dist/ so a rebuild clears it; a stale file would be
 // offered as the operator's current choice.
@@ -757,6 +807,17 @@ function siteAbsentResponse(res) {
 }
 
 /**
+ * The npm scripts the Website panel may run, by the name its route passes.
+ *
+ * A set rather than a pass-through string: cmd.exe /c re-parses its command line,
+ * so a name that came from anywhere but this list could append its own command
+ * with `&`. There is deliberately no argument list either - neither script takes
+ * one, and a parameter nothing passes is a parameter that would be joined into
+ * that command line the day something does.
+ */
+const SITE_SCRIPTS = new Set(['verify', 'deploy']);
+
+/**
  * Run an npm script in the site repo, streaming the same SSE contract as
  * runScript: output, error, done({code}). runScript is not reused because it
  * spawns `node <script>` in THIS repo, and the site is a separate repository with
@@ -765,10 +826,15 @@ function siteAbsentResponse(res) {
  * cmd.exe rather than a direct npm spawn: spawning a `.cmd` with shell:false
  * raises EINVAL on current Node (the fix for the CVE-2024-27998
  * argument-injection class), and the shell resolves npm through PATHEXT. The
- * command is a fixed string built here - the script name comes from the route,
- * never the request body - so nothing in it can be injected.
+ * command line is built from SITE_SCRIPTS, so nothing in it can be injected.
  */
-function runSiteScript(script, args, res) {
+function runSiteScript(script, res) {
+  if (!SITE_SCRIPTS.has(script)) {
+    res.writeHead(500, { 'content-type': 'text/plain' });
+    res.end(`No site script named ${script}.`);
+    return;
+  }
+
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
@@ -778,7 +844,7 @@ function runSiteScript(script, args, res) {
   const send = (event, data) => res.write(`event: ${event}\ndata: ${data}\n\n`);
 
   const comspec = process.env.ComSpec || 'cmd.exe';
-  const commandLine = ['npm', 'run', script, ...args].join(' ');
+  const commandLine = `npm run ${script}`;
   const child = spawn(comspec, ['/d', '/s', '/c', commandLine], {
     cwd: siteRoot,
     env: process.env,
@@ -842,6 +908,32 @@ function rejectCrossOrigin(req, res) {
   }
 
   return false;
+}
+
+/**
+ * Refuse a request that does not carry this run's token.
+ *
+ * The Host check above stops a remote host and the Origin check stops a
+ * cross-origin write, but neither stops a cross-origin READ: a page the operator
+ * visits can send a simple GET to loopback with no preflight, and that request's
+ * Origin and Host are ones this server is not entitled to trust. A read is not
+ * free here - /api/launcher/status runs synchronous gh calls, and ?refresh=1
+ * re-arms a bucket listing or a wrangler check - so the page could hold the panel
+ * down and spend the GitHub and Cloudflare quotas while CORS quietly hides the
+ * answers from it. Only a header such a page cannot attach tells the panel apart
+ * from it, and the panel is served the value.
+ */
+function rejectWithoutToken(req, res, pathname) {
+  if (!requiresToken(pathname)) return false;
+  if (tokenMatches(TOKEN, req.headers[TOKEN_HEADER])) return false;
+
+  res.writeHead(403, { 'content-type': 'text/plain' });
+  res.end(
+    `This request carried no ${TOKEN_HEADER} header. Reload the dashboard page. ` +
+      'If it keeps refusing, the UI is older than the server: run ' +
+      '`npm run dashboard:build`, then reload.'
+  );
+  return true;
 }
 
 /**
@@ -1240,6 +1332,13 @@ async function serveAppDist(res, pathname) {
     } catch {
       return false;
     }
+  }
+
+  // The shell carries the request token, so the panel can send it back. Injected
+  // on the way out rather than stored in the build, so the gate also covers a
+  // build that predates it.
+  if (path.basename(file) === 'index.html') {
+    body = Buffer.from(injectToken(body.toString('utf8'), TOKEN), 'utf8');
   }
 
   res.writeHead(200, {
@@ -1773,6 +1872,7 @@ const server = http.createServer(async (req, res) => {
   if (rejectRebinding(req, res)) return;
 
   const url = new URL(req.url, 'http://localhost');
+  if (rejectWithoutToken(req, res, url.pathname)) return;
 
   if (url.pathname === '/api/inventory' && req.method === 'GET') {
     try {
@@ -1885,7 +1985,7 @@ const server = http.createServer(async (req, res) => {
     const channel = String(payload.channel ?? '').trim();
     // A bare `--token` is a flag to prune-builds, so a value starting with one
     // would silently become a different option.
-    if (!gameId || gameId.startsWith('--') || channel.startsWith('--')) {
+    if (!gameId || isFlagLike(gameId) || isFlagLike(channel)) {
       res.writeHead(400).end('game and channel must be names, not flags');
       return;
     }
@@ -2128,9 +2228,18 @@ const server = http.createServer(async (req, res) => {
 
     // The argument list is assembled from named fields rather than forwarded, for
     // the same reason prune does it: the form must not pass through a flag the UI
-    // never offers.
-    const argv = ['--game-id', String(payload.gameId ?? '').trim()];
-    argv.push('--channel', String(payload.channel ?? '').trim());
+    // never offers. An id or a channel that begins with `--` would do exactly
+    // that, because parseArgs reads it as an option rather than as a value.
+    const gameId = String(payload.gameId ?? '').trim();
+    const channel = String(payload.channel ?? '').trim();
+    if (!gameId || isFlagLike(gameId) || isFlagLike(channel)) {
+      res.writeHead(400).end('game and channel must be names, not flags');
+      return;
+    }
+
+    // Every value travels as `--flag=value`, so a value that begins with `--` is
+    // still a value: a description is free to start with one.
+    const argv = [`--game-id=${gameId}`, `--channel=${channel}`];
     if (payload.dryRun) argv.push('--dry-run');
 
     for (const field of FIELDS) {
@@ -2143,7 +2252,7 @@ const server = http.createServer(async (req, res) => {
       // An emptied text field clears the value; an emptied list field does not,
       // since a comma list cannot express "no genres" and [] would erase the field.
       if (text === '' && field.list) continue;
-      argv.push(`--${field.flag}`, text);
+      argv.push(`--${field.flag}=${text}`);
     }
 
     for (const [flag, key] of [
@@ -2154,7 +2263,7 @@ const server = http.createServer(async (req, res) => {
       if (typeof file !== 'string' || !file.trim()) continue;
       const localPath = resolveStagedArtwork(res, file);
       if (!localPath) return;
-      argv.push(`--${flag}`, localPath);
+      argv.push(`--${flag}=${localPath}`);
     }
 
     // A metadata publish rewrites the catalog entry on the CDN, so the metadata
@@ -2627,6 +2736,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // An id that begins with `--` would be read as an option rather than as the
+    // value of one, which is how a flag the UI never offers gets through.
+    if (ops.some((one) => isFlagLike(one.id))) {
+      res.writeHead(400).end('the item id must be a name, not a flag');
+      return;
+    }
+
     const argv = [];
     if (payload.dryRun) argv.push('--dry-run');
     for (const one of ops) {
@@ -2634,25 +2750,25 @@ const server = http.createServer(async (req, res) => {
       // ("update"), and a token without the prefix is not an argument at all:
       // parseArgs skips it silently, so the publisher reports "say what to do"
       // instead of the edit that was requested.
-      if (one.op === 'move') argv.push('--move', one.id, one.delta === -1 ? '--up' : '--down');
-      else if (one.op === 'delete') argv.push('--delete', one.id);
+      if (one.op === 'move') argv.push(`--move=${one.id}`, one.delta === -1 ? '--up' : '--down');
+      else if (one.op === 'delete') argv.push(`--delete=${one.id}`);
       // Create carries its id as a separate --id flag rather than as the value of
       // --create: written bare, --create has no positional value to fall back on,
       // and parseArgs would read the following flag as a boolean and lose the id.
-      else if (one.op === 'create') argv.push('--create', '--id', one.id);
-      else argv.push(`--${one.op}`, one.id);
+      else if (one.op === 'create') argv.push('--create', `--id=${one.id}`);
+      else argv.push(`--${one.op}=${one.id}`);
     }
     // Field flags go only with an update or create; --delete and --move take none.
     const values = ops[0].values;
     if (values) {
       for (const field of NEWS_FIELDS) {
         if (values[field.flag] === undefined) continue;
-        argv.push(`--${field.flag}`, String(values[field.flag]));
+        argv.push(`--${field.flag}=${String(values[field.flag])}`);
       }
       if (typeof payload.imageFile === 'string' && payload.imageFile.trim()) {
         const localPath = resolveStagedArtwork(res, payload.imageFile);
         if (!localPath) return;
-        argv.push('--image-file', localPath);
+        argv.push(`--image-file=${localPath}`);
       }
     }
 
@@ -2854,7 +2970,7 @@ const server = http.createServer(async (req, res) => {
     // on the bucket" before a player clicks it. Its real network requests to R2 are
     // the point, not a side effect.
     invalidateCache('/api/website');
-    runSiteScript('verify', [], res);
+    runSiteScript('verify', res);
     return;
   }
 
@@ -2895,7 +3011,7 @@ const server = http.createServer(async (req, res) => {
     // wrangler only reads the checkout and uploads dist; the dashboard writes
     // nothing to the site repo.
     invalidateCache('/api/website');
-    runSiteScript('deploy', [], res);
+    runSiteScript('deploy', res);
     return;
   }
 
@@ -2963,6 +3079,9 @@ server.listen(PORT, '127.0.0.1', () => {
       ? 'UI: React build (scripts/dashboard/app/dist)'
       : 'UI: NOT BUILT - run `npm run dashboard:build`'
   );
+  // Named at startup because a request refused for a missing token is otherwise
+  // indistinguishable from a broken route.
+  console.log(`/api/ requests need the ${TOKEN_HEADER} header; token file: ${tokenPath}`);
   // The effective values are printed because they are what an operator needs when
   // a panel looks stale.
   console.log(

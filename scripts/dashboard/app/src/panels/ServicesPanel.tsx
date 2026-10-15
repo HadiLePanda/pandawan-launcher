@@ -22,7 +22,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, Play, RefreshCw, Square } from 'lucide-react';
-import { apiGet, messageOf, type CacheState } from '@/lib/api';
+import { apiGet, messageOf, requestHeaders, type CacheState } from '@/lib/api';
 import type { ServiceStatus } from '@/types/api';
 import { DataAge } from '@components/ui';
 import { cx } from './cx';
@@ -116,7 +116,13 @@ export default function ServicesPanel() {
     setBusyId(id);
     setActionError(null);
     try {
-      const res = await fetch(`${endpoint}?id=${encodeURIComponent(id)}`, { method: 'POST' });
+      const res = await fetch(`${endpoint}?id=${encodeURIComponent(id)}`, {
+        method: 'POST',
+        // The server refuses an /api/ request without the token, and this call
+        // does not go through apiPost: it answers with a plain string on a
+        // refusal, which that helper would raise as a JSON parse failure.
+        headers: requestHeaders(),
+      });
       // Read as text first: a refusal can be a plain string (an unknown id is a
       // 404 text body), and res.json() on that throws into the catch, which
       // would render the action as a silent no-op - the failure-as-empty-list
