@@ -121,6 +121,15 @@ for (const spec of asList(args.platform)) {
   manifestArgs.push('--platform', spec);
 }
 
+// The flat shape has no --platform to carry a directory, so the generator needs
+// the input directory itself. Without this the flat publish - which this script
+// accepts at the top and documents in GAME_CATALOG.md - always died inside the
+// generator with "--input-dir is required when no --platform is given", after
+// printing the source directory it had already validated.
+if (inputDir && platformSpecs.length === 0) {
+  manifestArgs.push('--input-dir', inputDir);
+}
+
 // Extra exclude patterns from the caller. The backup folder, Unity's build report
 // and the zip beside a Mac export are already excluded by the generator's
 // defaults.
