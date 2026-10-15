@@ -27,24 +27,30 @@ const MAX_RETRIES: u32 = 3;
 const INITIAL_RETRY_DELAY_MS: u64 = 500;
 
 impl DownloadManager {
-    pub fn new(max_concurrent: usize, speed_limit: Option<u64>) -> Self {
+    /// Build the manager, or report why there is none.
+    ///
+    /// Building the client is the one fallible step here: reqwest returns an error
+    /// when its TLS backend cannot initialise, and there is no client to fall back
+    /// to. It used to `expect` that, so the failure surfaced as a panic at startup
+    /// rather than as something the launcher could say.
+    pub fn new(max_concurrent: usize, speed_limit: Option<u64>) -> Result<Self, LauncherError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(300))
             .pool_max_idle_per_host(10)
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|err| LauncherError::HttpClient(err.to_string()))?;
 
         let rate_limiter = speed_limit
             .filter(|l| *l > 0)
             .map(|l| Arc::new(RateLimiter::new(l)));
 
-        Self {
+        Ok(Self {
             client,
             max_concurrent,
             speed_limit,
             cancel_token: Arc::new(AtomicBool::new(false)),
             rate_limiter,
-        }
+        })
     }
 
     /// Replace the limits a future batch will run under.

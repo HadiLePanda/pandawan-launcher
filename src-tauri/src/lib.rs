@@ -42,7 +42,13 @@ struct RunningProcess {
 }
 
 impl LauncherState {
-    async fn new(app_handle: &AppHandle) -> Self {
+    /// Build the state the commands read, or report why the app cannot run.
+    ///
+    /// The download manager is the only fallible part here, and there is nothing to
+    /// fall back to when its HTTP client cannot be built: a launcher that cannot
+    /// download has no job. Returning the reason puts that at startup, where it can
+    /// be reported, instead of in a panic the user has to guess at.
+    async fn new(app_handle: &AppHandle) -> Result<Self, LauncherError> {
         let app_data_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| {
             dirs::data_local_dir()
                 .unwrap_or_default()
@@ -53,15 +59,27 @@ impl LauncherState {
 
         let settings = load_settings(&app_data_dir).await.unwrap_or_default();
 
-        Self {
+        Ok(Self {
             patch_manager: Arc::new(PatchManager::new(
                 settings.max_concurrent_downloads,
                 settings.max_download_speed,
-            )),
+            )?),
             settings: Arc::new(Mutex::new(settings)),
             running_games: Arc::new(Mutex::new(HashMap::new())),
-        }
+        })
     }
+}
+
+/// The folder installs go into when the setting is empty.
+///
+/// One definition, read by install, verify, launch, uninstall and the folder
+/// button. A second copy of "the games root" is how a check ends up validating
+/// against a different root than the one that wrote the files.
+fn games_root(settings: &LauncherSettings) -> PathBuf {
+    settings
+        .games_install_path
+        .clone()
+        .unwrap_or_else(get_default_games_path)
 }
 
 fn get_default_games_path() -> PathBuf {
@@ -227,10 +245,7 @@ async fn install_game(
 
     let allowed_root = {
         let settings = state.settings.lock().await;
-        settings
-            .games_install_path
-            .clone()
-            .unwrap_or_else(get_default_games_path)
+        games_root(&settings)
     };
     let install_dir = allowed_root.join(&manifest.game_id);
 
@@ -303,10 +318,7 @@ async fn verify_game(
 ) -> Result<patch::VerificationResult, LauncherError> {
     let allowed_root = {
         let settings = state.settings.lock().await;
-        settings
-            .games_install_path
-            .clone()
-            .unwrap_or_else(get_default_games_path)
+        games_root(&settings)
     };
     assert_path_inside_root(&install_path, &allowed_root)?;
 
@@ -341,10 +353,7 @@ async fn launch_game(
     // configured games root first.
     let allowed_root = {
         let settings = state.settings.lock().await;
-        settings
-            .games_install_path
-            .clone()
-            .unwrap_or_else(get_default_games_path)
+        games_root(&settings)
     };
     assert_path_inside_root(&installation.install_path, &allowed_root)?;
 
@@ -511,10 +520,7 @@ async fn uninstall_game(
 
     let allowed_root = {
         let settings = state.settings.lock().await;
-        settings
-            .games_install_path
-            .clone()
-            .unwrap_or_else(get_default_games_path)
+        games_root(&settings)
     };
 
     if let Some(installation) = load_installation(&app_data_dir, &game_id)? {
@@ -619,6 +625,30 @@ async fn mark_tray_hint_shown(
 #[specta::specta]
 fn get_default_install_folder() -> PathBuf {
     get_default_games_path()
+}
+
+/// Open the games folder in the system file manager.
+///
+/// Rust-side rather than the frontend's shell plugin, on purpose. That plugin
+/// validates the path against the allowlist regex in `tauri.conf.json`, and a regex
+/// can only describe the app's own log folder, so opening the install folder was
+/// refused and the button did nothing the user could see. The path is not passed in
+/// either: it is the root the backend already resolves for install, launch and
+/// uninstall, so there is nothing for a caller to point somewhere else.
+#[tauri::command]
+#[specta::specta]
+async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), LauncherError> {
+    let root = {
+        let settings = state.settings.lock().await;
+        games_root(&settings)
+    };
+
+    // Before the first install there is nothing there, and the shell reports a
+    // missing path as a failure rather than opening an empty window.
+    std::fs::create_dir_all(&root)?;
+
+    open::that_detached(&root)
+        .map_err(|err| LauncherError::Other(format!("Could not open {}: {err}", root.display())))
 }
 
 /// Select folder using dialog.
@@ -773,6 +803,7 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             mark_tray_hint_shown,
             select_install_folder,
             get_default_install_folder,
+            open_games_folder,
             cancel_operation,
             get_app_data_dir,
             set_launcher_update_available,
@@ -817,10 +848,10 @@ pub fn run() {
             builder.mount_events(app);
 
             let handle = app.handle().clone();
-            tauri::async_runtime::block_on(async move {
-                let state = LauncherState::new(&handle).await;
-                handle.manage(state);
-            });
+            // A state that cannot be built means no downloads at all, so say so and
+            // stop rather than starting a launcher that cannot install anything.
+            let state = tauri::async_runtime::block_on(LauncherState::new(&handle))?;
+            handle.manage(state);
 
             // Seed the synchronous close policy from the loaded settings, then
             // create the tray. The tray must exist even on the first run, when

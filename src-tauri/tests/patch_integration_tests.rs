@@ -714,7 +714,7 @@ async fn test_patch_preserves_metadata_when_up_to_date() {
     };
     save_installation(&app_data_dir, &previous).unwrap();
 
-    let manager = PatchManager::new(4, None);
+    let manager = PatchManager::new(4, None).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     let updated = manager
         .patch_game(
@@ -806,7 +806,7 @@ async fn test_patch_preserves_metadata_across_update_download() {
         size_bytes: None,
     };
 
-    let manager = PatchManager::new(4, None);
+    let manager = PatchManager::new(4, None).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     let updated = manager
         .patch_game(manifest, install_dir, &app_data_dir, server.url(), channel)

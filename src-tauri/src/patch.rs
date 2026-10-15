@@ -23,9 +23,11 @@ pub struct PatchManager {
 }
 
 impl PatchManager {
-    pub fn new(max_concurrent: usize, speed_limit: Option<u64>) -> Self {
-        Self {
-            download_manager: RwLock::new(DownloadManager::new(max_concurrent, speed_limit)),
+    /// Build the manager, or report why there is none: the download manager owns
+    /// the HTTP client, and that is the one part of this that can fail.
+    pub fn new(max_concurrent: usize, speed_limit: Option<u64>) -> Result<Self, LauncherError> {
+        Ok(Self {
+            download_manager: RwLock::new(DownloadManager::new(max_concurrent, speed_limit)?),
             state: Arc::new(Mutex::new(PatchStatus {
                 game_id: String::new(),
                 current_version: String::new(),
@@ -33,7 +35,7 @@ impl PatchManager {
                 status: PatchState::Idle,
                 progress: PatchProgress::default(),
             })),
-        }
+        })
     }
 
     pub async fn check_for_updates(
@@ -934,7 +936,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_patch_manager_new() {
-        let manager = PatchManager::new(4, Some(1024));
+        let manager = PatchManager::new(4, Some(1024)).expect("the HTTP client builds");
         let status = manager.get_status().await;
 
         assert_eq!(status.status, PatchState::Idle);
@@ -947,7 +949,7 @@ mod tests {
         let install_path = temp_dir.path().join("install");
 
         let manifest = create_test_manifest();
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
 
         let files_to_update = manager
             .check_for_updates(&manifest, &install_path)
@@ -991,7 +993,7 @@ mod tests {
         manifest.files[1].hash = config_hash;
         manifest.files[1].size = config_content.len() as u64;
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let files_to_update = manager
             .check_for_updates(&manifest, &install_path)
             .await
@@ -1020,7 +1022,7 @@ mod tests {
         manifest.files.retain(|f| f.path == "game.exe");
         manifest.files[0].hash = correct_hash;
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let files_to_update = manager
             .check_for_updates(&manifest, &install_path)
             .await
@@ -1052,7 +1054,7 @@ mod tests {
             compress: None,
         }];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .verify_installation(&manifest, install_path, None)
             .await
@@ -1094,7 +1096,7 @@ mod tests {
             },
         ];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .verify_installation(&manifest, install_path, None)
             .await
@@ -1125,7 +1127,7 @@ mod tests {
             compress: None,
         }];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .verify_installation(&manifest, install_path, None)
             .await
@@ -1145,7 +1147,7 @@ mod tests {
         let mut manifest = create_test_manifest();
         manifest.files = vec![];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .verify_installation(&manifest, install_path, None)
             .await
@@ -1196,7 +1198,7 @@ mod tests {
             size_bytes: None,
         };
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         manager
             .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
             .await
@@ -1216,7 +1218,7 @@ mod tests {
 
         let manifest = create_test_manifest();
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         manager
             .cleanup_orphaned_files(&manifest, &install_path, None)
             .await
@@ -1259,7 +1261,7 @@ mod tests {
             size_bytes: None,
         };
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         manager
             .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
             .await
@@ -1282,7 +1284,7 @@ mod tests {
             compress: None,
         }];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager.check_for_updates(&manifest, &install_path).await;
         assert!(result.is_err());
     }
@@ -1301,7 +1303,7 @@ mod tests {
             compress: None,
         }];
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .verify_installation(&manifest, install_path, None)
             .await;
@@ -1319,7 +1321,7 @@ mod tests {
 
         let manifest = create_test_manifest();
 
-        let manager = PatchManager::new(4, None);
+        let manager = PatchManager::new(4, None).expect("the HTTP client builds");
         let result = manager
             .cleanup_orphaned_files(&manifest, &install_path, Some(&previous_files))
             .await;

@@ -288,7 +288,10 @@ function GeneralSettings({ settings, onChange }: TabProps) {
   const handleOpenFolder = async () => {
     if (!resolvedPath) return;
     try {
-      await open(resolvedPath);
+      // The backend opens the root it resolves from the settings. The shell
+      // plugin cannot: its allowlist describes the app's log folder only, so a
+      // chosen install folder was refused and this button did nothing.
+      await gameService.openGamesFolder();
     } catch (err) {
       logger.error('Failed to open install folder', { path: resolvedPath, error: String(err) });
     }

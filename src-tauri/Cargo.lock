@@ -2742,6 +2742,7 @@ dependencies = [
  "hex",
  "minisign-verify",
  "mockito",
+ "open",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

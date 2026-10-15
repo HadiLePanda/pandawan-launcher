@@ -130,16 +130,16 @@ fn test_estimated_time_remaining() {
 
 #[test]
 fn test_download_manager_creation() {
-    let manager = DownloadManager::new(4, Some(1024));
+    let manager = DownloadManager::new(4, Some(1024)).expect("the HTTP client builds");
     assert!(!manager.is_cancelled());
 
-    let manager = DownloadManager::new(8, None);
+    let manager = DownloadManager::new(8, None).expect("the HTTP client builds");
     assert!(!manager.is_cancelled());
 }
 
 #[test]
 fn test_download_manager_cancel_operations() {
-    let manager = DownloadManager::new(4, None);
+    let manager = DownloadManager::new(4, None).expect("the HTTP client builds");
 
     // Initially not cancelled
     assert!(!manager.is_cancelled());
@@ -165,7 +165,7 @@ fn test_download_manager_cancel_operations() {
 #[test]
 fn test_download_manager_estimated_time() {
     // With speed limit
-    let manager = DownloadManager::new(4, Some(1000));
+    let manager = DownloadManager::new(4, Some(1000)).expect("the HTTP client builds");
     assert_eq!(
         manager.estimated_download_time(1000),
         Duration::from_secs(1)
@@ -180,14 +180,14 @@ fn test_download_manager_estimated_time() {
     );
 
     // Without speed limit (unlimited)
-    let manager = DownloadManager::new(4, None);
+    let manager = DownloadManager::new(4, None).expect("the HTTP client builds");
     assert_eq!(
         manager.estimated_download_time(1_000_000_000),
         Duration::from_secs(0)
     );
 
     // With zero speed limit
-    let manager = DownloadManager::new(4, Some(0));
+    let manager = DownloadManager::new(4, Some(0)).expect("the HTTP client builds");
     assert_eq!(
         manager.estimated_download_time(1000),
         Duration::from_secs(0)
@@ -334,7 +334,7 @@ fn test_rate_limiting_various_speeds() {
     // Estimated time is a pure function of the configured limit, so it is
     // asserted against the manager rather than recomputed here.
     for (size, limit, expected_seconds) in [(1000u64, 500u64, 2.0), (5000, 1000, 5.0)] {
-        let manager = DownloadManager::new(4, Some(limit));
+        let manager = DownloadManager::new(4, Some(limit)).expect("the HTTP client builds");
         let time = manager.estimated_download_time(size).as_secs_f64();
         assert!(
             (time - expected_seconds).abs() < 0.01,
@@ -474,7 +474,7 @@ fn test_zero_and_edge_values() {
 
 #[test]
 fn test_download_manager_multiple_cancels() {
-    let manager = DownloadManager::new(4, None);
+    let manager = DownloadManager::new(4, None).expect("the HTTP client builds");
 
     // Multiple cancel/resets should be stable
     for _ in 0..10 {
@@ -745,7 +745,7 @@ async fn test_global_speed_limit_across_concurrent_downloads() {
     ];
 
     // 20 KB at 10 KB/s should take at least ~2 seconds if the limit is global.
-    let dm = DownloadManager::new(2, Some(10_000));
+    let dm = DownloadManager::new(2, Some(10_000)).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
 
     let start = std::time::Instant::now();
@@ -782,7 +782,7 @@ async fn test_hash_mismatch_removes_corrupt_file() {
     let temp_dir = temp_dir();
     let dest_path = temp_dir.path().join("corrupt.bin");
 
-    let dm = DownloadManager::new(4, None);
+    let dm = DownloadManager::new(4, None).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     let wrong_hash = "0".repeat(64);
     let result = dm
@@ -826,7 +826,7 @@ async fn test_download_resume_with_200_ok_truncates_existing_partial() {
     let dest_path = temp_dir.path().join("file.bin");
     fs::write(&dest_path, b"partial ").unwrap();
 
-    let dm = DownloadManager::new(4, None);
+    let dm = DownloadManager::new(4, None).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     dm.download_file(
         &format!("{}/file", server.url()),
@@ -866,7 +866,7 @@ async fn test_download_resume_with_206_partial_appends_existing_partial() {
     let dest_path = temp_dir.path().join("file.bin");
     fs::write(&dest_path, partial).unwrap();
 
-    let dm = DownloadManager::new(4, None);
+    let dm = DownloadManager::new(4, None).expect("the HTTP client builds");
     let channel: Channel<DownloadEvent> = Channel::new(|_| Ok(()));
     dm.download_file(
         &format!("{}/file", server.url()),

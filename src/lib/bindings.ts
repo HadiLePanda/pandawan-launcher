@@ -65,6 +65,8 @@ export const commands = {
   getDefaultInstallFolder: () =>
     typedError<string, LauncherError>(__TAURI_INVOKE('get_default_install_folder')),
 
+  openGamesFolder: () => typedError<void, LauncherError>(__TAURI_INVOKE('open_games_folder')),
+
   cancelOperation: () => typedError<void, LauncherError>(__TAURI_INVOKE('cancel_operation')),
 
   getAppDataDir: () => typedError<string, LauncherError>(__TAURI_INVOKE('get_app_data_dir')),
@@ -172,6 +174,7 @@ export type LauncherError =
   | { code: 'NotRunning' }
   | { code: 'ExecutableNotFound'; details: { path: string } }
   | { code: 'PathNotAllowed'; details: { path: string } }
+  | { code: 'HttpClient'; details: string }
   | { code: 'Network'; details: string }
   | { code: 'ManifestParse'; details: string }
   | { code: 'Validation'; details: string }

@@ -42,28 +42,40 @@ impl TrayState {
         }))
     }
 
+    /// The lock, ignoring poisoning.
+    ///
+    /// The data is a bool, a flag and a list of ids, so a thread that panicked
+    /// while holding the lock cannot leave anything half-written. Panicking on the
+    /// lock instead would take the app down for a value that is still readable, and
+    /// the close handler, which has no way to report an error, is what reads it.
+    fn data(&self) -> std::sync::MutexGuard<'_, TrayData> {
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     /// The close policy the window handler needs, read synchronously.
     pub fn close_to_tray(&self) -> bool {
-        self.0.lock().unwrap().close_to_tray
+        self.data().close_to_tray
     }
 
     pub fn any_running(&self) -> bool {
-        !self.0.lock().unwrap().running.is_empty()
+        !self.data().running.is_empty()
     }
 
     pub fn add_running(&self, game: RunningGame) {
-        let mut data = self.0.lock().unwrap();
+        let mut data = self.data();
         data.running.retain(|g| g.game_id != game.game_id);
         data.running.push(game);
     }
 
     pub fn remove_running(&self, game_id: &str) {
-        let mut data = self.0.lock().unwrap();
+        let mut data = self.data();
         data.running.retain(|g| g.game_id != game_id);
     }
 
     pub fn set_update_available(&self, available: bool) {
-        self.0.lock().unwrap().update_available = available;
+        self.data().update_available = available;
     }
 }
 
@@ -169,7 +181,7 @@ fn build_menu(app: &AppHandle<Wry>, data: &TrayData) -> tauri::Result<Menu<Wry>>
 pub fn refresh(app: &AppHandle<Wry>) {
     let (tooltip, menu) = {
         let state = app.state::<TrayState>();
-        let data = state.0.lock().unwrap();
+        let data = state.data();
         (tooltip_text(&data), build_menu(app, &data))
     };
 
@@ -186,7 +198,7 @@ pub fn refresh(app: &AppHandle<Wry>) {
 }
 
 fn request_quit(app: &AppHandle<Wry>) {
-    let running = app.state::<TrayState>().0.lock().unwrap().running.len();
+    let running = app.state::<TrayState>().data().running.len();
     if running > 0 {
         // Quitting now would drop the running session's playtime (the launcher
         // owns the waiter that records it), so let the frontend confirm first.

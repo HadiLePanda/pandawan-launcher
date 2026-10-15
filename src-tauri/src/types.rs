@@ -337,6 +337,12 @@ pub enum LauncherError {
     ExecutableNotFound { path: String },
     #[error("Path is outside allowed root")]
     PathNotAllowed { path: String },
+    /// The HTTP client could not be built, which happens before any request
+    /// exists to blame. It had nowhere to go but a panic, so a TLS backend that
+    /// failed to initialise took the whole launcher down at startup with a
+    /// message only a developer could read.
+    #[error("Could not start the downloader: {0}")]
+    HttpClient(String),
     /// These carry the underlying detail. Without `{0}` in the format string
     /// thiserror renders the literal message and discards the payload, so an IO
     /// failure surfaced as a bare "Io" with no indication of what went wrong.
@@ -1294,6 +1300,10 @@ mod tests {
         let cases: Vec<(LauncherError, &str)> = vec![
             (LauncherError::Network("dns failure".into()), "dns failure"),
             (LauncherError::ManifestParse("bad json".into()), "bad json"),
+            (
+                LauncherError::HttpClient("no tls backend".into()),
+                "no tls backend",
+            ),
             (
                 LauncherError::Validation("missing path".into()),
                 "missing path",
