@@ -19,12 +19,14 @@ CI and the signing key never leaves the machine.
 | File                        | What to change              |
 | --------------------------- | --------------------------- |
 | `package.json`              | `"version"`                 |
+| `package-lock.json`         | `"version"` (top level)     |
 | `src-tauri/Cargo.toml`      | `version` under `[package]` |
 | `src-tauri/tauri.conf.json` | `"version"`                 |
 | `src-tauri/Cargo.lock`      | `version` of the app crate  |
 
-`npm run version:set -- 0.2.0` writes all four from `package.json`.
-`npm run version:check` proves they agree, and CI runs the same check.
+`npm run version:set -- 0.2.0` writes all five from `package.json`.
+`npm run version:check` proves they agree, and CI runs the same check. The lock is in
+the list because npm keeps a version of its own there and `npm ci` never rewrites it.
 
 ## Key files you must have
 

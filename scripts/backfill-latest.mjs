@@ -18,6 +18,8 @@ import { NO_CACHE, S3, fail, repoRoot, upload, r2Config } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
 import { CHANNELS } from './lib/metadata-fields.mjs';
+import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { secretKeyPath } from './lib/updater-key.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -79,6 +81,22 @@ if (!Boolean(args.confirm)) {
 
 const outPath = path.join(repoRoot, 'dist', 'latest.json');
 writeFileSync(outPath, `${JSON.stringify(latest, null, 2)}\n`);
+
+// Signed like every other write of a version index: the launcher refuses an index
+// whose signature does not match, so an unsigned backfill would be an index no client
+// reads. Checked before anything is written, so a missing key costs nothing.
+const keyPath = secretKeyPath(repoRoot);
+const keyCheck = checkReleaseKey(keyPath);
+if (!keyCheck.ok) fail(keyCheck.detail);
+
+const signing = signFile(outPath, { repoRoot, keyPath });
+if (!signing.ok) fail(signing.detail);
+
+upload(`${outPath}.sig`, S3.s3Uri(bucket, `${prefix}/latest.json.sig`), {
+  endpoint,
+  cacheControl: NO_CACHE,
+  contentType: 'text/plain',
+});
 
 upload(outPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
   endpoint,

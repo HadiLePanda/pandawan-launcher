@@ -65,14 +65,41 @@ export async function fetchRemoteText(url: string): Promise<string> {
  * bytes, so the check happens on them before they are parsed, and it lives in the
  * backend because that is where the pinned key is.
  *
- * Both documents go through the read cache under their own URLs, so an offline
- * launch still resolves a game from the last signed copy it saw.
+ * The pair is cached as ONE entry, under a key derived from the document's URL. Two
+ * entries would be written one fetch apart and so would expire at different instants,
+ * and the read that refreshed the document while serving the signature from cache
+ * would check new bytes against an old signature and refuse a game that is perfectly
+ * fine. Cached together, the pair is always consistent: both old, or both new.
  */
 async function fetchSigned(remoteUrl: string): Promise<string> {
-  const body = await fetchCachedText(remoteUrl, fetchRemoteText);
-  const signature = await fetchCachedText(`${remoteUrl}.sig`, fetchRemoteText);
-  unwrapResult(await commands.verifyManifestSignature(body, signature));
-  return body;
+  const cached = await fetchCachedText(`${remoteUrl}#signed`, () => fetchSignedPair(remoteUrl));
+  const pair = parseSignedPair(cached) ?? parseSignedPair(await fetchSignedPair(remoteUrl));
+  if (!pair) throw new Error(`Could not read ${remoteUrl} with its signature`);
+
+  unwrapResult(await commands.verifyManifestSignature(pair.body, pair.signature));
+  return pair.body;
+}
+
+/** Both documents as one string, because that is how they are cached. */
+async function fetchSignedPair(remoteUrl: string): Promise<string> {
+  const [body, signature] = await Promise.all([
+    fetchRemoteText(remoteUrl),
+    fetchRemoteText(`${remoteUrl}.sig`),
+  ]);
+  return JSON.stringify({ body, signature });
+}
+
+/** An unreadable cache entry is absent, never a refusal: the caller refetches. */
+function parseSignedPair(text: string): { body: string; signature: string } | null {
+  try {
+    const parsed = JSON.parse(text) as { body?: unknown; signature?: unknown };
+    if (typeof parsed?.body === 'string' && typeof parsed?.signature === 'string') {
+      return { body: parsed.body, signature: parsed.signature };
+    }
+  } catch {
+    // Falls through to null.
+  }
+  return null;
 }
 
 export interface ResolvedCatalog {

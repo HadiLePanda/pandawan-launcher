@@ -34,6 +34,12 @@ dependencies = [
 function fixture({ json = '0.1.0', toml = '0.1.0', lock = '0.1.0' } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'version-'));
   writeFileSync(path.join(root, 'package.json'), `{\n  "name": "x",\n  "version": "${json}"\n}\n`);
+  // The lock repeats the version, so it has to be in the fixture: writeVersion
+  // refuses a file with no version field rather than skipping it.
+  writeFileSync(
+    path.join(root, 'package-lock.json'),
+    `{\n  "name": "x",\n  "version": "${json}",\n  "lockfileVersion": 3\n}\n`
+  );
   mkdirSync(path.join(root, 'src-tauri'), { recursive: true });
   writeFileSync(
     path.join(root, 'src-tauri', 'tauri.conf.json'),
@@ -74,8 +80,21 @@ describe('version reading', () => {
 });
 
 describe('version parity', () => {
-  it('passes when all four files agree', () => {
+  it('passes when every file agrees', () => {
     expect(checkVersions(fixture()).ok).toBe(true);
+  });
+
+  it('fails when the npm lock drifted, which it did once', () => {
+    const root = fixture();
+    // Simulates the state the committed lock was actually in: npm install had not run
+    // since the bump, so the lock still named the previous version.
+    writeFileSync(
+      path.join(root, 'package-lock.json'),
+      `{\n  "name": "x",\n  "version": "0.0.9",\n  "lockfileVersion": 3\n}\n`
+    );
+    const { ok, versions } = checkVersions(root);
+    expect(ok).toBe(false);
+    expect(versions['package-lock.json']).toBe('0.0.9');
   });
 
   it('fails when the lock has drifted, which is how a release used to slip', () => {
@@ -92,10 +111,10 @@ describe('version parity', () => {
 });
 
 describe('version writing', () => {
-  it('writes all four and leaves the rest of the files alone', () => {
+  it('writes every file and leaves the rest of them alone', () => {
     const root = fixture();
     const { changed } = writeVersion('0.2.0', root);
-    expect(changed).toHaveLength(4);
+    expect(changed).toHaveLength(5);
     expect(checkVersions(root).ok).toBe(true);
     expect(readFileSync(path.join(root, 'src-tauri', 'Cargo.toml'), 'utf8')).toContain(
       'tauri = { version = "2.0.0" }'
