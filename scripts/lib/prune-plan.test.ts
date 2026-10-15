@@ -57,9 +57,9 @@ describe('planPrune', () => {
     // and break every install. latest.json is the per-platform pointer, and
     // deleting it leaves every client unable to resolve its version.
     //
-    // The signatures are in the same list for the sharpest version of that reason:
-    // the launcher refuses a document whose signature is missing, so sweeping one
-    // takes the game away from every player rather than only its history.
+    // The signatures are in the same list for the same reason, sharper: the launcher
+    // refuses a document whose signature is missing, so sweeping one takes the game away
+    // from every player.
     const flat = [
       key('manifest.json'),
       key('manifest.json.sig'),

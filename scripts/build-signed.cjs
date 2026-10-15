@@ -128,11 +128,9 @@ sync.on('close', (code) => {
 });
 
 /**
- * Say whether the installer carries a code-signing signature.
- *
- * Not fatal on purpose: this signature needs a certificate, so it is a purchase rather
- * than a step. Without it Windows shows an unknown publisher on the SmartScreen prompt.
- * Printed at the end of every local build, which is where the Windows installer is made.
+ * Say whether the installer carries a code-signing signature. Not fatal on purpose: this
+ * signature needs a certificate, so it is a purchase rather than a step. Without it Windows
+ * shows an unknown publisher on the SmartScreen prompt.
  */
 function reportCodeSigning() {
   if (process.platform !== 'win32') return;

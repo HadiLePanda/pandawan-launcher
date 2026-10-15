@@ -2,12 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * The CSP is the one place the app's own configuration has to name the CDN host, and a
- * wrong host there breaks every image with nothing in the log to explain it. So the host
- * is checked against the other two places that know it, and the policy is checked for the
- * two directives that make it narrower than `https:`.
- */
+/** A wrong CDN host in the CSP breaks every image with nothing in the log to explain it,
+ * so the host is checked against the other two places that know it. */
 
 const config = JSON.parse(
   readFileSync(resolve(__dirname, '../../src-tauri/tauri.conf.json'), 'utf-8')
@@ -39,9 +35,8 @@ describe('the production content security policy', () => {
   });
 
   it('does not allow any https host for images or connections', () => {
-    // A bare `https:` in either directive means a renderer that is somehow running
-    // script can post to anywhere. The dev policy keeps it on purpose: pointing
-    // VITE_CDN_ORIGIN at a scratch bucket or a local server is a supported workflow.
+    // A bare `https:` means a renderer that is somehow running script can post to
+    // anywhere. The dev policy keeps it on purpose, for a scratch bucket.
     for (const directive of ['img-src', 'connect-src']) {
       const value = new RegExp(`${directive} ([^;]+)`).exec(csp)?.[1] ?? '';
       expect(value.split(/\s+/), `${directive} must not allow every https host`).not.toContain(

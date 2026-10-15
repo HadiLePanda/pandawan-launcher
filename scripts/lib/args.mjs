@@ -29,12 +29,9 @@ export function parseArgs(argv) {
 }
 
 /**
- * Whether a value would be read as a flag rather than as the value of one.
- *
- * parseArgs takes the next token as a value only when it does not start with
- * `--`, so a name or an id of `--force` stops being a value and becomes an option
- * the caller never chose. Anything that builds an argument list from operator
- * input has to refuse such a value, or pass it as `--flag=value`.
+ * Whether a value would be read as a flag rather than as the value of one. parseArgs
+ * takes the next token as a value only when it does not start with `--`, so a name or
+ * an id of `--force` becomes an option the caller never chose.
  */
 export const isFlagLike = (value) =>
   String(value ?? '')

@@ -286,9 +286,7 @@ function GeneralSettings({ settings, onChange }: TabProps) {
   const handleOpenFolder = async () => {
     if (!resolvedPath) return;
     try {
-      // The backend opens the root it resolves from the settings. The shell
-      // plugin cannot: its allowlist describes the app's log folder only, so a
-      // chosen install folder was refused and this button did nothing.
+      // The backend resolves the root, so nothing here names a path.
       await gameService.openGamesFolder();
     } catch (err) {
       logger.error('Failed to open install folder', { path: resolvedPath, error: String(err) });
@@ -561,9 +559,7 @@ function AboutSettings() {
     setLogsError(null);
     setOpeningLogs(true);
     try {
-      // The backend resolves the log folder and opens it. The shell plugin used to do
-      // this, against an allowlist regex in tauri.conf.json that had to name this one
-      // folder; nothing is passed from here now, so there is nothing to redirect.
+      // Nothing is passed from here, so there is nothing to redirect.
       await gameService.openLogsFolder();
     } catch (err) {
       setLogsError(t('settings.about.logs.openError', { error: String(err) }));

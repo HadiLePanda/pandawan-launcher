@@ -111,10 +111,8 @@ describe('launcher stylesheet', () => {
   });
 
   it('has no empty selector in a selector list', () => {
-    // A stray comma leaves an empty entry in the list. Every browser skips it, and
-    // the CSS optimizer reports it as an invalid selector, so the rule still works -
-    // but nothing tells you the entry is there, and it is what is left behind when a
-    // selector is deleted from a list and its comma is not.
+    // A stray comma leaves an empty entry that every browser skips: it is what a deleted
+    // selector leaves behind, and nothing tells you it is there.
     const offenders: string[] = [];
     parseStylesheet().walkRules((rule) => {
       if (rule.selectors.some((selector) => selector.trim() === '')) {

@@ -28,11 +28,8 @@ type ReadSource = 'network' | 'cache' | 'stale';
 const lastSource = new Map<string, ReadSource>();
 
 /**
- * Version-stamped, so it cannot change: `/games/<id>/<channel>/<version>/...`.
- *
- * A `#signed` suffix is ignored: the manifest and its signature are cached as one
- * entry under a key built from the document's URL, and that entry is as immutable as
- * the document it holds.
+ * Version-stamped, so it cannot change: `/games/<id>/<channel>/<version>/...`. A
+ * `#signed` suffix is ignored: the document and its signature are one cache entry.
  */
 export function isImmutable(url: string): boolean {
   const after = url.split('/games/')[1]?.split('#')[0];

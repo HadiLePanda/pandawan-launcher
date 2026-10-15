@@ -99,9 +99,8 @@ describe('resolveManifestForPlatform', () => {
 
     await resolveManifestForPlatform('example-game', 'stable', 'linux');
 
-    // Two calls, not one: the index is fetched together with the signature the
-    // launcher checks it against. What this test is about is that neither call is a
-    // manifest, because there is no build for this platform to describe.
+    // Two calls, not one: the index is fetched together with its signature. What this test
+    // is about is that neither call is a manifest, because there is no build to describe.
     expect(fetchRemoteText).toHaveBeenCalledTimes(2);
     expect(fetchRemoteText).toHaveBeenCalledWith(expect.stringContaining('/latest.json'));
     expect(fetchRemoteText).not.toHaveBeenCalledWith(expect.stringContaining('manifest.json'));

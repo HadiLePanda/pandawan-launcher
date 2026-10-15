@@ -1,11 +1,6 @@
-/**
- * The argument list the build publish runs, from the form's fields.
- *
- * The form must not pass through a flag the UI never offers, and it cannot be trusted
- * to know that: while it built the array itself, a version typed as `--dry-run`
- * arrived as an option. Every value travels as `--flag=value`, and a value that would
- * be read as a flag is refused.
- */
+/** The argument list the build publish runs, from the form's fields. The form must not
+ * pass through a flag the UI never offers: while it built the array itself, a version
+ * typed as `--dry-run` arrived as an option. */
 
 import { isFlagLike } from './args.mjs';
 
@@ -19,11 +14,7 @@ const VALUE_FLAGS = [
   ['input-dir', 'inputDir'],
 ];
 
-/**
- * Build the argument list, or say what is wrong with the request.
- *
- * @returns {{argv: string[]} | {error: string}}
- */
+/** Build the argument list, or say what is wrong with the request. */
 export function buildPublishArgv(payload) {
   const argv = [];
 

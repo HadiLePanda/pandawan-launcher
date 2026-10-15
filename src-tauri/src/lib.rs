@@ -45,10 +45,8 @@ struct RunningProcess {
 impl LauncherState {
     /// Build the state the commands read, or report why the app cannot run.
     ///
-    /// The download manager is the only fallible part here, and there is nothing to
-    /// fall back to when its HTTP client cannot be built: a launcher that cannot
-    /// download has no job. Returning the reason puts that at startup, where it can
-    /// be reported, instead of in a panic the user has to guess at.
+    /// The download manager is the only fallible part: a launcher that cannot download
+    /// has no job, so the reason is returned rather than panicked on.
     async fn new(app_handle: &AppHandle) -> Result<Self, LauncherError> {
         let app_data_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| {
             dirs::data_local_dir()
@@ -71,11 +69,8 @@ impl LauncherState {
     }
 }
 
-/// The folder installs go into when the setting is empty.
-///
-/// One definition, read by install, verify, launch, uninstall and the folder
-/// button. A second copy of "the games root" is how a check ends up validating
-/// against a different root than the one that wrote the files.
+/// The folder installs go into when the setting is empty. One definition, so a check
+/// cannot validate against a different root than the one that wrote the files.
 fn games_root(settings: &LauncherSettings) -> PathBuf {
     settings
         .games_install_path
@@ -215,15 +210,11 @@ async fn fetch_remote_text(url: String) -> Result<String, LauncherError> {
         .map_err(|e| LauncherError::Network(format!("Failed to read {url}: {e}")))
 }
 
-/// Verify the signature a published manifest or version index carries.
-///
-/// The frontend fetches the document and its `.sig` through `fetch_remote_text`,
 /// Verify a document the frontend fetched, against the signature published beside it.
 ///
-/// Bytes rather than a parsed object: a signature covers the exact document, so
-/// re-serializing a parsed manifest would not match it. A document that fails is
-/// refused rather than reported - accepting an unverified manifest means installing
-/// whatever it names, from wherever its base_url points.
+/// Bytes rather than a parsed object: a signature covers the exact document, so a
+/// re-serialized manifest would not match it. A document that fails is refused rather
+/// than reported: accepting an unverified manifest means installing whatever it names.
 #[tauri::command]
 #[specta::specta]
 fn verify_manifest_signature(body: String, signature: String) -> Result<(), LauncherError> {
@@ -629,11 +620,8 @@ fn get_default_install_folder() -> PathBuf {
     get_default_games_path()
 }
 
-/// Open the games folder in the system file manager.
-///
-/// Rust-side because the shell plugin's allowlist regex could only describe the app's
-/// log folder, so this folder was refused and the button did nothing visible. No path
-/// is passed in: it is the root the backend already resolves for install and launch.
+/// Open the games folder in the system file manager. Rust-side, and taking no path, so
+/// a caller cannot redirect it; the shell plugin's allowlist could not describe it.
 #[tauri::command]
 #[specta::specta]
 async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), LauncherError> {
@@ -648,20 +636,17 @@ async fn open_games_folder(state: State<'_, LauncherState>) -> Result<(), Launch
     open_target(&root)
 }
 
-/// The company store page: a constant here, so the command that opens it takes no URL.
+/// A constant here, so the command that opens it takes no URL.
 const STORE_URL: &str = "https://pandawancorp.com/store";
 
-/// Open the store page in the system browser.
 #[tauri::command]
 #[specta::specta]
 fn open_store_page() -> Result<(), LauncherError> {
     open_target(STORE_URL)
 }
 
-/// Open the folder the launcher writes its log to, in the system file manager.
-///
-/// Rust-side for the same reason as the games folder: nothing is passed in, so there is
-/// nothing for a caller to redirect.
+/// Open the log folder in the system file manager, for the same reason as the games
+/// folder: nothing is passed in, so there is nothing for a caller to redirect.
 #[tauri::command]
 #[specta::specta]
 async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
@@ -674,12 +659,9 @@ async fn open_logs_folder(app: AppHandle) -> Result<(), LauncherError> {
     open_target(&dir)
 }
 
-/// Open a path or URL with the system handler.
-///
-/// One place, because every caller is the same call: the `open` crate, whose Windows
-/// backend is ShellExecuteW (`shellexecute-on-windows`), so nothing re-parses the path.
+/// Open a path or URL with the system handler. The `open` crate is ShellExecuteW on
+/// Windows, so nothing re-parses the path.
 fn open_target(target: impl AsRef<std::ffi::OsStr>) -> Result<(), LauncherError> {
-    // Captured first, because the target is moved into the call below.
     let shown = target.as_ref().to_string_lossy().to_string();
     open::that_detached(target)
         .map_err(|err| LauncherError::Other(format!("Could not open {shown}: {err}")))

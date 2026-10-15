@@ -2,15 +2,14 @@
 //!
 //! The manifest lists each file's SHA256, so it decides what gets installed: unsigned,
 //! anyone who can write to the bucket can publish a build whose hashes match the files
-//! they planted. The key is the one `updater.pub` pins, which the updater already uses.
+//! they planted.
 
 use crate::types::LauncherError;
 use base64::Engine;
 use minisign_verify::{PublicKey, Signature};
 
-/// The public key this build trusts, from `src-tauri/updater.pub`: the base64 of a whole
-/// minisign PublicKeyBox, the form the Tauri CLI writes. `npm run keys:check` keeps it in
-/// step with the secret key.
+/// The key this build trusts, from `src-tauri/updater.pub`: the base64 of a whole minisign
+/// PublicKeyBox, the form the Tauri CLI writes.
 const PUBLIC_KEY_BOX: &str = include_str!("../updater.pub");
 
 /// Verify `body` against the signature box published beside it.
@@ -58,9 +57,8 @@ fn decode_box(text: &str, what: &str) -> Result<String, LauncherError> {
 mod tests {
     use super::*;
 
-    // The committed key must parse the way this build parses it, or every game
-    // becomes unresolvable the moment this ships. Same check as
-    // tests/updater_signing_tests.rs makes for the updater, on this code path.
+    // The committed key must parse the way this build parses it, or every game becomes
+    // unresolvable once this ships.
     #[test]
     fn test_pinned_public_key_parses() {
         if let Err(err) = pinned_public_key() {

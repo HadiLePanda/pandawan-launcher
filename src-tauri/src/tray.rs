@@ -42,10 +42,8 @@ impl TrayState {
         }))
     }
 
-    /// The lock, ignoring poisoning.
-    ///
-    /// The data is a bool, a flag and a list of ids, so a panicked thread cannot leave
-    /// it half-written, and the close handler has no way to report an error.
+    /// The lock, ignoring poisoning: the data is a bool, a flag and a list of ids, so a
+    /// panicked thread cannot leave it half-written.
     fn data(&self) -> std::sync::MutexGuard<'_, TrayData> {
         self.0
             .lock()

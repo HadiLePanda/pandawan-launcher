@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 
 import { buildPublishArgv } from './publish-argv.mjs';
 
-// The form used to send its own argv array and the server forwarded it, so a
-// version or an executable name of `--dry-run` stopped being a value and became an
-// option the UI never offered. These are the cases that used to smuggle.
+// The form used to send its own argv array and the server forwarded it, so a version or an
+// executable name of `--dry-run` became an option the UI never offered.
 describe('buildPublishArgv', () => {
   const full = {
     gameId: 'example-game',

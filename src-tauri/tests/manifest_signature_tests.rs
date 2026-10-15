@@ -1,14 +1,8 @@
-//! End-to-end proof that a manifest signed by the release tooling verifies.
+//! End-to-end proof that a manifest signed by the release tooling verifies. A hardcoded
+//! signature would not prove it: what matters is that the bytes the publisher signs are the
+//! bytes the launcher checks.
 //!
-//! A hardcoded signature would not prove it: what matters is that the bytes the
-//! publisher signs are the bytes the launcher checks. So this generates a throwaway
-//! keypair with the Tauri CLI, signs a document with it, and verifies that document
-//! through the launcher's own code path.
-//!
-//! A keypair of its own, because the release key is gitignored and absent in CI, and a
-//! test that skips everywhere proves nothing. The pinned key is covered from two sides:
-//! `src/manifest_signature.rs` asserts `updater.pub` parses with this code, and
-//! `updater_signing_tests.rs` asserts the same file is the key the updater accepts.
+//! The keypair is generated here, because the release key is gitignored and absent in CI.
 
 use pandawan_launcher_lib::manifest_signature;
 use pandawan_launcher_lib::types::LauncherError;
@@ -88,7 +82,6 @@ fn test_a_manifest_signed_by_the_release_tooling_verifies() {
         String::from_utf8_lossy(&generated.stderr)
     );
 
-    // Sign the document, exactly as the publisher does.
     let body = br#"{"game_id":"example-game","version":"1.0.0","files":[]}"#;
     let document = dir.join("manifest.json");
     std::fs::write(&document, body).expect("write the document");
@@ -119,8 +112,8 @@ fn test_a_manifest_signed_by_the_release_tooling_verifies() {
     manifest_signature::verify_with(&public_key, body, &signature)
         .expect("a signature the publisher wrote must verify");
 
-    // The check is only worth having if it refuses a document changed after
-    // signing: one byte in a hash or a URL is the whole attack.
+    // The check is worth having only if it refuses a document changed after signing: one
+    // byte in a hash or a URL is the whole attack.
     let tampered = br#"{"game_id":"example-game","version":"9.9.9","files":[]}"#;
     let refused = manifest_signature::verify_with(&public_key, tampered, &signature)
         .expect_err("a tampered document must be refused");
@@ -129,8 +122,8 @@ fn test_a_manifest_signed_by_the_release_tooling_verifies() {
         "expected a signature error, got {refused:?}"
     );
 
-    // And a signature from another keypair, which is what an attacker who can write
-    // to the bucket would have to produce.
+    // And a signature from another keypair, which is what an attacker who can write to the
+    // bucket would have to produce.
     let other_key = dir.join("other.key");
     let generated = run_tauri(
         &cli,

@@ -57,17 +57,11 @@ export async function fetchRemoteText(url: string): Promise<string> {
 
 /**
  * Fetch a document the publisher signed, and refuse it unless the signature is one this
- * build trusts.
+ * build trusts. The check runs on the exact bytes, before they are parsed, and lives in
+ * the backend because that is where the pinned key is.
  *
- * The manifest names every file and its SHA256, so it decides what gets installed: a
- * bucket somebody else can write to could otherwise publish a build whose hashes match
- * the files they planted. The check runs on the exact bytes, before they are parsed,
- * and lives in the backend because that is where the pinned key is.
- *
- * The pair is cached as ONE entry. Two entries are written one fetch apart, so they
- * expire at different instants and the read that refreshed the document would check new
- * bytes against an old signature. Cached together, the pair is always both old or both
- * new.
+ * The pair is cached as ONE entry: two entries expire at different instants, so the read
+ * that refreshed the document would check new bytes against an old signature.
  */
 async function fetchSigned(remoteUrl: string): Promise<string> {
   const cached = await fetchCachedText(`${remoteUrl}#signed`, () => fetchSignedPair(remoteUrl));
@@ -78,7 +72,6 @@ async function fetchSigned(remoteUrl: string): Promise<string> {
   return pair.body;
 }
 
-/** Both documents as one string, because that is how they are cached. */
 async function fetchSignedPair(remoteUrl: string): Promise<string> {
   const [body, signature] = await Promise.all([
     fetchRemoteText(remoteUrl),
@@ -87,7 +80,7 @@ async function fetchSignedPair(remoteUrl: string): Promise<string> {
   return JSON.stringify({ body, signature });
 }
 
-/** An unreadable cache entry is absent, never a refusal: the caller refetches. */
+/** A malformed cache entry reads as absent, never as a refusal. */
 function parseSignedPair(text: string): { body: string; signature: string } | null {
   try {
     const parsed = JSON.parse(text) as { body?: unknown; signature?: unknown };
@@ -95,7 +88,7 @@ function parseSignedPair(text: string): { body: string; signature: string } | nu
       return { body: parsed.body, signature: parsed.signature };
     }
   } catch {
-    // Falls through to null.
+    /* not a pair */
   }
   return null;
 }
@@ -220,10 +213,8 @@ async function fetchLatestIndex(
     if (!parsed || typeof parsed !== 'object') return null;
     return parsed as Record<string, PlatformVersion>;
   } catch (err) {
-    // Not fatal: the channel root carries a signed manifest of its own, so an
-    // unusable index costs this machine the per-platform pin, not the game. Logged
-    // rather than swallowed, because "the index is unsigned" and "there is no
-    // index" look identical from the outside.
+    // Not fatal: the channel root carries a signed manifest of its own, and an unsigned
+    // index and a missing one look identical from the outside, so the reason is logged.
     logger.warn('Version index unusable, falling back to the channel root', {
       url,
       error: String(err),

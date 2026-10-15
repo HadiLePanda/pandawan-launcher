@@ -38,9 +38,9 @@ describe('http cache', () => {
   });
 
   it('treats a signed pair as immutable when its document is', () => {
-    // The pair is cached under a key derived from the document's URL, and it holds
-    // that document, so it inherits the document's immutability. Reading the suffix
-    // as a path segment would make every versioned pair expire hourly.
+    // The pair is cached under a key derived from the document's URL, and it holds that
+    // document, so it inherits the document's immutability. Reading the suffix as a path
+    // segment would make every versioned pair expire hourly.
     expect(isImmutable(`${VERSIONED}#signed`)).toBe(true);
     expect(isImmutable(`${MUTABLE}#signed`)).toBe(false);
   });

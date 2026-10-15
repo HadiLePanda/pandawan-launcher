@@ -2,11 +2,9 @@ import { describe, it, expect } from 'vitest';
 
 import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './dashboard-access.mjs';
 
-// The gate exists because a page the operator visits can send a simple
-// cross-origin GET to loopback: no preflight, no Origin this server trusts, and a
-// Host header of 127.0.0.1. Those GETs are not free - /api/launcher/status runs
-// synchronous gh calls and ?refresh=1 re-arms a bucket listing - so a foreign page
-// could hold the panel down and spend the GitHub and Cloudflare quotas.
+// The gate exists because a page the operator visits can send a simple cross-origin GET to
+// loopback: no preflight, no Origin this server trusts, and a Host of 127.0.0.1. Those GETs
+// are not free, so a foreign page could hold the panel down and spend the quotas.
 describe('requiresToken', () => {
   it('covers the API surface', () => {
     expect(requiresToken('/api')).toBe(true);
@@ -15,9 +13,8 @@ describe('requiresToken', () => {
   });
 
   it('leaves the shell and its assets alone', () => {
-    // The browser fetches these itself and cannot attach a custom header, so
-    // requiring one here would serve a blank page - including the page that
-    // carries the token in the first place.
+    // The browser fetches these itself and cannot attach a custom header, so requiring one
+    // here would serve a blank page, including the page that carries the token.
     expect(requiresToken('/')).toBe(false);
     expect(requiresToken('/index.html')).toBe(false);
     expect(requiresToken('/assets/index-abc123.js')).toBe(false);

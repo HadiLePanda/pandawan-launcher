@@ -77,9 +77,8 @@ if (inputDir && !existsSync(inputDir)) {
   fail(`--input-dir does not exist: ${inputDir}`);
 }
 
-// The launcher verifies a manifest against the key in updater.pub, so a publish
-// without the secret half produces a build nobody can install. Checked before
-// anything is generated or uploaded, so a missing key costs nothing.
+// The launcher verifies a manifest against the key in updater.pub, so a publish without
+// the secret half produces a build nobody can install.
 const keyPath = secretKeyPath(repoRoot);
 const keyCheck = checkReleaseKey(keyPath);
 if (!keyCheck.ok) fail(keyCheck.detail);
@@ -130,11 +129,8 @@ for (const spec of asList(args.platform)) {
   manifestArgs.push('--platform', spec);
 }
 
-// The flat shape has no --platform to carry a directory, so the generator needs
-// the input directory itself. Without this the flat publish - which this script
-// accepts at the top and documents in GAME_CATALOG.md - always died inside the
-// generator with "--input-dir is required when no --platform is given", after
-// printing the source directory it had already validated.
+// The flat shape has no --platform to carry a directory, so the generator needs the
+// input directory itself.
 if (inputDir && platformSpecs.length === 0) {
   manifestArgs.push('--input-dir', inputDir);
 }
@@ -148,9 +144,7 @@ for (const pattern of asList(args.exclude)) {
 
 run('python', manifestArgs, 'Generating manifest');
 
-// Signed here, after generation and before any upload. The signature covers these
-// exact bytes, so it cannot be made earlier, and a manifest without one is a build
-// no client will install.
+// Signed after generation: the signature covers these exact bytes.
 const manifestSigning = signFile(manifestPath, { repoRoot, keyPath });
 if (!manifestSigning.ok) fail(manifestSigning.detail);
 
@@ -174,10 +168,9 @@ try {
   );
 }
 
-// A version that already has a manifest has been published, and its bytes are served
-// under an immutable cache header - so a client that has it keeps the manifest it first
-// saw. Overwriting that with different files leaves the client checking the new bytes
-// against the hashes in the old copy, which fails their install rather than updating it.
+// A version that already has a manifest is published, and its bytes are served under an
+// immutable cache header: a client that has it keeps the manifest it first saw, so
+// different files would be checked against the old hashes and fail its install.
 //
 // A publish that died halfway is not this case: the manifest is uploaded last, so a
 // version with no manifest is free to redo, and --force covers everything else.
@@ -242,9 +235,8 @@ if (inputDir) {
 // at that path, so it can be cached forever. Both manifest writes are skipped on
 // a dry run - the manifest IS the signal that a build is available.
 if (!dryRun) {
-  // Each signature goes up before the document it signs, for the same reason the
-  // files go up before the manifest: a client that can read a manifest must be able
-  // to read the signature that makes it usable.
+  // Each signature goes up before the document it signs, so a client that can read a
+  // manifest can always read what makes it usable.
   upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${versionPrefix}/manifest.json.sig`), {
     endpoint,
     cacheControl: IMMUTABLE,
@@ -308,8 +300,8 @@ const latestPath = path.join(path.dirname(manifestPath), 'latest.json');
 if (!dryRun) {
   writeFileSync(latestPath, `${JSON.stringify(latest, null, 2)}\n`);
 
-  // Signed as well: the index decides which version a client fetches, so an
-  // unsigned one could pin a platform to a version of somebody else's choosing.
+  // Signed too: an unsigned index could pin a platform to a version of somebody
+  // else's choosing.
   const latestSigning = signFile(latestPath, { repoRoot, keyPath });
   if (!latestSigning.ok) fail(latestSigning.detail);
 

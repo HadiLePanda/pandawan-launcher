@@ -75,9 +75,9 @@ export async function publishMetadata(argv) {
   console.log(`Channel: ${channel}`);
   if (dryRun) console.log('Mode:    DRY RUN - nothing will be uploaded');
 
-  // This edit rewrites the manifest, and the launcher refuses a manifest whose
-  // signature does not match, so the new file has to be signed. Checked before the
-  // reads and the uploads, so a missing key costs nothing.
+  // This edit rewrites the manifest, and the launcher refuses a manifest whose signature
+  // does not match, so the new file has to be signed. Checked before the reads and the
+  // uploads, so a missing key costs nothing.
   const keyPath = secretKeyPath(repoRoot);
   const keyCheck = checkReleaseKey(keyPath);
   if (!keyCheck.ok) fail(keyCheck.detail);
@@ -236,8 +236,8 @@ export async function publishMetadata(argv) {
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 
-    // Re-signed here: the published manifest was signed when the build was
-    // published, and this file is not those bytes any more.
+    // Re-signed: the published manifest was signed when the build was published, and this
+    // file is not those bytes any more.
     const signing = signFile(manifestPath, { repoRoot, keyPath });
     if (!signing.ok) fail(signing.detail);
 

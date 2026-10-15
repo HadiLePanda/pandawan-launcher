@@ -10,11 +10,9 @@
  * and bundle_contents_tests.rs enforces that, (2) it binds 127.0.0.1 and rejects
  * any request whose Host header is not loopback, which also blocks DNS
  * rebinding, (3) credentials come from a gitignored .env, and (4) every /api/
- * request must carry the token the served page was given, which is what stops a
- * page on another origin from driving reads whose answers it cannot read. Do not
- * loosen the bind address, the host check or the token gate, and do not add a
- * deploy mode: remote access would need real authentication and a TLS terminator
- * first.
+ * request must carry the token the served page was given. Do not loosen the bind
+ * address, the host check or the token gate: remote access needs real
+ * authentication and a TLS terminator first.
  */
 import http from 'node:http';
 import { execFile, spawn, spawnSync } from 'node:child_process';
@@ -27,15 +25,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/**
- * `execFile`, promisified.
- *
- * The status reads below are async rather than `spawnSync`, and that is the whole
- * point of them being async: a synchronous child blocks the event loop for its entire
- * duration, and `/api/launcher/status` is deliberately uncached and runs several
- * commands, so one slow `gh` call froze every other request and every open SSE stream
- * behind it. Measured on this machine: nineteen seconds for one status read.
- */
+/** `execFile`, promisified: a sync child blocks the event loop for its whole duration. */
 const execFileAsync = promisify(execFile);
 // The in-server catalog write reuses r2.mjs's upload/NO_CACHE so its
 // cache-control header matches publish-catalog.mjs exactly: a mutable index
@@ -56,14 +46,8 @@ import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-field
 // The one semver bump rule, shared with release.mjs so the version the panel
 // proposes cannot drift from the version a release writes.
 import { bumpVersion } from './lib/version.mjs';
-// The request gate is pure and unit-tested: this file holds the credentials and
-// boots a server, so what a request is *allowed* to be cannot be checked here.
 import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './lib/dashboard-access.mjs';
-// The flag prefix rule is the parser's own, so a value that would be read as a
-// flag is refused by the same definition parseArgs uses.
 import { isFlagLike } from './lib/args.mjs';
-// The build publish's argument list is assembled from the form's fields rather
-// than forwarded, so the form cannot pass through a flag the UI never offers.
 import { buildPublishArgv } from './lib/publish-argv.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
 // Killing a tree and reading the manifest are shared with the watchdog, so what
@@ -135,17 +119,10 @@ const PLATFORMS = ['windows', 'macos', 'linux'];
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 
 /**
- * The token every /api/ request must carry, and the file it lives in.
- *
- * The bind address and the Host check stop a remote host, but not a page the operator
- * visits: a cross-origin GET needs no preflight, carries no Origin worth trusting, and
- * its Host still reads 127.0.0.1. Those requests are not free - /api/launcher/status is
- * uncached and runs several gh calls - so such a page could hold the panel down and
- * spend the quota. A custom header cannot be attached without a preflight this server
- * never answers, so the header is the gate.
- *
- * Stable across restarts: a token that changed would refuse every open tab on a
- * restart. Override with DASHBOARD_TOKEN to rotate it or to script a request.
+ * The token every /api/ request must carry. A cross-origin page reaches loopback
+ * with no preflight, so the bind address and the Host check are not enough; a custom
+ * header is. Stable across restarts, or a restart would refuse every open tab.
+ * Override with DASHBOARD_TOKEN.
  */
 const tokenPath = path.join(os.tmpdir(), 'pandawan-dashboard-token');
 const TOKEN = dashboardToken();
@@ -158,15 +135,13 @@ function dashboardToken() {
     const existing = readFileSync(tokenPath, 'utf8').trim();
     if (existing) return existing;
   } catch {
-    // No file yet, or it was cleaned away. Mint one below.
+    /* no token file yet */
   }
 
   const minted = randomBytes(32).toString('hex');
   try {
     writeFileSync(tokenPath, `${minted}\n`, { mode: 0o600 });
   } catch (err) {
-    // The token still gates this run. The next start mints another one, which
-    // costs an open tab a reload and nothing else.
     console.warn(`Could not write ${tokenPath}: ${String(err?.message ?? err)}`);
   }
   return minted;
@@ -818,23 +793,13 @@ function siteAbsentResponse(res) {
   return true;
 }
 
-/**
- * The npm scripts the Website panel may run, by the name its route passes.
- *
- * A set rather than a pass-through string: cmd.exe /c re-parses its command line, so a
- * name from anywhere but this list could append its own command with `&`. No argument
- * list either: neither script takes one.
- */
+// A fixed set, because cmd.exe /c re-parses its command line: a name from anywhere
+// else could append its own command with `&`.
 const SITE_SCRIPTS = new Set(['verify', 'deploy']);
 
 /**
- * Run an npm script in the site repo, streaming the same SSE contract as runScript.
- * runScript is not reused: it spawns `node <script>` in THIS repo, and the site is a
- * separate repository with its own node_modules.
- *
- * cmd.exe rather than a direct npm spawn: spawning a `.cmd` with shell:false raises
- * EINVAL on current Node, and the shell resolves npm through PATHEXT. The command line
- * is built from SITE_SCRIPTS, so nothing in it can be injected.
+ * Run an npm script in the site repo. cmd.exe rather than a direct npm spawn: spawning
+ * a `.cmd` with shell:false raises EINVAL on current Node.
  */
 function runSiteScript(script, res) {
   if (!SITE_SCRIPTS.has(script)) {
@@ -1317,9 +1282,8 @@ async function serveAppDist(res, pathname) {
     }
   }
 
-  // The shell carries the request token, so the panel can send it back. Injected
-  // on the way out rather than stored in the build, so the gate also covers a
-  // build that predates it.
+  // Injected on the way out rather than stored in the build, so the gate also covers
+  // a build that predates it.
   if (path.basename(file) === 'index.html') {
     body = Buffer.from(injectToken(body.toString('utf8'), TOKEN), 'utf8');
   }
@@ -1943,10 +1907,8 @@ const server = http.createServer(async (req, res) => {
     const payload = await readJson(req, res);
     if (payload === JSON_REFUSED) return;
 
-    // The list is assembled from named fields rather than forwarded, for the same
-    // reason prune does it: the form must not pass through a flag the UI never
-    // offers. A forwarded array cannot tell a value from an option, so a version
-    // typed as `--dry-run` used to arrive as one.
+    // Assembled from named fields rather than forwarded, so the form cannot pass
+    // through a flag the UI never offers.
     const plan = buildPublishArgv(payload);
     if (plan.error) {
       res.writeHead(400).end(plan.error);
@@ -2217,10 +2179,8 @@ const server = http.createServer(async (req, res) => {
     const payload = await readJson(req, res);
     if (payload === JSON_REFUSED) return;
 
-    // The argument list is assembled from named fields rather than forwarded, for
-    // the same reason prune does it: the form must not pass through a flag the UI
-    // never offers. An id or a channel that begins with `--` would do exactly
-    // that, because parseArgs reads it as an option rather than as a value.
+    // Assembled from named fields rather than forwarded: parseArgs reads a value
+    // that starts with `--` as an option, not as the value of one.
     const gameId = String(payload.gameId ?? '').trim();
     const channel = String(payload.channel ?? '').trim();
     if (!gameId || isFlagLike(gameId) || isFlagLike(channel)) {
@@ -2228,8 +2188,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Every value travels as `--flag=value`, so a value that begins with `--` is
-    // still a value: a description is free to start with one.
     const argv = [`--game-id=${gameId}`, `--channel=${channel}`];
     if (payload.dryRun) argv.push('--dry-run');
 
@@ -2727,8 +2685,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // An id that begins with `--` would be read as an option rather than as the
-    // value of one, which is how a flag the UI never offers gets through.
     if (ops.some((one) => isFlagLike(one.id))) {
       res.writeHead(400).end('the item id must be a name, not a flag');
       return;
@@ -3070,8 +3026,8 @@ server.listen(PORT, '127.0.0.1', () => {
       ? 'UI: React build (scripts/dashboard/app/dist)'
       : 'UI: NOT BUILT - run `npm run dashboard:build`'
   );
-  // Named at startup because a request refused for a missing token is otherwise
-  // indistinguishable from a broken route.
+  // A request refused for a missing token is otherwise indistinguishable from a
+  // broken route.
   console.log(`/api/ requests need the ${TOKEN_HEADER} header; token file: ${tokenPath}`);
   // The effective values are printed because they are what an operator needs when
   // a panel looks stale.

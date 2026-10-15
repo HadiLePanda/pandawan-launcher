@@ -337,15 +337,13 @@ pub enum LauncherError {
     ExecutableNotFound { path: String },
     #[error("Path is outside allowed root")]
     PathNotAllowed { path: String },
-    /// The HTTP client could not be built, which happens before any request
-    /// exists to blame. It had nowhere to go but a panic, so a TLS backend that
-    /// failed to initialise took the whole launcher down at startup with a
-    /// message only a developer could read.
+    /// The HTTP client could not be built, before any request exists to blame. A TLS
+    /// backend that fails to initialise used to take the whole launcher down at startup.
     #[error("Could not start the downloader: {0}")]
     HttpClient(String),
-    /// A published document did not carry a signature this build trusts. Refused
-    /// rather than warned about: an unverified manifest can name any file, at any
-    /// URL, with the hash to match.
+    /// A published document did not carry a signature this build trusts. Refused rather
+    /// than warned about: an unverified manifest can name any file, at any URL, with the
+    /// hash to match.
     #[error("Signature check failed: {0}")]
     ManifestUnsigned(String),
     /// These carry the underlying detail. Without `{0}` in the format string

@@ -82,9 +82,8 @@ if (!Boolean(args.confirm)) {
 const outPath = path.join(repoRoot, 'dist', 'latest.json');
 writeFileSync(outPath, `${JSON.stringify(latest, null, 2)}\n`);
 
-// Signed like every other write of a version index: the launcher refuses an index
-// whose signature does not match, so an unsigned backfill would be an index no client
-// reads. Checked before anything is written, so a missing key costs nothing.
+// Signed like every other write of a version index: the launcher refuses an index whose
+// signature does not match.
 const keyPath = secretKeyPath(repoRoot);
 const keyCheck = checkReleaseKey(keyPath);
 if (!keyCheck.ok) fail(keyCheck.detail);

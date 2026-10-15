@@ -12,11 +12,9 @@
  * POST verbs (which run a script) and neither may exist on a server that has
  * not been updated yet, so every field here is optional and absence is normal.
  *
- * Every request also carries the token the server served this page with, and the
- * server refuses a /api/ request without it. That is what stops a page on another
- * origin from driving the expensive reads behind this panel: such a page cannot
- * attach a custom header without a preflight the server never answers, and it
- * cannot read the served page to learn the value.
+ * Every request also carries the token the server served this page with, and the server
+ * refuses a /api/ request without it: a page on another origin cannot attach a custom
+ * header without a preflight the server never answers.
  */
 
 /** Which of the three states the server reported. Null when it said nothing. */
@@ -78,16 +76,10 @@ function parseAge(header: string | null): number | null {
 /** The header the server requires. It is also the name of the meta tag it is in. */
 const TOKEN_HEADER = 'x-dashboard-token';
 
-/**
- * The headers for one request, with the token this page was served.
- *
- * Read from the document rather than cached: the value belongs to the page load. A page
- * served before the gate existed has no tag, and the request goes out without the header
- * - the server then answers with the rebuild command to run.
- *
- * Exported because the Services panel posts its own request: one helper means a new call
- * site cannot forget the token.
- */
+/** The headers for one request, with the token this page was served. Read from the
+ * document rather than cached, because the value belongs to the page load: a page served
+ * before the gate existed has no tag, and the request goes out without the header.
+ * Exported so the Services panel's own request cannot forget it. */
 export function requestHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token =
     typeof document === 'undefined'

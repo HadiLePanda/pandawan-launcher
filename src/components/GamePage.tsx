@@ -536,11 +536,7 @@ export function GamePage({
         </div>
 
         <aside className="game-detail-news">
-          {hasGameNews && (
-            // Labels the rail. The column is otherwise a stack of pictures beside
-            // the game, and nothing says the stack is news.
-            <h2 className="game-detail-news-label">{t('gamePage.news')}</h2>
-          )}
+          {hasGameNews && <h2 className="game-detail-news-label">{t('gamePage.news')}</h2>}
           {hasGameNews ? (
             <div className="game-detail-news-list">
               {gameNews.map((item) => (

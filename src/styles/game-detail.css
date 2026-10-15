@@ -1059,7 +1059,6 @@ input.pin-search {
   border-radius: 0;
 }
 
-/* One look for both section labels on the page. */
 .game-detail-shots-label,
 .game-detail-news-label {
   font-size: 0.6875rem;
@@ -1285,10 +1284,8 @@ input.pin-search {
   overflow-y: auto;
 }
 
-/* Pinned, because the rail is the page's scroller and two cards already overflow
-   it: a label that scrolled away would be gone exactly when the section is
-   longest. The canvas background is the page's own, so the cards pass under it
-   rather than through it. */
+/* Pinned, because the rail is what scrolls: the canvas background is the page's own, so
+   the cards pass under the label rather than through it. */
 .game-detail-news-label {
   position: sticky;
   top: 0;

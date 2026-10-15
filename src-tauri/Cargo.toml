@@ -27,12 +27,8 @@ tauri-plugin-fs = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
-# Opening a folder or URL in the system handler, from Rust. The
-# shellexecute-on-windows feature is on so Windows goes through ShellExecuteW
-# instead of `cmd /c start`, which re-parses the path it is handed: a folder named
-# with a `%` in it would be expanded by cmd. tauri-plugin-shell depends on this
-# crate too, so the feature unifies and the frontend's open() calls take the same
-# route. `dunce` was already in the tree through tauri, so this adds no crate.
+# Opening a folder or URL in the system handler. shellexecute-on-windows routes Windows
+# through ShellExecuteW rather than `cmd /c start`, which re-parses the path it is handed.
 open = { version = "5", features = ["shellexecute-on-windows"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -50,9 +46,7 @@ walkdir = "2.5"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive", "chrono"] }
 specta-typescript = "=0.0.12"
-# Manifest and latest.json verification. These were dev-dependencies while only the
-# signing tests used them; the launcher itself verifies now, so the parse and the
-# signature check live in src/manifest_signature.rs.
+# Manifest and latest.json verification, in src/manifest_signature.rs.
 minisign-verify = "0.2"
 base64 = "0.22"
 

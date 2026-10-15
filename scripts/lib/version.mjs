@@ -4,13 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// package.json is the source of truth; the rest are written from it.
-//
-// package-lock.json is in the list because it carries a version of its own, npm
-// maintains it from package.json whenever it installs, and it had already drifted
-// once: the committed lock still said 0.2.1 while package.json said 0.3.0, because
-// nothing here wrote it. `npm ci` does not rewrite the lock, so the drift survived
-// every CI run.
+// package.json is the source of truth; the rest are written from it. package-lock.json
+// carries a version of its own and `npm ci` never rewrites it, so it had drifted from
+// package.json until it was written here too.
 export const VERSION_FILES = [
   'package.json',
   'package-lock.json',

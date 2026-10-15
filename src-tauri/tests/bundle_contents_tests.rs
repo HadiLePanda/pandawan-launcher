@@ -88,8 +88,7 @@ fn test_frontend_dist_contains_no_developer_files() {
             let looks_secret =
                 name.starts_with(".env") || name.ends_with(".key") || name.ends_with(".pem");
             let looks_like_key = full.contains(".secrets");
-            // A source map carries the original TypeScript, so a build that turns
-            // them on ships the source rather than only the bundle.
+            // A source map carries the original TypeScript, so it ships the source.
             let looks_like_source_map = name.ends_with(".map");
 
             if looks_like_dashboard || looks_secret || looks_like_key || looks_like_source_map {

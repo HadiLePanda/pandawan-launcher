@@ -1,22 +1,13 @@
 /**
- * Signing the documents a launcher checks before it installs anything.
- *
- * The client verifies against the key in `src-tauri/updater.pub`, so an unsigned
- * publish is a build nobody can install. The key is therefore checked up front: a
- * missing key must cost nothing, not be discovered with bytes already on the bucket.
- *
- * The signature covers the exact bytes on disk, so it is written once the document is
- * final. A metadata edit rewrites the manifest, which is why it signs too.
+ * Signing the documents a launcher checks before it installs anything. The key is checked
+ * up front: a missing key must cost nothing, not be discovered with bytes already on the
+ * bucket.
  */
 
 import { existsSync } from 'node:fs';
 import { runTauriCli, secretKeyBody } from './updater-key.mjs';
 
-/**
- * Whether this machine can sign at all. The publishers call it before uploading.
- *
- * @returns {{ok: true, keyBody: string} | {ok: false, detail: string}}
- */
+/** Whether this machine can sign at all. The publishers call it before uploading. */
 export function checkReleaseKey(keyPath) {
   if (!existsSync(keyPath)) {
     return {
@@ -35,11 +26,7 @@ export function checkReleaseKey(keyPath) {
   return { ok: true, keyBody };
 }
 
-/**
- * Sign `file` with the release key, writing `<file>.sig` beside it.
- *
- * @returns {{ok: true, signature: string} | {ok: false, detail: string}}
- */
+/** Sign `file` with the release key, writing `<file>.sig` beside it. */
 export function signFile(file, { repoRoot, keyPath }) {
   const key = checkReleaseKey(keyPath);
   if (!key.ok) return key;
@@ -49,8 +36,8 @@ export function signFile(file, { repoRoot, keyPath }) {
     env: {
       ...process.env,
       TAURI_SIGNING_PRIVATE_KEY: key.keyBody,
-      // Always set, even empty: unset makes the CLI prompt, and a publish waiting on
-      // a prompt is a publish that hangs.
+      // Always set, even empty: unset makes the CLI prompt, and a publish waiting on a
+      // prompt is a publish that hangs.
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? '',
     },
   });

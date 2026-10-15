@@ -1,28 +1,14 @@
-/**
- * Reading the release keypair, in the two forms the tooling needs it.
- *
- * `scripts/check-updater-keys.cjs` holds its own copy of the two `*KeyBody` readers: it
- * is CommonJS and cannot import this file. Both call the same `tauri signer sign`, so a
- * key one accepts and the other refuses fails at the CLI, not silently.
- */
+/** Reading the release keypair, in the two forms the tooling needs it. */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-/**
- * The Tauri CLI's JS entry point.
- *
- * Run through the current node rather than the `tauri` shim in node_modules/.bin: that
- * shim is a `.cmd` on Windows, which needs a shell, and cmd re-parses what it is handed.
- */
+/** The Tauri CLI's JS entry point. Run through node rather than the `tauri` shim in
+ * node_modules/.bin: that shim is a `.cmd` on Windows, which needs a shell. */
 export const tauriCliPath = (repoRoot) =>
   path.join(repoRoot, 'node_modules', '@tauri-apps', 'cli', 'tauri.js');
 
-/**
- * Run the Tauri CLI. It is the only thing that can sign: `tauri signer sign` is the
- * command `tauri build` runs for updater artifacts.
- */
 export function runTauriCli(repoRoot, args, options = {}) {
   return spawnSync(process.execPath, [tauriCliPath(repoRoot), ...args], {
     shell: false,
@@ -37,22 +23,16 @@ export const secretKeyPath = (repoRoot) =>
 /** The public half. Committed, and pinned by every installed launcher. */
 export const publicKeyPath = (repoRoot) => path.join(repoRoot, 'src-tauri', 'updater.pub');
 
-/**
- * The public key in the form `plugins.updater.pubkey` expects: the base64 of a whole
+/** The public key in the form `plugins.updater.pubkey` expects: the base64 of a whole
  * PublicKeyBox, because `verify_signature()` in tauri-plugin-updater base64-decodes it
- * before parsing. `tauri signer generate` already writes that form. Must stay in step
- * with `publicKeyForConfig` in sync-updater-key.cjs.
- */
+ * before parsing. Must stay in step with `publicKeyForConfig` in sync-updater-key.cjs. */
 export function publicKeyBody(file) {
   return encodedBox(file);
 }
 
-/**
- * The secret key in the base64 form the Tauri CLI decodes. A `tauri signer generate` key
- * is already one base64 blob; a `minisign`-CLI key is plain text and has to be encoded
- * first, or the CLI fails with "Invalid symbol 32, offset 9" (offset 9 is the space in
- * its `untrusted comment:` header). Never log the returned value.
- */
+/** The secret key in the base64 form the Tauri CLI decodes. A `minisign`-CLI key is plain
+ * text and has to be encoded first, or the CLI fails with "Invalid symbol 32, offset 9"
+ * (offset 9 is the space in its `untrusted comment:` header). Never log the value. */
 export function secretKeyBody(file) {
   return encodedBox(file);
 }

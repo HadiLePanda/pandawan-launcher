@@ -118,9 +118,8 @@ export default function ServicesPanel() {
     try {
       const res = await fetch(`${endpoint}?id=${encodeURIComponent(id)}`, {
         method: 'POST',
-        // The server refuses an /api/ request without the token, and this call
-        // does not go through apiPost: it answers with a plain string on a
-        // refusal, which that helper would raise as a JSON parse failure.
+        // The token goes on by hand: this call does not go through apiPost, and a refusal
+        // comes back as a plain string that apiPost would raise as a parse failure.
         headers: requestHeaders(),
       });
       // Read as text first: a refusal can be a plain string (an unknown id is a

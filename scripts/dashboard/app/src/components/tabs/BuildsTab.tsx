@@ -126,9 +126,8 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     setError(null);
     setLog('');
 
-    // Fields, not an argument list: the server assembles the flags, so a value
-    // that begins with `--` cannot arrive as one. Nothing typed into this form can
-    // become a command either, because the args reach spawn without a shell.
+    // Fields, not an argument list: the server assembles the flags, so a value that begins
+    // with `--` cannot arrive as one.
     const platforms: Record<string, string> = {};
     for (const platform of PLATFORMS) {
       const dir = platformDirs[platform]?.trim();

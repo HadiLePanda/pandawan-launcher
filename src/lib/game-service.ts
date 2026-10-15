@@ -173,34 +173,19 @@ export async function selectInstallFolder(start?: string): Promise<string | null
   return unwrapResult(await commands.selectInstallFolder(start ?? null));
 }
 
-/**
- * Open the games folder in the system file manager.
- *
- * A command rather than the shell plugin's `open`: that plugin checks the path
- * against the allowlist in `tauri.conf.json`, and the allowlist can only describe
- * the app's own log folder, so the install folder - which the user chooses - was
- * refused. The backend resolves the folder from the settings, so nothing here
- * names a path at all.
- */
+/** Open the games folder in the system file manager. The backend resolves it from the
+ * settings, so nothing here names a path: the shell plugin's allowlist could not describe
+ * a folder the user chose. */
 export async function openGamesFolder(): Promise<void> {
   unwrapResult(await commands.openGamesFolder());
 }
 
-/**
- * Open the folder the launcher writes its log to.
- *
- * The backend resolves it from the app's own paths, so nothing here names a folder.
- */
+/** Open the log folder. The backend resolves it, so nothing here names a folder. */
 export async function openLogsFolder(): Promise<void> {
   unwrapResult(await commands.openLogsFolder());
 }
 
-/**
- * Open the store page in the browser.
- *
- * The address is a constant in the backend, so this takes no URL: the app opens
- * exactly one page, and nothing in the frontend can point it elsewhere.
- */
+/** Open the store page. The address is a constant in the backend, so this takes no URL. */
 export async function openStorePage(): Promise<void> {
   unwrapResult(await commands.openStorePage());
 }

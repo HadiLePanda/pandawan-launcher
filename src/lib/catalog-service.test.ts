@@ -168,11 +168,10 @@ describe('catalog-service', () => {
     });
 
     it('caches the manifest and its signature together, as one read', async () => {
-      // The pair has to share one cache entry. Cached separately they would expire at
-      // different instants, and the read that refreshed the manifest while serving the
-      // signature from cache would check new bytes against an old signature and refuse
-      // a game that is fine. So: two fetches for the first read (document, signature),
-      // none for the second.
+      // The pair has to share one cache entry: cached separately they expire at different
+      // instants, and the read that refreshed the manifest while serving the signature from
+      // cache would check new bytes against an old signature and refuse a game that is fine.
+      // So: two fetches for the first read (document, signature), none for the second.
       //
       // A store of its own, because the file mock in this suite does not persist: with
       // no cache to read, every read is a network read and this would prove nothing.
@@ -197,9 +196,8 @@ describe('catalog-service', () => {
         await service.fetchGameManifest(url);
         expect((commands.fetchRemoteText as Mock).mock.calls.length).toBe(afterFirstRead);
       } finally {
-        // Implementations are module state, and `clearAllMocks` does not clear them:
-        // left in place they would hand every later test in this file a working cache,
-        // which is not what those tests assume.
+        // Implementations are module state, and `clearAllMocks` does not clear them: left
+        // in place they would hand every later test here a working cache.
         (readTextFile as Mock).mockReset();
         (writeTextFile as Mock).mockReset();
       }

@@ -67,9 +67,8 @@ export function planPrune(
   // channel files: deleting latest.json leaves every client unable to resolve which
   // version is current.
   //
-  // Their signatures are excluded for a sharper reason: the launcher refuses a
-  // document whose signature is missing, so sweeping one leaves a live manifest no
-  // client accepts - every player's copy of the game disappears.
+  // A signature is excluded too: the launcher refuses a document without one, so a
+  // swept .sig leaves a live manifest no client accepts.
   const CHANNEL_FILES = new Set([
     'manifest.json',
     'manifest.json.sig',
