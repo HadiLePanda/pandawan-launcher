@@ -17,7 +17,8 @@
  * first.
  */
 import http from 'node:http';
-import { spawn, spawnSync } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -25,6 +26,17 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * `execFile`, promisified.
+ *
+ * The status reads below are async rather than `spawnSync`, and that is the whole
+ * point of them being async: a synchronous child blocks the event loop for its entire
+ * duration, and `/api/launcher/status` is deliberately uncached and runs several
+ * commands, so one slow `gh` call froze every other request and every open SSE stream
+ * behind it. Measured on this machine: nineteen seconds for one status read.
+ */
+const execFileAsync = promisify(execFile);
 // The in-server catalog write reuses r2.mjs's upload/NO_CACHE so its
 // cache-control header matches publish-catalog.mjs exactly: a mutable index
 // served under a long-lived cache header makes a publish look like a no-op.
@@ -975,18 +987,11 @@ async function launcherStatus() {
     publishedError = String(err?.message ?? err);
   }
 
-  // Which releases exist, newest first.
-  let releases = [];
-  try {
-    const out = spawnSync('gh', ['release', 'list', '--limit', '10', '--json', 'tagName,isDraft'], {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-      shell: false,
-    });
-    if (out.status === 0 && out.stdout) releases = JSON.parse(out.stdout);
-  } catch {
-    // gh missing or not logged in; the panel still works without the list.
-  }
+  // Which releases exist, newest first. A missing gh, a logged-out gh and a JSON
+  // shape this does not expect all answer an empty list; the panel still works
+  // without it.
+  const releases =
+    (await ghJson(['release', 'list', '--limit', '10', '--json', 'tagName,isDraft'])) ?? [];
 
   const packageVersion = JSON.parse(
     await readFile(path.join(repoRoot, 'package.json'), 'utf-8')
@@ -1005,17 +1010,16 @@ async function launcherStatus() {
   // is pushed before any release exists, so the release list still names the
   // previous version and would report the wrong run.
   const targetTag = packageVersion ? `v${packageVersion}` : null;
-  const run = runForTag(releaseWorkflowRuns(), targetTag);
+  const run = runForTag(await releaseWorkflowRuns(), targetTag);
   // Job conclusions exist only once the run is `completed`; reading jobs mid-run
   // costs a call for a status the headline word already gives, so they wait.
-  const jobs = run && run.status === 'completed' ? runJobs(run.databaseId) : [];
+  const jobs = run && run.status === 'completed' ? await runJobs(run.databaseId) : [];
   const summary = summariseRun(run, jobs);
   // The reason a red run is red - a runner billing block, a missing secret, a
   // failed command - lives in an annotation, not in the job name. Fetched only
   // for a failed run, because that is the only time it exists.
-  const ci = summary
-    ? { ...summary, reason: runDidFail(summary) ? failureReason(run.databaseId) : null }
-    : null;
+  const reason = summary && runDidFail(summary) ? await failureReason(run.databaseId) : null;
+  const ci = summary ? { ...summary, reason } : null;
 
   return {
     published,
@@ -1030,65 +1034,69 @@ async function launcherStatus() {
 }
 
 /**
+ * Run `gh` and parse its JSON, or answer null.
+ *
+ * Async, and that is the point: a synchronous child blocks the event loop for its
+ * whole duration, and these reads are what `/api/launcher/status` is made of. A
+ * missing `gh`, a logged-out `gh`, a non-zero exit and a JSON shape this does not
+ * expect all answer null, so no caller can read "no answer" as a fact about the
+ * repository - which is why every caller turns null into an empty list rather than
+ * into a pass.
+ */
+async function ghJson(args) {
+  try {
+    const { stdout } = await execFileAsync('gh', args, { cwd: repoRoot, maxBuffer: 8 << 20 });
+    return stdout ? JSON.parse(stdout) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Run `git` and answer its stdout, or null. Async for the same reason as ghJson. */
+async function gitOut(args) {
+  try {
+    const { stdout } = await execFileAsync('git', args, { cwd: repoRoot, maxBuffer: 8 << 20 });
+    return stdout;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The release-workflow runs, newest first, or an empty list.
  *
  * A missing gh, a logged-out gh, or a JSON shape this does not expect all answer
  * an empty list: the panel then says "no run" rather than failing, and no caller
  * may read the absence as a pass.
  */
-function releaseWorkflowRuns() {
-  try {
-    const out = spawnSync(
-      'gh',
-      [
-        'run',
-        'list',
-        '--workflow',
-        'release.yml',
-        '--json',
-        'databaseId,status,conclusion,headBranch,event,url,createdAt',
-        '--limit',
-        '20',
-      ],
-      { cwd: repoRoot, encoding: 'utf-8', shell: false }
-    );
-    if (out.status === 0 && out.stdout) return JSON.parse(out.stdout);
-  } catch {
-    // Fall through to the empty list.
-  }
-  return [];
+async function releaseWorkflowRuns() {
+  return (
+    (await ghJson([
+      'run',
+      'list',
+      '--workflow',
+      'release.yml',
+      '--json',
+      'databaseId,status,conclusion,headBranch,event,url,createdAt',
+      '--limit',
+      '20',
+    ])) ?? []
+  );
 }
 
 /**
  * Whether a tag exists on the remote. Dispatching a workflow needs a pushed ref,
  * so a local-only tag would fail deep inside `gh` with a message about the ref.
  */
-function remoteTagExists(tag) {
-  try {
-    const out = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-      shell: false,
-    });
-    return out.status === 0 && out.stdout.trim() !== '';
-  } catch {
-    return false;
-  }
+async function remoteTagExists(tag) {
+  const out = await gitOut(['ls-remote', '--tags', 'origin', `refs/tags/${tag}`]);
+  return out !== null && out.trim() !== '';
 }
 
 /** The jobs of one run, or an empty list. Same "absence is not a pass" rule. */
-function runJobs(runId) {
-  try {
-    const out = spawnSync('gh', ['run', 'view', String(runId), '--json', 'jobs'], {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-      shell: false,
-    });
-    if (out.status === 0 && out.stdout) return JSON.parse(out.stdout).jobs ?? [];
-  } catch {
-    // Fall through to the empty list.
-  }
-  return [];
+async function runJobs(runId) {
+  const parsed = await ghJson(['run', 'view', String(runId), '--json', 'jobs']);
+  return parsed?.jobs ?? [];
 }
 
 /**
@@ -1100,34 +1108,20 @@ function runJobs(runId) {
  * runner-side block is exactly the fact the operator cannot act on. Two API
  * calls, made only for a run that already failed.
  */
-function failureReason(runId) {
-  try {
-    const jobsOut = spawnSync('gh', ['api', `repos/{owner}/{repo}/actions/runs/${runId}/jobs`], {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-      shell: false,
-    });
-    if (jobsOut.status !== 0 || !jobsOut.stdout) return null;
-    const failed = (JSON.parse(jobsOut.stdout).jobs ?? []).find(
-      (job) => job?.conclusion === 'failure'
-    );
-    if (!failed?.id) return null;
+async function failureReason(runId) {
+  const jobs = await ghJson(['api', `repos/{owner}/{repo}/actions/runs/${runId}/jobs`]);
+  const failed = (jobs?.jobs ?? []).find((job) => job?.conclusion === 'failure');
+  if (!failed?.id) return null;
 
-    const annOut = spawnSync(
-      'gh',
-      ['api', `repos/{owner}/{repo}/check-runs/${failed.id}/annotations`],
-      { cwd: repoRoot, encoding: 'utf-8', shell: false }
-    );
-    if (annOut.status !== 0 || !annOut.stdout) return null;
-    const annotations = JSON.parse(annOut.stdout);
-    const failure =
-      (Array.isArray(annotations)
-        ? annotations.find((a) => a?.annotation_level === 'failure')
-        : null) ?? (Array.isArray(annotations) ? annotations[0] : null);
-    return failure?.message ?? null;
-  } catch {
-    return null;
-  }
+  const annotations = await ghJson([
+    'api',
+    `repos/{owner}/{repo}/check-runs/${failed.id}/annotations`,
+  ]);
+  if (!Array.isArray(annotations)) return null;
+
+  const failure =
+    annotations.find((a) => a?.annotation_level === 'failure') ?? annotations[0] ?? null;
+  return failure?.message ?? null;
 }
 
 /**
@@ -2896,7 +2890,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(400).end('the repo version could not be read, so there is no tag to build');
       return;
     }
-    if (!remoteTagExists(tag)) {
+    if (!(await remoteTagExists(tag))) {
       res.writeHead(409).end(`tag ${tag} is not on the remote. Push it, then build.`);
       return;
     }
