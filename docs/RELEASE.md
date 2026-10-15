@@ -130,6 +130,59 @@ builds. CI builds from the committed file and does not sync, so run
   job names and the failure's own annotation (a runner billing block, a
   missing secret).
 
+## Code signing
+
+Two different signatures, and only one of them exists today.
+
+| Signature                       | Who checks it                              | State                                             |
+| ------------------------------- | ------------------------------------------ | ------------------------------------------------- |
+| **Updater** (minisign)          | the launcher, before it installs an update | done, and `npm run keys:check` proves the keypair |
+| **Code** (Authenticode / Apple) | Windows SmartScreen, macOS Gatekeeper      | **not configured**                                |
+
+Without the second one:
+
+- **Windows** shows "Unknown publisher" on the SmartScreen prompt for the NSIS
+  installer, and refuses the install outright for anyone whose policy blocks unknown
+  publishers. `npm run tauri:build` prints this state at the end of every build, so it
+  is never a surprise.
+- **macOS** refuses the app until it is signed and notarised. A `.dmg` that Gatekeeper
+  will not open is a download that does nothing when double-clicked.
+
+### Windows
+
+Windows is built on this machine, so the certificate goes there.
+
+1. Buy a code-signing certificate. An OV certificate clears the "unknown publisher"
+   prompt; an EV certificate also starts with SmartScreen reputation.
+2. Import it into the certificate store of the machine that builds Windows:
+
+   ```powershell
+   Import-PfxCertificate -FilePath .\codesign.pfx -CertStoreLocation Cert:\CurrentUser\My
+   ```
+
+3. Put the thumbprint into `bundle.windows.certificateThumbprint` in
+   `src-tauri/tauri.conf.json` and commit it. Tauri signs the installer with it, and
+   `npm run tauri:build` then ends with "Code signing: the installer is signed."
+
+### macOS and Linux (CI)
+
+The bundler reads the Apple credentials from the environment, so this is secrets
+rather than code. Add them in the repository settings, and add this to the `env:` of
+the "Build and release Tauri bundle" step in `.github/workflows/release.yml`:
+
+```yaml
+APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }} # base64 of the .p12
+APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }} # Developer ID Application: ...
+APPLE_ID: ${{ secrets.APPLE_ID }} # notarisation
+APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }} # an app-specific password
+APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+```
+
+Nothing else changes: with the secrets absent the build is unsigned, which is what it
+is today. Do not add them empty, because an empty `APPLE_CERTIFICATE` is a certificate
+the bundler tries and fails to import.
+
 ## Notes
 
 - Tags must match `v<major>.<minor>.<patch>` with an optional prerelease

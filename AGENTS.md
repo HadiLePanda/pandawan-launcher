@@ -234,6 +234,14 @@ The few things worth knowing without looking:
   website's `downloads.json` by replacing only the Windows group (`mergeDownloadsIndex` in
   `scripts/lib/downloads-index.mjs`), so the macOS/Linux entries CI wrote survive there too. The two
   producers never write a _whole_ manifest or index - each adds its own platforms.
+- **The installers carry no code signature, and that is the last thing between this
+  and a normal download.** The updater signature is separate and does exist (minisign,
+  `npm run keys:check` proves it). The code signature needs a certificate, so it is a
+  purchase rather than a step: Windows shows "Unknown publisher" on SmartScreen, and
+  macOS Gatekeeper refuses the app until it is signed and notarised. `npm run
+tauri:build` prints the Windows installer's state at the end of every local build,
+  and docs/RELEASE.md has the steps for both platforms. Do not write signing config
+  that cannot be tested against a real certificate.
 - **The repository is made public only so CI can run, and must carry nothing company-specific.** `LICENSE`
   is proprietary ("All Rights Reserved"): MIT granted the right to fork and resell, which this has to
   prevent, and the notice states that public visibility is not a grant. The game lineup is not tracked -

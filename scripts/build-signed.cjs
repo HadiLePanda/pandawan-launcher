@@ -16,7 +16,7 @@
  * (offset 9 is the space in the `untrusted comment:` header).
  */
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { existsSync, readFileSync, readdirSync, statSync } = require('fs');
 const { join, resolve } = require('path');
 
@@ -121,9 +121,60 @@ sync.on('close', (code) => {
 
     console.log(`Signed ${sigs.length} updater artifact(s):`);
     for (const sig of sigs) console.log(`  ${sig}`);
+
+    reportCodeSigning();
     process.exit(0);
   });
 });
+
+/**
+ * Say whether the installer carries a code-signing signature.
+ *
+ * A different signature from the updater one above, and deliberately not fatal: this
+ * one needs a certificate from a certificate authority, so it is a purchase rather
+ * than a step in a script. Without it Windows shows an unknown publisher on the
+ * SmartScreen prompt, and a download that looks like a virus is a download nobody
+ * completes - which is why the state is named at the end of every local build, where
+ * the Windows installer is made, instead of being discovered by a player.
+ *
+ * Only Windows is checked here. macOS and Linux are built in CI, where the same
+ * question is answered by the signing secrets described in docs/RELEASE.md.
+ */
+function reportCodeSigning() {
+  if (process.platform !== 'win32') return;
+
+  const nsis = join(bundleDir, 'nsis');
+  if (!existsSync(nsis)) return;
+  if (!readdirSync(nsis).some((entry) => entry.endsWith('.exe'))) return;
+
+  // One PowerShell call, argv-arrayed rather than shelled: nothing here is input.
+  const script =
+    `Get-ChildItem -Path '${nsis}' -Filter *.exe | ` +
+    'ForEach-Object { "$($_.Name)|$((Get-AuthenticodeSignature $_.FullName).Status)" }';
+  const result = spawnSync('powershell', ['-NoProfile', '-Command', script], {
+    encoding: 'utf-8',
+  });
+  if (result.status !== 0) return;
+
+  const lines = `${result.stdout ?? ''}`
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const unsigned = lines.filter((line) => !line.endsWith('|Valid'));
+
+  if (unsigned.length === 0) {
+    console.log('Code signing: the installer is signed.');
+    return;
+  }
+
+  console.warn(
+    `\nCode signing: ${unsigned.length} installer(s) carry no Authenticode signature.` +
+      `\n  ${unsigned.join('\n  ')}\n` +
+      '  Windows shows "Unknown publisher" on the SmartScreen prompt for these, and the\n' +
+      '  install is refused outright for anyone whose policy blocks unknown publishers.\n' +
+      '  See "Code signing" in docs/RELEASE.md for what this needs.\n'
+  );
+}
 
 /** Recursively collect the `.sig` files a signed bundle produces. */
 function findSignatureFiles(dir) {
