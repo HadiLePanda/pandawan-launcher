@@ -557,9 +557,7 @@ input.pin-search {
 }
 
 /* ----- Game detail redesign ----- */
-/* Column on top, footer pinned under it. The grid itself is no longer the
-   height owner, because a grid child cannot be a fixed-height footer: it is
-   sized by its row, and the row grows with the scrolling content. */
+/* Column on top, footer pinned under it. */
 .game-detail-layout {
   display: flex;
   flex-direction: column;
@@ -569,51 +567,22 @@ input.pin-search {
 
 .game-detail {
   display: grid;
-  /* Two tracks, full width: the picture, capped at 1240, then everything that is
-     left over. The picture therefore starts at the window's left edge at every
-     size and stays there, which is the whole point - centring the pair instead
-     slid the hero inward as the window grew, and a hero that moves sideways as
-     the window widens is the thing this layout existed to avoid.
-
-     The rail centres itself inside its own track (see .game-detail-news), so it
-     sits in the middle of the leftover space rather than against the window's
-     right edge. At an ordinary window the leftover is exactly the rail's own
-     width, there is nothing to centre, and the rail lands flush right - which is
-     what it should do when the window is no wider than the content. As the window
-     grows the leftover grows and the rail moves to the middle of it. One rule
-     covers both states with no breakpoint between them.
-
-     The rail's track is floored at the rail's own minimum PLUS the separation on
-     both sides of it, which is 420 + 2 x 48 = 516. That floor is what keeps the
-     two columns from touching. Zeroing the gap made the centring correct and left
-     the rail hard against the picture at 1280 and 1440, where there is no leftover
-     to centre it in. Reserving the separation in the track means the slack exists
-     before the centring divides it, so every window gets at least 48 either side
-     instead of none.
-     It costs the picture some width at the minimum window, which is the right
-     trade: two panels flush against each other read as one broken panel, while a
-     shorter banner is barely noticeable. */
+  /* Two tracks: the picture capped at 1240, then the leftover. Full width, so the
+     hero starts at the window's left edge and stays there as the window grows. The
+     rail's track is floored at 420 + 2 x 48 so the two columns never touch, and the
+     rail centres itself inside that track (see .game-detail-news). */
   grid-template-columns: minmax(0, 1240px) minmax(516px, 1fr);
-  /* Zero, and it is the whole fix. A grid gap is space between the TRACKS, so the
-     48 landed entirely on the picture's side: the rail sat 48px off the picture
-     and hard against the window's right edge, which is the opposite of centred.
-     The slack either side of the rail measured equal and looked unequal, because
-     the 48 the eye counts on the left was this gap and not slack at all. With it
-     at zero the rail's track runs from the picture's edge to the frame and the
-     centring splits what is left evenly between them, so the space between the two
-     columns becomes an outcome of the centring rather than a number typed in
-     twice. */
+  /* Zero: a column gap is space between the tracks, so any of it lands on the
+     picture's side and stops the rail's centring from reading as centred. */
   column-gap: 0;
   width: 100%;
-  /* One row, exactly the height of the page. The news rail is the only part
-     whose length is unbounded - the item count comes from the publisher - so the
-     rail is what scrolls, never the page. Letting an unbounded list set the page
-     height stretched the left column to match it and left a long void under the
-     screenshots. */
+  /* One row, the height of the page. Only the rail's length is unbounded (the item
+     count comes from the publisher), so the rail scrolls and the page does not: a
+     long list would otherwise stretch the left column and leave a void under the
+     screenshots. The left column scrolls instead of clipping. */
   grid-template-rows: 100%;
-  /* Row gap only. A `gap` shorthand here would reset the column axis and put the
-     48 back on the picture's side, which is the bug this rule exists to remove -
-     so the two axes are set separately and the column gap is declared above. */
+  /* Row gap only: a `gap` shorthand would reset the column axis and put the 48 back
+     on the picture's side. */
   row-gap: var(--space-11);
   padding: var(--space-8);
   flex: 1;
@@ -627,19 +596,11 @@ input.pin-search {
   gap: 0;
   min-width: 0;
   min-height: 0;
-  /* The column stops growing here, and everything under it is as wide as the
-     column, so one cap keeps the banner, the action row and the screenshot strip
-     the same width at every window size. Without it a 2560-wide window produced
-     an 1100px-tall banner and the column grew a scrollbar. The cap that stops this
-     column growing is on the grid, which is what centres the pair; this box fills
-     its track.
-     The bar is suppressed and the column is never scrollable: the picture and the
-     strip are the whole of its content, and the sizes above are chosen so they
-     fit a window at or above the 1280x720 minimum. A column that could scroll had
-     a bar sitting between two sections with nothing on screen to say there was
-     more below - and at the sizes it did scroll it was only ever hiding content
-     the reel already made reachable by scrolling sideways. */
-  overflow: hidden;
+  /* Scrolls when the banner, the action row and the strip do not fit the window.
+     Clipping instead left the screenshots unreachable, because the page itself
+     cannot scroll here: the news rail is what scrolls. */
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* One fixed ratio, under the column's own cap, so the box has exactly one
@@ -1408,17 +1369,10 @@ input.pin-search {
   color: var(--ink-muted);
 }
 
-/* The 1280x720 minimum is the one window with no height to spare: the picture and
-   a full-size strip together need 677px of a 582px column. The column no longer
-   scrolls, so the only way to fit is to spend less height, and there are two
-   things to spend it on. The strip gets smaller - a reel of 180px tiles is still a
-   reel - and the picture gives up height against the same 50vh cap the wide
-   window uses, which is what keeps its width and crops a little art rather than
-   pushing a section off the page.
-
-   Keyed on height, because the shortfall is vertical: a narrow window is short,
-   not tall, and a window-keyed query would shrink the picture for the wrong
-   reason. */
+/* The 1280x720 minimum is the window with no height to spare, so the picture and
+   the strip both give up some: the strip's tiles get smaller and the picture keeps
+   its width while the 42vh cap crops a little art. Keyed on height, because the
+   shortfall is vertical. */
 @media (max-height: 800px) {
   .game-detail-banner {
     max-height: 42vh;
@@ -1438,21 +1392,17 @@ input.pin-search {
 @media (max-width: 1024px) {
   .game-detail {
     grid-template-columns: 1fr;
-    /* Stacked: the two blocks are on separate rows here and the rail's track is
-       the full page width, so the column gap has to come back - there is nothing
-       to centre in a track that spans the window. */
+    /* Stacked: the rail's track spans the window, so the column gap has to come
+       back - there is nothing to centre. */
     column-gap: var(--space-11);
-    grid-template-rows: auto auto;
-    /* Two stacked rows, so the row list is auto auto. Here the stacked page is
-       what scrolls: the wide layout's single-row scroller has no news rail to
-       scroll, and the container's own overflow is hidden. */
+    /* Two stacked rows, and here the page scrolls: with no rail to scroll, the
+       container's own overflow does it. */
     grid-template-rows: auto auto;
     overflow-y: auto;
   }
 
   .game-detail-news {
-    /* Stacked, so the rail is the full page width. The clamp must not survive, or
-       the rail would sit in a 520px column on a phone-width window. */
+    /* Full width when stacked, so the clamp must not survive. */
     justify-self: stretch;
     width: auto;
   }
