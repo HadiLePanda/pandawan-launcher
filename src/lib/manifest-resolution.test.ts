@@ -10,7 +10,12 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   BaseDirectory: { AppData: 'AppData' },
 }));
 
-vi.mock('./commands', () => ({ commands: { fetchRemoteText: vi.fn() } }));
+vi.mock('./commands', () => ({
+  commands: {
+    fetchRemoteText: vi.fn(),
+    verifyManifestSignature: vi.fn(() => Promise.resolve({ status: 'ok' })),
+  },
+}));
 
 const fetchRemoteText = commands.fetchRemoteText as unknown as Mock;
 
@@ -18,7 +23,10 @@ const fetchRemoteText = commands.fetchRemoteText as unknown as Mock;
 // unwraps, so the mock must answer in that shape rather than a bare string.
 function respond(routes: Record<string, string>): void {
   fetchRemoteText.mockImplementation((url: string) => {
-    const hit = Object.keys(routes).find((suffix) => url.endsWith(suffix));
+    // A signed document is fetched together with its signature, under the document's
+    // own URL plus `.sig`, so the fixture answers both from the same route.
+    const target = url.endsWith('.sig') ? url.slice(0, -'.sig'.length) : url;
+    const hit = Object.keys(routes).find((suffix) => target.endsWith(suffix));
     if (!hit) return Promise.reject(new Error(`no route for ${url}`));
     return Promise.resolve({ status: 'ok', data: routes[hit] });
   });
@@ -91,8 +99,12 @@ describe('resolveManifestForPlatform', () => {
 
     await resolveManifestForPlatform('example-game', 'stable', 'linux');
 
-    expect(fetchRemoteText).toHaveBeenCalledTimes(1);
+    // Two calls, not one: the index is fetched together with the signature the
+    // launcher checks it against. What this test is about is that neither call is a
+    // manifest, because there is no build for this platform to describe.
+    expect(fetchRemoteText).toHaveBeenCalledTimes(2);
     expect(fetchRemoteText).toHaveBeenCalledWith(expect.stringContaining('/latest.json'));
+    expect(fetchRemoteText).not.toHaveBeenCalledWith(expect.stringContaining('manifest.json'));
   });
 
   it('treats a malformed index as absent rather than crashing the catalog', async () => {

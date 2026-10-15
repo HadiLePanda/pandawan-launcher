@@ -12,8 +12,10 @@ import * as __TAURI_EVENT from '@tauri-apps/api/event';
 
 /** Commands */
 export const commands = {
-  fetchGameManifest: (url: string) =>
-    typedError<GameManifest, LauncherError>(__TAURI_INVOKE('fetch_game_manifest', { url })),
+  verifyManifestSignature: (body: string, signature: string) =>
+    typedError<void, LauncherError>(
+      __TAURI_INVOKE('verify_manifest_signature', { body, signature })
+    ),
 
   fetchRemoteText: (url: string) =>
     typedError<string, LauncherError>(__TAURI_INVOKE('fetch_remote_text', { url })),
@@ -175,6 +177,7 @@ export type LauncherError =
   | { code: 'ExecutableNotFound'; details: { path: string } }
   | { code: 'PathNotAllowed'; details: { path: string } }
   | { code: 'HttpClient'; details: string }
+  | { code: 'ManifestUnsigned'; details: string }
   | { code: 'Network'; details: string }
   | { code: 'ManifestParse'; details: string }
   | { code: 'Validation'; details: string }

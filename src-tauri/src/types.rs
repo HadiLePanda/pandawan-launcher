@@ -343,6 +343,11 @@ pub enum LauncherError {
     /// message only a developer could read.
     #[error("Could not start the downloader: {0}")]
     HttpClient(String),
+    /// A published document did not carry a signature this build trusts. Refused
+    /// rather than warned about: an unverified manifest can name any file, at any
+    /// URL, with the hash to match.
+    #[error("Signature check failed: {0}")]
+    ManifestUnsigned(String),
     /// These carry the underlying detail. Without `{0}` in the format string
     /// thiserror renders the literal message and discards the payload, so an IO
     /// failure surfaced as a bare "Io" with no indication of what went wrong.
@@ -1303,6 +1308,10 @@ mod tests {
             (
                 LauncherError::HttpClient("no tls backend".into()),
                 "no tls backend",
+            ),
+            (
+                LauncherError::ManifestUnsigned("no signature".into()),
+                "no signature",
             ),
             (
                 LauncherError::Validation("missing path".into()),

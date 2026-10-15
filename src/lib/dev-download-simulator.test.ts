@@ -25,6 +25,7 @@ vi.mock('./commands', () => ({
   commands: {
     getInstalledGames: vi.fn().mockResolvedValue({ status: 'ok', data: [] }),
     fetchRemoteText: vi.fn(),
+    verifyManifestSignature: vi.fn(() => Promise.resolve({ status: 'ok' })),
   },
 }));
 

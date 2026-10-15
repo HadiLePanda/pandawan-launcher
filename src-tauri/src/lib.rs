@@ -9,6 +9,7 @@ use tauri_specta::{collect_commands, collect_events, Builder};
 use tokio::process::Command as TokioCommand;
 use tokio::sync::Mutex;
 pub mod download;
+pub mod manifest_signature;
 pub mod patch;
 pub mod path_utils;
 pub mod tray;
@@ -214,18 +215,21 @@ async fn fetch_remote_text(url: String) -> Result<String, LauncherError> {
         .map_err(|e| LauncherError::Network(format!("Failed to read {url}: {e}")))
 }
 
-/// Fetch game manifest from URL
+/// Verify the signature a published manifest or version index carries.
+///
+/// The frontend fetches the document and its `.sig` through `fetch_remote_text`,
+/// which keeps the read cache and the offline fallback on that side, and asks here
+/// whether those bytes are the ones the publisher signed. It has to be bytes and
+/// not a parsed object: a signature covers the exact document, so re-serializing a
+/// parsed manifest would not match it.
+///
+/// A document that fails this is refused rather than reported. The manifest names
+/// every file and its hash, so accepting an unverified one means installing
+/// whatever it names, from wherever its base_url points.
 #[tauri::command]
 #[specta::specta]
-async fn fetch_game_manifest(url: String) -> Result<GameManifest, LauncherError> {
-    // Through fetch_remote_text rather than its own client: that path already
-    // enforces the scheme allowlist, a 30s timeout and a size cap, and a manifest
-    // is a remote document exactly like the catalog is. Its own Client::new() had
-    // none of the three, so a slow or hostile host hung the command indefinitely
-    // and the body was read without limit.
-    let body = fetch_remote_text(url).await?;
-    serde_json::from_str::<GameManifest>(&body)
-        .map_err(|e| LauncherError::ManifestParse(e.to_string()))
+fn verify_manifest_signature(body: String, signature: String) -> Result<(), LauncherError> {
+    manifest_signature::verify(body.as_bytes(), &signature)
 }
 
 /// Install or update a game
@@ -788,7 +792,7 @@ fn save_settings_to_disk(
 pub fn create_specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
-            fetch_game_manifest,
+            verify_manifest_signature,
             fetch_remote_text,
             install_game,
             check_game_update,

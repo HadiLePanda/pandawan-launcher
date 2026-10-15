@@ -435,7 +435,26 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   - News editing is `scripts/lib/news-fields.mjs` (the contract) + `scripts/lib/apply-news.mjs` (the ops engine) + `scripts/publish-news.mjs` (the publisher), with the dashboard's News tab driving the last one. Ops are `update`/`create`/`delete`/`move`; `applyNewsOps` never aborts a batch on one bad op but the publisher **fails the whole run** when any op errored, so a rejected edit is never published alongside the accepted ones.
   - The dashboard client cannot import the server's `.mjs` contract modules (they hold R2 credentials and use `node:` imports), so the news field list travels in the `/api/news` response and the form renders from that; do not add a hand-typed copy under `scripts/dashboard/app/`. New-item ids are derived server-side by `uniqueNewsId` for the same reason — the client cannot call the slugger, and a client-chosen id could collide with a published item and merge two announcements.
   - News and game selection now live beside the form they edit (master–detail, `.split`), not behind an id box: typing an id that does not exist fails deep inside a publishing script, which is the failure mode the visual editor exists to remove.
-- If the remote catalog is unreachable, the launcher falls back to `public/catalog.json` (embedded) and shows a connectivity banner.
+- **A published manifest is signed, and the launcher refuses one that is not.** The
+  manifest lists every file's SHA256, so it is what decides what gets installed: a
+  bucket somebody else can write to would otherwise let them publish a build whose
+  hashes match the files they planted. `publish-game.mjs` and
+  `publish-metadata.mjs` sign with the release key (`tauri signer sign`, the same
+  keypair the launcher's own updates use) and upload `manifest.json.sig` before
+  `manifest.json`, and `latest.json.sig` before `latest.json`. The client fetches
+  the pair and checks the bytes in Rust (`src-tauri/src/manifest_signature.rs`, key
+  pinned from `src-tauri/updater.pub`), because a signature covers exact bytes and
+  the key must not live in the frontend.
+  - Two consequences to respect. A publish without the secret key fails before it
+    generates or uploads anything, and every game has to be republished once after
+    this landed: a manifest published before it carries no signature, and the client
+    refuses those by design rather than accepting "unsigned but present".
+  - `prune-builds.mjs` must never sweep a `.sig` at the channel root. They are in
+    `CHANNEL_FILES` in `scripts/lib/prune-plan.mjs`, next to `manifest.json` and
+    `latest.json`, because deleting one leaves a live manifest no client will accept
+    - which takes the game away from every player rather than only its history.
+  - A metadata edit rewrites the manifest, so it re-signs. Anything else that writes
+    a manifest has to do the same, or the game stops resolving.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB (single previous generation). File writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button; its fs permissions are scoped to `$APPLOG` and the shell `open` regex in `tauri.conf.json` only allows URLs and the app log dir. That regex is why the **install** folder is opened by the backend instead: a regex cannot describe a folder the user chose, so `open_games_folder` resolves the root itself and takes no path, and `open` is called from Rust where the plugin does not apply the allowlist.
 - `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (a `.env.development` was tracked once and Vite inlines what it finds), a `*.key` or `*.pem`, a `.secrets` path, and a `*.map` in `dist/`, since a source map ships the original TypeScript.
 - Tauri auto-updater:

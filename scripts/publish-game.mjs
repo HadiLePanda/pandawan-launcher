@@ -28,6 +28,8 @@ import { parseArgs } from './lib/args.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
 import { CHANNELS } from './lib/metadata-fields.mjs';
 import { manifestFiles, planUpload } from './lib/upload-plan.mjs';
+import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { secretKeyPath } from './lib/updater-key.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
 
@@ -74,6 +76,13 @@ const manifestPath = path.resolve(args.output ?? path.join(repoRoot, 'dist', 'ma
 if (inputDir && !existsSync(inputDir)) {
   fail(`--input-dir does not exist: ${inputDir}`);
 }
+
+// The launcher verifies a manifest against the key in updater.pub, so a publish
+// without the secret half produces a build nobody can install. Checked before
+// anything is generated or uploaded, so a missing key costs nothing.
+const keyPath = secretKeyPath(repoRoot);
+const keyCheck = checkReleaseKey(keyPath);
+if (!keyCheck.ok) fail(keyCheck.detail);
 
 const { bucket, cdnOrigin, endpoint } = r2Config();
 const prefix = `games/${gameId}/${channel}`;
@@ -138,6 +147,12 @@ for (const pattern of asList(args.exclude)) {
 }
 
 run('python', manifestArgs, 'Generating manifest');
+
+// Signed here, after generation and before any upload. The signature covers these
+// exact bytes, so it cannot be made earlier, and a manifest without one is a build
+// no client will install.
+const manifestSigning = signFile(manifestPath, { repoRoot, keyPath });
+if (!manifestSigning.ok) fail(manifestSigning.detail);
 
 const localManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
@@ -210,6 +225,14 @@ if (inputDir) {
 // at that path, so it can be cached forever. Both manifest writes are skipped on
 // a dry run - the manifest IS the signal that a build is available.
 if (!dryRun) {
+  // Each signature goes up before the document it signs, for the same reason the
+  // files go up before the manifest: a client that can read a manifest must be able
+  // to read the signature that makes it usable.
+  upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${versionPrefix}/manifest.json.sig`), {
+    endpoint,
+    cacheControl: IMMUTABLE,
+    contentType: 'text/plain',
+  });
   upload(manifestPath, S3.s3Uri(bucket, `${versionPrefix}/manifest.json`), {
     endpoint,
     cacheControl: IMMUTABLE,
@@ -218,6 +241,11 @@ if (!dryRun) {
 
   // The channel-root copy is mutable and is the signal that a build is available,
   // so it is uploaded last and never cached. Older clients read only this.
+  upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${prefix}/manifest.json.sig`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+    contentType: 'text/plain',
+  });
   upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
     endpoint,
     cacheControl: NO_CACHE,
@@ -263,6 +291,16 @@ const latestPath = path.join(path.dirname(manifestPath), 'latest.json');
 if (!dryRun) {
   writeFileSync(latestPath, `${JSON.stringify(latest, null, 2)}\n`);
 
+  // Signed as well: the index decides which version a client fetches, so an
+  // unsigned one could pin a platform to a version of somebody else's choosing.
+  const latestSigning = signFile(latestPath, { repoRoot, keyPath });
+  if (!latestSigning.ok) fail(latestSigning.detail);
+
+  upload(`${latestPath}.sig`, S3.s3Uri(bucket, `${prefix}/latest.json.sig`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+    contentType: 'text/plain',
+  });
   upload(latestPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
     endpoint,
     cacheControl: NO_CACHE,
@@ -286,4 +324,5 @@ if (behind.length > 0) {
   console.log(`Still on an older build: ${behind.join(', ')}`);
 }
 console.log(`Manifest: ${cdnOrigin}/${prefix}/manifest.json`);
+console.log(`Signature: ${path.relative(repoRoot, manifestSigning.signature)}`);
 console.log('Remember: republish the catalog if this game is new.');

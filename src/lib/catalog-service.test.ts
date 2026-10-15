@@ -17,6 +17,9 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 vi.mock('./commands', () => ({
   commands: {
     fetchRemoteText: vi.fn(),
+    // The signature check itself runs in Rust, against the key pinned in the binary.
+    // What these tests cover is the resolution order, so the stand-in says it passed.
+    verifyManifestSignature: vi.fn(() => Promise.resolve({ status: 'ok' })),
   },
 }));
 

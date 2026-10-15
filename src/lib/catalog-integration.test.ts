@@ -19,6 +19,9 @@ vi.mock('./commands', () => ({
         ? { status: 'ok', data: await response.text() }
         : { status: 'error', error: { code: 'Network', details: `HTTP ${response.status}` } };
     },
+    // The signature check runs in Rust against the pinned key, which a fixture
+    // server cannot reproduce. The two-request flow it sits in is still exercised.
+    verifyManifestSignature: async () => ({ status: 'ok' }),
   },
 }));
 
@@ -103,7 +106,9 @@ function serveCdn(): Promise<{ server: http.Server; origin: string }> {
     const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
       // An empty path has no first segment, and the 404 below covers it.
       const route = (req.url ?? '').split('?')[0] ?? '';
-      const body = FILES[route];
+      // A signed document is fetched together with its signature, under the
+      // document's own URL plus `.sig`; the fixture serves both from one route.
+      const body = FILES[route] ?? FILES[route.replace(/\.sig$/, '')];
       res.setHeader('Access-Control-Allow-Origin', '*');
       if (body === undefined) {
         res.writeHead(404);

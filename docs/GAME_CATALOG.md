@@ -8,7 +8,9 @@ This launcher is data-driven: it ships with only a catalog URL and resolves game
 {origin}/launcher/catalog.json                  # game index (id, channel, display overrides)
 {origin}/launcher/news.json                     # global news feed
 {origin}/games/{id}/{channel}/manifest.json     # current build for the channel
+{origin}/games/{id}/{channel}/manifest.json.sig # minisign signature of that manifest
 {origin}/games/{id}/{channel}/latest.json       # per-platform current version
+{origin}/games/{id}/{channel}/latest.json.sig   # minisign signature of that index
 {origin}/games/{id}/{channel}/icon-<hash8>.png  # artwork, content-addressed (below)
 {origin}/games/{id}/{channel}/banner-<hash8>.png
 {origin}/games/{id}/{channel}/{version}/{platform}/...   # build bytes
@@ -22,6 +24,27 @@ A `--platform` publish gives each platform its own directory under the version.
 A flat `--input-dir` publish writes straight under `{version}/` with no platform
 directory. The manifest's `base_url` names the directory its files live in, so
 the client never has to guess which shape it got.
+
+### Signatures
+
+Every manifest and every `latest.json` is published with a `.sig` beside it, and the
+launcher refuses a document whose signature is missing or wrong. That is what makes
+the bucket untrusted: the manifest names each file's SHA256, so whoever can write to
+the bucket could otherwise publish a build whose hashes match the files they planted,
+and the launcher would install and run it.
+
+The signature is a minisign signature over the exact bytes of the document, written
+by `publish-game.mjs` and `publish-metadata.mjs` with the same release key that signs
+the launcher's own updates, and checked in the launcher against the public key pinned
+in `src-tauri/updater.pub`. Three things follow:
+
+- The secret key must be present to publish. A publish without it stops before it
+  generates or uploads anything, rather than shipping a build nobody can install.
+- The signature is uploaded before the document it signs, at each path, so a client
+  that can read a manifest can always read what makes it usable.
+- A manifest written by anything other than those two scripts, or by a checkout
+  older than the signatures, carries no signature and no client will accept it.
+  Republish the game instead.
 
 `latest.json` exists because platforms ship independently: one `manifest.json`
 cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0". It maps each platform

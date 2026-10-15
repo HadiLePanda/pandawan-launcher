@@ -55,6 +55,26 @@ export async function fetchRemoteText(url: string): Promise<string> {
   return unwrapResult(await commands.fetchRemoteText(url));
 }
 
+/**
+ * Fetch a document the publisher signed, and refuse it unless the signature is one
+ * this build trusts.
+ *
+ * The manifest names every file and its SHA256, so it is what decides what gets
+ * installed: a bucket somebody else can write to would otherwise let them publish a
+ * build whose hashes match the files they planted. A signature covers the exact
+ * bytes, so the check happens on them before they are parsed, and it lives in the
+ * backend because that is where the pinned key is.
+ *
+ * Both documents go through the read cache under their own URLs, so an offline
+ * launch still resolves a game from the last signed copy it saw.
+ */
+async function fetchSigned(remoteUrl: string): Promise<string> {
+  const body = await fetchCachedText(remoteUrl, fetchRemoteText);
+  const signature = await fetchCachedText(`${remoteUrl}.sig`, fetchRemoteText);
+  unwrapResult(await commands.verifyManifestSignature(body, signature));
+  return body;
+}
+
 export interface ResolvedCatalog {
   games: GameInfo[];
   catalog: GameCatalog;
@@ -168,12 +188,21 @@ async function fetchLatestIndex(
   id: string,
   channel: string
 ): Promise<Record<string, PlatformVersion> | null> {
+  const url = latestIndexUrl(id, channel);
   try {
-    const body = await fetchCachedText(latestIndexUrl(id, channel), fetchRemoteText);
+    const body = await fetchSigned(url);
     const parsed = JSON.parse(body);
     if (!parsed || typeof parsed !== 'object') return null;
     return parsed as Record<string, PlatformVersion>;
-  } catch {
+  } catch (err) {
+    // Not fatal: the channel root carries a signed manifest of its own, so an
+    // unusable index costs this machine the per-platform pin, not the game. Logged
+    // rather than swallowed, because "the index is unsigned" and "there is no
+    // index" look identical from the outside.
+    logger.warn('Version index unusable, falling back to the channel root', {
+      url,
+      error: String(err),
+    });
     return null;
   }
 }
@@ -228,7 +257,7 @@ export async function resolveManifestForPlatform(
   }
 }
 export async function fetchGameManifest(manifestUrl: string): Promise<GameManifest> {
-  const body = await fetchCachedText(manifestUrl, fetchRemoteText);
+  const body = await fetchSigned(manifestUrl);
   const manifest = JSON.parse(body);
   if (!manifest || typeof manifest !== 'object' || !manifest.game_id || !manifest.version) {
     throw new Error('Invalid manifest: missing game_id or version');

@@ -38,6 +38,8 @@ import { applyMetadataChanges } from './lib/apply-metadata.mjs';
 import { artworkObjectName, validateArtwork } from './lib/artwork.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
 import { fetchJson } from './lib/game-metadata.mjs';
+import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { secretKeyPath } from './lib/updater-key.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
 export async function publishMetadata(argv) {
@@ -72,6 +74,13 @@ export async function publishMetadata(argv) {
   console.log(`Game:    ${gameId}`);
   console.log(`Channel: ${channel}`);
   if (dryRun) console.log('Mode:    DRY RUN - nothing will be uploaded');
+
+  // This edit rewrites the manifest, and the launcher refuses a manifest whose
+  // signature does not match, so the new file has to be signed. Checked before the
+  // reads and the uploads, so a missing key costs nothing.
+  const keyPath = secretKeyPath(repoRoot);
+  const keyCheck = checkReleaseKey(keyPath);
+  if (!keyCheck.ok) fail(keyCheck.detail);
 
   // --- Work out the new values ---------------------------------------------
 
@@ -227,8 +236,19 @@ export async function publishMetadata(argv) {
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 
+    // Re-signed here: the published manifest was signed when the build was
+    // published, and this file is not those bytes any more.
+    const signing = signFile(manifestPath, { repoRoot, keyPath });
+    if (!signing.ok) fail(signing.detail);
+
     // Both documents are mutable and must never be cached, or a client keeps
-    // reading the metadata that was just replaced.
+    // reading the metadata that was just replaced. The signature goes first, so a
+    // client that can read the manifest can always read what makes it usable.
+    upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${prefix}/manifest.json.sig`), {
+      endpoint,
+      cacheControl: NO_CACHE,
+      contentType: 'text/plain',
+    });
     upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
       endpoint,
       cacheControl: NO_CACHE,
@@ -250,7 +270,9 @@ export async function publishMetadata(argv) {
   } finally {
     // Transport detail, not state. A stale manifest left in dist/ could be
     // picked up by a later build.
-    for (const file of [manifestPath, catalogPath]) rmSync(file, { force: true });
+    for (const file of [manifestPath, catalogPath, `${manifestPath}.sig`]) {
+      rmSync(file, { force: true });
+    }
   }
 
   console.log(`\nPublished metadata for ${gameId} (${channel}).`);

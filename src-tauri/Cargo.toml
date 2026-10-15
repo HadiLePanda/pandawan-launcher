@@ -51,14 +51,14 @@ walkdir = "2.5"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive", "chrono"] }
 specta-typescript = "=0.0.12"
+# Manifest and latest.json verification. These were dev-dependencies while only the
+# signing tests used them; the launcher itself verifies now, so the parse and the
+# signature check live in src/manifest_signature.rs.
+minisign-verify = "0.2"
+base64 = "0.22"
 
 [dev-dependencies]
 mockito = "1"
-# Used by tests/updater_signing_tests.rs to parse plugins.updater.pubkey exactly
-# the way the updater plugin does, so a malformed key fails CI instead of at
-# runtime on every user's update check.
-minisign-verify = "0.2"
-base64 = "0.22"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
