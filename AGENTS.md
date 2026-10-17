@@ -380,8 +380,8 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   known CVE is not. As of this writing `react-router-dom` (CSRF bypass in RSC
   mode), `postcss` (arbitrary `.map` read) and `sharp` (libheif) were all
   production-reachable and have been fixed; keep it at 0.
-- **CI audits the Rust tree too** (`audit-rust` job, `cargo audit --file
-  src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players run,
+- **CI audits the Rust tree too.** The `audit-rust` job runs `cargo audit` over
+  `src-tauri/Cargo.lock`: Rust dependencies are compiled into the binary players run,
   so an advisory in one of them reaches every install. Vulnerabilities fail the job.
   The informational advisories cargo-audit prints (an unmaintained crate, typically
   several crates deep in the tauri tree) are reported and left: a release cannot act

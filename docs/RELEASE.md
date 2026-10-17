@@ -60,7 +60,7 @@ builds. CI builds from the committed file and does not sync, so run
    npm run release -- minor --confirm  # do it
    ```
 
-   The real run writes the four version files, commits only those files, tags
+   The real run writes the version files listed above, commits only those files, tags
    `v<version>`, pushes the branch, then pushes the tag. With no level it bumps
    the patch version. It refuses a non-semver version, a branch other than
    `main`, a dirty tree (untracked files do not count) and a tag that already
