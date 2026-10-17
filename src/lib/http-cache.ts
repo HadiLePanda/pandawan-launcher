@@ -14,6 +14,12 @@ import { logger } from './logger';
 
 const CACHE_FILE = 'http-cache.json';
 const MAX_AGE_MS = 60 * 60 * 1000;
+/**
+ * Versioned manifest entries never expire, and a client accumulates one per
+ * version it has seen. The cap bounds the file; age is deliberately not a prune
+ * criterion, because an expired entry is still what a failed read is served from.
+ */
+export const MAX_CACHE_ENTRIES = 500;
 
 interface Entry {
   fetchedAt: number;
@@ -21,6 +27,17 @@ interface Entry {
 }
 
 type Store = Record<string, Entry>;
+
+/**
+ * Keep the newest entries, up to `limit`. Returns the store unchanged when it is
+ * already inside the cap, so the common path does not rewrite it.
+ */
+export function pruneCache(store: Store, limit = MAX_CACHE_ENTRIES): Store {
+  const entries = Object.entries(store);
+  if (entries.length <= limit) return store;
+  entries.sort((a, b) => b[1].fetchedAt - a[1].fetchedAt);
+  return Object.fromEntries(entries.slice(0, limit));
+}
 
 /** `stale` means the network read failed and the stored copy was served instead. */
 type ReadSource = 'network' | 'cache' | 'stale';
@@ -65,7 +82,9 @@ let writeChain: Promise<void> = Promise.resolve();
 function commit(mutate: (current: Store) => Store): Promise<void> {
   const run = writeChain.then(async () => {
     try {
-      const merged = mutate(await load());
+      // Pruned on every write, so the file is bounded by the next commit after
+      // it grows past the cap rather than by a maintenance pass nobody runs.
+      const merged = pruneCache(mutate(await load()));
       await writeTextFile(CACHE_FILE, JSON.stringify(merged), { baseDir: BaseDirectory.AppLog });
     } catch (err) {
       // The cache is an optimisation: losing it costs a refetch, never correctness.

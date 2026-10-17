@@ -14,7 +14,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   }),
 }));
 
-import { clearCache, fetchCachedText, isImmutable, lastReadSource } from './http-cache';
+import { clearCache, fetchCachedText, isImmutable, lastReadSource, pruneCache } from './http-cache';
 
 const MUTABLE = 'https://cdn.test/games/example-game/alpha/manifest.json';
 const VERSIONED = 'https://cdn.test/games/example-game/alpha/0.4.0-alpha.1/manifest.json';
@@ -92,5 +92,34 @@ describe('http cache', () => {
         throw new Error('offline');
       })
     ).rejects.toThrow('offline');
+  });
+});
+
+describe('bounding the cache', () => {
+  const entry = (fetchedAt: number) => ({ fetchedAt, body: `body-${fetchedAt}` });
+
+  it('keeps the newest entries when the store is over the cap', () => {
+    // Versioned manifests never expire, so without a cap the file grows with
+    // every version a client has ever read.
+    const store = Object.fromEntries(
+      [1, 2, 3, 4, 5].map((n) => [
+        `https://cdn.test/games/g/stable/${n}.0.0/manifest.json`,
+        entry(n),
+      ])
+    );
+
+    const pruned = pruneCache(store, 3);
+
+    expect(Object.keys(pruned).sort()).toEqual([
+      'https://cdn.test/games/g/stable/3.0.0/manifest.json',
+      'https://cdn.test/games/g/stable/4.0.0/manifest.json',
+      'https://cdn.test/games/g/stable/5.0.0/manifest.json',
+    ]);
+  });
+
+  it('returns the store untouched when it is inside the cap', () => {
+    const store = { 'https://cdn.test/launcher/catalog.json': entry(1) };
+
+    expect(pruneCache(store, 10)).toBe(store);
   });
 });
