@@ -230,6 +230,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install the publisher's dependencies
+        # The download index is signed with `tauri signer sign`, and signFile runs
+        # the CLI from the checkout that holds the scripts (./ci). --ignore-scripts
+        # keeps npm lifecycle hooks out of a job that holds the release key.
+        working-directory: ci
+        run: npm ci --ignore-scripts
+
       - name: Download signed bundles from the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -359,6 +366,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+          # The index is signed now: downloads.json is what the public site hands
+          # to a visitor, and an unsigned list is what an R2 writer could replace.
+          # `tauri signer sign` reads these; without them the step fails closed.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Same aws-cli 2.33.x checksum regression as the upload step above:
           # without this a cp that streams aborts with "stream is not seekable".
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required

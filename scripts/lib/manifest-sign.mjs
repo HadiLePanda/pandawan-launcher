@@ -9,6 +9,11 @@ import { runTauriCli, secretKeyBody } from './updater-key.mjs';
 
 /** Whether this machine can sign at all. The publishers call it before uploading. */
 export function checkReleaseKey(keyPath) {
+  // CI has no key file: the workflow injects the secret as the variable the CLI
+  // itself reads. Prefer it, so a runner never needs the key on disk.
+  const fromEnv = process.env.TAURI_SIGNING_PRIVATE_KEY?.trim();
+  if (fromEnv) return { ok: true, keyBody: fromEnv };
+
   if (!existsSync(keyPath)) {
     return {
       ok: false,
