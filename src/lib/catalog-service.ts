@@ -64,12 +64,20 @@ export async function fetchRemoteText(url: string): Promise<string> {
  * that refreshed the document would check new bytes against an old signature.
  */
 async function fetchSigned(remoteUrl: string): Promise<string> {
-  const cached = await fetchCachedText(`${remoteUrl}#signed`, () => fetchSignedPair(remoteUrl));
+  const cached = await fetchCachedText(signedKey(remoteUrl), () => fetchSignedPair(remoteUrl));
   const pair = parseSignedPair(cached) ?? parseSignedPair(await fetchSignedPair(remoteUrl));
   if (!pair) throw new Error(`Could not read ${remoteUrl} with its signature`);
 
   unwrapResult(await commands.verifyManifestSignature(pair.body, pair.signature));
   return pair.body;
+}
+
+/**
+ * The cache key a signed document is stored under. `lastReadSource` has to look
+ * it up with the same key, or a network read reports as a cache hit.
+ */
+function signedKey(url: string): string {
+  return `${url}#signed`;
 }
 
 async function fetchSignedPair(remoteUrl: string): Promise<string> {
@@ -110,8 +118,9 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
     const catalog = await fetchRemoteCatalog(CATALOG_URL);
     const games = await resolveCatalogGames(catalog);
     // A cached read is not a live one. Served after a failed read it is also
-    // stale, which is the case the connectivity banner exists for.
-    const read = lastReadSource(CATALOG_URL);
+    // stale, which is the case the connectivity banner exists for. The signed
+    // document is cached under its own key, so the lookup must use it too.
+    const read = lastReadSource(signedKey(CATALOG_URL));
     return {
       catalog,
       games,
@@ -145,7 +154,12 @@ export async function loadCatalog(): Promise<ResolvedCatalog> {
 }
 
 export async function fetchRemoteCatalog(url: string): Promise<GameCatalog> {
-  const body = await fetchCachedText(url, fetchRemoteText);
+  // The catalog names each game's channel, and the launcher follows it. Unsigned,
+  // an R2 writer can flip that field to a prerelease channel and every client
+  // re-syncs onto it, so the document the app trusts is the one the release key
+  // signed. A bucket still serving the pre-signing catalog falls back to the
+  // embedded copy until `npm run publish:catalog -- --resign --confirm` runs.
+  const body = await fetchSigned(url);
   const catalog = JSON.parse(body);
   validateCatalog(catalog);
   return catalog as GameCatalog;

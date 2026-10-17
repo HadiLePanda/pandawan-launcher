@@ -347,6 +347,19 @@ describe('catalog-service', () => {
         service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json')
       ).rejects.toThrow();
     });
+
+    it('refuses a catalog the pinned key did not sign', async () => {
+      const catalog = makeCatalog();
+      (commands.fetchRemoteText as Mock).mockResolvedValue(okBody(catalog));
+      (commands.verifyManifestSignature as Mock).mockResolvedValueOnce({
+        status: 'error',
+        error: { code: 'ManifestUnsigned', details: 'the signature does not match' },
+      });
+
+      await expect(
+        service.fetchRemoteCatalog('https://cdn.example.com/launcher/catalog.json')
+      ).rejects.toThrow();
+    });
   });
 
   describe('loadEmbeddedCatalog', () => {
