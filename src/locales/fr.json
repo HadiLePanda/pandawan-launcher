@@ -163,17 +163,17 @@
         "ready": "Redémarre le launcher pour appliquer la mise à jour.",
         "restartButton": "Redémarrer pour appliquer",
         "upToDate": "Le launcher est à jour{{suffix}}",
-        "updateFailed": "Échec de la mise à jour\u00a0: {{error}}"
+        "updateFailed": "Échec de la mise à jour\u00a0: {{error}}",
+        "autoUpdate": {
+          "title": "Mise à jour automatique du launcher",
+          "description": "Installer automatiquement les mises à jour du launcher"
+        }
       }
     },
     "downloads": {
       "autoUpdateGames": {
         "description": "Mettre à jour automatiquement les jeux lorsqu'une mise à jour est disponible",
         "title": "Mise à jour automatique des jeux"
-      },
-      "autoUpdateLauncher": {
-        "description": "Installer automatiquement les mises à jour du launcher",
-        "title": "Mise à jour automatique du launcher"
       },
       "concurrent": {
         "title": "Téléchargements simultanés"

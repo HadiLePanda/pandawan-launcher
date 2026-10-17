@@ -214,7 +214,9 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
               <NotificationSettings settings={editedSettings} onChange={handleUpdate} />
             )}
             {activeTab === 'account' && <AccountSettings />}
-            {activeTab === 'about' && <AboutSettings />}
+            {activeTab === 'about' && (
+              <AboutSettings settings={editedSettings} onChange={handleUpdate} />
+            )}
           </div>
 
           <div className="modal-footer">
@@ -459,12 +461,6 @@ function DownloadSettings({ settings, onChange }: TabProps) {
         checked={settings.autoUpdateGames}
         onChange={(checked) => onChange({ autoUpdateGames: checked })}
       />
-      <ToggleSetting
-        title={t('settings.downloads.autoUpdateLauncher.title')}
-        description={t('settings.downloads.autoUpdateLauncher.description')}
-        checked={settings.autoUpdateLauncher}
-        onChange={(checked) => onChange({ autoUpdateLauncher: checked })}
-      />
     </div>
   );
 }
@@ -534,7 +530,7 @@ function AccountSettings() {
   );
 }
 
-function AboutSettings() {
+function AboutSettings({ settings, onChange }: TabProps) {
   const { t } = useTranslation();
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [logsError, setLogsError] = useState<string | null>(null);
@@ -673,6 +669,12 @@ function AboutSettings() {
             </button>
           </div>
         </div>
+        <ToggleSetting
+          title={t('settings.about.updates.autoUpdate.title')}
+          description={t('settings.about.updates.autoUpdate.description')}
+          checked={settings.autoUpdateLauncher}
+          onChange={(checked) => onChange({ autoUpdateLauncher: checked })}
+        />
         {/* Reserved rather than conditional: the status line appears the moment a
             check finishes, and a paragraph that is absent until then moves every
             row below it. One line of .caption is held open so the result fills

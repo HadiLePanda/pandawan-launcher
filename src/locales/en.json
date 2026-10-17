@@ -163,17 +163,17 @@
         "ready": "Restart the launcher to apply the update.",
         "restartButton": "Restart to apply",
         "upToDate": "You're up to date{{suffix}}",
-        "updateFailed": "Update failed: {{error}}"
+        "updateFailed": "Update failed: {{error}}",
+        "autoUpdate": {
+          "title": "Auto-update launcher",
+          "description": "Automatically install launcher updates"
+        }
       }
     },
     "downloads": {
       "autoUpdateGames": {
         "description": "Automatically update games when available",
         "title": "Auto-update games"
-      },
-      "autoUpdateLauncher": {
-        "description": "Automatically install launcher updates",
-        "title": "Auto-update launcher"
       },
       "concurrent": {
         "title": "Concurrent Downloads"
