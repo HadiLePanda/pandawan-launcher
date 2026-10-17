@@ -3,6 +3,7 @@ import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { logger } from './logger';
 import { commands } from './commands';
+import i18n from './i18n';
 
 export type UpdaterStatus =
   'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error';
@@ -197,6 +198,19 @@ export async function restartToApplyUpdate(): Promise<void> {
     // visible. The status stays `ready`; the error is what the panel reports.
     useUpdaterStore.setState({ error: message });
   }
+}
+
+/**
+ * Ask before a restart replaces the process that records a running game's
+ * session.
+ *
+ * Both restart entry points must go through this, the top-bar chip and
+ * Settings -> About. The waiter that writes playtime lives in this process, so
+ * a relaunch leaves the game running with nobody tracking it, and the session
+ * is lost.
+ */
+export function confirmRestartWhileGameRunning(gameRunning: boolean): boolean {
+  return !gameRunning || confirm(i18n.t('topBar.restartWhileGameRunning'));
 }
 
 /**

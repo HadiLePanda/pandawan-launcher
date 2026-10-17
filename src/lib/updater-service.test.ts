@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
@@ -227,6 +227,28 @@ describe('updater-service', () => {
       await expect(service.restartToApplyUpdate()).resolves.toBeUndefined();
 
       expect(service.useUpdaterStore.getState().error).toBe('restart denied');
+    });
+  });
+
+  describe('confirmRestartWhileGameRunning', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('restarts without asking when no game is running', () => {
+      const ask = vi.fn(() => true);
+      vi.stubGlobal('confirm', ask);
+
+      expect(service.confirmRestartWhileGameRunning(false)).toBe(true);
+      expect(ask).not.toHaveBeenCalled();
+    });
+
+    it('asks when a game is running, and a refusal cancels the restart', () => {
+      const ask = vi.fn(() => false);
+      vi.stubGlobal('confirm', ask);
+
+      expect(service.confirmRestartWhileGameRunning(true)).toBe(false);
+      expect(ask).toHaveBeenCalledTimes(1);
     });
   });
 

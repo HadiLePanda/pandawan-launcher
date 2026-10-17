@@ -123,11 +123,71 @@ pub fn init(app: &AppHandle<Wry>) -> tauri::Result<()> {
 }
 
 fn tooltip_text(data: &TrayData) -> String {
-    match data.running.len() {
-        0 if data.update_available => "Pandawan Launcher — update available".to_string(),
+    let base = match data.running.len() {
         0 => "Pandawan Launcher".to_string(),
         1 => format!("Pandawan Launcher — {} is running", data.running[0].name),
         n => format!("Pandawan Launcher — {n} games running"),
+    };
+    // The update notice is appended rather than replacing the game state: both
+    // are true, and a running game used to hide that an update was waiting.
+    if data.update_available {
+        format!("{base} — update available")
+    } else {
+        base
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state(games: &[&str], update_available: bool) -> TrayData {
+        TrayData {
+            running: games
+                .iter()
+                .map(|name| RunningGame {
+                    game_id: name.to_string(),
+                    name: name.to_string(),
+                })
+                .collect(),
+            update_available,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn tooltip_is_plain_when_nothing_is_happening() {
+        assert_eq!(tooltip_text(&state(&[], false)), "Pandawan Launcher");
+    }
+
+    #[test]
+    fn tooltip_reports_an_update() {
+        assert_eq!(
+            tooltip_text(&state(&[], true)),
+            "Pandawan Launcher — update available"
+        );
+    }
+
+    #[test]
+    fn tooltip_names_a_running_game() {
+        assert_eq!(
+            tooltip_text(&state(&["Panda Quest"], false)),
+            "Pandawan Launcher — Panda Quest is running"
+        );
+    }
+
+    #[test]
+    fn tooltip_keeps_the_update_notice_while_a_game_runs() {
+        // The old match arm for one or more games dropped the update state, so
+        // the tray hid a waiting update for as long as a game ran.
+        assert_eq!(
+            tooltip_text(&state(&["Panda Quest"], true)),
+            "Pandawan Launcher — Panda Quest is running — update available"
+        );
+        assert_eq!(
+            tooltip_text(&state(&["Panda Quest", "Bamboo Rush"], true)),
+            "Pandawan Launcher — 2 games running — update available"
+        );
     }
 }
 

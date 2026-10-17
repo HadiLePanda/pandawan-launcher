@@ -27,6 +27,7 @@ import {
   checkForUpdates,
   downloadAndInstall,
   restartToApplyUpdate,
+  confirmRestartWhileGameRunning,
 } from '@/lib/updater-service';
 import { useModalDialog } from '@components/modalFocus';
 import type { LauncherSettings } from '@/types';
@@ -541,6 +542,9 @@ function AboutSettings() {
   const updaterStatus = useUpdaterStore((s) => s.status);
   const updateVersion = useUpdaterStore((s) => s.version);
   const updaterError = useUpdaterStore((s) => s.error);
+  // A restart replaces the process that writes playtime, so this panel needs the
+  // same guard the top-bar chip uses.
+  const gameRunning = useLauncherStore((s) => s.games.some((g) => g.status === 'running'));
 
   // Dev-build only, and only while nothing real is happening: the forcer does
   // not exist in a release build and must not compete with a genuine update.
@@ -639,7 +643,10 @@ function AboutSettings() {
             )}
             {updaterStatus === 'ready' && (
               <button
-                onClick={() => void restartToApplyUpdate()}
+                onClick={() => {
+                  if (!confirmRestartWhileGameRunning(gameRunning)) return;
+                  void restartToApplyUpdate();
+                }}
                 className="btn btn-primary btn-sm update-restart"
               >
                 <svg
@@ -674,7 +681,7 @@ function AboutSettings() {
           {statusText ?? ''}
         </p>
         {updateFailed && (
-          <p className="caption text-red-400">
+          <p className="caption text-red-400" role="alert">
             {t('settings.about.updates.updateFailed', { error: updateFailed })}
           </p>
         )}

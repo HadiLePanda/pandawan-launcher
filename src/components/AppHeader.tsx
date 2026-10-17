@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { WindowControls } from './WindowControls';
 import { UpdatePopover } from './UpdatePopover';
-import { restartToApplyUpdate } from '@/lib/updater-service';
+import { restartToApplyUpdate, confirmRestartWhileGameRunning } from '@/lib/updater-service';
 import type { DownloadProgressSnapshot } from '@/lib/download-channel';
 
 interface TitleBarProps {
@@ -257,10 +257,9 @@ export function MainNav({
 
   const handleRestartUpdate = () => {
     // Relaunch replaces the process, so the waiter that records playtime dies
-    // with it: a game is left running with nobody tracking its session.
-    // Declining defers - the staged update still applies the next time the
-    // launcher really exits, so waiting loses nothing.
-    if (gameRunning && !confirm(t('topBar.restartWhileGameRunning'))) return;
+    // with it. Declining defers - the staged update still applies the next time
+    // the launcher really exits, so waiting loses nothing.
+    if (!confirmRestartWhileGameRunning(gameRunning ?? false)) return;
     setIsUpdatePopoverOpen(false);
     setIsRestarting(true);
     void restartToApplyUpdate();
