@@ -7,8 +7,14 @@
  * published file names instead, so the page can offer the .dmg too and cannot
  * drift from what was really published.
  *
- * Pure: it takes file names, not a bucket, so it is testable without R2
- * credentials and reusable by both the local publisher and the CI index-only
+ * Every entry carries the SHA256 of its bytes, and the document is signed with
+ * the release key. The site is the one path that hands a binary to a person
+ * without the updater's signature check, so an R2 writer who replaces an
+ * installer or a URL must not be able to do it unnoticed. The signature proves
+ * the list; the hash proves the file the list points at.
+ *
+ * Pure: it takes file names and hashes, not a bucket, so it is testable without
+ * R2 credentials and reusable by both the local publisher and the CI index-only
  * mode. The caller decides which files exist; this decides how they are grouped,
  * labelled and ordered.
  */
@@ -18,6 +24,13 @@ export const PLATFORM_ORDER = {
   macos: ['Disk image', 'App archive'],
   linux: ['Debian / Ubuntu', 'Fedora / RHEL'],
 };
+
+const SHA256 = /^[0-9a-f]{64}$/;
+
+/** Whether a value is a lowercase hex SHA256, the only form the index accepts. */
+export function isSha256(value) {
+  return typeof value === 'string' && SHA256.test(value);
+}
 
 /** The platform a published file belongs to, or null when it is not a download. */
 export function classifyAsset(name) {
@@ -39,7 +52,11 @@ export function assetLabel(name) {
 }
 
 /**
- * Build the index from a version and the names of the published files.
+ * Build the index from a version and the published files.
+ *
+ * `files` entries are `{ name, sha256 }`. A download with no hash is refused
+ * rather than listed: an entry the site cannot verify must never be offered,
+ * and a missing hash is how a planted file would slip through.
  *
  * The page leads with the first entry of each group, and the website now takes
  * items[0] as the download to offer - so the ordering here is what a person
@@ -48,13 +65,25 @@ export function assetLabel(name) {
 export function buildDownloadsIndex({ version, files, base }) {
   const groups = { windows: [], macos: [], linux: [] };
 
-  for (const name of files ?? []) {
+  for (const file of files ?? []) {
+    const { name, sha256 } = file ?? {};
+    if (!name) continue;
     // Signatures are consumed by the updater, never clicked by a person; an
     // unrecognised name (latest.json, the CI asset map) is not a download either.
     if (name.endsWith('.sig') || name === 'latest.json') continue;
     const platform = classifyAsset(name);
     if (!platform) continue;
-    groups[platform].push({ label: assetLabel(name), url: `${base}/${encodeURIComponent(name)}` });
+    if (!isSha256(sha256)) {
+      throw new Error(
+        `downloads.json: ${name} has no sha256. Every download is hashed so the site ` +
+          'can refuse bytes that were replaced in the bucket.'
+      );
+    }
+    groups[platform].push({
+      label: assetLabel(name),
+      url: `${base}/${encodeURIComponent(name)}`,
+      sha256,
+    });
   }
 
   // It must name every platform: an unlisted one falls through to alphabetical
@@ -93,14 +122,18 @@ export function buildDownloadsIndex({ version, files, base }) {
  * A producer that builds one platform must not drop the others: uploading the
  * new document whole would erase the downloads another producer published. Each
  * platform the new index has files for is replaced; a platform it built nothing
- * for keeps what is live. A local Windows publish therefore leaves the macOS and
- * Linux entries untouched, and the page stays whole.
+ * for keeps what is live.
+ *
+ * A live entry with no SHA256 is dropped, not carried forward. Signing the
+ * merged document would otherwise turn an unverifiable entry into a signed one,
+ * and the site would have no hash to check the bytes against.
  */
 export function mergeDownloadsIndex(live, incoming) {
   const platforms = {};
   for (const [id, items] of Object.entries(incoming.platforms)) {
     const next = items.length ? items : (live?.platforms?.[id] ?? []);
-    if (next.length) platforms[id] = next;
+    const verified = next.filter((item) => isSha256(item?.sha256));
+    if (verified.length) platforms[id] = verified;
   }
   return { version: incoming.version, platforms };
 }

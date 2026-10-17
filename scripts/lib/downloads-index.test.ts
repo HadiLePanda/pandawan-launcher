@@ -5,12 +5,16 @@ import {
   mergeDownloadsIndex,
   classifyAsset,
   assetLabel,
+  isSha256,
   PLATFORM_ORDER,
 } from './downloads-index.mjs';
 
 const BASE = 'https://cdn.example.com/launcher';
+const HASH = 'a'.repeat(64);
 
-const build = (files, version = '0.2.1') => buildDownloadsIndex({ version, files, base: BASE });
+const file = (name) => ({ name, sha256: HASH });
+const build = (names, version = '0.2.1') =>
+  buildDownloadsIndex({ version, files: (names ?? []).map(file), base: BASE });
 
 describe('asset classification', () => {
   it('classifies every installer extension', () => {
@@ -124,6 +128,24 @@ describe('downloads index', () => {
     }
   });
 
+  it('carries the sha256 of every artifact', () => {
+    const index = build(['App_0.2.1_x64-setup.exe']);
+    expect(index.platforms.windows[0].sha256).toBe(HASH);
+  });
+
+  it('refuses a download with no sha256 instead of listing it', () => {
+    expect(() =>
+      buildDownloadsIndex({ version: '0.2.1', files: [{ name: 'App_0.2.1_x64.msi' }], base: BASE })
+    ).toThrow(/sha256/);
+  });
+
+  it('accepts only a lowercase hex sha256', () => {
+    expect(isSha256(HASH)).toBe(true);
+    expect(isSha256(HASH.toUpperCase())).toBe(false);
+    expect(isSha256('abc')).toBe(false);
+    expect(isSha256(null)).toBe(false);
+  });
+
   it('tolerates a missing file list', () => {
     expect(build(undefined).platforms).toEqual({ windows: [], macos: [], linux: [] });
   });
@@ -133,9 +155,9 @@ describe('merging a built index into the live one', () => {
   const live = {
     version: '0.2.1',
     platforms: {
-      windows: [{ label: 'EXE installer', url: 'https://cdn/w0.2.1.exe' }],
-      macos: [{ label: 'Disk image', url: 'https://cdn/m0.2.1.dmg' }],
-      linux: [{ label: 'Debian / Ubuntu', url: 'https://cdn/l0.2.1.deb' }],
+      windows: [{ label: 'EXE installer', url: 'https://cdn/w0.2.1.exe', sha256: 'b'.repeat(64) }],
+      macos: [{ label: 'Disk image', url: 'https://cdn/m0.2.1.dmg', sha256: 'c'.repeat(64) }],
+      linux: [{ label: 'Debian / Ubuntu', url: 'https://cdn/l0.2.1.deb', sha256: 'd'.repeat(64) }],
     },
   };
 
@@ -153,5 +175,19 @@ describe('merging a built index into the live one', () => {
   it('lists only the platforms that have a download, live or new', () => {
     const merged = mergeDownloadsIndex(null, build(['App_0.3.0_x64-setup.exe'], '0.3.0'));
     expect(Object.keys(merged.platforms)).toEqual(['windows']);
+  });
+
+  it('drops a live entry with no sha256 instead of signing it', () => {
+    // Carrying an unverifiable entry forward would turn it into a signed one, and
+    // the site would have no hash to check the bytes against.
+    const unsafe = {
+      version: '0.2.1',
+      platforms: { windows: [{ label: 'EXE installer', url: 'https://cdn/planted.exe' }] },
+    };
+
+    const merged = mergeDownloadsIndex(unsafe, build(['App_0.3.0_amd64.deb'], '0.3.0'));
+
+    expect(merged.platforms.windows).toBeUndefined();
+    expect(merged.platforms.linux[0].url).toBe(`${BASE}/App_0.3.0_amd64.deb`);
   });
 });

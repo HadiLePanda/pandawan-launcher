@@ -47,6 +47,10 @@ import {
 import path from 'node:path';
 
 import { buildDownloadsIndex, mergeDownloadsIndex } from './lib/downloads-index.mjs';
+import { indexEntries, indexEntriesIn } from './lib/index-assets.mjs';
+import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { fetchSignedDocument } from './lib/signed-document.mjs';
+import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 import {
   fail,
   IMMUTABLE,
@@ -63,6 +67,10 @@ import {
 // the wrong one.
 const REPO = '{owner}/{repo}';
 const PREFIX = 'launcher';
+// The download index is signed so the site can tell our list from one an R2
+// writer planted. A missing key must fail before a single byte is uploaded.
+const KEY_PATH = secretKeyPath(repoRoot);
+const PUBLIC_KEY_PATH = publicKeyPath(repoRoot);
 
 const argv = process.argv.slice(2);
 const tagIndex = argv.indexOf('--tag');
@@ -273,43 +281,65 @@ async function publishIndexOnly() {
   const base = publicBase();
   const incoming = buildDownloadsIndex({
     version: manifest.version,
-    // Every file present is a candidate; the builder drops the signatures,
-    // latest.json and the CI-only asset map, none of which is a download.
-    files: readdirSync(fromDir),
+    // Every file present is a candidate, hashed from its bytes; the builder
+    // drops the signatures, latest.json and the CI-only asset map, none of
+    // which is a download.
+    files: indexEntriesIn(fromDir),
     base,
   });
 
   // Fold into the live index rather than replacing it. A CI run builds only the
   // platforms it was asked for - macOS and Linux by default - so writing the
   // document whole would drop the Windows group a local publish put there.
-  let live = null;
-  try {
-    const res = await fetch(`${base}/downloads.json`, { cache: 'no-store' });
-    if (res.ok) live = await res.json();
-    else if (res.status !== 404) fail(`Could not read the live index (HTTP ${res.status}).`);
-  } catch (err) {
-    fail(`Could not read the live index: ${err?.message ?? err}`);
+  // The live document is verified first: merging an unverified one would copy a
+  // planted entry into the document this run signs.
+  const liveRead = await fetchSignedDocument(`${base}/downloads.json`, PUBLIC_KEY_PATH);
+  if (liveRead.status === 'error' || liveRead.status === 'invalid') fail(liveRead.message);
+  if (liveRead.status === 'unsigned') {
+    console.log(
+      '\nWARNING: the live downloads.json has no signature. Adopting it once; the\n' +
+        '         document this run uploads is signed and every later run verifies it.'
+    );
   }
+  const live =
+    liveRead.status === 'signed' || liveRead.status === 'unsigned'
+      ? JSON.parse(liveRead.text)
+      : null;
   const downloads = mergeDownloadsIndex(live, incoming);
 
   if (dryRun) {
     console.log(`\nIndex-only dry run from ${fromDir} (version ${manifest.version}).`);
-    console.log(`Would upload ${PREFIX}/downloads.json (no-cache):`);
+    console.log(
+      `Would upload ${PREFIX}/downloads.json.sig then ${PREFIX}/downloads.json (no-cache):`
+    );
     for (const [platform, items] of Object.entries(downloads.platforms)) {
       console.log(`  ${platform}: ${items.map((i) => i.label).join(', ') || 'none'}`);
     }
     process.exit(0);
   }
 
+  const key = checkReleaseKey(KEY_PATH);
+  if (!key.ok) fail(key.detail);
+
   const { bucket, endpoint } = r2Target();
   const indexPath = path.join(fromDir, 'downloads.json');
   writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
+  const signed = signFile(indexPath, { repoRoot, keyPath: KEY_PATH });
+  if (!signed.ok) fail(signed.detail);
+  // Signature first. A reader that sees the new document with the old signature
+  // fails closed, but only for the instant between the two uploads.
+  upload(`${indexPath}.sig`, S3.s3Uri(bucket, `${PREFIX}/downloads.json.sig`), {
+    endpoint,
+    cacheControl: NO_CACHE,
+  });
   upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
     endpoint,
     cacheControl: NO_CACHE,
     contentType: 'application/json',
   });
-  console.log(`\nRefreshed ${PREFIX}/downloads.json (version ${manifest.version}).`);
+  console.log(
+    `\nRefreshed ${PREFIX}/downloads.json and its signature (version ${manifest.version}).`
+  );
 }
 
 if (indexOnly) {
@@ -331,10 +361,12 @@ const base = JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')
 const downloads = buildDownloadsIndex({
   version: JSON.parse(readFileSync(path.join(staging, 'latest.json'), 'utf-8')).version,
   // Only the files the publisher actually staged: a name listed on the release
-  // whose bytes never made it here would produce a link that 404s.
-  files: release.assets
-    .map((asset) => asset.name)
-    .filter((name) => existsSync(path.join(staging, name))),
+  // whose bytes never made it here would produce a link that 404s. Each one is
+  // hashed from the bytes this run will upload.
+  files: indexEntries(
+    staging,
+    release.assets.map((asset) => asset.name).filter((name) => existsSync(path.join(staging, name)))
+  ),
   base,
 });
 
@@ -342,12 +374,15 @@ if (dryRun) {
   console.log('\nDry run. Would upload:');
   for (const target of Object.keys(manifest.platforms)) console.log(`  ${target}`);
   console.log('\n  latest.json (no-cache) + every .sig (immutable)');
-  console.log('\n  downloads.json — what the website offers:');
+  console.log('\n  downloads.json + downloads.json.sig — what the website offers:');
   for (const [platform, items] of Object.entries(downloads.platforms)) {
     console.log(`    ${platform}: ${items.map((i) => i.label).join(', ') || 'none'}`);
   }
   process.exit(0);
 }
+
+const key = checkReleaseKey(KEY_PATH);
+if (!key.ok) fail(key.detail);
 
 // latest.json is uploaded last: it is the file the launcher polls, so it must
 // never point at an artifact that has not landed yet. Publishing it first would
@@ -367,9 +402,18 @@ upload(path.join(staging, 'latest.json'), S3.s3Uri(bucket, `${PREFIX}/latest.jso
 });
 
 // The website reads this one, not latest.json: it lists what a person should
-// click, including the macOS .dmg that the updater manifest omits.
+// click, including the macOS .dmg that the updater manifest omits. It is signed
+// so the site can refuse a list an R2 writer replaced, and every entry carries
+// the hash of the bytes it points at.
 const indexPath = path.join(staging, 'downloads.json');
 writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
+const signedIndex = signFile(indexPath, { repoRoot, keyPath: KEY_PATH });
+if (!signedIndex.ok) fail(signedIndex.detail);
+// Signature first, the same order the manifests use.
+upload(`${indexPath}.sig`, S3.s3Uri(bucket, `${PREFIX}/downloads.json.sig`), {
+  endpoint,
+  cacheControl: NO_CACHE,
+});
 upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
   endpoint,
   cacheControl: NO_CACHE,

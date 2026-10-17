@@ -18,13 +18,21 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import path from 'node:path';
 
 import { buildDownloadsIndex, mergeDownloadsIndex } from './lib/downloads-index.mjs';
+import { indexEntries } from './lib/index-assets.mjs';
 import { mergeLatest } from './lib/latest-merge.mjs';
+import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { fetchSignedDocument } from './lib/signed-document.mjs';
+import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 import { IMMUTABLE, NO_CACHE, S3, fail, repoRoot, r2Config, upload } from './lib/r2.mjs';
 
 const argv = process.argv.slice(2);
 const dryRun = !argv.includes('--confirm') || argv.includes('--dry-run');
 const fromIndex = argv.indexOf('--from');
 const fromDir = fromIndex !== -1 ? argv[fromIndex + 1] : null;
+// The download index this run rewrites is signed, so the key must be present
+// before the first byte lands in the bucket.
+const KEY_PATH = secretKeyPath(repoRoot);
+const PUBLIC_KEY_PATH = publicKeyPath(repoRoot);
 
 const version = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf-8')).version;
 const bundleDir = fromDir
@@ -92,6 +100,9 @@ if (dryRun) {
   process.exit(0);
 }
 
+const key = checkReleaseKey(KEY_PATH);
+if (!key.ok) fail(key.detail);
+
 // The immutable bundle goes first, so the manifest never points at a file that
 // is not there yet.
 upload(path.join(bundleDir, exe), S3.s3Uri(bucket, `launcher/${publishedExe}`), {
@@ -131,21 +142,39 @@ upload(out, S3.s3Uri(bucket, 'launcher/latest.json'), {
 // Windows version would leave the page offering the previous one. Only the
 // Windows group is replaced, so the macOS and Linux entries the CI build
 // published survive.
-let liveIndex = null;
-try {
-  const res = await fetch(`${base}/downloads.json`, { cache: 'no-store' });
-  if (res.ok) liveIndex = await res.json();
-  else if (res.status !== 404) fail(`Could not read the download index (HTTP ${res.status}).`);
-} catch (err) {
-  fail(`Could not read the download index: ${err?.message ?? err}`);
+//
+// The live document is verified before it is merged: carrying an unverified
+// entry into this run's signed document would launder a planted URL.
+const liveRead = await fetchSignedDocument(`${base}/downloads.json`, PUBLIC_KEY_PATH);
+if (liveRead.status === 'error' || liveRead.status === 'invalid') fail(liveRead.message);
+if (liveRead.status === 'unsigned') {
+  console.log(
+    '\nWARNING: the live downloads.json has no signature. Adopting it once; the\n' +
+      '         document this run uploads is signed and every later run verifies it.'
+  );
 }
+const liveIndex =
+  liveRead.status === 'signed' || liveRead.status === 'unsigned' ? JSON.parse(liveRead.text) : null;
 
+// The hash comes from the file this run uploads, under the name its URL carries.
+const [localFile] = indexEntries(bundleDir, [exe]);
 const mergedIndex = mergeDownloadsIndex(
   liveIndex,
-  buildDownloadsIndex({ version, files: [publishedExe], base })
+  buildDownloadsIndex({
+    version,
+    files: [{ name: publishedExe, sha256: localFile.sha256 }],
+    base,
+  })
 );
 const indexOut = path.join(stagingDir, 'launcher-downloads.json');
 writeFileSync(indexOut, `${JSON.stringify(mergedIndex, null, 2)}\n`);
+const signedIndex = signFile(indexOut, { repoRoot, keyPath: KEY_PATH });
+if (!signedIndex.ok) fail(signedIndex.detail);
+// Signature first, then the document it covers.
+upload(`${indexOut}.sig`, S3.s3Uri(bucket, 'launcher/downloads.json.sig'), {
+  endpoint,
+  cacheControl: NO_CACHE,
+});
 upload(indexOut, S3.s3Uri(bucket, 'launcher/downloads.json'), {
   endpoint,
   cacheControl: NO_CACHE,
