@@ -218,36 +218,73 @@ describe('updater-service', () => {
       await service.restartToApplyUpdate();
 
       expect(relaunch).toHaveBeenCalledTimes(1);
+      expect(service.useUpdaterStore.getState().error).toBeNull();
     });
 
-    it('swallows relaunch failures', async () => {
+    it('records a refused relaunch so the panel can report it', async () => {
       (relaunch as Mock).mockRejectedValue(new Error('restart denied'));
 
       await expect(service.restartToApplyUpdate()).resolves.toBeUndefined();
+
+      expect(service.useUpdaterStore.getState().error).toBe('restart denied');
     });
   });
 
   describe('checkForUpdatesOnStartup', () => {
-    it('checks for updates when the autoUpdateLauncher toggle is on', async () => {
+    it('checks on launch even when automatic install is off', async () => {
       (check as Mock).mockResolvedValue(null);
 
-      await service.checkForUpdatesOnStartup(true);
+      await service.checkForUpdatesOnStartup({ autoInstall: () => false });
 
       expect(check).toHaveBeenCalledTimes(1);
+      expect(service.useUpdaterStore.getState().status).toBe('up-to-date');
     });
 
-    it('skips the check when the autoUpdateLauncher toggle is off', async () => {
-      await service.checkForUpdatesOnStartup(false);
+    it('leaves a found update waiting when automatic install is off', async () => {
+      const update = makeUpdate();
+      (check as Mock).mockResolvedValue(update);
 
-      expect(check).not.toHaveBeenCalled();
-      expect(service.useUpdaterStore.getState().status).toBe('idle');
+      const result = await service.checkForUpdatesOnStartup({ autoInstall: () => false });
+
+      expect(result).toBe('available');
+      expect(update.downloadAndInstall).not.toHaveBeenCalled();
+      expect(service.useUpdaterStore.getState().status).toBe('available');
     });
 
-    it('skips the check while settings are not loaded yet', async () => {
-      await service.checkForUpdatesOnStartup(undefined);
+    it('downloads a found update when automatic install is on', async () => {
+      const update = makeUpdate();
+      (check as Mock).mockResolvedValue(update);
 
-      expect(check).not.toHaveBeenCalled();
-      expect(service.useUpdaterStore.getState().status).toBe('idle');
+      await service.checkForUpdatesOnStartup({ autoInstall: () => true });
+
+      expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+      expect(service.useUpdaterStore.getState().status).toBe('ready');
+    });
+
+    it('reads the automatic-install flag after the check resolves', async () => {
+      type FakeUpdate = ReturnType<typeof makeUpdate>;
+      let resolveCheck: (value: FakeUpdate) => void = () => {};
+      let autoInstall = false;
+      (check as Mock).mockImplementation(
+        () => new Promise<FakeUpdate>((resolve) => (resolveCheck = resolve))
+      );
+
+      const started = service.checkForUpdatesOnStartup({ autoInstall: () => autoInstall });
+      const update = makeUpdate();
+      // Settings finish loading while the network request is still open.
+      autoInstall = true;
+      resolveCheck(update);
+      await started;
+
+      expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not download when the check finds nothing', async () => {
+      (check as Mock).mockResolvedValue(null);
+
+      await service.checkForUpdatesOnStartup({ autoInstall: () => true });
+
+      expect(service.useUpdaterStore.getState().status).toBe('up-to-date');
     });
   });
 

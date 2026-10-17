@@ -113,15 +113,34 @@ export async function checkForUpdates(options?: CheckForUpdatesOptions): Promise
   }
 }
 
-// Silent startup update check, gated on the autoUpdateLauncher setting.
-// `undefined` means settings have not loaded yet: skip rather than guess.
-// Manual checks (Settings -> About) call checkForUpdates directly and are
-// unaffected by the toggle.
+export interface StartupCheckOptions {
+  /**
+   * Whether a found update is downloaded and staged now.
+   *
+   * Read after the check resolves, not before it starts: the check must not
+   * wait on the settings file, and the value at launch is still the default
+   * while that file loads.
+   */
+  autoInstall: () => boolean;
+}
+
+/**
+ * The launch-time check.
+ *
+ * It always runs. Learning that a newer launcher exists is not an action a user
+ * should have to go and ask for, and gating the check on a setting made the
+ * check invisible outside Settings -> About. The setting decides only whether
+ * the found update is downloaded now, which is what "Auto-update launcher"
+ * says it does.
+ */
 export async function checkForUpdatesOnStartup(
-  autoUpdateEnabled: boolean | undefined
-): Promise<void> {
-  if (!autoUpdateEnabled) return;
-  await checkForUpdates();
+  options: StartupCheckOptions
+): Promise<UpdaterStatus> {
+  const status = await checkForUpdates();
+  if (status === 'available' && options.autoInstall()) {
+    await downloadAndInstall();
+  }
+  return status;
 }
 
 export async function downloadAndInstall(): Promise<void> {
@@ -172,7 +191,11 @@ export async function restartToApplyUpdate(): Promise<void> {
   try {
     await relaunch();
   } catch (err) {
-    logger.error('Failed to relaunch launcher', { error: String(err) });
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Failed to relaunch launcher', { error: message });
+    // A refused relaunch used to be log-only, so the Restart button did nothing
+    // visible. The status stays `ready`; the error is what the panel reports.
+    useUpdaterStore.setState({ error: message });
   }
 }
 

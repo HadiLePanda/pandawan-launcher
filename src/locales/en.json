@@ -162,7 +162,8 @@
         "installButton": "Install update",
         "ready": "Restart the launcher to apply the update.",
         "restartButton": "Restart to apply",
-        "upToDate": "You're up to date{{suffix}}"
+        "upToDate": "You're up to date{{suffix}}",
+        "updateFailed": "Update failed: {{error}}"
       }
     },
     "downloads": {

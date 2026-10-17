@@ -179,7 +179,9 @@ The few things worth knowing without looking:
     `output`, `error` and `done`; `streamScript` in `app/src/lib/api.ts` must consume all three. When it
     matched only `output`, a publisher that exited non-zero rendered identically to one that succeeded —
     the log just stopped mid-sentence. `scripts/dashboard/app/client-contract.test.ts` asserts the event
-    sets match and that every `/api/...` path the client calls exists in `dashboard.mjs`.
+    sets match, that every `/api/...` path the client calls exists in `dashboard.mjs`, that the client
+    declares the catalog-diff entry the server sends (a summarised `{id, channel, name}`, not a bare
+    string), and that every fetch carries the request token under the server's header name.
 - **Dashboard design rules.** Every page is the same skeleton and one reference page fixes the look.
   - **The reference is Launcher → Catalog.** Match its structure and styling; when a page looks off, compare it to Catalog rather than inventing a variant.
   - **Skeleton: header → tabs → content.** The header is the title, its facts and refresh; then the tab strip; then content. Exactly **one heading per page**, and no wrapper that restates context — a panel wrapper plus a page heading plus a scope paragraph plus an inner heading is four levels of framing for one header and a form. A page with "News" in its tab and "News" above the form says it twice.
@@ -330,10 +332,10 @@ it, and never narrate the change that produced it.
   per file under `src/styles/`. A count written here goes stale the moment a block is split.
   The stylesheet itself is `src/styles/*.css`, and the imports are in the order the blocks were
   written because the cascade depends on it - move a block between files and you change what wins.
-- `src/lib/styles.test.ts` guards it: it fails on a rule nested inside another rule, on a class no
-  markup file uses, and on a file under `src/styles/` that `index.css` never imports. A mention of a
-  class in a doc or a comment does **not** count as usage, which is how 74 dead classes once stayed
-  alive here.
+- `src/lib/styles.test.ts` guards it: it fails on a rule nested inside another rule, on an empty
+  selector left in a selector list, on a class no markup file uses, and on a file under
+  `src/styles/` that `index.css` never imports. A mention of a class in a doc or a comment does
+  **not** count as usage, which is how 74 dead classes once stayed alive here.
 
 ## Tauri Commands
 
@@ -378,6 +380,12 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   known CVE is not. As of this writing `react-router-dom` (CSRF bypass in RSC
   mode), `postcss` (arbitrary `.map` read) and `sharp` (libheif) were all
   production-reachable and have been fixed; keep it at 0.
+- **CI audits the Rust tree too** (`audit-rust` job, `cargo audit --file
+  src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players run,
+  so an advisory in one of them reaches every install. Vulnerabilities fail the job.
+  The informational advisories cargo-audit prints (an unmaintained crate, typically
+  several crates deep in the tauri tree) are reported and left: a release cannot act
+  on them, and a permanently red job is a job nobody reads.
 
 ## System tray
 
@@ -416,7 +424,7 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   so a card cannot set its own width and break the equal-column guarantee that keeps the last row
   aligned while the window is dragged.
 - The store is intentionally last priority; it is a grid of promotions that links out to the Pandawan Corp store website and is not wired to real purchases or accounts yet.
-- `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else.
+- `VITE_CDN_ORIGIN` (in `.env`) is the only thing that decides where the CDN is read from; there is no dev-only default. Without it the launcher uses the public R2 bucket. Point it at another bucket or a local static server to develop against something else. The production CSP in `tauri.conf.json` names that same origin in `img-src` and `connect-src`, so a shipped build pointed elsewhere renders no artwork; development runs under `devCsp`, which allows any https host, and `src/lib/csp.test.ts` fails if the CSP host stops matching `cdn.ts` or the updater endpoint.
 - **Uploading must not re-send what is already published.** `publish-game` reads the
   published manifest for the version it is writing (one GET) and uploads only the paths
   whose hash differs. A 404 means nothing is published, so a first publish sends
@@ -445,14 +453,23 @@ dist-tags` separates `latest` from `next`/`beta`. Only `latest` is a stable
   release key (`tauri signer sign`, the same keypair the updater uses) and upload the
   `.sig` before the document. The client checks the bytes in Rust
   (`src-tauri/src/manifest_signature.rs`, key pinned from `updater.pub`).
-  - A publish without the secret key fails before it uploads anything, and every game
-    published before this carries no signature, so each one needs republishing once.
+  - A publish without the secret key fails before it uploads anything. A game published
+    before signing existed needs signatures, not a republish: `npm run resign:manifests`
+    writes only the missing `.sig` files over the bytes clients already hold (dry run by
+    default, `--confirm` writes, `--all` walks the published catalog, `--force` re-signs
+    a key no longer trusted), and `npm run backfill:latest` rewrites a channel's
+    `latest.json` from its published manifest and signs it.
   - `prune-builds.mjs` must never sweep a channel-root `.sig` (`CHANNEL_FILES` in
     `scripts/lib/prune-plan.mjs`): that leaves a live manifest no client accepts.
   - A metadata edit rewrites the manifest, so it re-signs.
-- The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: the shell plugin's allowlist could not describe a folder the user chose.
+- The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: they call the `open` crate in Rust, and `tauri-plugin-shell` was removed outright (dependency, capability entry and config regex) because its allowlist could not describe a folder the user chose.
 - `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (one was tracked once, and Vite inlines what it finds), a `*.key`, a `*.pem`, a `.secrets` path, and a `*.map` in `dist/`.
 - Tauri auto-updater:
+  - The launcher checks for its own update on **every launch**, whatever the settings say. `autoUpdateLauncher`
+    decides only whether a found update is downloaded and staged then, which is what its label
+    ("Automatically install launcher updates") promises. Gating the check on that setting made a release
+    invisible unless the user opened Settings → About, and one toggle turned off once meant no check ever ran.
+    The check is fire-and-forget: it never blocks the splash, and a failure is reported inside Settings → About.
   - Keys are generated by `npm run keys:generate`, which wraps **`tauri signer generate`**. Do not use the `minisign` CLI: it writes an empty-password key format that the Rust `minisign` crate Tauri uses rejects, and the two formats are not interchangeable.
   - The updater secret key belongs at `src-tauri/.secrets/updater.key` (gitignored, must never be committed). `tauri signer generate` writes it **base64-encoded**, and the Tauri CLI base64-decodes it before parsing — so pass the file contents verbatim and never re-encode or substitute raw minisign text.
   - `src-tauri/updater.pub` is the public key source of truth (committed); `npm run sync:updater-key` (or `tauri:dev`/`tauri:build`) writes `plugins.updater.pubkey` from it. That value is the **base64 of the whole PublicKeyBox** — the same content as `updater.pub` — because `verify_signature()` in tauri-plugin-updater base64-decodes it and then parses it with `minisign_verify::PublicKey::decode`. The inner raw key line does **not** work and breaks verification on every user's update check. Never hand-edit either form.

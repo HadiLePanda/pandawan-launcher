@@ -569,6 +569,10 @@ function AboutSettings() {
   };
 
   const busy = updaterStatus === 'checking' || updaterStatus === 'downloading';
+  // A failed download, or a refused relaunch, returns the state to `available`
+  // or leaves it at `ready` with the error attached. The status line alone would
+  // hide that, so it is reported on its own line the way a log-folder error is.
+  const updateFailed = updaterStatus !== 'error' && updaterError ? updaterError : null;
   const statusText =
     updaterStatus === 'checking'
       ? t('settings.about.updates.checking')
@@ -577,7 +581,7 @@ function AboutSettings() {
             suffix: currentVersion ? ` (${currentVersion})` : '',
           })
         : updaterStatus === 'available'
-          ? t('settings.about.updates.available', { version: updateVersion })
+          ? t('settings.about.updates.available', { version: updateVersion ?? '' })
           : updaterStatus === 'downloading'
             ? t('settings.about.updates.downloading')
             : updaterStatus === 'ready'
@@ -669,6 +673,11 @@ function AboutSettings() {
         <p className="caption about-status" aria-live="polite">
           {statusText ?? ''}
         </p>
+        {updateFailed && (
+          <p className="caption text-red-400">
+            {t('settings.about.updates.updateFailed', { error: updateFailed })}
+          </p>
+        )}
         {showDevHint && <p className="caption">{t('settings.about.updates.devHint')}</p>}
         {logsError && <p className="caption text-red-400">{logsError}</p>}
       </div>

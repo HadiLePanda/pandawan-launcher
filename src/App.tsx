@@ -64,6 +64,9 @@ function App() {
   const [verifyRows, setVerifyRows] = useState<VerifyProgress[]>([]);
   /** Bumped to abandon an in-flight verification; see `closeVerify`. */
   const verifyRunRef = useRef(0);
+  // Read by the launch-time update check when it resolves, because settings may
+  // still be loading from disk when the check starts on the network.
+  const autoInstallLauncherUpdates = useRef(false);
   const [trayHintPending, setTrayHintPending] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [history, setHistory] = useState<nav.NavHistory>(() =>
@@ -178,12 +181,20 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Silent launcher update check, fired once settings are loaded and only
-  // when the autoUpdateLauncher toggle is on. Manual checks in Settings are
-  // unaffected. The service logs and swallows failures, so the UI never blocks.
+  // Automatic install is the one thing the autoUpdateLauncher setting decides.
   useEffect(() => {
-    void checkForLauncherUpdate(settings?.autoUpdateLauncher);
+    autoInstallLauncherUpdates.current = settings?.autoUpdateLauncher ?? false;
   }, [settings?.autoUpdateLauncher]);
+
+  // The launcher checks for its own updates on every launch, whatever the
+  // settings say. This is not a subscription: it runs once, and nothing re-fires
+  // it when a setting changes. The service logs and swallows failures, so the
+  // UI never blocks.
+  useEffect(() => {
+    void checkForLauncherUpdate({
+      autoInstall: () => autoInstallLauncherUpdates.current,
+    });
+  }, []);
 
   useEffect(() => {
     void applyLanguage(settings?.language);
