@@ -152,5 +152,8 @@ Without it the launcher cannot discover the game.
 ## Rollback
 
 Keep the previous build's files in the bucket. Rolling back means republishing
-the older manifest at the same channel path. Do not delete the files of a build
-until every client has had time to move off it.
+the older version at the same channel path, with the arguments it was originally
+published with. `publish:game` refuses a version the bucket already holds, so pass
+`--force`. The redo is safe only because the files did not change: every hash a
+client holds still matches. Do not delete the files of a build until every client
+has had time to move off it.

@@ -11,7 +11,7 @@ own. Publishers upload builds to R2. The launcher finds them there.
 - Hash-based patching. The launcher downloads only changed files.
 - Resume-capable, parallel downloads.
 - Release channels per game: `stable`, `beta`, `alpha`.
-- Signed launcher self-updates.
+- Signed game manifests and self-updates; anything unsigned or tampered is refused.
 - Playtime tracking and OS notifications.
 - English and French.
 
@@ -58,6 +58,12 @@ Publishing writes to Cloudflare R2. Copy the block from `.env.example` into a
 gitignored `.env`. A value that is already set in the environment wins, so CI can
 inject secrets without a file.
 
+`publish:game`, `publish:meta`, `resign:manifests` and `backfill:latest` also need
+the release signing key at `src-tauri/.secrets/updater.key` (gitignored): they sign
+what they write and stop before uploading without it. Copy it from a backup.
+`npm run keys:generate` only if no release has shipped, because a new key
+invalidates the signatures an old one made.
+
 ```bash
 npm run publish:game -- \
   --game-id example-game --channel alpha \
@@ -81,7 +87,9 @@ process gets its own console window instead of a truncated log panel.
 {origin}/launcher/catalog.json                  # which games exist
 {origin}/launcher/news.json
 {origin}/games/{id}/{channel}/manifest.json
+{origin}/games/{id}/{channel}/manifest.json.sig # minisign signature of that manifest
 {origin}/games/{id}/{channel}/latest.json       # current version per platform
+{origin}/games/{id}/{channel}/latest.json.sig   # minisign signature of that index
 {origin}/games/{id}/{channel}/{version}/{platform}/...
 ```
 

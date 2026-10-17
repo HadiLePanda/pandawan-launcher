@@ -39,7 +39,23 @@ against the public key pinned in `src-tauri/updater.pub`. Three consequences:
 - The secret key must be present to publish, or the run stops before uploading.
 - The `.sig` is uploaded before the document it signs, at each path.
 - A manifest written by anything else, or by an older checkout, has no signature and no
-  client accepts it. Republish the game instead.
+  client accepts it. The fix is a re-sign, not a republish: the bytes are fine, only
+  the `.sig` is missing.
+
+Two repair verbs, for games published before signing existed:
+
+```bash
+npm run resign:manifests -- --game-id <id> --channel <ch>   # one game's channel
+npm run resign:manifests -- --all                           # every game in the catalog
+npm run backfill:latest -- --game-id <id> --channel <ch>    # write and sign latest.json
+```
+
+Both are dry runs unless `--confirm` is passed. `resign:manifests` uploads only the
+`.sig` files: the manifest bytes are the ones clients already hold. It covers the
+channel-root manifest and every version directory's copy, each stored under the
+document's own cache header, and `--force` re-signs even a signed one, for a key no
+longer trusted. `backfill:latest` rebuilds `latest.json` from the published manifest
+and signs it, so the result is what the next publish would have written.
 
 `latest.json` exists because platforms ship independently: one `manifest.json`
 cannot say "Windows is on 1.2.0 but macOS is still on 1.1.0". It maps each platform
@@ -257,9 +273,12 @@ so publishing it early would let a client resolve a manifest whose files are not
 there yet. `npm run dashboard` wraps the same verb in a form.
 
 To ship a new version, publish it. Build bytes go to a new version-stamped
-directory, so the previous version stays downloadable and players can roll back
-by republishing its manifest. No launcher rebuild, and no catalog edit unless the
-game is new.
+directory, so the previous version stays downloadable. A republish of a version
+the bucket already holds is refused: clients keep the manifest they first saw, and
+different file hashes would fail their install. A rollback is that same republish
+with the older version's original arguments plus `--force`. It is safe because the
+files did not change, so every hash a client holds still matches. No launcher
+rebuild, and no catalog edit unless the game is new.
 
 ## Separation of concerns
 
