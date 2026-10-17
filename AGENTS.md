@@ -470,6 +470,13 @@ src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players r
     the publisher, not freshness: an R2 writer can replay an old genuine pair, and `prune` keeps
     it. A deliberate rollback therefore republishes the older binary under a higher build number;
     replaying the old manifest no longer reaches clients that installed the newer build.
+- **The two mutable control documents are signed as well.** `launcher/catalog.json` is signed by
+  `publish-catalog.mjs` and verified by the client, so its per-game channel cannot be steered.
+  `launcher/downloads.json` is signed by both launcher publishers and carries a `sha256` per
+  artifact; `docs/DOWNLOADS_INTEGRITY.md` is the contract the site repository must implement.
+  Each publisher verifies the live copy before merging, because merging an unverified document
+  would copy a planted entry into the fresh signature. A live entry with no hash is dropped, and
+  `publish:catalog -- --resign --confirm` signs an unsigned live catalog without changing it.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: they call the `open` crate in Rust, and `tauri-plugin-shell` was removed outright (dependency, capability entry and config regex) because its allowlist could not describe a folder the user chose.
 - `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (one was tracked once, and Vite inlines what it finds), a `*.key`, a `*.pem`, a `.secrets` path, and a `*.map` in `dist/`.
 - Tauri auto-updater:
