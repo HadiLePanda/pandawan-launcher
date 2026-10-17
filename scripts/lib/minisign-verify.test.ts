@@ -23,7 +23,9 @@ function signatureBox(
   const message = prehashed ? createHash('blake2b512').update(data).digest() : data;
   return [
     'untrusted comment: signature from test key',
-    Buffer.concat([Buffer.from(algorithm), KEY_ID, sign(null, message, privateKey)]).toString('base64'),
+    Buffer.concat([Buffer.from(algorithm), KEY_ID, sign(null, message, privateKey)]).toString(
+      'base64'
+    ),
     'trusted comment: test',
     Buffer.alloc(64).toString('base64'),
   ].join('\n');

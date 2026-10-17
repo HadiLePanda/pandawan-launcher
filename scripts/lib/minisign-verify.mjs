@@ -78,9 +78,7 @@ export function verifySignedBytes(data, signatureBox, publicKeyBox) {
       type: 'spki',
     });
     const message =
-      signature.algorithm === 'ED'
-        ? createHash('blake2b512').update(data).digest()
-        : data;
+      signature.algorithm === 'ED' ? createHash('blake2b512').update(data).digest() : data;
     return verify(null, message, key, signature.signature);
   } catch {
     return false;
