@@ -14,6 +14,7 @@ pub mod patch;
 pub mod path_utils;
 pub mod tray;
 pub mod types;
+pub mod version_floor;
 pub mod window_behavior;
 
 #[cfg(test)]
@@ -242,14 +243,41 @@ async fn install_game(
     };
     let install_dir = allowed_root.join(&manifest.game_id);
 
-    std::fs::create_dir_all(&install_dir)?;
-    assert_path_inside_root(&install_dir, &allowed_root)?;
-
-    let patch_manager = Arc::clone(&state.patch_manager);
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| LauncherError::Io(e.to_string()))?;
+
+    // Replay protection. A signed manifest proves the publisher made it, not
+    // that it is the newest one the bucket ever held: an R2 writer can replay an
+    // old version's genuine pair. A build older than one already installed on
+    // this channel is refused, whatever the bucket says.
+    let floors = version_floor::load(&app_data_dir);
+    if version_floor::refuses(
+        &floors,
+        &manifest.game_id,
+        &manifest.channel,
+        manifest.build_number,
+    ) {
+        let floor = version_floor::floor_for(&floors, &manifest.game_id, &manifest.channel)
+            .expect("refuses is only true when a floor exists");
+        return Err(LauncherError::Validation(format!(
+            "{} {} is older than build {} ({}) already installed on the {} channel. \
+             Refusing to install an older build.",
+            manifest.name, manifest.version, floor.build_number, floor.version, manifest.channel
+        )));
+    }
+
+    std::fs::create_dir_all(&install_dir)?;
+    assert_path_inside_root(&install_dir, &allowed_root)?;
+
+    let patch_manager = Arc::clone(&state.patch_manager);
+    let installed = (
+        manifest.game_id.clone(),
+        manifest.channel.clone(),
+        manifest.version.clone(),
+        manifest.build_number,
+    );
 
     let mut installation = patch_manager
         .patch_game(manifest, install_dir, &app_data_dir, base_url, on_event)
@@ -257,6 +285,16 @@ async fn install_game(
 
     // The record above was read before the download, not after it.
     save_installation_keeping_playtime(&app_data_dir, &mut installation)?;
+
+    let (game_id, channel, version, build_number) = installed;
+    let mut floors = version_floor::load(&app_data_dir);
+    if version_floor::record(&mut floors, &game_id, &channel, &version, build_number) {
+        if let Err(err) = version_floor::save(&app_data_dir, &floors) {
+            // The install already succeeded; a missing floor only weakens the
+            // next replay check, so this must not fail the install.
+            eprintln!("Failed to record the version floor for '{game_id}/{channel}': {err}");
+        }
+    }
 
     Ok(installation)
 }

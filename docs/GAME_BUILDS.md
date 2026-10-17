@@ -151,6 +151,8 @@ Without it the launcher cannot discover the game.
 
 ## Rollback
 
-Keep the previous build's files in the bucket. Rolling back means republishing
-the older manifest at the same channel path. Do not delete the files of a build
-until every client has had time to move off it.
+Keep the previous build's files in the bucket. Replaying the old manifest no longer
+reaches players: a client refuses a build older than the newest one it installed on
+that channel. Roll back by publishing the older binary again with a **higher build
+number** (a new version directory), so clients move forward onto the old code.
+Do not delete the files of a build until every client has had time to move off it.

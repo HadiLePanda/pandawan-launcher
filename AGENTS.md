@@ -465,6 +465,11 @@ src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players r
   - `prune-builds.mjs` must never sweep a channel-root `.sig` (`CHANNEL_FILES` in
     `scripts/lib/prune-plan.mjs`): that leaves a live manifest no client accepts.
   - A metadata edit rewrites the manifest, so it re-signs.
+  - A client also refuses a build **older than the newest one it installed on that channel**
+    (`version-floors.json` in the app data dir, keyed by game and channel). A signature proves
+    the publisher, not freshness: an R2 writer can replay an old genuine pair, and `prune` keeps
+    it. A deliberate rollback therefore republishes the older binary under a higher build number;
+    replaying the old manifest no longer reaches clients that installed the newer build.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: they call the `open` crate in Rust, and `tauri-plugin-shell` was removed outright (dependency, capability entry and config regex) because its allowlist could not describe a folder the user chose.
 - `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (one was tracked once, and Vite inlines what it finds), a `*.key`, a `*.pem`, a `.secrets` path, and a `*.map` in `dist/`.
 - Tauri auto-updater:
