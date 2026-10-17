@@ -50,6 +50,9 @@ import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './lib/da
 import { isFlagLike } from './lib/args.mjs';
 import { buildPublishArgv } from './lib/publish-argv.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
+import { signFile } from './lib/manifest-sign.mjs';
+import { verifySignedBytes } from './lib/minisign-verify.mjs';
+import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 // Killing a tree and reading the manifest are shared with the watchdog, so what
 // the dashboard records and what cleans up after it cannot drift apart.
 import { killTree, processStartedAt, reapManifest, writeManifest } from './lib/service-reaper.mjs';
@@ -1156,6 +1159,35 @@ async function readLiveCatalog() {
     return { catalog: null, status: 'absent', detail: null };
   }
 
+  let signature;
+  try {
+    const sig = await fetch(`${CATALOG_URL}.sig`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
+    });
+    if (!sig.ok) {
+      return {
+        catalog: null,
+        status: 'invalid',
+        detail: `it has no signature (HTTP ${sig.status}). Run publish:catalog --resign.`,
+      };
+    }
+    signature = await sig.text();
+  } catch (err) {
+    return { catalog: null, status: 'unreadable', detail: String(err) };
+  }
+
+  // Rewriting an unverified document would sign whatever an R2 writer planted.
+  if (
+    !verifySignedBytes(
+      Buffer.from(text, 'utf-8'),
+      signature,
+      readFileSync(publicKeyPath(repoRoot), 'utf-8')
+    )
+  ) {
+    return { catalog: null, status: 'invalid', detail: 'the signature does not match' };
+  }
+
   let catalog;
   try {
     catalog = JSON.parse(text);
@@ -1219,6 +1251,13 @@ async function uploadCatalog(catalog) {
   await mkdir(staging, { recursive: true });
   try {
     writeFileSync(mergedPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    const signed = signFile(mergedPath, { repoRoot, keyPath: secretKeyPath(repoRoot) });
+    if (!signed.ok) throw new Error(signed.detail);
+    upload(`${mergedPath}.sig`, S3.s3Uri(bucket, 'launcher/catalog.json.sig'), {
+      endpoint,
+      cacheControl: NO_CACHE,
+      throwOnFailure: true,
+    });
     upload(mergedPath, S3.s3Uri(bucket, 'launcher/catalog.json'), {
       endpoint,
       cacheControl: NO_CACHE,
@@ -1228,6 +1267,7 @@ async function uploadCatalog(catalog) {
     });
   } finally {
     rm(mergedPath, { force: true }).catch(() => {});
+    rm(`${mergedPath}.sig`, { force: true }).catch(() => {});
   }
 }
 
