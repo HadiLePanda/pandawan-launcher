@@ -24,7 +24,7 @@ import { CreateGameDialog } from '@components/CreateGameDialog';
 import { GameHeader } from '@components/GameHeader';
 import { EmptyState, ErrorLine } from '@components/ui';
 
-import { GAME_TABS, tabFor } from './registry';
+import { GAME_TABS } from './registry';
 import { TabStrip } from './TabStrip';
 
 /** Ids are prefixed so they can never collide with Launcher's strip. */
@@ -58,7 +58,8 @@ export function DetailPane({
   // The persisted tab id is validated against the REGISTRY, not just against
   // GAME_TAB_IDS: a tab removed in a later version must fall back to the first one
   // rather than rendering a component that no longer exists.
-  const definition = tabFor(tab) ?? tabFor('metadata');
+  const definition =
+    GAME_TABS.find((item) => item.id === tab) ?? GAME_TABS.find((item) => item.id === 'metadata');
   const activeId = (definition?.id ?? 'metadata') as GameTabId;
 
   // EVERY game tab needs a selection, so the strip is gated unconditionally.

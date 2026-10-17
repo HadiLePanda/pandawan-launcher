@@ -27,11 +27,10 @@ import type { ComponentType } from 'react';
 
 import type { GameTabId } from '@store/session';
 
-import { NewsPanel } from '@/panels';
-
 import { ArtworkTab } from './ArtworkTab';
 import { BuildsTab } from './BuildsTab';
 import { MetadataTab } from './MetadataTab';
+import { NewsWithinGame } from './NewsWithinGame';
 import { PruneTab } from './PruneTab';
 import type { GameTabProps } from './types';
 
@@ -82,24 +81,3 @@ export const GAME_TABS: readonly TabDefinition[] = [
     component: PruneTab,
   },
 ];
-
-/**
- * The news feed, reached from inside Games.
- *
- * The tab is scoped to the selection but the content is not: a news item can be
- * about any game or none, so the panel it renders must not be given a scope, or
- * the feed would silently filter itself to whichever game happens to be
- * selected.
- *
- * Wrapping rather than importing keeps the panel's contract intact - it still
- * takes no props and reads the server itself - which is why this function
- * declares no parameters at all. A component with fewer parameters still
- * satisfies `ComponentType<GameTabProps>`.
- */
-function NewsWithinGame() {
-  return <NewsPanel />;
-}
-
-export function tabFor(id: GameTabId): TabDefinition | undefined {
-  return GAME_TABS.find((tab) => tab.id === id);
-}

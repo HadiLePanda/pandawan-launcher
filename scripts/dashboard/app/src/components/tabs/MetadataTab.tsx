@@ -41,7 +41,7 @@ import { Badge, Button, Field } from '@/panels/ui';
 import { DiffReview } from '@components/DiffReview';
 import { ActionRow, DirtyBar, EmptyState, ErrorLine, Log } from '@components/ui';
 
-import { useArtworkObjects } from './ArtworkTab';
+import { useArtworkObjects } from './useArtworkObjects';
 import type { GameTabProps } from './types';
 import {
   buildPayload,
