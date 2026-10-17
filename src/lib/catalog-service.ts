@@ -10,7 +10,7 @@ import {
   versionedManifestUrl,
 } from './cdn';
 import { commands } from './commands';
-import { unwrapResult } from './errors';
+import { CommandError, unwrapResult } from './errors';
 import i18n from './i18n';
 import { fetchCachedText, lastReadSource } from './http-cache';
 import { logger } from './logger';
@@ -80,12 +80,42 @@ function signedKey(url: string): string {
   return `${url}#signed`;
 }
 
+/**
+ * A document exists but its `.sig` does not.
+ *
+ * Distinct from a missing document: a channel published before the per-platform
+ * index has no index at all, while this is one somebody published without a
+ * signature. Only the first may fall back to the channel root.
+ */
+class UnsignedDocumentError extends Error {
+  constructor(url: string) {
+    super(`No signature for ${url}`);
+    this.name = 'UnsignedDocumentError';
+  }
+}
+
+/** A 404 from the fetch command, which is how a channel with no index reads. */
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof CommandError &&
+    err.code === 'Network' &&
+    typeof err.details === 'string' &&
+    /^HTTP 404(\s|$)/.test(err.details)
+  );
+}
+
 async function fetchSignedPair(remoteUrl: string): Promise<string> {
-  const [body, signature] = await Promise.all([
-    fetchRemoteText(remoteUrl),
-    fetchRemoteText(`${remoteUrl}.sig`),
-  ]);
-  return JSON.stringify({ body, signature });
+  // Sequential on purpose: a parallel fetch cannot say which URL 404ed, and the
+  // difference between "no index" and "no signature" decides whether the caller
+  // may fall back to the channel root.
+  const body = await fetchRemoteText(remoteUrl);
+  try {
+    const signature = await fetchRemoteText(`${remoteUrl}.sig`);
+    return JSON.stringify({ body, signature });
+  } catch (err) {
+    if (isNotFound(err)) throw new UnsignedDocumentError(remoteUrl);
+    throw err;
+  }
 }
 
 /** A malformed cache entry reads as absent, never as a refusal. */
@@ -227,13 +257,28 @@ async function fetchLatestIndex(
     if (!parsed || typeof parsed !== 'object') return null;
     return parsed as Record<string, PlatformVersion>;
   } catch (err) {
-    // Not fatal: the channel root carries a signed manifest of its own, and an unsigned
-    // index and a missing one look identical from the outside, so the reason is logged.
-    logger.warn('Version index unusable, falling back to the channel root', {
-      url,
-      error: String(err),
-    });
-    return null;
+    if (err instanceof UnsignedDocumentError) {
+      // An index that exists without its signature must not fall back: the
+      // writer who stripped it can supply the old signed channel-root pair.
+      logger.warn('Version index has no signature, refusing the channel root', {
+        url,
+        error: String(err),
+      });
+      throw err;
+    }
+    if (isNotFound(err) || err instanceof SyntaxError) {
+      // Absent predates the per-platform layout; unparseable is a signed
+      // document with junk in it. The signed channel-root manifest is still a
+      // usable fallback for both.
+      logger.warn('Version index unusable, falling back to the channel root', {
+        url,
+        error: String(err),
+      });
+      return null;
+    }
+    // A refused signature or a network failure is not "absent": falling back
+    // would let the same writer steer the client to an older signed pair.
+    throw err;
   }
 }
 

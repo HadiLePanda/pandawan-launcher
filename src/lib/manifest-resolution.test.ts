@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { commands } from './commands';
+import { CommandError } from './errors';
 import { resolveManifestForPlatform } from './catalog-service';
 import { resolveUnavailableGameInfo } from './cdn';
 import type { CatalogGameEntry } from '@/types';
@@ -21,13 +22,17 @@ const fetchRemoteText = commands.fetchRemoteText as unknown as Mock;
 
 // commands.fetchRemoteText returns the discriminated union that unwrapResult
 // unwraps, so the mock must answer in that shape rather than a bare string.
+function notFound(url: string): CommandError {
+  return new CommandError({ code: 'Network', details: `HTTP 404 fetching ${url}` });
+}
+
 function respond(routes: Record<string, string>): void {
   fetchRemoteText.mockImplementation((url: string) => {
     // A signed document is fetched together with its signature, under the document's
     // own URL plus `.sig`, so the fixture answers both from the same route.
     const target = url.endsWith('.sig') ? url.slice(0, -'.sig'.length) : url;
     const hit = Object.keys(routes).find((suffix) => target.endsWith(suffix));
-    if (!hit) return Promise.reject(new Error(`no route for ${url}`));
+    if (!hit) return Promise.reject(notFound(url));
     return Promise.resolve({ status: 'ok', data: routes[hit] });
   });
 }
@@ -115,6 +120,32 @@ describe('resolveManifestForPlatform', () => {
     const result = await resolveManifestForPlatform('example-game', 'stable', 'windows');
 
     expect(result.status).toBe('ok');
+  });
+
+  it('refuses an index that exists without its signature instead of falling back', async () => {
+    // The writer who stripped the signature can also supply the old signed
+    // channel-root pair, so this is not the "legacy channel" case.
+    fetchRemoteText.mockImplementation((url: string) => {
+      if (url.endsWith('/latest.json')) return Promise.resolve({ status: 'ok', data: '{}' });
+      return Promise.reject(notFound(url));
+    });
+
+    await expect(resolveManifestForPlatform('example-game', 'stable', 'windows')).rejects.toThrow(
+      /signature/i
+    );
+  });
+
+  it('refuses an index whose signature does not verify', async () => {
+    respond({
+      '/stable/latest.json': JSON.stringify({ windows: { version: '0.4.0', build: 3 } }),
+      '/stable/manifest.json': manifestFor('0.4.0', ['windows']),
+    });
+    (commands.verifyManifestSignature as Mock).mockResolvedValueOnce({
+      status: 'error',
+      error: { code: 'ManifestUnsigned', details: 'the signature does not match' },
+    });
+
+    await expect(resolveManifestForPlatform('example-game', 'stable', 'windows')).rejects.toThrow();
   });
 });
 
