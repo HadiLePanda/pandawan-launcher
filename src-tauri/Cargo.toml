@@ -1,6 +1,6 @@
 [package]
 name = "pandawan-launcher"
-version = "0.4.0"
+version = "0.4.1"
 description = "Pandawan Corp Game Launcher"
 authors = ["Pandawan Corp"]
 edition = "2021"
