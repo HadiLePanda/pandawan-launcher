@@ -385,7 +385,10 @@ src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players r
   so an advisory in one of them reaches every install. Vulnerabilities fail the job.
   The informational advisories cargo-audit prints (an unmaintained crate, typically
   several crates deep in the tauri tree) are reported and left: a release cannot act
-  on them, and a permanently red job is a job nobody reads.
+  on them, and a permanently red job is a job nobody reads. The `zip` extraction
+  advisories are ignored by id for the same reason: `tauri-plugin-updater` requires
+  `zip 4` (2.12.0 included) and the fix is `zip 9`, while the archive that path
+  unpacks has already been verified against the release key.
 
 ## System tray
 
