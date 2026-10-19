@@ -665,7 +665,7 @@ export function GameDetailsModal({
                 </div>
               )}
 
-              <p className="game-page-desc">{game.info.description}</p>
+              <p className="game-page-desc selectable">{game.info.description}</p>
 
               <div className="game-info-grid">
                 <InfoRow
@@ -685,7 +685,7 @@ export function GameDetailsModal({
           )}
 
           {view === 'patchNotes' && (
-            <div className="game-news-list">
+            <div className="game-news-list selectable">
               {game.info.patchNotes && game.info.patchNotes.length > 0 ? (
                 game.info.patchNotes.map((note) => (
                   <article key={note.version} className="patch-note-entry">
@@ -720,7 +720,7 @@ export function GameDetailsModal({
                         onError={handleImageError}
                       />
                     </div>
-                    <div className="game-news-body">
+                    <div className="game-news-body selectable">
                       <div className="game-news-meta">
                         {item.category && (
                           <span className="badge badge-default">{item.category}</span>

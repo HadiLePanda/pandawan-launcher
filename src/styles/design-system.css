@@ -197,7 +197,7 @@ Component Design System
 
 /* ----- App top bar ----- */
 .title-bar {
-  height: 32px;
+  height: var(--title-bar-height);
   width: 100%;
   background: var(--canvas-default);
   display: flex;
@@ -263,7 +263,7 @@ Component Design System
 
 .main-nav {
   position: relative;
-  height: 54px;
+  height: var(--main-nav-height);
   width: 100%;
   background: var(--canvas-default);
   display: flex;

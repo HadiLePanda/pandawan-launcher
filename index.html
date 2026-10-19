@@ -26,6 +26,19 @@
           background: #0e1013;
           font-family: 'Geist', system-ui, sans-serif;
           transition: opacity 0.3s ease;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        /* The same grab area as the running launcher: the title bar plus the
+           nav row, not just the 32px strip. The fallbacks keep the splash
+           correct before the app stylesheet has loaded. */
+        .splash-drag {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: calc(var(--title-bar-height, 32px) + var(--main-nav-height, 54px));
+          z-index: 2;
         }
         .splash-mark {
           position: relative;
@@ -75,6 +88,7 @@
           }
         }
       </style>
+      <div class="splash-drag" data-tauri-drag-region aria-hidden="true"></div>
       <div class="splash-mark">
         <div class="splash-ring"></div>
         <div class="splash-logo"><img src="/logo-circle-p.png" alt="Pandawan Launcher" /></div>

@@ -107,6 +107,11 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 
+  /* Window chrome. The splash drag region sums these two, so its grab area
+     matches the title bar plus the nav instead of a second guessed height. */
+  --title-bar-height: 32px;
+  --main-nav-height: 54px;
+
   /* Pandawan Corp — Dark Mode: Neutral Slate */
   --canvas-default: #0e1013;
   --canvas-light: #14171b;
@@ -314,11 +319,28 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body {
   background-color: var(--canvas-default);
   color: var(--ink-default);
+}
+
+/*
+ * The app is a launcher, not a document: dragging across chrome, labels and
+ * cards would only highlight them. Readable prose opts back in with
+ * `.selectable`, and controls stay selectable so their text can still be
+ * edited and copied.
+ */
+input,
+textarea,
+select,
+[contenteditable='true'],
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #root {

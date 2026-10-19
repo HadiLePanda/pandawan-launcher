@@ -66,7 +66,7 @@ export function NewsArticleView({
         />
       </div>
 
-      <article className="news-article-body">
+      <article className="news-article-body selectable">
         <div className="news-article-game">
           {gameIconUrl ? (
             <img src={gameIconUrl} alt="" className="news-article-game-icon" />
