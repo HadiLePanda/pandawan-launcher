@@ -198,7 +198,7 @@ The few things worth knowing without looking:
 - **Launcher → Releases is a three-stage release pipeline, in the order the work happens: Bump, Build,
   Publish.** Bump & tag (`release.mjs`) writes the version files, commits, tags and pushes, and the push is
   what triggers `release.yml`. Build is therefore CI's run, not a local action: `release.yml` builds and
-  signs the selected platforms (macOS and Linux by default), drafts the GitHub release, and uploads
+  signs the selected platforms (Windows and macOS by default), drafts the GitHub release, and uploads
   `latest.json` + bundles to R2 itself.
   `GET /api/launcher/status` carries `targetTag` and a `ci` summary (status, conclusion, run URL, failed
   job names, and the failure's own annotation - a runner billing block, a missing secret) so a red run is
@@ -217,15 +217,13 @@ The few things worth knowing without looking:
   and it force-deletes then recreates the remote tag so the push is a create that always triggers
   `release.yml`. `scripts/lib/retag-plan.mjs` holds those rules, unit-tested. The panel refreshes on its own
   ONLY while a CI run has not concluded, or for a short window after a verb - never a standing poll - and a
-  hidden tab stops the reads, so the cost is bounded by the length of a build. A CI run builds only the
-  selected platforms (`platforms` input on `release.yml`, default macOS + Linux; Windows is built locally
-  and stays off by default), and the publish job MERGES its latest.json into the bucket's at the same
-  version (`scripts/lib/latest-merge.mjs`) so a partial build never drops the platforms it did not build.
-  Windows is built locally (`npm run tauri:build` then `npm run release:local`, both on the Releases page):
-  it uploads the signed NSIS bundle, folds it into latest.json with the same merge, and refreshes the
-  website's `downloads.json` by replacing only the Windows group (`mergeDownloadsIndex` in
-  `scripts/lib/downloads-index.mjs`), so the macOS/Linux entries CI wrote survive there too. The two
-  producers never write a _whole_ manifest or index - each adds its own platforms.
+  hidden tab stops the reads, so the cost is bounded by the length of a build. A CI run builds the
+  selected platforms (`platforms` input on `release.yml`, default Windows + macOS), and the
+  publish job MERGES its latest.json into the bucket's at the same version
+  (`scripts/lib/latest-merge.mjs`) so a partial build never drops the platforms it did not build.
+  The index step then folds its platforms into `downloads.json` the same way
+  (`mergeDownloadsIndex` in `scripts/lib/downloads-index.mjs`), so a partial run never replaces a
+  whole document.
 - **The installers carry no code signature.** The updater signature is separate and
   does exist (minisign, `npm run keys:check` proves it); this one needs a certificate,
   so it is a purchase rather than a step. Without it Windows shows "Unknown publisher"
@@ -475,8 +473,10 @@ src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players r
   `launcher/downloads.json` is signed by both launcher publishers and carries a `sha256` per
   artifact; `docs/DOWNLOADS_INTEGRITY.md` is the contract the site repository must implement.
   Each publisher verifies the live copy before merging, because merging an unverified document
-  would copy a planted entry into the fresh signature. A live entry with no hash is dropped, and
-  `publish:catalog -- --resign --confirm` signs an unsigned live catalog without changing it.
+  would copy a planted entry into the fresh signature. A missing `.sig` is refused outright: an R2
+  writer can delete it, and no publisher flag may turn that into an adoption. A live entry with no
+  hash is dropped, and `publish:catalog -- --resign --confirm` signs an unsigned live catalog
+  without changing it.
 - The logger also appends entries as JSON lines to `launcher.log` in the app log dir (`$APPLOG`), rotated to `launcher.prev.log` at ~1 MB. Writes are fire-and-forget and failures are swallowed. Settings → About has an "Open logs folder" button, scoped by fs permissions to `$APPLOG`. Every `open` is Rust-side (`open_logs_folder`, `open_games_folder`, `open_store_page`) and takes no path or URL from the frontend: they call the `open` crate in Rust, and `tauri-plugin-shell` was removed outright (dependency, capability entry and config regex) because its allowlist could not describe a folder the user chose.
 - `bundle_contents_tests.rs` refuses more than `scripts/`: any `.env*` (one was tracked once, and Vite inlines what it finds), a `*.key`, a `*.pem`, a `.secrets` path, and a `*.map` in `dist/`.
 - Tauri auto-updater:
@@ -493,5 +493,11 @@ src-tauri/Cargo.lock`): Rust dependencies are compiled into the binary players r
   - CI secrets: `TAURI_SIGNING_PRIVATE_KEY` (verbatim contents of `updater.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (only if the key has a password; otherwise the CLI prompts and the build hangs).
   - The release workflow is triggered by semver tags like `v0.1.0`.
   - The launcher's own version lives in five files. `package.json` is the source of truth and `npm run version:set -- <x.y.z>` writes the rest; `npm run version:check` runs in CI so they cannot drift. A mismatch ships an app whose About panel and updater document disagree with the binary, which is how an updater re-offers an update forever. `package-lock.json` is the fifth because npm keeps a version there and `npm ci` never rewrites it.
-  - `npm run release -- minor` bumps, commits, tags and pushes; the tag is what starts the signed CI build (macOS and Linux by default, Windows built locally). A dry run is the default and the tree must be clean — **untracked files do not count**, because `git commit` cannot include one, and counting them refused every real release while a dry run passed.
-  - One installer per platform, and the **updater** decides which one. Windows ships **NSIS only**: the Tauri updater installs through the NSIS setup, so the `.msi` is a second WiX pass over the same app that nothing here uses — the MSI looks like the "native" choice and is the wrong one to keep. Linux ships `.deb` only. macOS keeps `app` plus `dmg`: the updater's macOS artifact is the `.app.tar.gz`, and a tar.gz is not something a person downloads by hand. Dropping to one bundle type per platform takes a WiX pass off the slowest job, which is where most of the ~15 minutes goes.
+  - `npm run release -- minor` bumps, commits, tags and pushes; the tag is what starts the signed CI build (all three platforms). A dry run is the default and the tree must be clean — **untracked files do not count**, because `git commit` cannot include one, and counting them refused every real release while a dry run passed.
+  - One human download per platform, and the **updater** decides which one. Windows ships **NSIS
+    only**: the Tauri updater installs through the NSIS setup, so the `.msi` is a second WiX pass over
+    the same app that nothing here uses. macOS keeps `app` plus `dmg`: the updater's macOS artifact is
+    the `.app.tar.gz`, and a tar.gz is not something a person downloads by hand. `downloads.json`
+    therefore lists exactly one entry per platform (`.exe`, `.dmg`); the `.app.tar.gz` stays on the
+    bucket for the updater and is not offered. Dropping to one bundle type per platform takes a WiX
+    pass off the slowest job, which is where most of the ~15 minutes goes.

@@ -10,9 +10,7 @@ Sticky-note guide for shipping a new Pandawan Launcher version.
 | Build   | CI  | `release.yml` builds the selected platforms and drafts the GitHub release       |
 | Publish | CI  | merges `latest.json` into the bucket and refreshes the website's download index |
 
-Windows is the exception. It is built on this machine (`npm run tauri:build`)
-and published by `npm run release:local`, because a local build is faster than
-CI and the signing key never leaves the machine.
+All three platforms are built and published by CI.
 
 ## Files this touches
 
@@ -69,9 +67,9 @@ builds. CI builds from the committed file and does not sync, so run
 3. **Watch the build.** The tag push triggers `.github/workflows/release.yml`:
 
    - A plan job turns the `platforms` input into the build matrix. A tag push
-     carries no input, so it builds macOS (universal) and Linux (`.deb`).
-     Windows is off by default because it is built locally. Ask for it with
-     `gh workflow run release.yml -f platforms=windows,macos,linux`.
+     carries no input, so it builds Windows and macOS (universal). A dispatch can
+     narrow it with
+     `gh workflow run release.yml -f platforms=windows`.
    - Each leg builds and signs its bundle and drafts a GitHub release. The
      draft is a build record: its asset URLs point at R2, so nothing needs the
      GitHub copy public.
@@ -83,22 +81,7 @@ builds. CI builds from the committed file and does not sync, so run
      `launcher/downloads.json` with `publish-launcher.mjs --index-only`, which
      folds its platforms into the live index instead of replacing it.
 
-4. **Publish Windows from this machine:**
-
-   ```bash
-   npm run tauri:build                      # signed NSIS bundle; needs updater.key
-   npm run release:local                    # dry run: report what would upload
-   npm run release:local -- --confirm
-   ```
-
-   The publisher takes the `_<version>_` installer (an older build's installer
-   is refused by name), uploads it with its `.sig`, merges the Windows entries
-   into the bucket's `latest.json`, and replaces only the Windows group in
-   `downloads.json`, so the macOS and Linux entries CI wrote survive. The
-   Releases page drives the same two steps under "build Windows on this
-   machine".
-
-5. **Nothing further is needed from you.** Players update from the endpoint in
+4. **Nothing further is needed from you.** Players update from the endpoint in
    `src-tauri/tauri.conf.json` (the `launcher/latest.json` path on R2).
 
 ## Repairs

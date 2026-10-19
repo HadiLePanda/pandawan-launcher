@@ -32,12 +32,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { fail, NO_CACHE, repoRoot, r2Config, S3, upload } from './lib/r2.mjs';
+import { CATALOG_KEY, cdnUrl } from './lib/r2-keys.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { fetchOptionalJson } from './lib/game-metadata.mjs';
 import { mergeCatalog, remoteCatalogRefusal, validateCatalog } from './lib/catalog-merge.mjs';
-import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { checkReleaseKey } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument } from './lib/signed-upload.mjs';
 import { droppedNewsIds, newsRefusal } from './lib/news-merge.mjs';
-import { fetchSignedDocument } from './lib/signed-document.mjs';
+import { fetchSignedDocument, adoptionRefusal } from './lib/signed-document.mjs';
 import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 
 /** One-line rendering of a catalog field value, for the report. */
@@ -58,7 +60,7 @@ function format(value) {
  */
 async function resignCatalog({ dryRun }) {
   const { bucket, cdnOrigin, endpoint } = r2Config();
-  const catalogUrl = `${cdnOrigin}/launcher/catalog.json`;
+  const catalogUrl = cdnUrl(cdnOrigin, CATALOG_KEY);
   const key = checkReleaseKey(secretKeyPath(repoRoot));
   if (!key.ok) fail(key.detail);
 
@@ -78,18 +80,14 @@ async function resignCatalog({ dryRun }) {
   const out = path.join(repoRoot, 'dist', 'catalog-resign.json');
   try {
     writeFileSync(out, live.text);
-    const signed = signFile(out, { repoRoot, keyPath: secretKeyPath(repoRoot) });
+    const signed = signAndUploadDocument(out, {
+      repoRoot,
+      keyPath: secretKeyPath(repoRoot),
+      bucket,
+      key: CATALOG_KEY,
+      endpoint,
+    });
     if (!signed.ok) fail(signed.detail);
-    // Signature first, then the document it covers.
-    upload(`${out}.sig`, S3.s3Uri(bucket, 'launcher/catalog.json.sig'), {
-      endpoint,
-      cacheControl: NO_CACHE,
-    });
-    upload(out, S3.s3Uri(bucket, 'launcher/catalog.json'), {
-      endpoint,
-      cacheControl: NO_CACHE,
-      contentType: 'application/json',
-    });
   } finally {
     rmSync(out, { force: true });
     rmSync(`${out}.sig`, { force: true });
@@ -123,7 +121,7 @@ export async function publishCatalog(argv = []) {
   if (problem) fail(problem);
 
   const { bucket, cdnOrigin, endpoint } = r2Config();
-  const catalogUrl = `${cdnOrigin}/launcher/catalog.json`;
+  const catalogUrl = cdnUrl(cdnOrigin, CATALOG_KEY);
   const key = checkReleaseKey(secretKeyPath(repoRoot));
   if (!key.ok) fail(key.detail);
 
@@ -143,22 +141,18 @@ export async function publishCatalog(argv = []) {
   // published entry for every game it lists, so an unverified document would let
   // a planted channel be copied into the signed catalog this run uploads.
   const remoteRead = await fetchSignedDocument(catalogUrl, publicKeyPath(repoRoot));
-  if (remoteRead.status === 'invalid') fail(remoteRead.message);
-  if (remoteRead.status === 'unsigned') {
-    console.log(
-      '\nWARNING: the live catalog has no signature. Adopting it once; the document\n' +
-        '         this run uploads is signed and every later run verifies it.'
-    );
-  }
+  const refusal = adoptionRefusal(remoteRead, {
+    url: catalogUrl,
+    migration:
+      'Run `npm run publish:catalog -- --resign --confirm` once, after you confirm the live catalog is ours',
+  });
+  if (refusal) fail(refusal);
   let remote;
   try {
     // A network blip must not become a catalog that drops every game it did not
     // read, so an unreadable remote refuses the publish rather than writing a new
     // catalog from scratch.
-    remote =
-      remoteRead.status === 'signed' || remoteRead.status === 'unsigned'
-        ? JSON.parse(remoteRead.text)
-        : null;
+    remote = remoteRead.status === 'signed' ? JSON.parse(remoteRead.text) : null;
   } catch (err) {
     fail(`${catalogUrl} is not valid JSON: ${err.message}`);
   }
@@ -289,21 +283,14 @@ export async function publishCatalog(argv = []) {
     const mergedPath = path.join(staging, 'catalog-merged.json');
     try {
       writeFileSync(mergedPath, `${JSON.stringify(catalog, null, 2)}\n`);
-      const signed = signFile(mergedPath, { repoRoot, keyPath: secretKeyPath(repoRoot) });
+      const signed = signAndUploadDocument(mergedPath, {
+        repoRoot,
+        keyPath: secretKeyPath(repoRoot),
+        bucket,
+        key: CATALOG_KEY,
+        endpoint,
+      });
       if (!signed.ok) fail(signed.detail);
-      // Signature first: a client reading the new document against the old
-      // signature fails closed, and that window is one upload wide.
-      upload(`${mergedPath}.sig`, S3.s3Uri(bucket, 'launcher/catalog.json.sig'), {
-        endpoint,
-        cacheControl: NO_CACHE,
-      });
-      upload(mergedPath, S3.s3Uri(bucket, 'launcher/catalog.json'), {
-        endpoint,
-        // Mutable index, so it must never be cached or a client keeps reading
-        // the document that was just replaced.
-        cacheControl: NO_CACHE,
-        contentType: 'application/json',
-      });
     } finally {
       // Transport detail, not state. A stale copy left in dist/ could be picked
       // up by a later build, or read by hand as if it were published.

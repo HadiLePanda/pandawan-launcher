@@ -32,30 +32,14 @@
  */
 export const SITE_PROJECT_NAME = process.env.DASHBOARD_SITE_PROJECT || 'pandawan-launcher-site';
 
-/**
- * Which format leads when a platform ships more than one.
- *
- * Mirrors PREFERRED in the site's own app.js, because that map is what the page
- * matches on and the panel must report the artifact the button will actually be.
- * A mismatch silently changes which file a person downloads; where the two
- * genuinely disagree, the site's verify.mjs is the authority and this is a
- * display detail.
- */
-export const SITE_PREFERRED = {
-  windows: 'MSI installer',
-  macos: 'Disk image',
-  linux: 'Debian / Ubuntu',
-};
+/** The platforms the site renders, in the order it shows its cards. */
+export const SITE_PLATFORMS = ['windows', 'macos'];
 
 /** Display names for the platform ids, so the panel does not invent its own. */
 export const SITE_PLATFORM_NAMES = {
   windows: 'Windows',
   macos: 'macOS',
-  linux: 'Linux',
 };
-
-/** Known platform ids, in the order the site renders its cards. */
-export const SITE_PLATFORMS = Object.keys(SITE_PREFERRED);
 
 /**
  * The refusal shown when the site repo is not checked out.
@@ -117,12 +101,9 @@ function downloadEntry(item) {
 /**
  * What the page will actually offer, per platform.
  *
- * The site's own rule, copied rather than re-guessed: it takes the first entry
- * whose `label` equals PREFERRED[platform], falling back to items[0] when no
- * label matches. `fallback` is reported because a renamed label does not break
- * the page - it changes which file the Download button leads with, and nothing
- * else would say so. `alternatives` is the rest of the group, in document order
- * (the site shows these as a dropdown).
+ * The site takes items[0] as the download and the rest as alternatives, so this
+ * does too: the publisher's order is the contract, and there is no label map to
+ * keep in step.
  *
  * Known platforms come first in the site's order, then any extra id the document
  * carries - an unlisted platform is not filtered out, because a platform the page
@@ -165,9 +146,7 @@ export function summariseDownloads(doc) {
       continue;
     }
 
-    const wanted = SITE_PREFERRED[id];
-    const index = wanted ? raw.findIndex((entry) => entry.label === wanted) : -1;
-    const chosen = index === -1 ? raw[0] : raw[index];
+    const chosen = raw[0];
 
     platforms.push({
       platform: id,
@@ -179,12 +158,8 @@ export function summariseDownloads(doc) {
         url: chosen.url,
         filename: chosen.filename,
         extension: chosen.extension,
-        // True when no entry carried the expected label and the page fell back
-        // to the first one. Not an error here; it is the thing verify.mjs fails
-        // a deploy over, so it needs to be visible before the deploy, not after.
-        fallback: index === -1,
       },
-      alternatives: raw.filter((entry) => entry !== chosen),
+      alternatives: raw.slice(1),
     });
   }
 

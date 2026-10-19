@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  SITE_PREFERRED,
   SITE_PLATFORM_NAMES,
   SITE_PLATFORMS,
   artifactExtension,
@@ -23,18 +22,8 @@ const CDN = 'https://pub-example.r2.dev/launcher';
 const DOWNLOADS_0_1_0 = {
   version: '0.1.0',
   platforms: {
-    windows: [
-      { label: 'MSI installer', url: `${CDN}/Pandawan.Launcher_0.1.0_x64_en-US.msi` },
-      { label: 'EXE installer', url: `${CDN}/Pandawan.Launcher_0.1.0_x64-setup.exe` },
-    ],
-    macos: [
-      { label: 'Disk image', url: `${CDN}/Pandawan.Launcher_0.1.0_universal.dmg` },
-      { label: 'App archive', url: `${CDN}/Pandawan.Launcher_0.1.0_universal.app.tar.gz` },
-    ],
-    linux: [
-      { label: 'Debian / Ubuntu', url: `${CDN}/Pandawan.Launcher_0.1.0_amd64.deb` },
-      { label: 'Fedora / RHEL', url: `${CDN}/Pandawan.Launcher-0.1.0-1.x86_64.rpm` },
-    ],
+    windows: [{ label: 'EXE installer', url: `${CDN}/Pandawan.Launcher_0.1.0_x64-setup.exe` }],
+    macos: [{ label: 'Disk image', url: `${CDN}/Pandawan.Launcher_0.1.0_universal.dmg` }],
   },
 };
 
@@ -82,69 +71,45 @@ describe('summariseDownloads', () => {
   it('picks the preferred artifact for every platform', () => {
     const summary = summariseDownloads(DOWNLOADS_0_1_0);
     expect(summary.version).toBe('0.1.0');
-    expect(summary.platforms.map((p) => p.platform)).toEqual(['windows', 'macos', 'linux']);
+    expect(summary.platforms.map((p) => p.platform)).toEqual(['windows', 'macos']);
     for (const platform of summary.platforms) {
       expect(platform.empty).toBe(false);
-      expect(platform.preferred.label).toBe(SITE_PREFERRED[platform.platform]);
-      expect(platform.preferred.fallback).toBe(false);
+      expect(platform.preferred).not.toBeNull();
     }
-    expect(summary.platforms[0].preferred.filename).toBe('Pandawan.Launcher_0.1.0_x64_en-US.msi');
-    expect(summary.platforms[0].preferred.extension).toBe('.msi');
+    expect(summary.platforms[0].preferred.filename).toBe('Pandawan.Launcher_0.1.0_x64-setup.exe');
+    expect(summary.platforms[0].preferred.extension).toBe('.exe');
   });
 
-  it('lists the remaining downloads as alternatives, in document order', () => {
+  it('leaves no alternatives when each platform ships one download', () => {
     const summary = summariseDownloads(DOWNLOADS_0_1_0);
-    expect(summary.platforms[0].alternatives.map((a) => a.label)).toEqual(['EXE installer']);
-    expect(summary.platforms[1].alternatives.map((a) => a.extension)).toEqual(['.gz']);
+    expect(summary.platforms.every((p) => p.alternatives.length === 0)).toBe(true);
   });
 
-  it('falls back to the first entry and says so when no label matches', () => {
-    // Exactly what a renamed label in the publisher looks like. The page falls
-    // back to items[0], so the panel must too - and must flag it rather than
-    // reporting a "preferred" artifact nobody chose.
-    const doc = {
-      version: '0.2.0',
-      platforms: {
-        windows: [
-          { label: 'EXE Setup', url: `${CDN}/setup.exe` },
-          { label: 'MSI Setup', url: `${CDN}/setup.msi` },
-        ],
-      },
-    };
-    const [windows] = summariseDownloads(doc).platforms;
-    expect(windows.preferred.label).toBe('EXE Setup');
-    expect(windows.preferred.fallback).toBe(true);
-    // The .msi is still offered, as an alternative rather than as the lead.
-    expect(windows.alternatives.map((a) => a.extension)).toEqual(['.msi']);
-  });
-
-  it('prefers the labelled entry wherever it sits, not merely the first one', () => {
-    // The site matches on `label`, so a group whose preferred entry is not first
-    // still leads with it. Reading position instead of label would have the panel
-    // reporting a different file than the Download button serves.
+  it('leads with the first entry, in the publisher order', () => {
+    // The site takes items[0] and puts the rest behind a selector, so the panel
+    // reads position, not a label map that could drift.
     const doc = {
       version: '0.2.0',
       platforms: {
         windows: [
           { label: 'EXE installer', url: `${CDN}/setup.exe` },
-          { label: 'MSI installer', url: `${CDN}/setup.msi` },
+          { label: 'Other format', url: `${CDN}/other.exe` },
         ],
       },
     };
     const [windows] = summariseDownloads(doc).platforms;
-    expect(windows.preferred.label).toBe('MSI installer');
-    expect(windows.preferred.fallback).toBe(false);
-    expect(windows.alternatives.map((a) => a.label)).toEqual(['EXE installer']);
+    expect(windows.preferred.label).toBe('EXE installer');
+    expect(windows.alternatives.map((a) => a.label)).toEqual(['Other format']);
   });
 
   it('reports a platform with no downloads instead of omitting it', () => {
     // The site renders this card as "Not available yet", so it is something the
     // page is showing and the panel has to be able to say.
-    const summary = summariseDownloads({ version: '0.1.0', platforms: { linux: [] } });
+    const summary = summariseDownloads({ version: '0.1.0', platforms: { macos: [] } });
     const platforms = Object.fromEntries(summary.platforms.map((p) => [p.platform, p]));
     expect(platforms.windows.empty).toBe(true);
     expect(platforms.windows.preferred).toBeNull();
-    expect(platforms.linux.empty).toBe(true);
+    expect(platforms.macos.empty).toBe(true);
   });
 
   it('never marks an empty platform as a fallback', () => {
@@ -156,14 +121,9 @@ describe('summariseDownloads', () => {
   it('keeps an unlisted platform id instead of hiding what the page renders', () => {
     const summary = summariseDownloads({
       version: '0.1.0',
-      platforms: { windows: [{ label: 'MSI installer', url: `${CDN}/a.msi` }], freebsd: [] },
+      platforms: { windows: [{ label: 'EXE installer', url: `${CDN}/a.exe` }], freebsd: [] },
     });
-    expect(summary.platforms.map((p) => p.platform)).toEqual([
-      'windows',
-      'macos',
-      'linux',
-      'freebsd',
-    ]);
+    expect(summary.platforms.map((p) => p.platform)).toEqual(['windows', 'macos', 'freebsd']);
     const freebsd = summary.platforms.at(-1);
     expect(freebsd.name).toBe('freebsd');
     expect(freebsd.empty).toBe(true);
@@ -173,7 +133,7 @@ describe('summariseDownloads', () => {
     const summary = summariseDownloads({
       version: '0.1.0',
       platforms: {
-        windows: [{ label: 'MSI installer' }, null, { label: 'X', url: `${CDN}/a.exe` }],
+        windows: [{ label: 'EXE installer' }, null, { label: 'X', url: `${CDN}/a.exe` }],
       },
     });
     const [windows] = summary.platforms;
@@ -192,7 +152,7 @@ describe('summariseDownloads', () => {
 
   it('names the platforms the way the site does', () => {
     expect(SITE_PLATFORM_NAMES.macos).toBe('macOS');
-    expect(SITE_PLATFORMS).toEqual(['windows', 'macos', 'linux']);
+    expect(SITE_PLATFORMS).toEqual(['windows', 'macos']);
   });
 });
 

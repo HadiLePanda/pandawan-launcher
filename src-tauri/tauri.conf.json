@@ -41,7 +41,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app", "dmg", "deb"],
+    "targets": ["nsis", "app", "dmg"],
     "createUpdaterArtifacts": true,
     "icon": ["icons/icon.icns", "icons/icon.png", "icons/icon.ico"],
     "windows": {

@@ -82,9 +82,8 @@ def collect_files(input_dir: Path, excludes: tuple[str, ...] = DEFAULT_EXCLUDES)
 KNOWN_CHANNELS = ("stable", "beta", "alpha")
 DEFAULT_CHANNEL = "stable"
 
-# Platform identifiers, kept in sync with Platform in src-tauri/src/types.rs and
-# PLATFORM_LABELS in src/lib/game-filters.ts.
-KNOWN_PLATFORMS = ("windows", "macos", "linux")
+# Platform identifiers, kept in sync with KNOWN_PLATFORMS in src/lib/platform.ts.
+KNOWN_PLATFORMS = ("windows", "macos")
 
 
 def channel_from_version(version: str) -> str:

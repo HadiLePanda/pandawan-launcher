@@ -44,7 +44,6 @@ export function collectPlatforms(games: GameInfoLike[]): string[] {
 export const PLATFORM_LABELS: Record<string, string> = {
   windows: 'Windows',
   macos: 'macOS',
-  linux: 'Linux',
 };
 
 export function platformLabel(platform: string): string {

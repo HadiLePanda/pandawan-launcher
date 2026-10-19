@@ -20,7 +20,6 @@ import { PLATFORMS, type Platform } from '@app-types/api';
 const PLATFORM_LABEL: Record<string, string> = {
   windows: 'windows',
   macos: 'mac',
-  linux: 'linux',
 };
 
 /**

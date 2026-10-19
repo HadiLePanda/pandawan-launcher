@@ -35,7 +35,6 @@ import {
   RefreshCw,
   Rocket,
   Tag,
-  Upload,
 } from 'lucide-react';
 
 import { apiGet, messageOf } from '@/lib/api';
@@ -86,9 +85,9 @@ const POLL_MS = 15_000;
 // something to wait for. A tag push to a run appearing is under a minute.
 const SETTLE_MS = 90_000;
 
-// The platforms a CI build can target, in the order they are shown. Windows is
-// built locally by default, so it is the one a dispatch turns on by choice.
-const PLATFORMS = ['macos', 'linux', 'windows'] as const;
+// The platforms a CI build can target, in the order they are shown. Every
+// platform ships from CI, so a dispatch covers all three unless one is unticked.
+const PLATFORMS = ['windows', 'macos'] as const;
 type Platform = (typeof PLATFORMS)[number];
 
 /**
@@ -137,12 +136,10 @@ export default function LauncherPanel() {
   // Guards against two reads at once - a poll tick landing on a manual Refresh -
   // so a slow `gh` call cannot stack a second.
   const inFlight = useRef(false);
-  // Which platforms a dispatched CI build covers. macOS and Linux default on;
-  // Windows defaults off because it is built locally, which is faster.
+  // Which platforms a dispatched CI build covers. Every platform ships from CI.
   const [platforms, setPlatforms] = useState<Record<Platform, boolean>>({
+    windows: true,
     macos: true,
-    linux: true,
-    windows: false,
   });
 
   const publish = usePublisherStream();
@@ -150,7 +147,6 @@ export default function LauncherPanel() {
   const build = usePublisherStream();
   const retag = usePublisherStream();
   const buildLocal = usePublisherStream();
-  const publishLocal = usePublisherStream();
   const keys = usePublisherStream();
 
   // The request, with no setState in it. A loader that reaches into component
@@ -275,28 +271,11 @@ export default function LauncherPanel() {
     await refresh();
   }
 
-  async function doPublishLocal() {
-    if (
-      !window.confirm('Upload the local Windows build to R2? Windows players get it immediately.')
-    ) {
-      return;
-    }
-    await publishLocal.start('/api/launcher/publish-local', { confirm: true });
-    setSettling(true);
-    await refresh();
-  }
-
-  // The panel owns seven streams, so no two of them may run at once: two
+  // The panel owns six streams, so no two of them may run at once: two
   // publishers writing to the same bucket with interleaved logs is worse than a
   // disabled button.
   const busy =
-    publish.busy ||
-    release.busy ||
-    build.busy ||
-    retag.busy ||
-    buildLocal.busy ||
-    publishLocal.busy ||
-    keys.busy;
+    publish.busy || release.busy || build.busy || retag.busy || buildLocal.busy || keys.busy;
 
   // Re-read only while there is something to watch: a CI run that has not
   // concluded, or a verb run within the settle window (its run may not exist
@@ -477,9 +456,8 @@ export default function LauncherPanel() {
             <StageLabel n={2} title="Build (CI)" />
             <CiStatus ci={data?.ci} tag={data?.targetTag} />
             <div className="ml-auto flex flex-wrap items-center gap-3">
-              {/* Which platforms a dispatch should build. macOS and Linux by
-                  default; Windows is normally built locally, so it is off until
-                  asked for. */}
+              {/* Which platforms a dispatch should build. Both are on by
+                  default: a release ships Windows and macOS. */}
               <span
                 role="group"
                 aria-label="Platforms to build"
@@ -536,10 +514,8 @@ export default function LauncherPanel() {
           <Stream stream={build} label="Build rerun output" />
           <Stream stream={retag} label="Re-tag output" />
 
-          {/* The same stage-2 build, done here for Windows: faster, needs the
-              signing key on this machine, and produces only the Windows
-              installer. Its publish merges into the CI manifest rather than
-              replacing it. */}
+          {/* Build a Windows installer on this machine without publishing it.
+              Needs the signing key here. */}
           <div className="flex flex-wrap items-center gap-3 border-t border-edge px-6 py-4">
             <span className="text-[12px] text-ink-subtle">…or build Windows on this machine</span>
             <Button
@@ -551,18 +527,8 @@ export default function LauncherPanel() {
               {!buildLocal.busy ? <MonitorDown aria-hidden size={14} /> : null}
               Build
             </Button>
-            <Button
-              onClick={() => void doPublishLocal()}
-              disabled={busy}
-              busy={publishLocal.busy}
-              title="Upload the local Windows build to R2 and merge it into latest.json"
-            >
-              {!publishLocal.busy ? <Upload aria-hidden size={14} /> : null}
-              Publish to R2
-            </Button>
           </div>
           <Stream stream={buildLocal} label="Local build output" />
-          <Stream stream={publishLocal} label="Local publish output" />
 
           {/* Stage 3: publish the built release to R2. Only a tag CI has built and
               released is waiting, so with nothing built the button names why. */}

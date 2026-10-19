@@ -66,6 +66,7 @@ import {
 } from 'lucide-react';
 
 import { apiGet } from '@/lib/api';
+import { PLATFORM_NAMES, PLATFORMS } from '@/types/api';
 import { ago } from '@/lib/format';
 import { platformHue } from '@lib/platform-hue';
 import { DataAge } from '@components/ui';
@@ -90,8 +91,6 @@ interface SitePlatform {
   preferred: SiteArtifact | null;
   /** The rest of the group: what the page's dropdown offers. */
   alternatives: SiteArtifact[];
-  /** True when no entry carried the label the page prefers and it fell back. */
-  fallback: boolean;
 }
 
 interface SiteGit {
@@ -188,12 +187,11 @@ function artifactOf(raw: unknown): SiteArtifact | null {
 }
 
 /** A platform group, from either document shape. */
-function platformFrom(id: string, raw: unknown, name: string, fallbackHint: string): SitePlatform {
+function platformFrom(id: string, raw: unknown, name: string): SitePlatform {
   // Shape C, and the one the server actually sends: summariseDownloads emits a
-  // `{ preferred, alternatives }` record per platform, having already applied the
-  // site's PREFERRED-label rule and any HEAD check. Handled first because the two
-  // array shapes are what a raw downloads.json looks like, and neither of those
-  // is what arrives over HTTP.
+  // `{ preferred, alternatives }` record per platform, having already ordered
+  // the entries. Handled first because the two array shapes are what a raw
+  // downloads.json looks like, and neither of those is what arrives over HTTP.
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const record = raw as Record<string, unknown>;
     if ('preferred' in record || 'alternatives' in record || 'empty' in record) {
@@ -213,7 +211,6 @@ function platformFrom(id: string, raw: unknown, name: string, fallbackHint: stri
           empty: true,
           preferred: null,
           alternatives,
-          fallback: false,
         };
       }
       return {
@@ -222,66 +219,35 @@ function platformFrom(id: string, raw: unknown, name: string, fallbackHint: stri
         empty: false,
         preferred,
         alternatives,
-        // The server reports the renamed-label case per PLATFORM, not per
-        // artifact - summariseDownloads puts it on the platform record because it
-        // is a property of "no entry carried the expected label", which is a fact
-        // about the set rather than about one file.
-        fallback: record.fallback === true,
       };
     }
   }
 
-  // Shape A: the array form summariseDownloads produces.
+  // Shape A: a raw array of artifacts, in the publisher's order.
   if (Array.isArray(raw)) {
-    const wanted = fallbackHint;
     const all = raw.map(artifactOf).filter((a): a is SiteArtifact => a !== null);
     if (all.length === 0) {
-      return {
-        platform: id,
-        name,
-        empty: true,
-        preferred: null,
-        alternatives: [],
-        fallback: false,
-      };
+      return { platform: id, name, empty: true, preferred: null, alternatives: [] };
     }
-    const index = wanted ? all.findIndex((entry) => entry.label === wanted) : -1;
     // `all` is non-empty here, and noUncheckedIndexedAccess cannot see that, so
     // the head is named rather than asserted.
-    const head = all[0] as SiteArtifact;
-    const chosen = index === -1 ? head : (all[index] ?? head);
+    const chosen = all[0] as SiteArtifact;
     return {
       platform: id,
       name,
       empty: false,
       preferred: chosen,
-      alternatives: all.filter((entry) => entry !== chosen),
-      fallback: index === -1,
+      alternatives: all.slice(1),
     };
   }
 
   // Shape B: the raw downloads.json, `{ platforms: { windows: [...] } }`.
   const entries = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
   if (!entries) {
-    return { platform: id, name, empty: true, preferred: null, alternatives: [], fallback: false };
+    return { platform: id, name, empty: true, preferred: null, alternatives: [] };
   }
-  return platformFrom(id, Array.isArray(entries.items) ? entries.items : [], name, fallbackHint);
+  return platformFrom(id, Array.isArray(entries.items) ? entries.items : [], name);
 }
-
-/** The labels the site leads with, per platform. Mirrors SITE_PREFERRED. */
-const PREFERRED: Record<string, string> = {
-  windows: 'MSI installer',
-  macos: 'Disk image',
-  linux: 'Debian / Ubuntu',
-};
-
-const PLATFORM_NAMES: Record<string, string> = {
-  windows: 'Windows',
-  macos: 'macOS',
-  linux: 'Linux',
-};
-
-const PLATFORM_ORDER = ['windows', 'macos', 'linux'];
 
 /**
  * The downloads document as platform rows.
@@ -311,9 +277,7 @@ function parseDownloads(downloads: unknown): {
       if (!entry || typeof entry !== 'object') continue;
       const item = entry as Record<string, unknown>;
       const id = str(item.platform) ?? str(item.id) ?? `platform-${index}`;
-      platforms.push(
-        platformFrom(id, entry, str(item.name) ?? PLATFORM_NAMES[id] ?? id, PREFERRED[id] ?? '')
-      );
+      platforms.push(platformFrom(id, entry, str(item.name) ?? PLATFORM_NAMES[id] ?? id));
     }
     return { version, platforms: orderPlatforms(platforms), error: null };
   }
@@ -321,14 +285,12 @@ function parseDownloads(downloads: unknown): {
   if (raw && typeof raw === 'object') {
     const map = raw as Record<string, unknown>;
     const ids = [
-      ...PLATFORM_ORDER.filter((id) => id in map),
+      ...PLATFORMS.filter((id) => id in map),
       ...Object.keys(map)
-        .filter((id) => !PLATFORM_ORDER.includes(id))
+        .filter((id) => !(PLATFORMS as readonly string[]).includes(id))
         .sort(),
     ];
-    const platforms = ids.map((id) =>
-      platformFrom(id, map[id], PLATFORM_NAMES[id] ?? id, PREFERRED[id] ?? '')
-    );
+    const platforms = ids.map((id) => platformFrom(id, map[id], PLATFORM_NAMES[id] ?? id));
     return { version, platforms: orderPlatforms(platforms), error: null };
   }
 
@@ -338,9 +300,10 @@ function parseDownloads(downloads: unknown): {
 }
 
 function orderPlatforms(platforms: SitePlatform[]): SitePlatform[] {
+  const order = PLATFORMS as readonly string[];
   return [...platforms].sort((a, b) => {
-    const ai = PLATFORM_ORDER.indexOf(a.platform);
-    const bi = PLATFORM_ORDER.indexOf(b.platform);
+    const ai = order.indexOf(a.platform);
+    const bi = order.indexOf(b.platform);
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.name.localeCompare(b.name);
   });
 }
@@ -711,11 +674,6 @@ function PlatformRow({ platform }: { platform: SitePlatform }) {
           <span className="size-1.5 shrink-0 rounded-[1px] bg-current" aria-hidden="true" />
           {platform.name}
         </span>
-        {platform.fallback ? (
-          <span className="rounded-sm border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-warn">
-            label renamed
-          </span>
-        ) : null}
       </div>
 
       {platform.empty || !platform.preferred ? (

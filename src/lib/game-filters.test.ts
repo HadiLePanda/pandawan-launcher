@@ -19,7 +19,7 @@ const games: GameInfoLike[] = [
     id: 'pixel-racer',
     name: 'Pixel Racer',
     genre: ['Racing'],
-    supportedPlatforms: ['windows', 'linux'],
+    supportedPlatforms: ['windows', 'macos'],
   },
   {
     id: 'dungeon-crawl',
@@ -68,7 +68,7 @@ describe('game-filters', () => {
   });
 
   it('collectPlatforms returns sorted unique values', () => {
-    expect(collectPlatforms(games)).toEqual(['linux', 'macos', 'windows']);
+    expect(collectPlatforms(games)).toEqual(['macos', 'windows']);
   });
 
   it('handles games without supportedPlatforms gracefully', () => {

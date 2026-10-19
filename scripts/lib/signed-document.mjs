@@ -6,9 +6,8 @@
  * freshly signed one - the signature would launder the attack. This is the
  * check that prevents that, done before the merge.
  *
- * One migration case is explicit: a document published before signing existed
- * has no `.sig`. Reporting it as `unsigned` lets the first signed publish replace
- * it; once a `.sig` is present, an invalid one is refused.
+ * A missing `.sig` may be a pre-signing document or a deleted one. The caller
+ * decides whether to adopt it; nothing here adopts it automatically.
  */
 
 import { readFileSync } from 'node:fs';
@@ -50,4 +49,13 @@ export async function fetchSignedDocument(url, publicKeyPath) {
     return { status: 'invalid', message: `${url} does not match the release key` };
   }
   return { status: 'signed', text };
+}
+
+/** The reason to refuse a live document, or null when it may be merged. */
+export function adoptionRefusal(read, { url, migration = 'Publish a new signed document' } = {}) {
+  if (read.status === 'invalid' || read.status === 'error') return read.message;
+  if (read.status === 'unsigned') {
+    return `${url} has no signature. Refusing it: an R2 writer can delete that file.\n  ${migration}.`;
+  }
+  return null;
 }

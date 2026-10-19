@@ -102,7 +102,7 @@ describe('resolveManifestForPlatform', () => {
       '/stable/latest.json': JSON.stringify({ windows: { version: '0.4.0', build: 3 } }),
     });
 
-    await resolveManifestForPlatform('example-game', 'stable', 'linux');
+    await resolveManifestForPlatform('example-game', 'stable', 'macos');
 
     // Two calls, not one: the index is fetched together with its signature. What this test
     // is about is that neither call is a manifest, because there is no build to describe.
@@ -161,11 +161,10 @@ describe('resolveUnavailableGameInfo', () => {
     respond({
       '/stable/latest.json': JSON.stringify({
         windows: { version: '0.4.0', build: 3 },
-        macos: { version: '0.3.9', build: 1 },
       }),
     });
 
-    const result = await resolveManifestForPlatform('example-game', 'stable', 'linux');
+    const result = await resolveManifestForPlatform('example-game', 'stable', 'macos');
     expect(result.status).toBe('unavailable');
     if (result.status !== 'unavailable') return;
 
@@ -176,7 +175,6 @@ describe('resolveUnavailableGameInfo', () => {
     expect(info.version).toBe('0.4.0');
     expect(info.availableVersions).toEqual({
       windows: { version: '0.4.0', build: 3 },
-      macos: { version: '0.3.9', build: 1 },
     });
   });
 

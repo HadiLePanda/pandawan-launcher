@@ -40,6 +40,7 @@ import {
   r2Config,
   upload,
 } from './lib/r2.mjs';
+import { CATALOG_KEY, DOWNLOADS_KEY, LATEST_KEY, cdnUrl } from './lib/r2-keys.mjs';
 // The field contract is shared with the publisher, so the form cannot offer a
 // field the script would silently ignore.
 import { CHANNELS, FIELDS, FIELD_SPEC, IMAGE_FIELDS } from './lib/metadata-fields.mjs';
@@ -50,7 +51,7 @@ import { TOKEN_HEADER, injectToken, requiresToken, tokenMatches } from './lib/da
 import { isFlagLike } from './lib/args.mjs';
 import { buildPublishArgv } from './lib/publish-argv.mjs';
 import { readGameMetadata } from './lib/game-metadata.mjs';
-import { signFile } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument } from './lib/signed-upload.mjs';
 import { verifySignedBytes } from './lib/minisign-verify.mjs';
 import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 // Killing a tree and reading the manifest are shared with the watchdog, so what
@@ -118,7 +119,7 @@ const { cdnOrigin, endpoint, bucket } = r2Config();
 const portArg = process.argv.indexOf('--port');
 const PORT = portArg > -1 ? Number(process.argv[portArg + 1]) : 4400;
 
-const PLATFORMS = ['windows', 'macos', 'linux'];
+const PLATFORMS = ['windows', 'macos'];
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 
 /**
@@ -709,7 +710,7 @@ async function headArtifact(url) {
  * when the bucket cannot be reached.
  */
 async function readLiveDownloads() {
-  const url = `${cdnOrigin}/launcher/downloads.json`;
+  const url = cdnUrl(cdnOrigin, DOWNLOADS_KEY);
   let response;
   try {
     response = await fetch(url, {
@@ -920,7 +921,7 @@ async function launcherStatus() {
   let published = null;
   let publishedError = null;
   try {
-    const response = await fetch(`${cdnOrigin}/launcher/latest.json`, {
+    const response = await fetch(cdnUrl(cdnOrigin, LATEST_KEY), {
       cache: 'no-store',
       signal: AbortSignal.timeout(CDN_FETCH_TIMEOUT_MS),
     });
@@ -1124,7 +1125,7 @@ function newsItemLabelFor(item) {
   return String(item?.title ?? '').trim() || String(item?.id ?? '').trim() || '(untitled)';
 }
 
-const CATALOG_URL = `${cdnOrigin}/launcher/catalog.json`;
+const CATALOG_URL = cdnUrl(cdnOrigin, CATALOG_KEY);
 
 /**
  * The published catalog, or null with the reason it could not be read. Returns a
@@ -1251,20 +1252,15 @@ async function uploadCatalog(catalog) {
   await mkdir(staging, { recursive: true });
   try {
     writeFileSync(mergedPath, `${JSON.stringify(catalog, null, 2)}\n`);
-    const signed = signFile(mergedPath, { repoRoot, keyPath: secretKeyPath(repoRoot) });
+    const signed = signAndUploadDocument(mergedPath, {
+      repoRoot,
+      keyPath: secretKeyPath(repoRoot),
+      bucket,
+      key: CATALOG_KEY,
+      endpoint,
+      throwOnFailure: true,
+    });
     if (!signed.ok) throw new Error(signed.detail);
-    upload(`${mergedPath}.sig`, S3.s3Uri(bucket, 'launcher/catalog.json.sig'), {
-      endpoint,
-      cacheControl: NO_CACHE,
-      throwOnFailure: true,
-    });
-    upload(mergedPath, S3.s3Uri(bucket, 'launcher/catalog.json'), {
-      endpoint,
-      cacheControl: NO_CACHE,
-      contentType: 'application/json',
-      // In-process call: exit(1) here would kill the dashboard, so let it throw.
-      throwOnFailure: true,
-    });
   } finally {
     rm(mergedPath, { force: true }).catch(() => {});
     rm(`${mergedPath}.sig`, { force: true }).catch(() => {});
@@ -2846,15 +2842,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Dispatch a release build for the current version's tag, for the selected
-  // platforms. A tag push already builds the default set (macOS + Linux); this
-  // is for choosing the set by hand - including Windows, which is normally built
-  // locally. The workflow file comes from the dispatched ref, so the tag must be
-  // pushed and must already carry the `platforms` input.
+  // platforms. A tag push builds the default set (Windows + macOS); this is for
+  // choosing the set by hand. The workflow file comes from the dispatched ref, so
+  // the tag must be pushed and must already carry the `platforms` input.
   if (url.pathname === '/api/launcher/build' && req.method === 'POST') {
     const payload = await readJson(req, res);
     if (payload === JSON_REFUSED) return;
-    const ALLOWED = ['windows', 'macos', 'linux'];
-    const requested = String(payload.platforms ?? 'macos,linux')
+    const ALLOWED = ['windows', 'macos'];
+    const requested = String(payload.platforms ?? 'windows,macos')
       .split(',')
       .map((name) => name.trim().toLowerCase())
       .filter(Boolean);
@@ -2910,17 +2905,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Publish the local Windows build to R2 and merge it into latest.json. The
-  // merge keeps the macOS/Linux entries the CI build wrote.
-  if (url.pathname === '/api/launcher/publish-local' && req.method === 'POST') {
-    const payload = await readJson(req, res);
-    if (payload === JSON_REFUSED) return;
-    const argv = payload.confirm ? ['--confirm'] : [];
-    invalidateCache('/api/inventory');
-    invalidateCache('/api/website');
-    runScript('publish-local.mjs', argv, res);
-    return;
-  }
+  // Publish a built release to R2 and merge it into latest.json.
 
   // --- Website -------------------------------------------------------------
   //

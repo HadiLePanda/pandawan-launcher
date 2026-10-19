@@ -7,6 +7,7 @@
 
 import { IMAGE_FIELDS } from './metadata-fields.mjs';
 import { fail } from './r2.mjs';
+import { CATALOG_KEY, cdnUrl } from './r2-keys.mjs';
 
 function artPreviewUrl(value, cdnOrigin) {
   const text = (Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '')).trim();
@@ -30,7 +31,7 @@ function artPreviewUrl(value, cdnOrigin) {
  */
 export async function readGameMetadata(gameId, channel, { cdnOrigin, fields }) {
   const [catalog, manifest] = await Promise.all([
-    fetchJson(`${cdnOrigin}/launcher/catalog.json`),
+    fetchJson(cdnUrl(cdnOrigin, CATALOG_KEY)),
     fetchJson(`${cdnOrigin}/games/${gameId}/${channel}/manifest.json`),
   ]);
 

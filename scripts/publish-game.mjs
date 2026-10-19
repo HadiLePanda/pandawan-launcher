@@ -22,13 +22,13 @@ import {
   S3,
   uploadDir,
   uploadFiles,
-  upload,
 } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
 import { CHANNELS } from './lib/metadata-fields.mjs';
 import { manifestFiles, planUpload } from './lib/upload-plan.mjs';
 import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument, uploadSignedDocument } from './lib/signed-upload.mjs';
 import { secretKeyPath } from './lib/updater-key.mjs';
 
 const REQUIRED = ['game-id', 'channel', 'version', 'build-number', 'executable'];
@@ -235,30 +235,20 @@ if (inputDir) {
 // at that path, so it can be cached forever. Both manifest writes are skipped on
 // a dry run - the manifest IS the signal that a build is available.
 if (!dryRun) {
-  // Each signature goes up before the document it signs, so a client that can read a
-  // manifest can always read what makes it usable.
-  upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${versionPrefix}/manifest.json.sig`), {
+  uploadSignedDocument(manifestPath, {
+    bucket,
+    key: `${versionPrefix}/manifest.json`,
     endpoint,
     cacheControl: IMMUTABLE,
-    contentType: 'text/plain',
-  });
-  upload(manifestPath, S3.s3Uri(bucket, `${versionPrefix}/manifest.json`), {
-    endpoint,
-    cacheControl: IMMUTABLE,
-    contentType: 'application/json',
   });
 
   // The channel-root copy is mutable and is the signal that a build is available,
   // so it is uploaded last and never cached. Older clients read only this.
-  upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${prefix}/manifest.json.sig`), {
+  uploadSignedDocument(manifestPath, {
+    bucket,
+    key: `${prefix}/manifest.json`,
     endpoint,
     cacheControl: NO_CACHE,
-    contentType: 'text/plain',
-  });
-  upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
-    endpoint,
-    cacheControl: NO_CACHE,
-    contentType: 'application/json',
   });
 }
 
@@ -302,19 +292,14 @@ if (!dryRun) {
 
   // Signed too: an unsigned index could pin a platform to a version of somebody
   // else's choosing.
-  const latestSigning = signFile(latestPath, { repoRoot, keyPath });
+  const latestSigning = signAndUploadDocument(latestPath, {
+    repoRoot,
+    keyPath,
+    bucket,
+    key: `${prefix}/latest.json`,
+    endpoint,
+  });
   if (!latestSigning.ok) fail(latestSigning.detail);
-
-  upload(`${latestPath}.sig`, S3.s3Uri(bucket, `${prefix}/latest.json.sig`), {
-    endpoint,
-    cacheControl: NO_CACHE,
-    contentType: 'text/plain',
-  });
-  upload(latestPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
-    endpoint,
-    cacheControl: NO_CACHE,
-    contentType: 'application/json',
-  });
 }
 
 const behind = Object.entries(latest)

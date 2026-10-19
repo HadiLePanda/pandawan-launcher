@@ -89,7 +89,6 @@
      still separates blue from violet from amber without reading the header. */
   --color-win: #5aa9f7;
   --color-mac: #c08cf5;
-  --color-linux: #e8b04b;
 
   /* Channel identity, so a column of channels is scannable without reading.
 
@@ -97,11 +96,10 @@
      action colour and stable means "what ships"; `beta` is a warm rose for the
      middle; `alpha` is indigo for the earliest.
 
-     Deliberately NOT gold for beta, which was the first attempt. Gold is the
-     `linux` platform hue, and a catalog row shows a channel badge beside its
-     platform chips - gold landed 3.5 degrees from linux on the hue wheel, i.e.
-     two different meanings on the same colour in the same row. Rose clears linux
-     by 64 degrees.
+     Deliberately NOT gold for beta, which was the first attempt. Gold is close
+     to the platform hues, and a catalog row shows a channel badge beside its
+     platform chips - two meanings on the same colour in the same row. Rose
+     clears them by 64 degrees.
 
      Measured contrast, worst case being the token composited at 10% over
      surface-3 (the badge tint lightens the ground the text sits on):
@@ -112,9 +110,8 @@
      previously lost an 11px label to 4.4:1.
 
      Known limit, stated rather than hidden: the hue wheel is crowded, because the
-     three platform hues (win ~210, mac ~270, linux ~40) already occupy it, and
-     `alpha` at 230 degrees sits 20 degrees from `win`. Shape and text cover that
-     gap: a channel is a FILLED pill carrying its name, a platform is a small
+     two platform hues (win ~210, mac ~270) already occupy it, and `alpha` at 230
+     degrees sits 20 degrees from `win`. Shape and text cover that gap: a channel
      outlined chip, and the channel name is always written - so the two are
      separable without relying on hue, which is also what makes the encoding
      accessible rather than merely pretty. */

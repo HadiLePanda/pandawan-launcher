@@ -59,8 +59,9 @@ for the file hashes is in WebCrypto already.
    The client refuses an unsigned catalog, and a normal publish uploads nothing
    when the merged document is unchanged, so this is the one-time migration.
 2. Publish a launcher build. Its publisher writes the signed, hashed
-   `downloads.json` and `downloads.json.sig`. A local Windows publish hashes the
-   Windows group; the CI index-only step hashes the macOS and Linux groups.
+   `downloads.json` and `downloads.json.sig`, one entry per platform
+   (`.exe`, `.dmg`).
+   An unsigned live index is refused. Restore it from a good copy, or delete it and publish again.
 3. Deploy the site change that verifies both documents.
 4. Ship a launcher whose client verifies the catalog signature.
 

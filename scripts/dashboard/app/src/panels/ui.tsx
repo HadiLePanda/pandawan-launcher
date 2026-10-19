@@ -120,7 +120,6 @@ const BADGE_TONE: Record<string, string> = {
   // relying on hue.
   windows: 'border-win/50 text-win bg-win/10',
   macos: 'border-mac/50 text-mac bg-mac/10',
-  linux: 'border-linux/50 text-linux bg-linux/10',
 };
 
 export function Badge({

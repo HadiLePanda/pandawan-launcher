@@ -24,7 +24,8 @@ import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { fail, IMMUTABLE, NO_CACHE, repoRoot, r2Config, run, S3, upload } from './lib/r2.mjs';
+import { fail, IMMUTABLE, repoRoot, r2Config, run, S3 } from './lib/r2.mjs';
+import { CATALOG_KEY, cdnUrl } from './lib/r2-keys.mjs';
 
 import {
   CHANNELS,
@@ -37,9 +38,10 @@ import {
 import { applyMetadataChanges } from './lib/apply-metadata.mjs';
 import { artworkObjectName, validateArtwork } from './lib/artwork.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
-import { fetchJson } from './lib/game-metadata.mjs';
-import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
-import { secretKeyPath } from './lib/updater-key.mjs';
+import { fetchSignedDocument, adoptionRefusal } from './lib/signed-document.mjs';
+import { checkReleaseKey } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument } from './lib/signed-upload.mjs';
+import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 
 /** Apply the requested metadata edits. Streams its own progress to stdout. */
 export async function publishMetadata(argv) {
@@ -69,7 +71,7 @@ export async function publishMetadata(argv) {
   const { bucket, cdnOrigin, endpoint } = r2Config();
   const prefix = `games/${gameId}/${channel}`;
   const manifestUrl = `${cdnOrigin}/${prefix}/manifest.json`;
-  const catalogUrl = `${cdnOrigin}/launcher/catalog.json`;
+  const catalogUrl = cdnUrl(cdnOrigin, CATALOG_KEY);
 
   console.log(`Game:    ${gameId}`);
   console.log(`Channel: ${channel}`);
@@ -153,14 +155,35 @@ export async function publishMetadata(argv) {
 
   // --- Read what is published today ----------------------------------------
 
-  const manifest = await fetchJson(manifestUrl);
-  const catalog = await fetchJson(catalogUrl);
-
-  if (!manifest) {
+  // Verified before the edit: this run re-signs whatever it reads, so an
+  // unverified document would have planted content signed into the bucket.
+  const publicKey = publicKeyPath(repoRoot);
+  const manifestRead = await fetchSignedDocument(manifestUrl, publicKey);
+  if (manifestRead.status === 'missing') {
     fail(
       `No manifest at ${manifestUrl}.\n  A build must be published before its metadata can be edited.`
     );
   }
+  const manifestRefusal = adoptionRefusal(manifestRead, {
+    url: manifestUrl,
+    migration: 'Republish the build for this channel',
+  });
+  if (manifestRefusal) fail(manifestRefusal);
+
+  const catalogRead = await fetchSignedDocument(catalogUrl, publicKey);
+  if (catalogRead.status === 'missing') {
+    fail(`Could not read ${catalogUrl}. Refusing to write a new catalog from scratch.`);
+  }
+  const catalogRefusal = adoptionRefusal(catalogRead, {
+    url: catalogUrl,
+    migration:
+      'Run `npm run publish:catalog -- --resign --confirm` after you confirm the live catalog is ours',
+  });
+  if (catalogRefusal) fail(catalogRefusal);
+
+  const manifest = JSON.parse(manifestRead.text);
+  const catalog = JSON.parse(catalogRead.text);
+
   if (!catalog || !Array.isArray(catalog.games)) {
     fail(`Could not read ${catalogUrl}. Refusing to write a new catalog from scratch.`);
   }
@@ -236,29 +259,27 @@ export async function publishMetadata(argv) {
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 
-    // Re-signed: the published manifest was signed when the build was published, and this
-    // file is not those bytes any more.
-    const signing = signFile(manifestPath, { repoRoot, keyPath });
+    // Re-signed: the published manifest was signed when the build was published,
+    // and this file is not those bytes any more.
+    const signing = signAndUploadDocument(manifestPath, {
+      repoRoot,
+      keyPath,
+      bucket,
+      key: `${prefix}/manifest.json`,
+      endpoint,
+    });
     if (!signing.ok) fail(signing.detail);
 
-    // Both documents are mutable and must never be cached, or a client keeps
-    // reading the metadata that was just replaced. The signature goes first, so a
-    // client that can read the manifest can always read what makes it usable.
-    upload(`${manifestPath}.sig`, S3.s3Uri(bucket, `${prefix}/manifest.json.sig`), {
+    // The catalog is a signed control document too. Unsigned bytes here would
+    // leave every client refusing the catalog after a metadata edit.
+    const catalogSigning = signAndUploadDocument(catalogPath, {
+      repoRoot,
+      keyPath,
+      bucket,
+      key: CATALOG_KEY,
       endpoint,
-      cacheControl: NO_CACHE,
-      contentType: 'text/plain',
     });
-    upload(manifestPath, S3.s3Uri(bucket, `${prefix}/manifest.json`), {
-      endpoint,
-      cacheControl: NO_CACHE,
-      contentType: 'application/json',
-    });
-    upload(catalogPath, S3.s3Uri(bucket, 'launcher/catalog.json'), {
-      endpoint,
-      cacheControl: NO_CACHE,
-      contentType: 'application/json',
-    });
+    if (!catalogSigning.ok) fail(catalogSigning.detail);
 
     // The embedded fallback ships inside the app and is what a launcher with no
     // network reads. Only publish:catalog used to write it, so a metadata or
@@ -270,7 +291,7 @@ export async function publishMetadata(argv) {
   } finally {
     // Transport detail, not state. A stale manifest left in dist/ could be
     // picked up by a later build.
-    for (const file of [manifestPath, catalogPath, `${manifestPath}.sig`]) {
+    for (const file of [manifestPath, catalogPath, `${manifestPath}.sig`, `${catalogPath}.sig`]) {
       rmSync(file, { force: true });
     }
   }

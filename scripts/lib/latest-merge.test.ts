@@ -13,13 +13,13 @@ describe('mergeLatest', () => {
   it('unions the platforms when the versions match', () => {
     const existing = {
       version: '0.3.0',
-      platforms: { 'windows-x86_64': entry('w'), 'linux-x86_64': entry('l') },
+      platforms: { 'windows-x86_64': entry('w'), 'darwin-x86_64': entry('l') },
     };
     const incoming = { version: '0.3.0', platforms: { 'darwin-aarch64': entry('m') } };
     const merged = mergeLatest(existing, incoming);
     expect(Object.keys(merged.platforms).sort()).toEqual([
       'darwin-aarch64',
-      'linux-x86_64',
+      'darwin-x86_64',
       'windows-x86_64',
     ]);
   });
@@ -32,7 +32,7 @@ describe('mergeLatest', () => {
 
   it('does not merge across versions', () => {
     const existing = { version: '0.2.1', platforms: { 'windows-x86_64': entry('w') } };
-    const incoming = { version: '0.3.0', platforms: { 'linux-x86_64': entry('l') } };
+    const incoming = { version: '0.3.0', platforms: { 'darwin-aarch64': entry('l') } };
     expect(mergeLatest(existing, incoming)).toBe(incoming);
   });
 

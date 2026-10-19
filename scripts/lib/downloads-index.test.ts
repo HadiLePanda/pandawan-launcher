@@ -17,40 +17,33 @@ const build = (names, version = '0.2.1') =>
   buildDownloadsIndex({ version, files: (names ?? []).map(file), base: BASE });
 
 describe('asset classification', () => {
-  it('classifies every installer extension', () => {
-    expect(classifyAsset('App_0.2.1_x64.msi')).toBe('windows');
+  it('classifies the one installer each platform ships', () => {
     expect(classifyAsset('App_0.2.1_x64-setup.exe')).toBe('windows');
     expect(classifyAsset('App_0.2.1_aarch64.dmg')).toBe('macos');
-    expect(classifyAsset('App_aarch64.app.tar.gz')).toBe('macos');
-    expect(classifyAsset('app_0.2.1_amd64.deb')).toBe('linux');
-    expect(classifyAsset('app-0.2.1-1.x86_64.rpm')).toBe('linux');
+  });
+
+  it('does not list the formats the page must not offer', () => {
+    // The updater archive and the MSI are not human downloads: Windows ships
+    // NSIS only and macOS ships the dmg.
+    expect(classifyAsset('App_0.2.1_x64.msi')).toBe(null);
+    expect(classifyAsset('App_aarch64.app.tar.gz')).toBe(null);
+    expect(classifyAsset('app_0.2.1_amd64.deb')).toBe(null);
   });
 
   it('returns null for something that is not a downloadable build', () => {
     expect(classifyAsset('latest.json')).toBe(null);
     expect(classifyAsset('assets-compact.json')).toBe(null);
-    expect(classifyAsset('App_0.2.1_x64.msi.sig')).toBe(null);
+    expect(classifyAsset('App_0.2.1_x64-setup.exe.sig')).toBe(null);
   });
 
   it('labels each artifact type the way the page shows it', () => {
-    expect(assetLabel('App_0.2.1_x64.msi')).toBe('MSI installer');
     expect(assetLabel('App_0.2.1_x64-setup.exe')).toBe('EXE installer');
     expect(assetLabel('App_0.2.1_aarch64.dmg')).toBe('Disk image');
-    expect(assetLabel('App_aarch64.app.tar.gz')).toBe('App archive');
-    expect(assetLabel('app_0.2.1_amd64.deb')).toBe('Debian / Ubuntu');
-    expect(assetLabel('app-0.2.1-1.x86_64.rpm')).toBe('Fedora / RHEL');
   });
 });
 
 describe('downloads index', () => {
-  const full = [
-    'App_0.2.1_x64-setup.exe',
-    'App_0.2.1_x64_en-US.msi',
-    'App_0.2.1_aarch64.dmg',
-    'App_aarch64.app.tar.gz',
-    'app_0.2.1_amd64.deb',
-    'app-0.2.1-1.x86_64.rpm',
-  ];
+  const full = ['App_0.2.1_x64-setup.exe', 'App_0.2.1_aarch64.dmg'];
 
   it('carries the version through', () => {
     expect(build(full).version).toBe('0.2.1');
@@ -59,56 +52,45 @@ describe('downloads index', () => {
 
   it('groups each artifact under its platform with its label', () => {
     const index = build(full);
-    expect(index.platforms.windows.map((i) => i.label)).toEqual(['MSI installer', 'EXE installer']);
-    expect(index.platforms.macos.map((i) => i.label)).toEqual(['Disk image', 'App archive']);
-    expect(index.platforms.linux.map((i) => i.label)).toEqual(['Debian / Ubuntu', 'Fedora / RHEL']);
+    expect(index.platforms.windows.map((i) => i.label)).toEqual(['EXE installer']);
+    expect(index.platforms.macos.map((i) => i.label)).toEqual(['Disk image']);
   });
 
   it('builds the URL under the given base and percent-encodes the name', () => {
-    const index = build(['App 0.2.1 x64.msi']);
-    expect(index.platforms.windows[0].url).toBe(`${BASE}/App%200.2.1%20x64.msi`);
+    const index = build(['App 0.2.1 x64-setup.exe']);
+    expect(index.platforms.windows[0].url).toBe(`${BASE}/App%200.2.1%20x64-setup.exe`);
   });
 
   it('leads each platform with the installer a person wants, whatever order the files arrive in', () => {
     // The website takes items[0] as the download to offer, so this is the
     // load-bearing assertion: shuffled input, and macOS must not lead with the
     // updater tarball.
-    const index = build([
-      'App_aarch64.app.tar.gz',
-      'App_0.2.1_aarch64.dmg',
-      'App_0.2.1_x64-setup.exe',
-      'App_0.2.1_x64_en-US.msi',
-      'app-0.2.1-1.x86_64.rpm',
-      'app_0.2.1_amd64.deb',
-    ]);
-    expect(index.platforms.windows[0].label).toBe('MSI installer');
+    const index = build(['App_0.2.1_aarch64.dmg', 'App_0.2.1_x64-setup.exe']);
+    expect(index.platforms.windows[0].label).toBe('EXE installer');
     expect(index.platforms.macos[0].label).toBe('Disk image');
-    expect(index.platforms.linux[0].label).toBe('Debian / Ubuntu');
   });
 
   it('has an empty group for a platform with no artifacts', () => {
-    const index = build(['App_0.2.1_x64_en-US.msi']);
-    expect(index.platforms.windows.map((i) => i.label)).toEqual(['MSI installer']);
+    const index = build(['App_0.2.1_x64-setup.exe']);
+    expect(index.platforms.windows.map((i) => i.label)).toEqual(['EXE installer']);
     expect(index.platforms.macos).toEqual([]);
-    expect(index.platforms.linux).toEqual([]);
   });
 
   it('excludes signatures, latest.json and the CI asset map', () => {
     const index = build([
-      'App_0.2.1_x64_en-US.msi',
-      'App_0.2.1_x64_en-US.msi.sig',
+      'App_0.2.1_x64-setup.exe',
+      'App_0.2.1_x64-setup.exe.sig',
       'latest.json',
       'assets-compact.json',
     ]);
     expect(index.platforms.windows).toHaveLength(1);
-    expect(index.platforms.windows[0].label).toBe('MSI installer');
+    expect(index.platforms.windows[0].label).toBe('EXE installer');
   });
 
   it('ignores a file extension it does not recognise instead of guessing a platform', () => {
-    const index = build(['App_0.2.1_x64.msi', 'App_0.2.1_arm64.pkg', 'App.AppImage']);
-    expect(index.platforms.windows.map((i) => i.label)).toEqual(['MSI installer']);
+    const index = build(['App_0.2.1_x64-setup.exe', 'App_0.2.1_arm64.pkg', 'App.AppImage']);
+    expect(index.platforms.windows.map((i) => i.label)).toEqual(['EXE installer']);
     expect(index.platforms.macos).toEqual([]);
-    expect(index.platforms.linux).toEqual([]);
   });
 
   it('has a deliberate position for every label its own classifier can produce', () => {
@@ -116,9 +98,8 @@ describe('downloads index', () => {
     // proves that guard is unreachable for the extensions the classifier knows,
     // so adding one to classifyAsset without ordering it fails a test.
     const samples = {
-      windows: ['App_0.2.1_x64.msi', 'App_0.2.1_x64-setup.exe'],
-      macos: ['App_0.2.1_aarch64.dmg', 'App_aarch64.app.tar.gz'],
-      linux: ['app_0.2.1_amd64.deb', 'app-0.2.1-1.x86_64.rpm'],
+      windows: ['App_0.2.1_x64-setup.exe'],
+      macos: ['App_0.2.1_aarch64.dmg'],
     };
     for (const [platform, names] of Object.entries(samples)) {
       for (const name of names) {
@@ -135,7 +116,11 @@ describe('downloads index', () => {
 
   it('refuses a download with no sha256 instead of listing it', () => {
     expect(() =>
-      buildDownloadsIndex({ version: '0.2.1', files: [{ name: 'App_0.2.1_x64.msi' }], base: BASE })
+      buildDownloadsIndex({
+        version: '0.2.1',
+        files: [{ name: 'App_0.2.1_x64-setup.exe' }],
+        base: BASE,
+      })
     ).toThrow(/sha256/);
   });
 
@@ -147,7 +132,7 @@ describe('downloads index', () => {
   });
 
   it('tolerates a missing file list', () => {
-    expect(build(undefined).platforms).toEqual({ windows: [], macos: [], linux: [] });
+    expect(build(undefined).platforms).toEqual({ windows: [], macos: [] });
   });
 });
 
@@ -157,19 +142,17 @@ describe('merging a built index into the live one', () => {
     platforms: {
       windows: [{ label: 'EXE installer', url: 'https://cdn/w0.2.1.exe', sha256: 'b'.repeat(64) }],
       macos: [{ label: 'Disk image', url: 'https://cdn/m0.2.1.dmg', sha256: 'c'.repeat(64) }],
-      linux: [{ label: 'Debian / Ubuntu', url: 'https://cdn/l0.2.1.deb', sha256: 'd'.repeat(64) }],
     },
   };
 
   it('replaces only the platform the new index built, keeping the others', () => {
-    // The load-bearing case: a local Windows publish must not erase the macOS
-    // and Linux downloads another producer put in the bucket.
+    // The load-bearing case: a partial build must not erase the other platform's
+    // download that another producer put in the bucket.
     const merged = mergeDownloadsIndex(live, build(['App_0.3.0_x64-setup.exe'], '0.3.0'));
 
     expect(merged.version).toBe('0.3.0');
     expect(merged.platforms.windows[0].url).toBe(`${BASE}/App_0.3.0_x64-setup.exe`);
     expect(merged.platforms.macos).toEqual(live.platforms.macos);
-    expect(merged.platforms.linux).toEqual(live.platforms.linux);
   });
 
   it('lists only the platforms that have a download, live or new', () => {
@@ -185,9 +168,9 @@ describe('merging a built index into the live one', () => {
       platforms: { windows: [{ label: 'EXE installer', url: 'https://cdn/planted.exe' }] },
     };
 
-    const merged = mergeDownloadsIndex(unsafe, build(['App_0.3.0_amd64.deb'], '0.3.0'));
+    const merged = mergeDownloadsIndex(unsafe, build(['App_0.3.0_aarch64.dmg'], '0.3.0'));
 
     expect(merged.platforms.windows).toBeUndefined();
-    expect(merged.platforms.linux[0].url).toBe(`${BASE}/App_0.3.0_amd64.deb`);
+    expect(merged.platforms.macos[0].url).toBe(`${BASE}/App_0.3.0_aarch64.dmg`);
   });
 });

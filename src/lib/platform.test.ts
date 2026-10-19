@@ -40,13 +40,13 @@ function multiPlatform(): GameManifest {
 }
 
 describe('isPlatform', () => {
-  it('accepts the three known platforms', () => {
+  it('accepts the two known platforms', () => {
     expect(isPlatform('windows')).toBe(true);
     expect(isPlatform('macos')).toBe(true);
-    expect(isPlatform('linux')).toBe(true);
   });
 
   it('rejects anything else, including prototype keys', () => {
+    expect(isPlatform('linux')).toBe(false);
     expect(isPlatform('mac')).toBe(false);
     expect(isPlatform('constructor')).toBe(false);
     expect(isPlatform(null)).toBe(false);
@@ -88,8 +88,17 @@ describe('selectPlatformBuild', () => {
   });
 
   it('returns null when the platform has no build', () => {
-    // A Linux player must not be handed a Windows binary to download.
-    expect(selectPlatformBuild(multiPlatform(), 'linux', ['windows', 'macos'])).toBeNull();
+    // A Windows player must not be handed a macOS binary to download.
+    const macOnly: GameManifest = {
+      ...baseManifest,
+      platforms: {
+        macos: {
+          executable: 'Example Game.app/Contents/MacOS/example-game',
+          files: [file('Example Game.app/Contents/MacOS/example-game', 300)],
+        },
+      },
+    };
+    expect(selectPlatformBuild(macOnly, 'windows', ['windows', 'macos'])).toBeNull();
   });
 
   it('returns null when the platform cannot be determined', () => {

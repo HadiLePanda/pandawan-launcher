@@ -29,6 +29,7 @@ import {
   run,
   upload,
 } from './lib/r2.mjs';
+import { CATALOG_KEY, cdnUrl } from './lib/r2-keys.mjs';
 
 import { parseArgs } from './lib/args.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
@@ -65,7 +66,7 @@ async function targets() {
   if (args['game-id']) return [target(args['game-id'], args.channel ?? 'stable')];
   if (!args.all) fail('--game-id is required, or --all to re-sign every published game.');
 
-  const response = await fetch(`${cdnOrigin}/launcher/catalog.json`);
+  const response = await fetch(cdnUrl(cdnOrigin, CATALOG_KEY));
   if (!response.ok) fail(`could not read the catalog (HTTP ${response.status}).`);
   const catalog = await response.json();
   const games = Array.isArray(catalog?.games) ? catalog.games : [];

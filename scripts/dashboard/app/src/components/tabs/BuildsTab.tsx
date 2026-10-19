@@ -41,7 +41,6 @@ import type { GameTabProps } from './types';
 const PLATFORM_LABEL: Record<string, string> = {
   windows: 'Windows',
   macos: 'macOS',
-  linux: 'Linux',
 };
 
 export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps) {
@@ -64,7 +63,6 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
   const [platformDirs, setPlatformDirs] = useState<Record<string, string>>({
     windows: '',
     macos: '',
-    linux: '',
   });
   const [dryRun, setDryRun] = useState(true);
   const [log, setLog] = useState('');
@@ -89,7 +87,7 @@ export function BuildsTab({ gameId, channel, scope, onPublished }: GameTabProps)
     setBuildNumber(suggestedBuild === null ? '' : String(suggestedBuild));
     setExecutable(`${gameId}.exe`);
     // Platform directories describe local build output and cannot be inferred.
-    setPlatformDirs({ windows: '', macos: '', linux: '' });
+    setPlatformDirs({ windows: '', macos: '' });
     setInputDir('');
     // A new selection must not inherit an armed real publish.
     setDryRun(true);

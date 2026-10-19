@@ -13,7 +13,6 @@
 const PLATFORM_HUE: Record<string, string> = {
   windows: 'text-win',
   macos: 'text-mac',
-  linux: 'text-linux',
 };
 
 /**
@@ -26,7 +25,6 @@ const PLATFORM_HUE: Record<string, string> = {
 const PLATFORM_DOT: Record<string, string> = {
   windows: 'bg-win',
   macos: 'bg-mac',
-  linux: 'bg-linux',
 };
 
 /** The text hue for a platform, falling back to neutral for an id this build does not know. */

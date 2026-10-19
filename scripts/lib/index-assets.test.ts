@@ -19,9 +19,9 @@ describe('download index assets', () => {
 
   it('lists regular files and skips directories', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'index-assets-'));
-    writeFileSync(path.join(dir, 'app.deb'), 'deb');
+    writeFileSync(path.join(dir, 'app.dmg'), 'dmg');
     mkdirSync(path.join(dir, 'nested'));
 
-    expect(indexEntriesIn(dir).map((entry) => entry.name)).toEqual(['app.deb']);
+    expect(indexEntriesIn(dir).map((entry) => entry.name)).toEqual(['app.dmg']);
   });
 });

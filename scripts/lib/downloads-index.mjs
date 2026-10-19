@@ -19,11 +19,22 @@
  * labelled and ordered.
  */
 
-export const PLATFORM_ORDER = {
-  windows: ['MSI installer', 'EXE installer'],
-  macos: ['Disk image', 'App archive'],
-  linux: ['Debian / Ubuntu', 'Fedora / RHEL'],
-};
+/**
+ * The one human installer each platform ships, and the order a person wants it.
+ *
+ * This table is the single source for classification, labels and ordering. A new
+ * platform or format is one row here, not four matching regexes.
+ */
+export const INSTALLERS = [
+  { platform: 'windows', pattern: /-setup\.exe$/, label: 'EXE installer' },
+  { platform: 'macos', pattern: /\.dmg$/, label: 'Disk image' },
+];
+
+export const PLATFORMS = INSTALLERS.map(({ platform }) => platform);
+
+export const PLATFORM_ORDER = Object.fromEntries(
+  INSTALLERS.map(({ platform, label }) => [platform, [label]])
+);
 
 const SHA256 = /^[0-9a-f]{64}$/;
 
@@ -34,21 +45,22 @@ export function isSha256(value) {
 
 /** The platform a published file belongs to, or null when it is not a download. */
 export function classifyAsset(name) {
-  if (/\.msi$/.test(name) || /-setup\.exe$/.test(name)) return 'windows';
-  if (/\.dmg$/.test(name) || /\.app\.tar\.gz$/.test(name)) return 'macos';
-  if (/\.deb$/.test(name) || /\.rpm$/.test(name)) return 'linux';
-  return null;
+  return INSTALLERS.find(({ pattern }) => pattern.test(name))?.platform ?? null;
 }
 
 /** The label the download page shows for a file. */
 export function assetLabel(name) {
-  if (/\.msi$/.test(name)) return 'MSI installer';
-  if (/-setup\.exe$/.test(name)) return 'EXE installer';
-  if (/\.dmg$/.test(name)) return 'Disk image';
-  if (/\.app\.tar\.gz$/.test(name)) return 'App archive';
-  if (/\.deb$/.test(name)) return 'Debian / Ubuntu';
-  if (/\.rpm$/.test(name)) return 'Fedora / RHEL';
-  return name;
+  return INSTALLERS.find(({ pattern }) => pattern.test(name))?.label ?? name;
+}
+
+/** Whether a release asset is a human installer. */
+export function isInstaller(name) {
+  return INSTALLERS.some(({ pattern }) => pattern.test(name));
+}
+
+/** Whether a release asset is the updater signature of a human installer. */
+export function isInstallerSignature(name) {
+  return name.endsWith('.sig') && isInstaller(name.slice(0, -4));
 }
 
 /**
@@ -63,7 +75,7 @@ export function assetLabel(name) {
  * actually downloads, not decoration.
  */
 export function buildDownloadsIndex({ version, files, base }) {
-  const groups = { windows: [], macos: [], linux: [] };
+  const groups = Object.fromEntries(PLATFORMS.map((platform) => [platform, []]));
 
   for (const file of files ?? []) {
     const { name, sha256 } = file ?? {};

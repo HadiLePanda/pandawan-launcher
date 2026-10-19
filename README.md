@@ -126,10 +126,8 @@ talks to R2 over the S3-compatible API. No AWS account is necessary.
 ## Self-updates
 
 `npm run release -- minor` bumps the version, tags and pushes; the tag cuts the
-release. CI then builds, signs and publishes macOS and Linux. Windows is built
-and published from this machine: `npm run tauri:build`, then
-`npm run release:local -- --confirm`. [docs/RELEASE.md](docs/RELEASE.md) is the
-full checklist.
+release. CI then builds, signs and publishes Windows and macOS.
+[docs/RELEASE.md](docs/RELEASE.md) is the full checklist.
 
 - `src-tauri/updater.pub` is the source of truth for the public key.
   `npm run sync:updater-key` copies it into `tauri.conf.json`. It runs before
@@ -150,7 +148,6 @@ Settings are stored in the platform app-data directory:
 
 - Windows: `%LOCALAPPDATA%\com.pandawancorp.launcher\`
 - macOS: `~/Library/Application Support/com.pandawancorp.launcher/`
-- Linux: `~/.local/share/com.pandawancorp.launcher/`
 
 ## Unity integration
 

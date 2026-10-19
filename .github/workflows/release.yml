@@ -21,10 +21,16 @@ on:
         type: string
         required: false
       platforms:
-        description: 'Platforms to build on a full run: a comma list of windows, macos, linux. Default macos,linux (Windows is built locally). Ignored when publish_only is true.'
+        description: 'Platforms to build on a full run: a comma list of windows, macos. Default windows,macos. Ignored when publish_only is true.'
         type: string
         required: false
-        default: 'macos,linux'
+        default: 'windows,macos'
+
+# One release per ref. Two runs writing the same R2 keys would interleave, and a
+# cancel mid-upload would leave the bucket half updated.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check-versions:
@@ -85,9 +91,8 @@ jobs:
           echo "Signing secret is configured."
 
   # Turn the platform selection into the build matrix. A tag push has no inputs,
-  # so it builds the default set (macOS and Linux); the dashboard's checkboxes
-  # pass `platforms`. Windows is off by default because it is built locally,
-  # which is faster - but it stays selectable here.
+  # so it builds every platform. The dashboard's checkboxes pass `platforms` when
+  # a partial build is wanted.
   plan:
     name: Plan platforms
     if: ${{ !inputs.publish_only }}
@@ -100,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${{ inputs.platforms }}"
-          if [ -z "$RAW" ]; then RAW="macos,linux"; fi
+          if [ -z "$RAW" ]; then RAW="windows,macos"; fi
           echo "Selected platforms: $RAW"
           include=""
           IFS=',' read -ra WANT <<< "$RAW"
@@ -109,9 +114,8 @@ jobs:
             case "$name" in
               windows) item='{"name":"windows","platform":"windows-latest","args":""}' ;;
               macos)   item='{"name":"macos","platform":"macos-latest","targets":"aarch64-apple-darwin,x86_64-apple-darwin","args":"--target universal-apple-darwin"}' ;;
-              linux)   item='{"name":"linux","platform":"ubuntu-latest","args":"--bundles deb"}' ;;
               "") continue ;;
-              *) echo "::error::unknown platform '$name' (use windows, macos, linux)"; exit 1 ;;
+              *) echo "::error::unknown platform '$name' (use windows, macos)"; exit 1 ;;
             esac
             if [ -z "$include" ]; then include="$item"; else include="$include,$item"; fi
           done
@@ -129,11 +133,9 @@ jobs:
     strategy:
       # One installer per platform, and the updater decides which one: Windows
       # ships NSIS only (the updater installs through it, so the .msi is a second
-      # WiX pass for a format nothing here uses), and Linux the .deb. The
-      # AppImage bundler downloads tools from GitHub that often hit 429 rate
-      # limits, so it stays out.
+      # WiX pass for a format nothing here uses). macOS keeps the .app and .dmg.
       #
-      # fail-fast false: a red Linux leg must not cancel a green macOS one.
+      # fail-fast false: a red macOS leg must not cancel a green Windows one.
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.platform }}
@@ -146,12 +148,6 @@ jobs:
         with:
           node-version: 24
           cache: npm
-
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libglib2.0-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -261,7 +257,7 @@ jobs:
           gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
             --paginate --jq '.[].name' | while read -r name; do
               case "$name" in
-                *.msi|*.msi.sig|*.app.tar.gz|*.app.tar.gz.sig|*.dmg|*.deb|*.deb.sig|*.rpm|*.rpm.sig|*.exe|*.exe.sig|latest.json) ;;
+                *.app.tar.gz|*.app.tar.gz.sig|*.dmg|*.exe|*.exe.sig|latest.json) ;;
                 *) continue ;;
               esac
               id=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
@@ -300,13 +296,13 @@ jobs:
           cat bundles/latest.json
 
       - name: Merge into the published manifest
-        # A CI run builds only the selected platforms (macOS and Linux by
-        # default; Windows is built locally). Writing its latest.json wholesale
-        # would drop the platforms it did not build, so the built entries are
-        # merged into whatever the bucket already advertises at this same
-        # version. The script comes from the workflow's own ref (`ci`), so a
-        # publish-only rerun of an older release still has it; the config comes
-        # from the tag, so the URL base is the release's own endpoint.
+        # A partial run (the dashboard can pick platforms) builds only a subset.
+        # Writing its latest.json wholesale would drop the platforms it did not
+        # build, so the built entries are merged into whatever the bucket already
+        # advertises at this same version. The script comes from the workflow's
+        # own ref (`ci`), so a publish-only rerun of an older release still has
+        # it; the config comes from the tag, so the URL base is the release's own
+        # endpoint.
         run: |
           set -euo pipefail
           node ci/scripts/merge-latest.mjs \

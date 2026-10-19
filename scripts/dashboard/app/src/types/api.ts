@@ -12,8 +12,14 @@
  */
 
 /** The platforms the launcher can install on, in the order the grid shows them. */
-export const PLATFORMS = ['windows', 'macos', 'linux'] as const;
+export const PLATFORMS = ['windows', 'macos'] as const;
 export type Platform = (typeof PLATFORMS)[number];
+
+/** Display names for those ids, so no panel invents its own. */
+export const PLATFORM_NAMES: Record<string, string> = {
+  windows: 'Windows',
+  macos: 'macOS',
+};
 
 /**
  * The channels the launcher knows.

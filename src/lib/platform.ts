@@ -9,7 +9,7 @@ import type { FileEntry, GameManifest } from '@/types';
  * nothing downstream re-implements it.
  */
 
-export const KNOWN_PLATFORMS = ['windows', 'macos', 'linux'] as const;
+export const KNOWN_PLATFORMS = ['windows', 'macos'] as const;
 export type Platform = (typeof KNOWN_PLATFORMS)[number];
 
 export function isPlatform(value: unknown): value is Platform {
@@ -30,7 +30,6 @@ export function detectPlatform(): Platform | null {
   const ua = navigator.userAgent || '';
   if (/mac/i.test(ua)) return 'macos';
   if (/win/i.test(ua)) return 'windows';
-  if (/linux|x11/i.test(ua)) return 'linux';
   return null;
 }
 

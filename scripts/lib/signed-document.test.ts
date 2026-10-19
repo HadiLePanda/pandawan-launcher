@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchSignedDocument } from './signed-document.mjs';
+import { adoptionRefusal, fetchSignedDocument } from './signed-document.mjs';
 
 const URL = 'https://cdn.test/launcher/catalog.json';
 const KEY_ID = Buffer.from('0102030405060708', 'hex');
@@ -105,5 +105,43 @@ describe('reading a signed document', () => {
       [`${URL}.sig`]: { status: 500, body: '' },
     });
     expect((await fetchSignedDocument(URL, publicKeyFile())).status).toBe('error');
+  });
+});
+
+describe('deciding whether to merge a live document', () => {
+  it('allows a verified document', () => {
+    expect(adoptionRefusal({ status: 'signed', text: '{}' }, { url: URL })).toBeNull();
+  });
+
+  it('allows a missing document, which has nothing to merge', () => {
+    expect(adoptionRefusal({ status: 'missing' }, { url: URL })).toBeNull();
+  });
+
+  it('refuses an unsigned document', () => {
+    const refusal = adoptionRefusal({ status: 'unsigned', text: '{}' }, { url: URL });
+
+    expect(refusal).toContain('has no signature');
+    expect(refusal).toContain('Refusing it');
+  });
+
+  it('uses the migration step the caller names', () => {
+    const refusal = adoptionRefusal(
+      { status: 'unsigned', text: '{}' },
+      { url: URL, migration: 'Republish the game' }
+    );
+
+    expect(refusal).toContain('Republish the game');
+  });
+
+  it('refuses a document that does not match the key', () => {
+    const read = { status: 'invalid', message: `${URL} does not match the release key` };
+
+    expect(adoptionRefusal(read, { url: URL })).toBe(read.message);
+  });
+
+  it('refuses a read it could not complete', () => {
+    const read = { status: 'error', message: `${URL}.sig answered HTTP 500` };
+
+    expect(adoptionRefusal(read, { url: URL })).toBe(read.message);
   });
 });

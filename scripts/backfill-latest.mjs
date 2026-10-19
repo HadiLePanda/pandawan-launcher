@@ -14,11 +14,12 @@
  */
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
-import { NO_CACHE, S3, fail, repoRoot, upload, r2Config } from './lib/r2.mjs';
+import { fail, repoRoot, r2Config } from './lib/r2.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { catalogGameId } from './lib/catalog-edit.mjs';
 import { CHANNELS } from './lib/metadata-fields.mjs';
-import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
+import { checkReleaseKey } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument } from './lib/signed-upload.mjs';
 import { secretKeyPath } from './lib/updater-key.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -88,20 +89,14 @@ const keyPath = secretKeyPath(repoRoot);
 const keyCheck = checkReleaseKey(keyPath);
 if (!keyCheck.ok) fail(keyCheck.detail);
 
-const signing = signFile(outPath, { repoRoot, keyPath });
+const signing = signAndUploadDocument(outPath, {
+  repoRoot,
+  keyPath,
+  bucket,
+  key: `${prefix}/latest.json`,
+  endpoint,
+});
 if (!signing.ok) fail(signing.detail);
-
-upload(`${outPath}.sig`, S3.s3Uri(bucket, `${prefix}/latest.json.sig`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-  contentType: 'text/plain',
-});
-
-upload(outPath, S3.s3Uri(bucket, `${prefix}/latest.json`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-  contentType: 'application/json',
-});
 
 console.log(`\nBackfilled ${prefix}/latest.json`);
 console.log(`https://${cdnOrigin.replace(/^https?:\/\//, '')}/${prefix}/latest.json`);

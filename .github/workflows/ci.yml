@@ -9,6 +9,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# A new push to the same ref cancels the superseded run: the old result is not
+# worth minutes on a private plan.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typescript:
     name: TypeScript

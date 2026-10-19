@@ -31,7 +31,7 @@ describe('summariseRun', () => {
   it('keeps status and conclusion apart for a run still in progress', () => {
     const summary = summariseRun(
       { databaseId: 9, status: 'in_progress', conclusion: null, url: 'u' },
-      [{ name: 'Build linux', status: 'in_progress', conclusion: null }]
+      [{ name: 'Build macos', status: 'in_progress', conclusion: null }]
     );
     // A missing conclusion must never read as a pass.
     expect(summary.conclusion).toBeNull();
@@ -45,12 +45,12 @@ describe('summariseRun', () => {
       [
         { name: 'Check version consistency', conclusion: 'cancelled' },
         { name: 'Release macos', conclusion: 'success' },
-        { name: 'Release linux', conclusion: 'failure' },
+        { name: 'Release macos', conclusion: 'failure' },
         { name: 'Release windows', conclusion: 'skipped' },
       ]
     );
     // Cancelled and failed count; success and skipped do not.
-    expect(summary.failedJobs).toEqual(['Check version consistency', 'Release linux']);
+    expect(summary.failedJobs).toEqual(['Check version consistency', 'Release macos']);
     expect(summary.jobCount).toBe(4);
   });
 

@@ -205,7 +205,7 @@ Rules that carry over from the previous pass because they were deliberate:
 
 - `--ink-subtle` / `--ink-faint` greys were chosen for WCAG AA on 11px labels.
   Contrast must not regress below 4.5:1 on any surface.
-- Platform hues (`--win` / `--mac` / `--linux`) are a scanning aid and stay.
+- Platform hues (`--win` / `--mac`) are a scanning aid and stay.
 - The empty-cell hatch in the inventory grid is deliberately faint (0.013 alpha);
   a brighter one out-competed real data.
 - Colour is never the only signal — every state pairs it with a word.

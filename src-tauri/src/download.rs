@@ -198,7 +198,7 @@ impl DownloadManager {
         // ignores this, so it is applied only where it means something.
         //
         // `#[cfg(unix)]` is invisible to a Windows build: this code is not
-        // compiled until a macOS or Linux runner builds it.
+        // compiled until a macOS runner builds it.
         #[cfg(unix)]
         {
             let mut perms = tokio::fs::metadata(dest_path).await?.permissions();

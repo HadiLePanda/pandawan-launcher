@@ -10,7 +10,7 @@
  * the deliberate option is safer than making it the default one. `--dry-run` is
  * still accepted so the command reads naturally in the terminal.
  *
- * CI (.github/workflows/release.yml) builds the macOS and Linux bundles and then
+ * CI (.github/workflows/release.yml) builds the Windows and macOS bundles and then
  * runs the same upload this script performs. That full run takes ~25 minutes,
  * almost all of it compiling Rust on three platforms. The upload itself is ~30
  * seconds, so when only publishing is broken - bad credentials, a botocore
@@ -27,7 +27,7 @@
  * owns.
  *
  * It reads the already-built, already-signed assets off the draft GitHub release,
- * so it does not need macOS or Linux: this works from a plain Windows machine.
+ * so it does not need a Mac: this works from a plain Windows machine.
  *
  * Credentials come from the environment or .env (see scripts/lib/r2.mjs):
  *   R2_ACCOUNT_ID, R2_BUCKET, R2_CDN_ORIGIN, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
@@ -46,10 +46,17 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { buildDownloadsIndex, mergeDownloadsIndex } from './lib/downloads-index.mjs';
+import {
+  buildDownloadsIndex,
+  mergeDownloadsIndex,
+  isInstaller,
+  isInstallerSignature,
+} from './lib/downloads-index.mjs';
 import { indexEntries, indexEntriesIn } from './lib/index-assets.mjs';
-import { checkReleaseKey, signFile } from './lib/manifest-sign.mjs';
-import { fetchSignedDocument } from './lib/signed-document.mjs';
+import { checkReleaseKey } from './lib/manifest-sign.mjs';
+import { signAndUploadDocument } from './lib/signed-upload.mjs';
+import { DOWNLOADS_KEY, LAUNCHER_PREFIX, LATEST_KEY } from './lib/r2-keys.mjs';
+import { fetchSignedDocument, adoptionRefusal } from './lib/signed-document.mjs';
 import { publicKeyPath, secretKeyPath } from './lib/updater-key.mjs';
 import {
   fail,
@@ -66,7 +73,6 @@ import {
 // remote, so no repository is named here and a copy of this script cannot act on
 // the wrong one.
 const REPO = '{owner}/{repo}';
-const PREFIX = 'launcher';
 // The download index is signed so the site can tell our list from one an R2
 // writer planted. A missing key must fail before a single byte is uploaded.
 const KEY_PATH = secretKeyPath(repoRoot);
@@ -94,19 +100,15 @@ const staging = indexOnly ? null : path.join(repoRoot, '.publish', tag);
 // The updater manifest plus every artifact and signature a latest.json can point
 // at. A release whose latest.json references a missing file is worse than no
 // release at all: the launcher finds an update, downloads it, and fails.
+// Every asset a release publishes: the installer and updater signature per
+// platform, plus the two documents. The installer formats come from the same
+// table the download index uses, so a new platform cannot be added to one and
+// forgotten in the other.
 const WANTED = [
-  /^latest\.json$/,
-  /\.msi$/,
-  /\.msi\.sig$/,
-  /-setup\.exe$/,
-  /-setup\.exe\.sig$/,
-  /\.dmg$/,
-  /\.app\.tar\.gz$/,
-  /\.app\.tar\.gz\.sig$/,
-  /\.deb$/,
-  /\.deb\.sig$/,
-  /\.rpm$/,
-  /\.rpm\.sig$/,
+  (name) => name === 'latest.json',
+  isInstaller,
+  isInstallerSignature,
+  (name) => name.endsWith('.app.tar.gz') || name.endsWith('.app.tar.gz.sig'),
 ];
 
 function gh(args, { capture = false } = {}) {
@@ -145,7 +147,7 @@ function fetchAssets() {
   mkdirSync(staging, { recursive: true });
 
   for (const asset of release.assets) {
-    if (!WANTED.some((pattern) => pattern.test(asset.name))) continue;
+    if (!WANTED.some((wanted) => wanted(asset.name))) continue;
     const dest = path.join(staging, asset.name);
     if (existsSync(dest)) continue;
 
@@ -289,18 +291,16 @@ async function publishIndexOnly() {
   });
 
   // Fold into the live index rather than replacing it. A CI run builds only the
-  // platforms it was asked for - macOS and Linux by default - so writing the
+  // platforms it was asked for - Windows and macOS by default - so writing the
   // document whole would drop the Windows group a local publish put there.
   // The live document is verified first: merging an unverified one would copy a
   // planted entry into the document this run signs.
   const liveRead = await fetchSignedDocument(`${base}/downloads.json`, PUBLIC_KEY_PATH);
-  if (liveRead.status === 'error' || liveRead.status === 'invalid') fail(liveRead.message);
-  if (liveRead.status === 'unsigned') {
-    console.log(
-      '\nWARNING: the live downloads.json has no signature. Adopting it once; the\n' +
-        '         document this run uploads is signed and every later run verifies it.'
-    );
-  }
+  const refusal = adoptionRefusal(liveRead, {
+    url: `${base}/downloads.json`,
+    migration: 'Republish a launcher build to recreate the index',
+  });
+  if (refusal) fail(refusal);
   const live =
     liveRead.status === 'signed' || liveRead.status === 'unsigned'
       ? JSON.parse(liveRead.text)
@@ -309,9 +309,7 @@ async function publishIndexOnly() {
 
   if (dryRun) {
     console.log(`\nIndex-only dry run from ${fromDir} (version ${manifest.version}).`);
-    console.log(
-      `Would upload ${PREFIX}/downloads.json.sig then ${PREFIX}/downloads.json (no-cache):`
-    );
+    console.log(`Would upload ${DOWNLOADS_KEY}.sig then ${DOWNLOADS_KEY} (no-cache):`);
     for (const [platform, items] of Object.entries(downloads.platforms)) {
       console.log(`  ${platform}: ${items.map((i) => i.label).join(', ') || 'none'}`);
     }
@@ -324,22 +322,15 @@ async function publishIndexOnly() {
   const { bucket, endpoint } = r2Target();
   const indexPath = path.join(fromDir, 'downloads.json');
   writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
-  const signed = signFile(indexPath, { repoRoot, keyPath: KEY_PATH });
+  const signed = signAndUploadDocument(indexPath, {
+    repoRoot,
+    keyPath: KEY_PATH,
+    bucket,
+    key: DOWNLOADS_KEY,
+    endpoint,
+  });
   if (!signed.ok) fail(signed.detail);
-  // Signature first. A reader that sees the new document with the old signature
-  // fails closed, but only for the instant between the two uploads.
-  upload(`${indexPath}.sig`, S3.s3Uri(bucket, `${PREFIX}/downloads.json.sig`), {
-    endpoint,
-    cacheControl: NO_CACHE,
-  });
-  upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
-    endpoint,
-    cacheControl: NO_CACHE,
-    contentType: 'application/json',
-  });
-  console.log(
-    `\nRefreshed ${PREFIX}/downloads.json and its signature (version ${manifest.version}).`
-  );
+  console.log(`\nRefreshed ${DOWNLOADS_KEY} and its signature (version ${manifest.version}).`);
 }
 
 if (indexOnly) {
@@ -350,7 +341,7 @@ if (indexOnly) {
 const { bucket, endpoint } = r2Config();
 
 console.log(`Tag:   ${tag}`);
-console.log(`R2:    s3://${bucket}/${PREFIX}/`);
+console.log(`R2:    s3://${bucket}/${LAUNCHER_PREFIX}/`);
 
 const release = fetchAssets();
 const manifest = rewriteManifestUrls(release);
@@ -389,13 +380,13 @@ if (!key.ok) fail(key.detail);
 // advertise an update whose download 404s for as long as the bundles take.
 for (const name of readdirSync(staging)) {
   if (name === 'latest.json') continue;
-  upload(path.join(staging, name), S3.s3Uri(bucket, `${PREFIX}/${name}`), {
+  upload(path.join(staging, name), S3.s3Uri(bucket, `${LAUNCHER_PREFIX}/${name}`), {
     endpoint,
     cacheControl: IMMUTABLE,
   });
 }
 
-upload(path.join(staging, 'latest.json'), S3.s3Uri(bucket, `${PREFIX}/latest.json`), {
+upload(path.join(staging, 'latest.json'), S3.s3Uri(bucket, LATEST_KEY), {
   endpoint,
   cacheControl: NO_CACHE,
   contentType: 'application/json',
@@ -407,21 +398,17 @@ upload(path.join(staging, 'latest.json'), S3.s3Uri(bucket, `${PREFIX}/latest.jso
 // the hash of the bytes it points at.
 const indexPath = path.join(staging, 'downloads.json');
 writeFileSync(indexPath, `${JSON.stringify(downloads, null, 2)}\n`);
-const signedIndex = signFile(indexPath, { repoRoot, keyPath: KEY_PATH });
+const signedIndex = signAndUploadDocument(indexPath, {
+  repoRoot,
+  keyPath: KEY_PATH,
+  bucket,
+  key: DOWNLOADS_KEY,
+  endpoint,
+});
 if (!signedIndex.ok) fail(signedIndex.detail);
-// Signature first, the same order the manifests use.
-upload(`${indexPath}.sig`, S3.s3Uri(bucket, `${PREFIX}/downloads.json.sig`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-});
-upload(indexPath, S3.s3Uri(bucket, `${PREFIX}/downloads.json`), {
-  endpoint,
-  cacheControl: NO_CACHE,
-  contentType: 'application/json',
-});
 
-console.log(`\nPublished ${tag} to s3://${bucket}/${PREFIX}/`);
-console.log(`Manifest: ${process.env.R2_CDN_ORIGIN ?? ''}/${PREFIX}/latest.json`);
+console.log(`\nPublished ${tag} to s3://${bucket}/${LAUNCHER_PREFIX}/`);
+console.log(`Manifest: ${process.env.R2_CDN_ORIGIN ?? ''}/${LATEST_KEY}`);
 
 // The staged copy is a throwaway working directory holding every installer.
 // Leaving it would put ~50 MB of binaries in the working tree.
